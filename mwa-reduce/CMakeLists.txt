@@ -1,0 +1,62 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(mwa-reduce)
+
+set(CMAKE_CXX_FLAGS "-g3 -Wall -DNDEBUG -march=native")
+
+find_library(CASA_MS_LIB casa_ms REQUIRED)
+find_library(CASA_TABLES_LIB casa_tables REQUIRED)
+find_library(CASA_CASA_LIB casa_casa REQUIRED)
+find_library(CASA_MEASURES_LIB casa_measures REQUIRED)
+find_library(FFTW3_LIB fftw3 REQUIRED)
+find_package(Boost COMPONENTS thread system REQUIRED)
+find_library(FITSIO_LIB cfitsio REQUIRED)
+
+set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_CASA_LIB})
+
+find_path(CASA_INCLUDE_DIR NAMES ms/MeasurementSets/MeasurementSet.h PATHS /usr/local/include/casacore PATH_SUFFIXES casacore)
+
+include_directories(${CASA_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIR})
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
+
+add_executable(apparently apparently.cpp model.cpp fitsreader.cpp)
+add_executable(applygains applygains.cpp)
+add_executable(applypassband applypassband.cpp)
+add_executable(applyphaseoffsets applyphaseoffsets.cpp)
+add_executable(beam beam.cpp tilebeam.cpp)
+add_executable(calcgains calcgains.cpp)
+add_executable(calcpassband calcpassband.cpp)
+add_executable(calcphaseoffsets calcphaseoffsets.cpp)
+add_executable(fitsmodel fitsmodel.cpp model.cpp fitsreader.cpp)
+add_executable(flagantennae flagantennae.cpp)
+add_executable(flagbaselines flagbaselines.cpp)
+add_executable(flagmwa flagmwa.cpp)
+add_executable(flagsubbands flagsubbands.cpp)
+add_executable(mrcmodel mrcmodel.cpp fitsreader.cpp mrccatalogue.cpp)
+add_executable(subtract subtract.cpp)
+add_executable(subtrmodel subtrmodel.cpp model.cpp predicter.cpp)
+add_executable(spectrum spectrum.cpp model.cpp predicter.cpp)
+
+add_executable(aoimage aoimage.cpp btpimager.cpp fitswriter.cpp imageweights.cpp model.cpp modelrenderer.cpp)
+
+target_link_libraries(apparently ${FITSIO_LIB})
+target_link_libraries(mrcmodel ${FITSIO_LIB})
+
+target_link_libraries(applygains ${CASA_LIBS})
+target_link_libraries(applypassband ${CASA_LIBS})
+target_link_libraries(applyphaseoffsets ${CASA_LIBS})
+target_link_libraries(calcgains ${CASA_LIBS})
+target_link_libraries(calcpassband ${CASA_LIBS})
+target_link_libraries(calcphaseoffsets ${CASA_LIBS})
+target_link_libraries(fitsmodel ${CASA_LIBS} ${FITSIO_LIB})
+target_link_libraries(flagantennae ${CASA_LIBS})
+target_link_libraries(flagbaselines ${CASA_LIBS})
+target_link_libraries(flagmwa ${CASA_LIBS})
+target_link_libraries(flagsubbands ${CASA_LIBS})
+target_link_libraries(subtract ${CASA_LIBS})
+target_link_libraries(subtrmodel ${CASA_LIBS})
+target_link_libraries(spectrum ${CASA_LIBS})
+
+target_link_libraries(aoimage ${CASA_LIBS} ${CASA_MEASURES_LIB} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
