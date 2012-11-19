@@ -28,12 +28,15 @@ TileBeam::TileBeam(const double *delays) :
 	}
 }
 
-void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequencyHz, std::complex<double> &x, std::complex<double> &y)
+void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequencyHz, double &x, double &y)
 {
 	// direction cosines (relative to zenith) for direction az,za
-	const double sinZenith = sin(zenithAngle), cosZenith = cos(zenithAngle);
-	const double projectionEast = sinZenith * sin(azimuth);
-	const double projectionNorth = sinZenith * cos(azimuth);
+	double sinZenith, cosZenith, sinAzimuth, cosAzimuth;
+	sincos(zenithAngle, &sinZenith, &cosZenith);
+	sincos(azimuth, &sinAzimuth, &cosAzimuth);
+
+	const double projectionEast = sinZenith * sinAzimuth;
+	const double projectionNorth = sinZenith * cosAzimuth;
 	const double projectionHeight = cosZenith;
 	
 	const double lambda = SPEED_OF_LIGHT / frequencyHz;
@@ -71,8 +74,10 @@ void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequency
 
 	// voltage responses of the polarizations from an unpolarized source
 	// this is effectively the YY voltage gain
-	y = dipole_ns * groundPlane * arrayFactor; // gain_ns
+	
+	double arrPower = (arrayFactor.real()*arrayFactor.real() + arrayFactor.imag()*arrayFactor.imag()) * groundPlane;
+	y = dipole_ns * arrPower; // gain_ns
 	// this is effectively the XX voltage gain
-	x = dipole_ew * groundPlane * arrayFactor; // gain_ew
+	x = dipole_ew * arrPower; // gain_ew
 	
 }
