@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	std::vector<double> outImageX(width*height), outImageY(width*height);
 	const casa::Unit radUnit("rad");
 	double midX = (double) width / 2.0, midY = (double) height / 2.0;
-	const double delays[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	const double delays[16] = {6,9,12,15,4,7,10,13,2,5,8,11,0,3,6,9};
 	TileBeam tilebeam(delays);
 	
 	double *xPtr = &outImageX[0], *yPtr = &outImageY[0];
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 			sincos(dec, &sinDec, &cosDec);
 			double cosHA = cos(ha);
 			double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
-			
+			if(x==width/2 && y==height/2) std::cout << "Zenith distance: " << zenithDistance/M_PI*180;
 			casa::MDirection azel = j2000ToAzelGeo(imageDir);
 			double azimuth = azel.getValue().get()[0];
 			
