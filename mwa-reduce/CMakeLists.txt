@@ -21,6 +21,7 @@ include_directories(${Boost_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
 
+add_executable(addimg addimg.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(apparently apparently.cpp model.cpp fitsreader.cpp)
 add_executable(applybeam applybeam.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(applygains applygains.cpp)
@@ -42,6 +43,7 @@ add_executable(spectrum spectrum.cpp model.cpp predicter.cpp)
 
 add_executable(aoimage aoimage.cpp btpimager.cpp fitswriter.cpp imageweights.cpp model.cpp modelrenderer.cpp)
 
+target_link_libraries(addimg ${FITSIO_LIB})
 target_link_libraries(applybeam ${FITSIO_LIB})
 target_link_libraries(apparently ${FITSIO_LIB})
 target_link_libraries(mrcmodel ${FITSIO_LIB})

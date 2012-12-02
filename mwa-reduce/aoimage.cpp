@@ -57,14 +57,17 @@ void workFunction(const ThreadParameters parameters)
 	}
 }
 
+enum Polarization { StokesIPol, XXPol, YYPol };
+
 struct ImageInfo
 {
 	double phaseCentreRA, phaseCentreDec;
 	double highestFrequency, lowestFrequency;
 	bool onlyModel;
+	enum Polarization polarization;
 };
 
-size_t readData(size_t channelCount, size_t polarizationCount,
+size_t readDataStokesI(size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
 								bool *outFlagPtr,
 								casa::Array<std::complex<float> >::const_iterator inPtr,
@@ -133,6 +136,140 @@ size_t readData(size_t channelCount, size_t polarizationCount,
 		++outPtr;
 	}
 	return sampleCount;
+}
+
+size_t readDataXX(size_t channelCount, size_t polarizationCount,
+								std::complex<float> *outPtr,
+								bool *outFlagPtr,
+								casa::Array<std::complex<float> >::const_iterator inPtr,
+								casa::Array<bool>::const_iterator flagPtr)
+{
+	size_t sampleCount = 0;
+	for(size_t ch=0;ch!=channelCount;++ch)
+	{
+		bool hasSample = false;
+		if(polarizationCount == 2)
+		{
+			bool flagXX = *flagPtr;
+			++flagPtr;
+			++flagPtr;
+			
+			if(flagXX) {
+				*outPtr = std::complex<float>(0.0, 0.0);
+				++inPtr;
+				++inPtr;
+			}
+			else {
+				*outPtr = std::complex<float>(inPtr->real(), inPtr->imag());
+				++inPtr;
+				++inPtr;
+				hasSample = true;
+			}
+		} else if(polarizationCount == 4)
+		{
+			bool flagXX = *flagPtr;
+			++flagPtr;++flagPtr;++flagPtr;++flagPtr;
+			if(flagXX) {
+				*outPtr = std::complex<float>(0.0, 0.0);
+				++inPtr; ++inPtr; ++inPtr; ++inPtr;
+			}
+			else {
+				*outPtr = std::complex<float>(inPtr->real(), inPtr->imag());
+				++inPtr;++inPtr;++inPtr;++inPtr;
+				hasSample = true;
+			}
+		}
+		if(!std::isfinite(outPtr->real()) || !std::isfinite(outPtr->imag()))
+		{
+			*outPtr = std::complex<float>(0.0, 0.0);
+			hasSample = false;
+		}
+		else if(hasSample)
+			sampleCount++;
+		*outFlagPtr = !hasSample;
+		++outFlagPtr;
+		++outPtr;
+	}
+	return sampleCount;
+}
+
+size_t readDataYY(size_t channelCount, size_t polarizationCount,
+								std::complex<float> *outPtr,
+								bool *outFlagPtr,
+								casa::Array<std::complex<float> >::const_iterator inPtr,
+								casa::Array<bool>::const_iterator flagPtr)
+{
+	size_t sampleCount = 0;
+	for(size_t ch=0;ch!=channelCount;++ch)
+	{
+		bool hasSample = false;
+		if(polarizationCount == 2)
+		{
+			++flagPtr;
+			bool flagYY = *flagPtr;
+			++flagPtr;
+			
+			if(flagYY) {
+				*outPtr = std::complex<float>(0.0, 0.0);
+				++inPtr;
+				++inPtr;
+			}
+			else {
+				++inPtr;
+				*outPtr = std::complex<float>(inPtr->real(), inPtr->imag());
+				++inPtr;
+				hasSample = true;
+			}
+		} else if(polarizationCount == 4)
+		{
+			++flagPtr;++flagPtr;++flagPtr;
+			bool flagYY = *flagPtr;
+			++flagPtr;
+			if(flagYY) {
+				*outPtr = std::complex<float>(0.0, 0.0);
+				++inPtr; ++inPtr; ++inPtr; ++inPtr;
+			}
+			else {
+				++inPtr;++inPtr;++inPtr;
+				*outPtr = std::complex<float>(inPtr->real(), inPtr->imag());
+				++inPtr;
+				hasSample = true;
+			}
+		}
+		if(!std::isfinite(outPtr->real()) || !std::isfinite(outPtr->imag()))
+		{
+			*outPtr = std::complex<float>(0.0, 0.0);
+			hasSample = false;
+		}
+		else if(hasSample)
+			sampleCount++;
+		*outFlagPtr = !hasSample;
+		++outFlagPtr;
+		++outPtr;
+	}
+	return sampleCount;
+}
+
+size_t readData(enum Polarization polarization,
+								size_t channelCount, size_t polarizationCount,
+								std::complex<float> *outPtr,
+								bool *outFlagPtr,
+								casa::Array<std::complex<float> >::const_iterator inPtr,
+								casa::Array<bool>::const_iterator flagPtr)
+{
+	switch(polarization)
+	{
+		case StokesIPol:
+			return readDataStokesI(channelCount, polarizationCount,
+				outPtr, outFlagPtr, inPtr, flagPtr);
+		case XXPol:
+			return readDataXX(channelCount, polarizationCount,
+				outPtr, outFlagPtr, inPtr, flagPtr);
+		case YYPol:
+			return readDataYY(channelCount, polarizationCount,
+				outPtr, outFlagPtr, inPtr, flagPtr);
+	}
+	throw std::runtime_error("Unsupported polarization");
 }
 
 void image(const char *msName, const char *columnName, BTPImager &imager, size_t avgFactor, ImageInfo &info)
@@ -208,7 +345,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 			{
 				dataColumn.get(row, data);
 				flagColumn.get(row, flags);
-				readData(channelCount, polarizationCount, formattedData, formattedFlags, data.begin(), flags.begin());
+				readData(info.polarization, channelCount, polarizationCount, formattedData, formattedFlags, data.begin(), flags.begin());
 				weights.Grid(formattedData, formattedFlags, u, v);
 			}
 		}
@@ -306,7 +443,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 				casa::Array<std::complex<float> >::const_iterator inPtr = data.begin();
 				casa::Array<bool>::const_iterator flagPtr = flags.begin();
 				
-				size_t sampleCount = readData(channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
+				size_t sampleCount = readData(info.polarization, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
 				
 				if(avgFactor != 1)
 				{
@@ -361,38 +498,43 @@ int main(int argc, char *argv[])
 	NumType pixelScale = 0.1*(M_PI/180.0); // '0.05 deg'
 	const char *columnName = "DATA", *modelFilename = 0;
 	bool onlyModel = false;
+	enum Polarization pol = StokesIPol;
 	while(argc - argi >= 1 && argv[argi][0]=='-')
 	{
 		if(argc - argi >= 2 && strcmp(argv[argi], "-avg")==0)
 		{
 			++argi;
 			avgFactor = atoi(argv[argi]);
-			++argi;
 		}
 		else if(argc - argi >= 2 && strcmp(argv[argi], "-scale")==0)
 		{
 			++argi;
 			pixelScale = atof(argv[argi])*(M_PI/180.0);
-			++argi;
 		}
 		else if(argc - argi >= 2 && strcmp(argv[argi], "-column")==0)
 		{
 			++argi;
 			columnName = argv[argi];
-			++argi;
 		}
 		else if(argc - argi >= 2 && strcmp(argv[argi], "-m")==0)
 		{
 			onlyModel = true;
-			++argi;
 		}
 		else if(argc - argi >= 2 && strcmp(argv[argi], "-model")==0)
 		{
 			++argi;
 			modelFilename = argv[argi];
-			++argi;
+		}
+		else if(strcmp(argv[argi], "-xx"))
+		{
+			pol = XXPol;
+		}
+		else if(strcmp(argv[argi], "-yy"))
+		{
+			pol = YYPol;
 		}
 		else throw std::runtime_error(std::string("Unknown parameter ") + argv[argi]);
+		++argi;
 	}
 	if(argc - argi < 3)
 	{
@@ -412,6 +554,7 @@ int main(int argc, char *argv[])
 	imageInfo.lowestFrequency = 1e30;
 	imageInfo.highestFrequency = 0.0;
 	imageInfo.onlyModel = onlyModel;
+	imageInfo.polarization = pol;
 	std::cout << "DONE\n";
 	
 	while(argi < argc)
