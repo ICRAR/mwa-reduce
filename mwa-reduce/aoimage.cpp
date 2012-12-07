@@ -57,7 +57,7 @@ void workFunction(const ThreadParameters parameters)
 	}
 }
 
-enum Polarization { StokesIPol, XXPol, YYPol };
+enum Polarization { StokesIPol, XXPol, YYPol, PsfPol };
 
 struct ImageInfo
 {
@@ -250,6 +250,50 @@ size_t readDataYY(size_t channelCount, size_t polarizationCount,
 	return sampleCount;
 }
 
+size_t readDataWeights(size_t channelCount, size_t polarizationCount,
+								std::complex<float> *outPtr,
+								bool *outFlagPtr,
+								casa::Array<std::complex<float> >::const_iterator inPtr,
+								casa::Array<bool>::const_iterator flagPtr)
+{
+	size_t sampleCount = 0;
+	for(size_t ch=0;ch!=channelCount;++ch)
+	{
+		bool hasSample = false;
+		if(polarizationCount == 1)
+		{
+			if(*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+				hasSample = true;
+			++inPtr;
+			++flagPtr;
+		} else if(polarizationCount == 2)
+		{
+			bool flagXX = *flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag());
+			++flagPtr; ++inPtr;
+			bool flagYY = *flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag());
+			++flagPtr; ++inPtr;
+			
+			hasSample = !(flagXX || flagYY);
+		} else if(polarizationCount == 4)
+		{
+			bool flagXX = *flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag());
+			++flagPtr;++flagPtr;++flagPtr;
+			++inPtr; ++inPtr; ++inPtr;
+			bool flagYY = *flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag());
+			++flagPtr;
+			++inPtr;
+			hasSample = !(flagXX || flagYY);
+		}
+		if(hasSample)
+			++sampleCount;
+		*outFlagPtr = !hasSample;
+		*outPtr = hasSample ? 1.0 : 0.0;
+		++outFlagPtr;
+		++outPtr;
+	}
+	return sampleCount;
+}
+
 size_t readData(enum Polarization polarization,
 								size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
@@ -267,6 +311,9 @@ size_t readData(enum Polarization polarization,
 				outPtr, outFlagPtr, inPtr, flagPtr);
 		case YYPol:
 			return readDataYY(channelCount, polarizationCount,
+				outPtr, outFlagPtr, inPtr, flagPtr);
+		case PsfPol:
+			return readDataWeights(channelCount, polarizationCount,
 				outPtr, outFlagPtr, inPtr, flagPtr);
 	}
 	throw std::runtime_error("Unsupported polarization");
@@ -525,15 +572,20 @@ int main(int argc, char *argv[])
 			++argi;
 			modelFilename = argv[argi];
 		}
-		else if(strcmp(argv[argi], "-xx"))
+		else if(strcmp(argv[argi], "-xx")==0)
 		{
 			pol = XXPol;
 		}
-		else if(strcmp(argv[argi], "-yy"))
+		else if(strcmp(argv[argi], "-yy")==0)
 		{
 			pol = YYPol;
 		}
-		else throw std::runtime_error(std::string("Unknown parameter ") + argv[argi]);
+		else if(strcmp(argv[argi], "-psf")==0)
+		{
+			pol = PsfPol;
+		}
+		else throw std::runtime_error(std::string("Unknown parameter or incorrectly used: ") + argv[argi]);
+		
 		++argi;
 	}
 	if(argc - argi < 3)
