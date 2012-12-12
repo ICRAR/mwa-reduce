@@ -52,6 +52,14 @@ class ImageCoordinates
 			destDec = asin(m*cosDec0 + lmTerm*sinDec0);
 		}
 		
+		template<typename T>
+		static void XYToLM(size_t x, size_t y, T pixelSizeX, T pixelSizeY, size_t width, size_t height, T &l, T &m)
+		{
+			T midX = (T) width / 2.0, midY = (T) height / 2.0;
+			l = ((T) x - midX) * pixelSizeX;
+			m = (midY - (T) y) * pixelSizeY;
+		}
+		
 	private:
 		ImageCoordinates();
 };

@@ -1,5 +1,7 @@
 #include "fitsreader.h"
 #include "fitswriter.h"
+#include "imagecoordinates.h"
+#include "modelsource.h"
 
 #include <vector>
 #include <stdexcept>
@@ -64,21 +66,30 @@ void subtractPsf(std::vector<double> &image, const std::vector<double> &psf, siz
 
 int main(int argc, char *argv[])
 {
-	if(argc != 5)
+	if(argc != 5 && argc != 2)
 	{
-		std::cerr << "Syntax: imgclean <inpimage> <psfimage> <outpimage> <modelimage>\n"
-			"All images should be fits files.\n";
+		std::cerr << "Syntax: imgclean <inpimage> [<psfimage> <outpimage> <modelimage>]\n"
+			"All images should be fits files. If only an inpimage is specified, the first peak is returned.\n";
 		return -1;
 	}
+	bool onlyFindPeak = argc == 2;
 	const char *inpImageName = argv[1];
-	const char *psfImageName = argv[2];
-	const char *outImageName = argv[3];
-	const char *modelImageName = argv[4];
+	const char *psfImageName, *outImageName, *modelImageName;
+	if(onlyFindPeak)
+	{
+		psfImageName = 0;
+		outImageName = 0;
+		modelImageName = 0;
+	} else {
+		psfImageName = argv[2];
+		outImageName = argv[3];
+		modelImageName = argv[4];
+	}
 	double threshold = 5.0, subtractionFactor = 0.25;
 	size_t maxIter = 50000;
 	bool allowNegativeComponents = true, stopWhenDiverging = false;
 	
-	FitsReader inpReader(inpImageName), psfReader(psfImageName);
+	FitsReader inpReader(inpImageName);
 	const size_t width = inpReader.ImageWidth();
 	const size_t height = inpReader.ImageHeight();
 		
@@ -89,29 +100,45 @@ int main(int argc, char *argv[])
 		model(size, 0.0);
 	
 	inpReader.Read<double>(&image[0]);
-	psfReader.Read<double>(&psf[0]);
 	
 	size_t componentX, componentY;
 	double peak = FindPeak(image, width, componentX, componentY, allowNegativeComponents);
-	double lastPeak = peak;
-	std::cout << "Initial peak: " << peak << '\n';
-	size_t iterationNumber = 0;
-	while(fabs(peak) > threshold && iterationNumber < maxIter && (!stopWhenDiverging || peak<=lastPeak))
+	if(onlyFindPeak)
 	{
-		if(iterationNumber % 10 == 0)
-			std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
-		subtractPsf(image, psf, width, height, componentX, componentY, subtractionFactor * peak);
-		model[componentX + componentY*width] += subtractionFactor * peak;
+		double l, m, ra, dec;
+		ImageCoordinates::XYToLM(componentX, height-componentY, inpReader.PixelSizeX(), inpReader.PixelSizeY(), width, height, l, m);
+		ImageCoordinates::LMToRaDec(l, m, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), ra, dec);
+		ModelSource source;
+		source.SetName("clcomp");
+		source.SetPosRA(ra);
+		source.SetPosDec(dec);
+		source.Brightness() = SourceStrength<long double>(peak, 0.0, 1.0);
+		source.SetRefFreqA(1000000.0);
+		source.SetRefFreqB(2000000.0);
+		std::cout << source.ToStringLine() << '\n';
+	} else {
+		double lastPeak = peak;
+		std::cout << "Initial peak: " << peak << '\n';
+		size_t iterationNumber = 0;
+		FitsReader psfReader(psfImageName);
+		psfReader.Read<double>(&psf[0]);
+		while(fabs(peak) > threshold && iterationNumber < maxIter && (!stopWhenDiverging || peak<=lastPeak))
+		{
+			if(iterationNumber % 10 == 0)
+				std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
+			subtractPsf(image, psf, width, height, componentX, componentY, subtractionFactor * peak);
+			model[componentX + componentY*width] += subtractionFactor * peak;
+			
+			lastPeak = peak;
+			peak = FindPeak(image, width, componentX, componentY, allowNegativeComponents);
+			++iterationNumber;
+		}
+		std::cout << "Stopped on peak " << peak << '\n';
 		
-		lastPeak = peak;
-		peak = FindPeak(image, width, componentX, componentY, allowNegativeComponents);
-		++iterationNumber;
+		FitsWriter imgWriter(outImageName);
+		imgWriter.Write<double>(&image[0], width, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
+		
+		FitsWriter modelWriter(modelImageName);
+		modelWriter.Write<double>(&model[0], width, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
 	}
-	std::cout << "Stopped on peak " << peak << '\n';
-	
-	FitsWriter imgWriter(outImageName);
-	imgWriter.Write<double>(&image[0], width, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
-	
-	FitsWriter modelWriter(modelImageName);
-	modelWriter.Write<double>(&model[0], width, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
 }
