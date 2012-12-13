@@ -421,7 +421,7 @@ int main(int argc, char *argv[])
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
 				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, polarizationCount, phaseValues, phaseWeights);
-				stdError += result.first;
+				stdError += result.first * result.second;
 				stdErrorWeight += result.second;
 		}
 		stdError /= stdErrorWeight;
@@ -499,7 +499,7 @@ int main(int argc, char *argv[])
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
 				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, polarizationCount, phaseValues, phaseWeights);
-				stdError += result.first;
+				stdError += result.first * result.second;
 				stdErrorWeight += result.second;
 			}
 			stdError /= stdErrorWeight;
