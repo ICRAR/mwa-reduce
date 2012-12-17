@@ -21,7 +21,7 @@ typedef std::complex<long double> lcomplex_t;
 typedef std::complex<float> complex_t;
 
 struct BaselineData {
-		BaselineData(size_t timestepCount, size_t channelCount) : _timestepCount(timestepCount)
+		BaselineData(size_t timestepCount, size_t channelCount) : _channelCount(channelCount)
 		{
 			_dataX = new complex_t[timestepCount*channelCount];
 			_dataY = new complex_t[timestepCount*channelCount];
@@ -32,18 +32,18 @@ struct BaselineData {
 			delete[] _dataY;
 		}
 		
-		complex_t &DataX(size_t timeIndex, size_t freqIndex) { return _dataX[timeIndex*_timestepCount + freqIndex]; }
-		complex_t &DataY(size_t timeIndex, size_t freqIndex) { return _dataX[timeIndex*_timestepCount + freqIndex]; }
-		const complex_t &DataX(size_t timeIndex, size_t freqIndex) const { return _dataX[timeIndex*_timestepCount + freqIndex]; }
-		const complex_t &DataY(size_t timeIndex, size_t freqIndex) const { return _dataX[timeIndex*_timestepCount + freqIndex]; }
+		complex_t &DataX(size_t timeIndex, size_t freqIndex) { return _dataX[timeIndex*_channelCount + freqIndex]; }
+		complex_t &DataY(size_t timeIndex, size_t freqIndex) { return _dataX[timeIndex*_channelCount + freqIndex]; }
+		const complex_t &DataX(size_t timeIndex, size_t freqIndex) const { return _dataX[timeIndex*_channelCount + freqIndex]; }
+		const complex_t &DataY(size_t timeIndex, size_t freqIndex) const { return _dataX[timeIndex*_channelCount + freqIndex]; }
 		
 	private:
 		complex_t *_dataX, *_dataY;
-		size_t _timestepCount;
+		size_t _channelCount;
 };
 
 struct BaselineWeights {
-		BaselineWeights(size_t timestepCount, size_t channelCount) : _timestepCount(timestepCount)
+		BaselineWeights(size_t timestepCount, size_t channelCount) : _channelCount(channelCount)
 		{
 			_weightX = new float[timestepCount*channelCount];
 			_weightY = new float[timestepCount*channelCount];
@@ -59,12 +59,12 @@ struct BaselineWeights {
 			delete[] _weightY;
 		}
 				
-		float &WeightX(size_t timeIndex, size_t freqIndex) { return _weightX[timeIndex*_timestepCount + freqIndex]; }
-		float &WeightY(size_t timeIndex, size_t freqIndex) { return _weightY[timeIndex*_timestepCount + freqIndex]; }
-		const float &WeightX(size_t timeIndex, size_t freqIndex) const { return _weightX[timeIndex*_timestepCount + freqIndex]; }
-		const float &WeightY(size_t timeIndex, size_t freqIndex) const { return _weightY[timeIndex*_timestepCount + freqIndex]; }
+		float &WeightX(size_t timeIndex, size_t freqIndex) { return _weightX[timeIndex*_channelCount + freqIndex]; }
+		float &WeightY(size_t timeIndex, size_t freqIndex) { return _weightY[timeIndex*_channelCount + freqIndex]; }
+		const float &WeightX(size_t timeIndex, size_t freqIndex) const { return _weightX[timeIndex*_channelCount + freqIndex]; }
+		const float &WeightY(size_t timeIndex, size_t freqIndex) const { return _weightY[timeIndex*_channelCount + freqIndex]; }
 	private:
-		size_t _timestepCount;
+		size_t _channelCount;
 		float *_weightX, *_weightY;
 };
 
@@ -220,8 +220,6 @@ void CalculateTimeIntegratedPhaseDifferences(long double **phases, long double *
 					wY += weightY;
 				}
 				
-				//std::cout << "phaseX= " << diffSumX << '\n';
-			
 				if(wX != 0.0)
 					antPhaseX = diffSumX / wX;
 				else
@@ -540,13 +538,13 @@ int main(int argc, char *argv[])
 				double u = *i; ++i;
 				double v = *i; ++i;
 				double w = *i;
-				BaselineData &predicted = dataSet.Predicted(antenna1, antenna2);
+				BaselineData &predictedData = dataSet.Predicted(antenna1, antenna2);
 				for(size_t ch = 0; ch!=avgChannelCount; ++ch)
 				{
 					double lambda = bandData.ChannelWavelength(ch*channelCount/avgChannelCount);
 					lcomplex_t p = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch);
-					predicted.DataX(timeIndex, ch) = p;
-					predicted.DataY(timeIndex, ch) = p;
+					predictedData.DataX(timeIndex, ch) = p;
+					predictedData.DataY(timeIndex, ch) = p;
 				}
 			}
 		}
@@ -648,7 +646,7 @@ int main(int argc, char *argv[])
 			bool gotBetter = stdError < prevAbsError;
 			if(!gotBetter) { ++gotWorseCount; stepSize*=0.9; }
 			++iteration;
-		} while(stdError > 0.001  && iteration < 150);
+		} while(iteration < 150); // stdError > 0.00001  && 
 		
 		if(fitSlope) {
 			for(size_t a = 0; a!=antennaCount; ++a)
@@ -666,32 +664,44 @@ int main(int argc, char *argv[])
 		outFile << antennaCount << '\t';
 		if(avgChannelCount == 1)
 		{
-			outFile << avgChannelCount << '\t' << 2 << '\n';
+			outFile << avgChannelCount << '\t' << polarizationCount << '\n';
 			for(size_t a = 0; a!=antennaCount; ++a)
 			{
 				outFile << a;
-				for(size_t p = 0; p!=2; ++p)
+				for(size_t p = 0; p!=polarizationCount; ++p)
 				{
-					long double *antennaPhases = phases[a];
-					outFile << '\t' << antennaPhases[p];
+					if(p == 0 || p == polarizationCount-1)
+					{
+						size_t pIndex = (p==0) ? 0 : 1;
+						long double *antennaPhases = phases[a];
+						outFile << '\t' << antennaPhases[pIndex];
+					} else {
+						outFile << "\t0.0";
+					}
 				}
 				outFile << '\n';
 			}
 		} else {
 			size_t eIndex = 0;
 			size_t outpChannelCount = fitSlope ? inpChannelCount : avgChannelCount;
-			outFile << outpChannelCount << '\t' << 2 << '\n';
-			for(size_t ch = 0; ch!=inpChannelCount; ++ch)
+			outFile << outpChannelCount << '\t' << polarizationCount << '\n';
+			for(size_t ch = 0; ch!=outpChannelCount; ++ch)
 			{
 				outFile << ch;
-				for(size_t p = 0; p!=2; ++p)
+				for(size_t p = 0; p!=polarizationCount; ++p)
 				{
-					for(size_t a = 0; a!=antennaCount; ++a)
+					if(p == 0 || p == polarizationCount-1)
 					{
-						long double *antennaPhases = phases[a];
-						outFile << '\t' << antennaPhases[eIndex];
+						for(size_t a = 0; a!=antennaCount; ++a)
+						{
+							long double *antennaPhases = phases[a];
+							outFile << '\t' << antennaPhases[eIndex];
+						}
+						++eIndex;
+					} else {
+						for(size_t a = 0; a!=antennaCount; ++a)
+							outFile << "\t0.0";
 					}
-					++eIndex;
 				}
 				outFile << '\n';
 			}

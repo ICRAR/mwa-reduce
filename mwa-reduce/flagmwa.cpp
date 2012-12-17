@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 {
 	if(argc < 2)
 	{
-		std::cout << "Usage: flagmwa <ms> [<timestepcount> [<sbcount> <centre> <channels> <side> <channels>]]\n"
+		std::cout << "Usage: flagmwa <ms> [<timestepcount> [<sbcount> <centre-channels> <side-channels>]]\n"
 			"Flags the start timestep and corrupted centre channels of each sub-band as needed for\n"
 			"MWA. timestepcount defaults to 5, sbcount defaults to 24, centre and side channels to 1.\n";
 	} else {

@@ -542,7 +542,7 @@ int main(int argc, char *argv[])
 			size_t eIndex = 0;
 			size_t outpChannelCount = fitSlope ? inpChannelCount : channelCount;
 			outFile << outpChannelCount << '\t' << polarizationCount << '\n';
-			for(size_t ch = 0; ch!=inpChannelCount; ++ch)
+			for(size_t ch = 0; ch!=outpChannelCount; ++ch)
 			{
 				outFile << ch;
 				for(size_t p = 0; p!=polarizationCount; ++p)
