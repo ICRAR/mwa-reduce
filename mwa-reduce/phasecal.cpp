@@ -217,7 +217,8 @@ void CalculateTimeIntegratedPhaseDifferences(long double **phasesPerBaseline, lo
 						phaseY = PhaseOffset(atan2l(mY.imag(), mY.real()), curPhaseSolutionY),
 						predPhaseX = atan2l(pX.imag(), pX.real()),
 						predPhaseY = atan2l(pY.imag(), pY.real());
-					double weightX = wData.WeightX(t, ch), weightY = wData.WeightY(t, ch);
+					long double weightX = wData.WeightX(t, ch);
+					long double weightY = wData.WeightY(t, ch);
 					diffSumX += PhaseOffset(phaseX, predPhaseX) * weightX;
 					diffSumY += PhaseOffset(phaseY, predPhaseY) * weightY;
 					wX += weightX;
@@ -720,7 +721,7 @@ int main(int argc, char *argv[])
 			if(iteration < 1000) offsetNameStr << '0';
 			offsetNameStr << iteration << ".txt";
 			//save(tempNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, phaseOffsets, false);
-		} while(iteration < 300); // stdError > 0.00001  && 
+		} while(iteration < 100); // stdError > 0.00001  && 
 		
 		if(fitSlope) {
 			for(size_t a = 0; a!=antennaCount; ++a)
