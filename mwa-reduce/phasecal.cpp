@@ -123,8 +123,20 @@ struct Data {
 long double PhaseOffset(long double base, long double other)
 {
 	long double offset = base - other;
-	if(offset > M_PIl) offset -= 2.0*M_PIl;
-	if(offset <= -M_PIl) offset += 2.0*M_PIl;
+	while(offset > M_PIl) offset -= 2.0*M_PIl;
+	while(offset <= -M_PIl) offset += 2.0*M_PIl;
+	return offset;
+}
+
+/**
+ * Calculate difference between phases and make sure it's
+ * within -pi ... pi .
+ */
+long double PhaseDistUp(long double base, long double other)
+{
+	long double offset = base - other;
+	while(offset >= 2.0*M_PIl) offset -= 2.0*M_PIl;
+	while(offset < 0.0) offset += 2.0*M_PIl;
 	return offset;
 }
 
@@ -201,7 +213,8 @@ void CalculateTimeIntegratedPhaseDifferences(long double **phasesPerBaseline, lo
 			
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
-				long double diffSumX = 0.0, diffSumY = 0.0;
+				long double diffSumXa = 0.0, diffSumYa = 0.0;
+				long double diffSumXb = 0.0, diffSumYb = 0.0;
 				
 				long double curPhaseSolutionX = *antenna1Phases - *antenna2Phases;
 				long double curPhaseSolutionY = *(antenna1Phases+1) - *(antenna2Phases+1);
@@ -219,11 +232,26 @@ void CalculateTimeIntegratedPhaseDifferences(long double **phasesPerBaseline, lo
 						predPhaseY = atan2l(pY.imag(), pY.real());
 					long double weightX = wData.WeightX(t, ch);
 					long double weightY = wData.WeightY(t, ch);
-					diffSumX += PhaseOffset(phaseX, predPhaseX) * weightX;
-					diffSumY += PhaseOffset(phaseY, predPhaseY) * weightY;
+					long double diffX = PhaseOffset(predPhaseX, phaseX);
+					long double diffY = PhaseOffset(predPhaseY, phaseY);
+					diffSumXa += diffX * weightX;
+					diffSumYa += diffY * weightY;
+					diffSumXb += (2.0*M_PIl-diffX) * weightX;
+					diffSumYb += (2.0*M_PIl-diffY) * weightY;
 					wX += weightX;
 					wY += weightY;
 				}
+				long double diffSumX, diffSumY;
+				
+				//if(diffSumXa < diffSumXb)
+					diffSumX = diffSumXa;
+				//else
+				//	diffSumX = -diffSumXb;
+				
+				//if(diffSumYa < diffSumYb)
+					diffSumY = diffSumYa;
+				//else
+				//	diffSumY = -diffSumYb;
 				
 				if(wX != 0.0)
 					baselPhaseX = diffSumX / wX;
@@ -263,7 +291,7 @@ void UnwrapPhase(long double *phases, size_t count, size_t step)
 	}
 }
 
-long double AntennaPhaseOffset(size_t antenna, size_t antennaCount, size_t eIndex, const long double* const* phasesPerBaseline, const long double* const* phaseWeights, long double refPhase = 0.0)
+long double AntennaPhaseOffset(size_t antenna, size_t antennaCount, size_t eIndex, const long double* const* phasesPerBaseline, const long double* const* phaseWeights)
 {
 	long double phaseOffset = 0, weightSum = 0.0;
 	// a2 < a1 ==> a1 is not conjugated.
@@ -272,7 +300,8 @@ long double AntennaPhaseOffset(size_t antenna, size_t antennaCount, size_t eInde
 		size_t aIndex = SumIndex(antenna, a2, antennaCount);
 		const long double *baselineValues = phasesPerBaseline[aIndex];
 		const long double weight = phaseWeights[aIndex][eIndex];
-		phaseOffset += PhaseOffset(refPhase, baselineValues[eIndex]) * weight;
+		const long double posPhase = baselineValues[eIndex];
+		phaseOffset -= posPhase * weight;
 		weightSum += weight;
 	}
 	// a2 > a1 ==> a1 is conjugated.
@@ -281,11 +310,18 @@ long double AntennaPhaseOffset(size_t antenna, size_t antennaCount, size_t eInde
 		size_t aIndex = SumIndex(antenna, a2, antennaCount);
 		const long double *baselineValues = phasesPerBaseline[aIndex];
 		const long double weight = phaseWeights[aIndex][eIndex];
-		phaseOffset -= PhaseOffset(refPhase, baselineValues[eIndex]) * weight;
+		const long double posPhase = PhaseDistUp(-baselineValues[eIndex], 0.0);
+		phaseOffset += posPhase * weight;
 		weightSum += weight;
 	}
+	if(antenna==6 && eIndex==2)
+	{
+		//std::cout << PhaseToString(phaseOffsetA / weightSum) << "," << PhaseToString(-phaseOffsetB / weightSum) << '\n';
+	}
 	if(weightSum != 0.0)
+	{
 		return phaseOffset / weightSum;
+	}
 	else
 		return 0.0;
 }
@@ -315,7 +351,7 @@ std::pair<long double, long double> ChannelStdError(size_t ch, size_t antennaCou
 	{
 		for(size_t a1=0;a1!=antennaCount;++a1)
 		{
-			long double phaseOffset = AntennaPhaseOffset(a1, antennaCount, eIndex, phasesPerBaseline, phaseWeights, 0.0);
+			long double phaseOffset = AntennaPhaseOffset(a1, antennaCount, eIndex, phasesPerBaseline, phaseWeights);
 			
 			long double weight = AntennaWeight(a1, antennaCount, eIndex, phaseWeights);
 			stdError += phaseOffset * phaseOffset * weight;
@@ -628,7 +664,7 @@ int main(int argc, char *argv[])
 		std::cout << PhaseToString(stdError) << ".\n";
 		
 		size_t iteration=0, gotWorseCount=0;
-		long double prevAbsError = 10.0, minError = 10.0, stepSize = 1.0;
+		long double prevAbsError = 10.0, minError = 10.0, stepSize = 0.1;
 		do
 		{
 			std::cout << "Iteration " << iteration << ": " << std::flush;
@@ -647,11 +683,10 @@ int main(int argc, char *argv[])
 				{
 					for(size_t p = 0; p!=2; ++p)
 					{
-						long double refPhase = 0.0;
-						phaseOffsets[eIndex] = AntennaPhaseOffset(a1, antennaCount, eIndex, phaseValues, phaseWeights, refPhase);
+						phaseOffsets[eIndex] = AntennaPhaseOffset(a1, antennaCount, eIndex, phaseValues, phaseWeights);
 						antennaWeights[eIndex] = AntennaWeight(a1, antennaCount, eIndex, phaseWeights);
 						
-						if(eIndex/2+1 == 3 && a1==2)
+						if(eIndex/2+1 == 3 && a1==6)
 						{
 							std::cout << PhaseToString(phaseOffsets[eIndex]) << '\t' << PhaseToString(phasesPerAntenna[a1][eIndex]) << '\t' << "W=" << antennaWeights[eIndex] << '\t';
 						}
@@ -667,24 +702,6 @@ int main(int argc, char *argv[])
 					{
 						long double step = phaseOffsets[eIndex] * stepSize * antennaWeights[eIndex];
 						phasesPerAntenna[a1][eIndex] += step;
-						
-						/*
-						/// a1 > a2 : a1 is not conjugated
-						for(size_t a2 = 0; a2!=a1; ++a2)
-						{
-							size_t aIndex = SumIndex(a1, a2, antennaCount);
-							
-							long double *baselineValues = phaseValues[aIndex];
-							baselineValues[eIndex] += step;
-						}
-						/// a1 < a2 : a1 is conjugated
-						for(size_t a2 = a1+1; a2!=antennaCount; ++a2)
-						{
-							size_t aIndex = SumIndex(a1, a2, antennaCount);
-							
-							long double *baselineValues = phaseValues[aIndex];
-							baselineValues[eIndex] -= step;
-						}*/
 						++eIndex;
 					}
 				}
@@ -721,7 +738,7 @@ int main(int argc, char *argv[])
 			if(iteration < 1000) offsetNameStr << '0';
 			offsetNameStr << iteration << ".txt";
 			//save(tempNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, phaseOffsets, false);
-		} while(iteration < 100); // stdError > 0.00001  && 
+		} while(iteration < 250); // stdError > 0.00001  && 
 		
 		if(fitSlope) {
 			for(size_t a = 0; a!=antennaCount; ++a)
