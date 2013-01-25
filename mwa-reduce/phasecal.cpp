@@ -33,9 +33,9 @@ struct BaselineData {
 		}
 		
 		complex_t &DataX(size_t timeIndex, size_t freqIndex) { return _dataX[timeIndex*_channelCount + freqIndex]; }
-		complex_t &DataY(size_t timeIndex, size_t freqIndex) { return _dataX[timeIndex*_channelCount + freqIndex]; }
+		complex_t &DataY(size_t timeIndex, size_t freqIndex) { return _dataY[timeIndex*_channelCount + freqIndex]; }
 		const complex_t &DataX(size_t timeIndex, size_t freqIndex) const { return _dataX[timeIndex*_channelCount + freqIndex]; }
-		const complex_t &DataY(size_t timeIndex, size_t freqIndex) const { return _dataX[timeIndex*_channelCount + freqIndex]; }
+		const complex_t &DataY(size_t timeIndex, size_t freqIndex) const { return _dataY[timeIndex*_channelCount + freqIndex]; }
 		
 	private:
 		complex_t *_dataX, *_dataY;
@@ -170,6 +170,13 @@ std::string PhaseToString(long double phase)
 	return s.str();
 }
 
+std::string PhaseToString(lcomplex_t val)
+{
+	std::stringstream s;
+	s << PhaseToString(atan2l(val.imag(), val.real())) << '{' << val.real() << ',' << val.imag() << '}';
+	return s.str();
+}
+
 size_t SumIndex(size_t a1, size_t a2, size_t antennaCount)
 {
 	return (a1>a2) ? (a2*antennaCount + a1) : (a1*antennaCount + a2);
@@ -190,7 +197,7 @@ lcomplex_t rotate(complex_t data, long double rotSin, long double rotCos)
 		data.real() * rotSin + data.imag() * rotCos);
 }
 
-void CalculateTimeIntegratedPhaseDifferences(long double **phasesPerBaseline, long double **visWeights, const Data &dataSet, const long double *const *phasesPerAntenna)
+void CalculateTimeIntegratedGradients(lcomplex_t **gainSolutionPerBaseline, long double **visWeights, const Data &dataSet, const lcomplex_t *const *gainSolutionPerAntenna)
 {
 	const size_t
 		antennaCount = dataSet.AntennaCount(),
@@ -200,75 +207,57 @@ void CalculateTimeIntegratedPhaseDifferences(long double **phasesPerBaseline, lo
 	{
 		for(size_t a2=a1+1;a2!=antennaCount;++a2)
 		{
-			const long double *antenna1Phases = phasesPerAntenna[a1];
-			const long double *antenna2Phases = phasesPerAntenna[a2];
+			const lcomplex_t *antenna1Gain = gainSolutionPerAntenna[a1];
+			const lcomplex_t *antenna2Gain = gainSolutionPerAntenna[a2];
 			const BaselineData &mData = dataSet.Measured(a1, a2);
 			const BaselineData &pData = dataSet.Predicted(a1, a2);
 			const BaselineWeights &wData = dataSet.Weights(a1, a2);
 			
 			size_t index = SumIndexA2highest(a1, a2, antennaCount);
 			
-			long double *baselinePhases = phasesPerBaseline[index];
+			lcomplex_t *baselineGains = gainSolutionPerBaseline[index];
 			long double *baselineWeights = visWeights[index];
 			
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
-				long double diffSumXa = 0.0, diffSumYa = 0.0;
-				long double diffSumXb = 0.0, diffSumYb = 0.0;
+				lcomplex_t gainSumX = 0.0, gainSumY = 0.0;
 				
-				long double curPhaseSolutionX = *antenna1Phases - *antenna2Phases;
-				long double curPhaseSolutionY = *(antenna1Phases+1) - *(antenna2Phases+1);
-				long double &baselPhaseX = *baselinePhases, &baselPhaseY = *(baselinePhases+1);
+				lcomplex_t curSolutionX = *antenna1Gain * std::conj(*antenna2Gain);
+				lcomplex_t curSolutionY = *(antenna1Gain+1) * std::conj(*(antenna2Gain+1));
+				lcomplex_t &baselGainX = *baselineGains, &baselGainY = *(baselineGains+1);
 				long double wX = 0.0, wY = 0.0;
 				
 				for(size_t t=0; t!=timestepCount; ++t)
 				{
-					complex_t mX = mData.DataX(t, ch), mY = mData.DataY(t, ch);
-					complex_t pX = pData.DataX(t, ch), pY = pData.DataY(t, ch);
-					long double
-						phaseX = PhaseOffset(atan2l(mX.imag(), mX.real()), curPhaseSolutionX),
-						phaseY = PhaseOffset(atan2l(mY.imag(), mY.real()), curPhaseSolutionY),
-						predPhaseX = atan2l(pX.imag(), pX.real()),
-						predPhaseY = atan2l(pY.imag(), pY.real());
+					lcomplex_t correctedX = lcomplex_t(mData.DataX(t, ch)) * curSolutionX;
+					lcomplex_t correctedY = lcomplex_t(mData.DataY(t, ch)) * curSolutionY;
+					lcomplex_t pX = pData.DataX(t, ch), pY = pData.DataY(t, ch);
+					lcomplex_t gainStepX = (correctedX!=lcomplex_t(0.0)) ? pX / correctedX : 1.0;
+					lcomplex_t gainStepY = (correctedY!=lcomplex_t(0.0)) ? pY / correctedY : 1.0;
 					long double weightX = wData.WeightX(t, ch);
 					long double weightY = wData.WeightY(t, ch);
-					long double diffX = PhaseOffset(predPhaseX, phaseX);
-					long double diffY = PhaseOffset(predPhaseY, phaseY);
-					diffSumXa += diffX * weightX;
-					diffSumYa += diffY * weightY;
-					diffSumXb += (2.0*M_PIl-diffX) * weightX;
-					diffSumYb += (2.0*M_PIl-diffY) * weightY;
+					gainSumX += gainStepX * weightX;
+					gainSumY += gainStepY * weightY;
 					wX += weightX;
 					wY += weightY;
 				}
-				long double diffSumX, diffSumY;
-				
-				//if(diffSumXa < diffSumXb)
-					diffSumX = diffSumXa;
-				//else
-				//	diffSumX = -diffSumXb;
-				
-				//if(diffSumYa < diffSumYb)
-					diffSumY = diffSumYa;
-				//else
-				//	diffSumY = -diffSumYb;
 				
 				if(wX != 0.0)
-					baselPhaseX = diffSumX / wX;
+					baselGainX = gainSumX / wX;
 				else
-					baselPhaseX = 0.0;
+					baselGainY = 1.0;
 				if(wY != 0.0)
-					baselPhaseY = diffSumY / wY;
+					baselGainY = gainSumY / wY;
 				else
-					baselPhaseY = 0.0;
-				++baselinePhases;
-				++baselinePhases;
+					baselGainY = 1.0;
+				++baselineGains;
+				++baselineGains;
 				++baselineWeights;
 				*baselineWeights = wX;
 				++baselineWeights;
 				*baselineWeights = wY;
-				antenna1Phases += 2;
-				antenna2Phases += 2;
+				antenna1Gain += 2;
+				antenna2Gain += 2;
 			}
 		}
 	}
@@ -291,27 +280,26 @@ void UnwrapPhase(long double *phases, size_t count, size_t step)
 	}
 }
 
-long double AntennaPhaseOffset(size_t antenna, size_t antennaCount, size_t eIndex, const long double* const* phasesPerBaseline, const long double* const* phaseWeights)
+lcomplex_t AntennaGainStep(size_t antenna, size_t antennaCount, size_t eIndex, const lcomplex_t* const* gainSolutionsPerBaseline, const long double* const* phaseWeights)
 {
-	long double phaseOffset = 0, weightSum = 0.0;
+	lcomplex_t gainSum = 0;
+	long double weightSum = 0.0;
 	// a2 < a1 ==> a1 is not conjugated.
 	for(size_t a2 = 0; a2 != antenna; ++a2)
 	{
 		size_t aIndex = SumIndex(antenna, a2, antennaCount);
-		const long double *baselineValues = phasesPerBaseline[aIndex];
+		const lcomplex_t *baselineValues = gainSolutionsPerBaseline[aIndex];
 		const long double weight = phaseWeights[aIndex][eIndex];
-		const long double posPhase = baselineValues[eIndex];
-		phaseOffset -= posPhase * weight;
+		gainSum += std::conj(baselineValues[eIndex]) * weight;
 		weightSum += weight;
 	}
 	// a2 > a1 ==> a1 is conjugated.
 	for(size_t a2 = antenna+1; a2!=antennaCount; ++a2)
 	{
 		size_t aIndex = SumIndex(antenna, a2, antennaCount);
-		const long double *baselineValues = phasesPerBaseline[aIndex];
+		const lcomplex_t *baselineValues = gainSolutionsPerBaseline[aIndex];
 		const long double weight = phaseWeights[aIndex][eIndex];
-		const long double posPhase = PhaseDistUp(-baselineValues[eIndex], 0.0);
-		phaseOffset += posPhase * weight;
+		gainSum += baselineValues[eIndex] * weight;
 		weightSum += weight;
 	}
 	if(antenna==6 && eIndex==2)
@@ -320,10 +308,10 @@ long double AntennaPhaseOffset(size_t antenna, size_t antennaCount, size_t eInde
 	}
 	if(weightSum != 0.0)
 	{
-		return phaseOffset / weightSum;
+		return gainSum / weightSum;
 	}
 	else
-		return 0.0;
+		return 1.0;
 }
 
 long double AntennaWeight(size_t antenna, size_t antennaCount, size_t eIndex, const long double* const* visWeights)
@@ -343,7 +331,7 @@ long double AntennaWeight(size_t antenna, size_t antennaCount, size_t eIndex, co
 	return weight;
 }
 
-std::pair<long double, long double> ChannelStdError(size_t ch, size_t antennaCount, size_t polarizationCount, const long double* const* phasesPerBaseline, const long double* const* phaseWeights)
+std::pair<long double, long double> ChannelStdError(size_t ch, size_t antennaCount, size_t polarizationCount, const lcomplex_t* const* gainSolutionsPerBaseline, const long double* const* phaseWeights)
 {
 	long double stdError = 0.0, weightSum = 0.0;
 	size_t eIndex = polarizationCount * ch;
@@ -351,10 +339,10 @@ std::pair<long double, long double> ChannelStdError(size_t ch, size_t antennaCou
 	{
 		for(size_t a1=0;a1!=antennaCount;++a1)
 		{
-			long double phaseOffset = AntennaPhaseOffset(a1, antennaCount, eIndex, phasesPerBaseline, phaseWeights);
+			lcomplex_t gainStep = AntennaGainStep(a1, antennaCount, eIndex, gainSolutionsPerBaseline, phaseWeights);
 			
 			long double weight = AntennaWeight(a1, antennaCount, eIndex, phaseWeights);
-			stdError += phaseOffset * phaseOffset * weight;
+			stdError += abs(gainStep * gainStep) * weight;
 			weightSum += weight;
 		}
 	}
@@ -401,7 +389,7 @@ void FitPhases(size_t channelCount, size_t polarizationCount, long double *phase
 	}
 }
 
-void save(const char *outName, size_t antennaCount, size_t avgChannelCount, size_t inpChannelCount, size_t polarizationCount, const long double* const* phases, bool fitSlope)
+void save(const char *outName, size_t antennaCount, size_t avgChannelCount, size_t inpChannelCount, size_t polarizationCount, const lcomplex_t* const* solutions, bool fitSlope)
 {
 	std::ofstream outFile(outName);
 	outFile.precision(10);
@@ -417,8 +405,8 @@ void save(const char *outName, size_t antennaCount, size_t avgChannelCount, size
 				if(p == 0 || p == polarizationCount-1)
 				{
 					size_t pIndex = (p==0) ? 0 : 1;
-					const long double *antennaPhases = phases[a];
-					outFile << '\t' << antennaPhases[pIndex];
+					const lcomplex_t *antennaSols = solutions[a];
+					outFile << '\t' << atan2(antennaSols[pIndex].imag(), antennaSols[pIndex].real());
 				} else {
 					outFile << "\t0.0";
 				}
@@ -438,8 +426,8 @@ void save(const char *outName, size_t antennaCount, size_t avgChannelCount, size
 				{
 					for(size_t a = 0; a!=antennaCount; ++a)
 					{
-						const long double *antennaPhases = phases[a];
-						outFile << '\t' << antennaPhases[eIndex];
+						const lcomplex_t *antennaSols = solutions[a];
+						outFile << '\t' << atan2(antennaSols[eIndex].imag(), antennaSols[eIndex].real());
 					}
 					++eIndex;
 				} else {
@@ -540,23 +528,24 @@ int main(int argc, char *argv[])
 		const size_t matrixSize = antennaCount * antennaCount;
 		size_t sumsPerBaseline = avgChannelCount * 2;
 		size_t reservedSpace = channelCount * 2; // we reserve more for interpolation
-		long double *phaseValues[matrixSize], *phaseWeights[matrixSize];
+		lcomplex_t *gainStepValues[matrixSize];
+		long double *gainStepWeights[matrixSize];
 		for(size_t e=0; e!=matrixSize; ++e) 
 		{
-			phaseValues[e] = new long double[reservedSpace];
-			phaseWeights[e] = new long double[reservedSpace];
+			gainStepValues[e] = new lcomplex_t[reservedSpace];
+			gainStepWeights[e] = new long double[reservedSpace];
 			for(size_t i=0; i!=reservedSpace; ++i)
 			{
-				phaseValues[e][i] = 0.0;
-				phaseWeights[e][i] = 0.0;
+				gainStepValues[e][i] = 1.0;
+				gainStepWeights[e][i] = 0.0;
 			}
 		}
 		
-		long double *phasesPerAntenna[antennaCount];
+		lcomplex_t *gainSolutionsPerAntenna[antennaCount];
 		for(size_t a=0; a!=antennaCount; ++a) 
 		{
-			phasesPerAntenna[a] = new long double[reservedSpace];
-			for(size_t i=0; i!=reservedSpace; ++i) phasesPerAntenna[a][i] = 0.0;
+			gainSolutionsPerAntenna[a] = new lcomplex_t[reservedSpace];
+			for(size_t i=0; i!=reservedSpace; ++i) gainSolutionsPerAntenna[a][i] = 1.0;
 		}
 		Data dataSet(antennaCount, timestepCount, avgChannelCount);
 		
@@ -644,19 +633,19 @@ int main(int argc, char *argv[])
 		}
 		
 		/**
-		 *  Calculate average phase per baseline per channel (differential phase of average vis)
+		 *  Calculate average val per baseline per channel
 		 */
 		
-		std::cout << "DONE!\nInitial standard error of phase offsets: " << std::flush;
+		std::cout << "DONE!\nInitial standard error of offsets: " << std::flush;
 		
 		size_t inpChannelCount = channelCount;
 
-		CalculateTimeIntegratedPhaseDifferences(phaseValues, phaseWeights, dataSet, phasesPerAntenna);
+		CalculateTimeIntegratedGradients(gainStepValues, gainStepWeights, dataSet, gainSolutionsPerAntenna);
 
 		long double stdError = 0.0, stdErrorWeight = 0.0;
 		for(size_t ch=0; ch!=avgChannelCount; ++ch)
 		{
-				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, phaseValues, phaseWeights);
+				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, gainStepValues, gainStepWeights);
 				stdError += result.first * result.second;
 				stdErrorWeight += result.second;
 		}
@@ -675,43 +664,44 @@ int main(int argc, char *argv[])
 			for(size_t a1 = 0; a1!=antennaCount; ++a1)
 			{
 				/**
-				* Calculate per antenna phase offsets
+				* Calculate per antenna solutions
 				*/
 				size_t eIndex = 0;
-				long double phaseOffsets[sumsPerBaseline], antennaWeights[sumsPerBaseline];
+				lcomplex_t gainSteps[sumsPerBaseline];
+				long double antennaWeights[sumsPerBaseline];
 				for(size_t ch = 0; ch!=avgChannelCount; ++ch)
 				{
 					for(size_t p = 0; p!=2; ++p)
 					{
-						phaseOffsets[eIndex] = AntennaPhaseOffset(a1, antennaCount, eIndex, phaseValues, phaseWeights);
-						antennaWeights[eIndex] = AntennaWeight(a1, antennaCount, eIndex, phaseWeights);
+						gainSteps[eIndex] = AntennaGainStep(a1, antennaCount, eIndex, gainStepValues, gainStepWeights);
+						antennaWeights[eIndex] = AntennaWeight(a1, antennaCount, eIndex, gainStepWeights);
 						
 						if(eIndex/2+1 == 3 && a1==6)
 						{
-							std::cout << PhaseToString(phaseOffsets[eIndex]) << '\t' << PhaseToString(phasesPerAntenna[a1][eIndex]) << '\t' << "W=" << antennaWeights[eIndex] << '\t';
+							std::cout << PhaseToString(gainSteps[eIndex]) << '\t' << PhaseToString(gainSolutionsPerAntenna[a1][eIndex]) << '\t' << "W=" << antennaWeights[eIndex] << '\t';
 						}
 						++eIndex;
 					}
 				}
 				
-				// Apply the average phase offset to the 'phaseValues'
+				// Apply the step gains to the solutions
 				eIndex = 0;
 				for(size_t ch = 0; ch!=avgChannelCount; ++ch)
 				{
 					for(size_t p = 0; p!=2; ++p)
 					{
-						long double step = phaseOffsets[eIndex] * stepSize * antennaWeights[eIndex];
-						phasesPerAntenna[a1][eIndex] += step;
+						gainSolutionsPerAntenna[a1][eIndex] *= lcomplex_t(1.0) +
+							(gainSteps[eIndex] - lcomplex_t(1.0)) * stepSize * antennaWeights[eIndex];
 						++eIndex;
 					}
 				}
 			}
 			
-			CalculateTimeIntegratedPhaseDifferences(phaseValues, phaseWeights, dataSet, phasesPerAntenna);
+			CalculateTimeIntegratedGradients(gainStepValues, gainStepWeights, dataSet, gainSolutionsPerAntenna);
 			
 			for(size_t ch=0; ch!=avgChannelCount; ++ch)
 			{
-				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, phaseValues, phaseWeights);
+				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, gainStepValues, gainStepWeights);
 				stdError += result.first * result.second;
 				stdErrorWeight += result.second;
 			}
@@ -720,7 +710,7 @@ int main(int argc, char *argv[])
 			std::cout << "Standard error: " << PhaseToString(stdError) << '\n';
 			
 			bool gotBetter = stdError < prevAbsError;
-			if(!gotBetter) { ++gotWorseCount; stepSize*=0.9; }
+			//if(!gotBetter) { ++gotWorseCount; stepSize*=0.9; }
 			++iteration;
 
 			stringstream solNameStr;
@@ -729,7 +719,7 @@ int main(int argc, char *argv[])
 			if(iteration < 100) solNameStr << '0';
 			if(iteration < 1000) solNameStr << '0';
 			solNameStr << iteration << ".txt";
-			save(solNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, phasesPerAntenna, false);
+			save(solNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, false);
 			
 			stringstream offsetNameStr;
 			offsetNameStr << "temp/offset-";
@@ -743,20 +733,20 @@ int main(int argc, char *argv[])
 		if(fitSlope) {
 			for(size_t a = 0; a!=antennaCount; ++a)
 			{
-				long double *antennaPhases = phasesPerAntenna[a];
-				FitPhases(avgChannelCount, 2, antennaPhases, antennaPhases, inpChannelCount);
+				lcomplex_t *antennaPhases = gainSolutionsPerAntenna[a];
+				// TODO FitPhases(avgChannelCount, 2, antennaPhases, antennaPhases, inpChannelCount);
 			}
 		}
 		
-		save(outName, antennaCount, avgChannelCount, inpChannelCount, polarizationCount, phasesPerAntenna, fitSlope);
+		save(outName, antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, fitSlope);
 				
 		for(size_t e=0; e!=matrixSize; ++e) 
 		{
-			delete[] phaseValues[e];
-			delete[] phaseWeights[e];
+			delete[] gainStepValues[e];
+			delete[] gainStepWeights[e];
 		}
 		for(size_t a=0; a!=antennaCount;++a)
-			delete[] phasesPerAntenna[a];
+			delete[] gainSolutionsPerAntenna[a];
 	}
 	
 	return 0;
