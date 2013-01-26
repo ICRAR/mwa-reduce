@@ -177,6 +177,27 @@ std::string PhaseToString(lcomplex_t val)
 	return s.str();
 }
 
+std::string GainToString(long double gain)
+{
+	std::stringstream s;
+	const char *unit;
+	if(gain >= 1.0)
+	{
+		unit = "Jy";
+	} else if(gain >= 0.001)
+	{
+		gain *= 1000.0;
+		unit = "mJy";
+	} else
+	{
+		gain *= 1000000.0;
+		unit = "μJy";
+	}
+	s.precision(3);
+	s << gain << ' ' << unit;
+	return s.str();
+}
+
 size_t SumIndex(size_t a1, size_t a2, size_t antennaCount)
 {
 	return (a1>a2) ? (a2*antennaCount + a1) : (a1*antennaCount + a2);
@@ -342,6 +363,7 @@ std::pair<long double, long double> ChannelStdError(size_t ch, size_t antennaCou
 			lcomplex_t gainStep = AntennaGainStep(a1, antennaCount, eIndex, gainSolutionsPerBaseline, phaseWeights);
 			
 			long double weight = AntennaWeight(a1, antennaCount, eIndex, phaseWeights);
+			gainStep -= lcomplex_t(1.0);
 			stdError += abs(gainStep * gainStep) * weight;
 			weightSum += weight;
 		}
@@ -650,10 +672,10 @@ int main(int argc, char *argv[])
 				stdErrorWeight += result.second;
 		}
 		stdError /= stdErrorWeight;
-		std::cout << PhaseToString(stdError) << ".\n";
+		std::cout << stdError << ".\n";
 		
 		size_t iteration=0, gotWorseCount=0;
-		long double prevAbsError = 10.0, minError = 10.0, stepSize = 0.1;
+		long double prevAbsError = 10.0, minError = 10.0, stepSize = 0.25;
 		do
 		{
 			std::cout << "Iteration " << iteration << ": " << std::flush;
@@ -707,7 +729,7 @@ int main(int argc, char *argv[])
 			}
 			stdError /= stdErrorWeight;
 			if(stdError < minError) minError = stdError;
-			std::cout << "Standard error: " << PhaseToString(stdError) << '\n';
+			std::cout << "Standard error: " << GainToString(stdError) << '\n';
 			
 			bool gotBetter = stdError < prevAbsError;
 			//if(!gotBetter) { ++gotWorseCount; stepSize*=0.9; }
