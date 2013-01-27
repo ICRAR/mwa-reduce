@@ -56,6 +56,14 @@ class BandData
 		{
 			return _channelFrequencies[1] - _channelFrequencies[0];
 		}
+		double BandStart() const
+		{
+			return LowestFrequency() - FrequencyStep()*0.5;
+		}
+		double BandEnd() const
+		{
+			return HighestFrequency() + FrequencyStep()*0.5;
+		}
 		
 	private:
 		size_t _channelCount;

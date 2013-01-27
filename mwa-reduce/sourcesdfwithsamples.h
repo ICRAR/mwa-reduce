@@ -43,31 +43,56 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 				freqB = after->first,
 				fluxB = after->second;
 			
-			return SourceSDFWithSI<NumericType>(fluxA, freqA, fluxB, freqB).FluxAtFrequency(frequencyHz);
+			return SourceSDFWithSI<NumericType>::FluxAtFrequency(fluxA, freqA, fluxB, freqB, frequencyHz);
 		}
 			
 		virtual NumericType IntegratedFlux(NumericType startFrequency, NumericType endFrequency) const
 		{
-			if(_fluxes.size() <= 2)
+			typename FluxMap::const_iterator iter = _fluxes.lower_bound(startFrequency);
+			
+			/** Handle special cases */
+			if(_fluxes.size() <= 2 || iter == _fluxes.end())
 			{
 				if(_fluxes.empty())
 					return 0.0;
 				else if(_fluxes.size()==1)
-					return _fluxes.begin()->second * (endFrequency - startFrequency);
-				else {
+					return _fluxes.begin()->second;
+				else if(_fluxes.size()==2) {
 					NumericType
 						freqA = _fluxes.begin()->first,
 						fluxA = _fluxes.begin()->second,
 						freqB = _fluxes.rbegin()->first,
 						fluxB = _fluxes.rbegin()->second;
 					
-					return SourceSDFWithSI<NumericType>(fluxA, freqA, fluxB, freqB).IntegratedFlux(startFrequency, endFrequency);
+					return SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
+				} else { // all keys are lower, so take last two
+					typename FluxMap::const_reverse_iterator end = _fluxes.rbegin();
+					NumericType
+						freqB = end->first,
+						fluxB = end->second;
+						++end;
+					NumericType
+						freqA = end->first,
+						fluxA = end->second;
+					return SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
 				}
 			}
-				
-			typename FluxMap::const_iterator iter = _fluxes.lower_bound(startFrequency);
+			
 			if(iter != _fluxes.begin()) --iter;
 			
+			if(iter->first >= endFrequency) {
+				// all keys are outside range, higher than range
+				typename FluxMap::const_iterator begin = _fluxes.begin();
+				NumericType
+					freqA = begin->first,
+					fluxA = begin->second;
+					++begin;
+				NumericType
+					freqB = begin->first,
+					fluxB = begin->second;
+				return SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
+			}
+				
 			NumericType leftFrequency = startFrequency;
 			
 			NumericType integratedSum = 0.0;
@@ -77,11 +102,15 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 				typename FluxMap::const_iterator right = iter;
 				++right;
 				
-				NumericType rightFrequency = right->first;
+				NumericType rightFrequency;
 				// If this is past the sampled frequencies, extrapolate last 2 samples
 				if(right == _fluxes.end()) {
 					--right; --left;
 					rightFrequency = endFrequency;
+				} else {
+					rightFrequency = right->first;
+					if(rightFrequency > endFrequency)
+						rightFrequency = endFrequency;
 				}
 				
 				NumericType
@@ -90,11 +119,20 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 					freqB = right->first,
 					fluxB = right->second;
 				
-				integratedSum += SourceSDFWithSI<NumericType>(fluxA, freqA, fluxB, freqB).IntegratedFlux(leftFrequency, rightFrequency);
+				if(leftFrequency < rightFrequency)
+				{
+					NumericType sumTerm = SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, leftFrequency, rightFrequency);
+					if(!std::isfinite(sumTerm))
+					{
+						std::cerr << "Warning: integrating flux between " << leftFrequency << " and " << rightFrequency << " with fluxes " << fluxA << '@' << freqA << ',' << fluxB << '@' << freqB << " gave non-finite result\n";
+					}
+					
+					integratedSum += sumTerm * (rightFrequency - leftFrequency);
+				}
 				leftFrequency = rightFrequency;
 				++iter;
 			}
-			return integratedSum;
+			return integratedSum / (endFrequency - startFrequency);
 		}
 			
 		virtual SourceSDF<NumericType> *Copy() const
@@ -116,9 +154,21 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 		
 		void AddSample(NumericType flux, NumericType frequency)
 		{
-			_fluxes.insert(std::pair<NumericType, NumericType>(frequency, flux));
+			if(!std::isfinite(flux))
+				std::cerr << "Warning: ignoring non-finite result\n";
+			else
+				_fluxes.insert(std::pair<NumericType, NumericType>(frequency, flux));
 		}
 		
+		typename std::map<NumericType, NumericType>::const_iterator begin() const
+		{
+			return _fluxes.begin();
+		}
+		
+		typename std::map<NumericType, NumericType>::const_iterator end() const
+		{
+			return _fluxes.end();
+		}
 	private:
 		FluxMap _fluxes;
 };

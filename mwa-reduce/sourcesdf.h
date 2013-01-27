@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
+#include <iostream>
 
 template<typename NumericType=long double>
 class SourceSDF
@@ -54,7 +55,7 @@ class SourceSDFWithSI : public SourceSDF<NumericType>
 		
 		SourceSDFWithSI(NumericType fluxDensityAJy, NumericType referenceFrequencyAHz, NumericType fluxDensityBJy, NumericType referenceFrequencyBHz) :
 			/* Calculate the spectral index and flux density for 1 Hz frequency */
-		_spectralIndex( (log(fabs(fluxDensityAJy)) - log(fabs(fluxDensityBJy))) / (log(referenceFrequencyAHz) - log(referenceFrequencyBHz)) ),
+			_spectralIndex((log(fabs(fluxDensityAJy)) - log(fabs(fluxDensityBJy))) / (log(referenceFrequencyAHz) - log(referenceFrequencyBHz))),
 		_refFreqA(referenceFrequencyAHz),
 		_refFreqB(referenceFrequencyBHz)
 		{
@@ -66,9 +67,28 @@ class SourceSDFWithSI : public SourceSDF<NumericType>
 			return _fluxDensityJy * std::pow(frequencyHz, _spectralIndex);
 		}
 		
+		static NumericType FluxAtFrequency(NumericType fluxDensityAJy, NumericType referenceFrequencyAHz, NumericType fluxDensityBJy, NumericType referenceFrequencyBHz, NumericType requestedFrequency)
+		{
+			NumericType si =
+				log(fabs(fluxDensityBJy/fluxDensityAJy)) /
+				log(referenceFrequencyBHz/referenceFrequencyAHz);
+			return fluxDensityAJy * std::pow(requestedFrequency/referenceFrequencyAHz, si);
+		}
+		
 		virtual NumericType IntegratedFlux(NumericType startFrequency, NumericType endFrequency) const
 		{
 			return _fluxDensityJy * (std::pow(endFrequency, _spectralIndex+1.0) - std::pow(startFrequency, _spectralIndex+1.0)) / ((_spectralIndex+1.0) * (endFrequency-startFrequency));
+		}
+		
+		static NumericType IntegratedFlux(NumericType fluxDensityAJy, NumericType referenceFrequencyAHz, NumericType fluxDensityBJy, NumericType referenceFrequencyBHz, NumericType startFrequency, NumericType endFrequency)
+		{
+			NumericType si =
+				log(fabs(fluxDensityBJy/fluxDensityAJy)) /
+				log(referenceFrequencyBHz/referenceFrequencyAHz);
+			return fluxDensityAJy * (
+				std::pow(endFrequency/referenceFrequencyAHz, si) * endFrequency -
+				std::pow(startFrequency/referenceFrequencyAHz, si) * startFrequency) /
+				( (si+1.0) * (endFrequency - startFrequency) );
 		}
 		
 		NumericType SpectralIndex() const { return _spectralIndex; }
