@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 					}
 				}
 				dataColumn.put(rowIndex, data);
-				std::cout << '.' << std::flush;
+				//std::cout << '.' << std::flush;
 			}
 		}
 		

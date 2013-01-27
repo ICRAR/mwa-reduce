@@ -154,10 +154,10 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 		
 		void AddSample(NumericType flux, NumericType frequency)
 		{
-			if(!std::isfinite(flux))
-				std::cerr << "Warning: ignoring non-finite result\n";
-			else
+			if(std::isfinite(flux))
 				_fluxes.insert(std::pair<NumericType, NumericType>(frequency, flux));
+			//else
+			//	std::cerr << "Warning: ignoring non-finite result\n";
 		}
 		
 		typename std::map<NumericType, NumericType>::const_iterator begin() const

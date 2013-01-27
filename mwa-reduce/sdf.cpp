@@ -7,12 +7,29 @@
 
 int main(int argc, char *argv[])
 {
+	if(argc == 1)
+	{
+		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
+		"spectral density function. Usage:\n"
+		"\tsdf [-p] [-s <scale>] <new-nr-channels> <model> <ms>\n";
+	}
 	int argi = 1;
 	bool outputPlot = false;
-	if(strcmp(argv[argi], "-p") == 0)
+	long double scale = 1.0;
+	while(argv[argi][0]=='-')
 	{
-		outputPlot = true;
-		++argi;
+		if(strcmp(argv[argi], "-p") == 0)
+		{
+			outputPlot = true;
+			++argi;
+		} else if(strcmp(argv[argi], "-s") == 0)
+		{
+			++argi;
+			scale = atof(argv[argi]);
+			++argi;
+		} else {
+			throw std::runtime_error("Unknown option given");
+		}
 	}
 	size_t newChannelCount = atoi(argv[argi]);
 	Model model(argv[argi+1]);
@@ -29,7 +46,7 @@ int main(int argc, char *argv[])
 			long double startFreq = band.BandStart() + newBandSize*newChIndex;
 			long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
 			long double flux = sdf.IntegratedFlux(startFreq, endFreq);
-			newSdf.AddSample(flux, (startFreq+endFreq)*0.5);
+			newSdf.AddSample(flux*scale, (startFreq+endFreq)*0.5);
 		}
 		if(!outputPlot) {
 			sourcePtr->SetBrightness(newSdf);
