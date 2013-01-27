@@ -112,9 +112,7 @@ int main(int argc, char *argv[])
 		source.SetName("clcomp");
 		source.SetPosRA(ra);
 		source.SetPosDec(dec);
-		source.Brightness() = SourceStrength<long double>(peak, 0.0, 1.0);
-		source.SetRefFreqA(1000000.0);
-		source.SetRefFreqB(2000000.0);
+		source.SetBrightness(SourceSDFWithSI<long double>(peak, 0.0, 1.0));
 		std::cout << source.ToStringLine() << '\n';
 	} else {
 		double lastPeak = peak;

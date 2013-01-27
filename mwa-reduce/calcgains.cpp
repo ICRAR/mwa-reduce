@@ -12,7 +12,7 @@
 #include <cmath>
 #include <fstream>
 
-#include "sourcestrength.h"
+#include "sourcesdf.h"
 #include "banddata.h"
 
 using namespace casa;
@@ -217,8 +217,8 @@ int main(int argc, char *argv[])
 			spectralIndex = atof(argv[argi+2]),
 			refFrequency = atof(argv[argi+3]);
 		const char *outName = argv[argi+4];
-		const SourceStrength<long double>
-			sourceStrength(sourceFluxDensity, spectralIndex, refFrequency*1000000.0);
+		const SourceSDFWithSI<long double>
+			sourceSDF(sourceFluxDensity, spectralIndex, refFrequency*1000000.0);
 		
 		MeasurementSet ms(msName);
 		
@@ -319,12 +319,12 @@ int main(int argc, char *argv[])
 			size_t beginIndex = ch*channelCount/avgChannelCount;
 			size_t endIndex = (ch+1)*channelCount/avgChannelCount-1;
 			if(beginIndex == endIndex)
-				sourceFlux[ch] = sourceStrength.FluxAtFrequency(bandData.ChannelFrequency(beginIndex));
+				sourceFlux[ch] = sourceSDF.FluxAtFrequency(bandData.ChannelFrequency(beginIndex));
 			else
 			{
 				double beginFreq = bandData.ChannelFrequency(beginIndex);
 				double endFreq = bandData.ChannelFrequency(endIndex);
-				sourceFlux[ch] = sourceStrength.IntegratedFlux(beginFreq, endFreq);
+				sourceFlux[ch] = sourceSDF.IntegratedFlux(beginFreq, endFreq);
 			}
 		}
 		std::cout << "Source flux: " << GainToString(sourceFlux[0]) << " @ " <<

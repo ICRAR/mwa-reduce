@@ -25,7 +25,7 @@ void ModelRenderer::Render(NumType* imageData, size_t imageSize, const Model& mo
 			posDec = src->PosDec(),
 			sourceL, sourceM;
 		ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
-		const SourceStrength<long double> &brightness = src->Brightness();
+		const SourceSDF<long double> &brightness = src->Brightness();
 		NumType *imageDataPtr = imageData;
 		const long double intFlux = brightness.IntegratedFlux(startFrequency, endFrequency);
 		

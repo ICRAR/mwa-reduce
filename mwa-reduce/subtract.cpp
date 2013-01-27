@@ -9,7 +9,7 @@
 #include <tables/Tables/ScalarColumn.h>
 
 #include "banddata.h"
-#include "sourcestrength.h"
+#include "sourcesdf.h"
 
 using namespace casa;
 
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 			sourceFluxDensity = atof(argv[2]),
 			spectralIndex = atof(argv[3]),
 			refFrequency = atof(argv[4]);
-		const SourceStrength<long double>
+		const SourceSDFWithSI<long double>
 			sourceStrength(sourceFluxDensity, spectralIndex, refFrequency*1000000.0);
 		
 		/**

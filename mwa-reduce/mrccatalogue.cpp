@@ -90,9 +90,7 @@ bool MRCCatalogue::ReadNext(ModelSource& source)
 		digToVal(entry.fluxDensity[3])*1.0 +
 		digToVal(entry.fluxDensity[5])*0.1 +
 		digToVal(entry.fluxDensity[6])*0.01;
-	source.Brightness() = SourceStrength<long double>(fluxDensity, 0.0, 408.0);
-	source.SetRefFreqA(408.0);
-	source.SetRefFreqB(1.0);
+	source.SetBrightness(SourceSDFWithSI<long double>(fluxDensity, 0.0, 408.0));
 	entry.name[10] = 0;
 	source.SetName(entry.name);
 	return true;

@@ -2,7 +2,7 @@
 #include <cmath>
 #include <fstream>
 
-#include "sourcestrength.h"
+#include "sourcesdf.h"
 #include "model.h"
 #include "fitsreader.h"
 #include "imagecoordinates.h"
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 					value = std::max(value, image[yi*fitsReader.ImageWidth() + xi]);
 			}
 			if(value > 0.0) {
-				source.Brightness() = SourceStrength<long double>(value, 0.0, 1.0);
+				source.SetBrightness(SourceSDFWithSI<long double>(value, 0.0, 1.0));
 				std::cout << source.ToStringLine() << '\n';
 			} else {
 				std::cout << '#' << source.ToStringLine() << '\n';

@@ -9,7 +9,7 @@
 #include <tables/Tables/ScalarColumn.h>
 
 #include "banddata.h"
-#include "sourcestrength.h"
+#include "sourcesdf.h"
 #include "model.h"
 #include "predicter.h"
 

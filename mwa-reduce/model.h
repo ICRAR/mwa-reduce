@@ -14,6 +14,11 @@ class Model
 		Model()
 		{
 		}
+
+		Model(const Model &source) :
+			_sources(source._sources)
+		{
+		}
 		
 		Model(const char *filename);
 		

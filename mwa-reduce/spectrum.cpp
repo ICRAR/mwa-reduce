@@ -9,7 +9,7 @@
 #include <tables/Tables/ScalarColumn.h>
 
 #include "banddata.h"
-#include "sourcestrength.h"
+#include "sourcesdf.h"
 #include "model.h"
 #include "predicter.h"
 
@@ -24,11 +24,12 @@ int main(int argc, char **argv)
 	} else {
 		size_t argi = 1;
 		Model model(argv[argi]);
+		Model measuredModel(model);
 		// Set all sources to flux 1 Jy
 		for(Model::iterator source=model.begin();source!=model.end();++source)
 		{
 			ModelSource &s = *source;
-			s.Brightness() = SourceStrength<long double>(1.0, 0.0, 1.0);
+			s.SetBrightness(SourceSDFWithSI<long double>(1.0, 0.0, 1.0));
 		}
 		
 		MeasurementSet ms(argv[argi+1], Table::Update);
@@ -65,7 +66,7 @@ int main(int argc, char **argv)
 		predicter.Initialize(model);
 		
 		/**
-		 * Calculate spetra
+		 * Calculate spectra
 		 */
 		Array<complex_t> data(dataShape);
 		Array<bool> flags(dataShape);
@@ -118,32 +119,51 @@ int main(int argc, char **argv)
 			}
 		}
 		
-		float sums[model.SourceCount()];
-		size_t counts[model.SourceCount()];
-		for(size_t i=0;i!=model.SourceCount();++i)
+		bool outputModel = true;
+		if(outputModel)
 		{
-			sums[i] = 0;
-			counts[i] = 0;
-		}
-		
-		for(size_t ch=0; ch!=channelCount;++ch)
-		{
-			std::cout << ch << '\t' << bandData.ChannelFrequency(ch);
-			size_t sourceIndex = ch * model.SourceCount();
-			for(size_t s=0; s!=model.SourceCount();++s)
+			size_t sourceIndex = 0;
+			for(Model::iterator source=model.begin();source!=model.end();++source)
 			{
-				std::cout << '\t' << (sourceFlux[sourceIndex] / sourceMeasCount[sourceIndex]);
-				sums[s] += sourceFlux[sourceIndex];
-				counts[s] += sourceMeasCount[sourceIndex];
+				SourceSDFWithSamples<long double> sdf;
+				size_t itemIndex = sourceIndex;
+				for(size_t ch=0; ch!=channelCount;++ch)
+				{
+					sdf.AddSample((sourceFlux[itemIndex] / sourceMeasCount[itemIndex]), bandData.ChannelFrequency(ch));
+					itemIndex += model.SourceCount();
+				}
+				source->SetBrightness(sdf);
+				std::cout << source->ToStringLine() << '\n';
 				++sourceIndex;
+			}
+		} else {
+			float sums[model.SourceCount()];
+			size_t counts[model.SourceCount()];
+			for(size_t i=0;i!=model.SourceCount();++i)
+			{
+				sums[i] = 0;
+				counts[i] = 0;
+			}
+			
+			for(size_t ch=0; ch!=channelCount;++ch)
+			{
+				std::cout << ch << '\t' << bandData.ChannelFrequency(ch);
+				size_t sourceIndex = ch * model.SourceCount();
+				for(size_t s=0; s!=model.SourceCount();++s)
+				{
+					std::cout << '\t' << (sourceFlux[sourceIndex] / sourceMeasCount[sourceIndex]);
+					sums[s] += sourceFlux[sourceIndex];
+					counts[s] += sourceMeasCount[sourceIndex];
+					++sourceIndex;
+				}
+				std::cout << '\n';
+			}
+			std::cout << "avg\tavg\t";
+			for(size_t i=0;i!=model.SourceCount();++i)
+			{
+				std::cout << '\t' << (sums[i] / counts[i]);
 			}
 			std::cout << '\n';
 		}
-		std::cout << "avg\tavg\t";
-		for(size_t i=0;i!=model.SourceCount();++i)
-		{
-			std::cout << '\t' << (sums[i] / counts[i]);
-		}
-		std::cout << '\n';
 	}
 }

@@ -2,7 +2,7 @@
 #include <cmath>
 #include <fstream>
 
-#include "sourcestrength.h"
+#include "sourcesdf.h"
 #include "fitsreader.h"
 #include "imagecoordinates.h"
 #include "mrccatalogue.h"
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 					if(yi < fitsReader.ImageHeight())
 						value = std::max(value, image[yi*fitsReader.ImageWidth() + xi]);
 					
-					source.Brightness() = SourceStrength<long double>(value, 0.0, 1.0);
+					source.SetBrightness(SourceSDFWithSI<long double>(value, 0.0, 1.0));
 				}
 				
 				std::cout << source.ToStringLine() << '\n';

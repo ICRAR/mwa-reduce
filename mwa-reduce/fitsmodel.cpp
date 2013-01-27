@@ -3,7 +3,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "sourcestrength.h"
+#include "sourcesdf.h"
 #include "model.h"
 #include "fitsreader.h"
 #include "imagecoordinates.h"
@@ -45,12 +45,10 @@ int main(int argc, char **argv)
 					std::stringstream nameStr;
 					nameStr << "component" << sourceIndex;
 					source.SetName(nameStr.str());
-					source.Brightness() = SourceStrength<long double>(value, spectralIndex, refFreq);
+					source.SetBrightness(SourceSDFWithSI<long double>(value, spectralIndex, refFreq));
 					//std::cout << l << ',' << m << "->" << ra << ',' << dec << '\n';
 					source.SetPosRA(ra);
 					source.SetPosDec(dec);
-					source.SetRefFreqA(refFreq);
-					source.SetRefFreqB(refFreq*2.0);
 					std::cout << source.ToStringLine() << '\n';
 					
 					++sourceIndex;
