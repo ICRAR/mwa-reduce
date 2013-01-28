@@ -13,6 +13,10 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 	public:
 		SourceSDFWithSamples() { }
 		
+		SourceSDFWithSamples(const SourceSDFWithSamples<NumericType> &source)
+		: _fluxes(source._fluxes)
+		{ }
+		
 		virtual NumericType FluxAtFrequency(NumericType frequencyHz) const
 		{
 			if(_fluxes.size() <= 1)
@@ -48,6 +52,9 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 			
 		virtual NumericType IntegratedFlux(NumericType startFrequency, NumericType endFrequency) const
 		{
+			if(startFrequency == endFrequency)
+				return FluxAtFrequency(startFrequency);
+			
 			typename FluxMap::const_iterator iter = _fluxes.lower_bound(startFrequency);
 			
 			/** Handle special cases */

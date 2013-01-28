@@ -43,6 +43,7 @@ add_executable(sdf sdf.cpp model.cpp)
 add_executable(subtract subtract.cpp)
 add_executable(subtrmodel subtrmodel.cpp model.cpp predicter.cpp)
 add_executable(spectrum spectrum.cpp model.cpp predicter.cpp)
+add_executable(tests tests.cpp)
 
 add_executable(aoimage aoimage.cpp btpimager.cpp fitswriter.cpp imageweights.cpp model.cpp modelrenderer.cpp)
 

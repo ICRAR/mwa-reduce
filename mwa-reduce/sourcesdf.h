@@ -69,10 +69,21 @@ class SourceSDFWithSI : public SourceSDF<NumericType>
 		
 		static NumericType FluxAtFrequency(NumericType fluxDensityAJy, NumericType referenceFrequencyAHz, NumericType fluxDensityBJy, NumericType referenceFrequencyBHz, NumericType requestedFrequency)
 		{
-			NumericType si =
-				log(fabs(fluxDensityBJy/fluxDensityAJy)) /
-				log(referenceFrequencyBHz/referenceFrequencyAHz);
-			return fluxDensityAJy * std::pow(requestedFrequency/referenceFrequencyAHz, si);
+			// if either fluxes are zero, or one of them is negative and the other not,
+			// perform linear interpolation instead of power law interpolation
+			bool signA = fluxDensityAJy < 0.0, signB = fluxDensityBJy < 0.0;
+			if(fluxDensityAJy==0.0 || fluxDensityBJy==0.0 || (signA && !signB) || (signB && !signA))
+			{
+				NumericType slope =
+					(fluxDensityBJy - fluxDensityAJy) /
+					(referenceFrequencyBHz - referenceFrequencyAHz);
+				return fluxDensityAJy + slope * (requestedFrequency - referenceFrequencyAHz);
+			} else {
+				NumericType si =
+					log(fabs(fluxDensityBJy/fluxDensityAJy)) /
+					log(referenceFrequencyBHz/referenceFrequencyAHz);
+				return fluxDensityAJy * std::pow(requestedFrequency/referenceFrequencyAHz, si);
+			}
 		}
 		
 		virtual NumericType IntegratedFlux(NumericType startFrequency, NumericType endFrequency) const
@@ -82,13 +93,27 @@ class SourceSDFWithSI : public SourceSDF<NumericType>
 		
 		static NumericType IntegratedFlux(NumericType fluxDensityAJy, NumericType referenceFrequencyAHz, NumericType fluxDensityBJy, NumericType referenceFrequencyBHz, NumericType startFrequency, NumericType endFrequency)
 		{
-			NumericType si =
-				log(fabs(fluxDensityBJy/fluxDensityAJy)) /
-				log(referenceFrequencyBHz/referenceFrequencyAHz);
-			return fluxDensityAJy * (
-				std::pow(endFrequency/referenceFrequencyAHz, si) * endFrequency -
-				std::pow(startFrequency/referenceFrequencyAHz, si) * startFrequency) /
-				( (si+1.0) * (endFrequency - startFrequency) );
+			// if either fluxes are zero, or one of them is negative and the other not,
+			// perform linear interpolation instead of power law interpolation
+			bool signA = fluxDensityAJy < 0.0, signB = fluxDensityBJy < 0.0;
+			if(fluxDensityAJy==0.0 || fluxDensityBJy==0.0 || (signA && !signB) || (signB && !signA))
+			{
+				NumericType slope =
+					(fluxDensityBJy - fluxDensityAJy) /
+					(referenceFrequencyBHz - referenceFrequencyAHz);
+				return slope * 0.5 * (
+					endFrequency*endFrequency - startFrequency*startFrequency) /
+					(endFrequency - startFrequency)
+					+ (fluxDensityAJy - slope * referenceFrequencyAHz);
+			} else {
+				NumericType si =
+					log(fluxDensityBJy/fluxDensityAJy) /
+					log(referenceFrequencyBHz/referenceFrequencyAHz);
+				return fluxDensityAJy * (
+					std::pow(endFrequency/referenceFrequencyAHz, si) * endFrequency -
+					std::pow(startFrequency/referenceFrequencyAHz, si) * startFrequency) /
+					( (si+1.0) * (endFrequency - startFrequency) );
+			}
 		}
 		
 		NumericType SpectralIndex() const { return _spectralIndex; }

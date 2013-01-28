@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
 		"\tsdf [-p] [-s <scale>] <new-nr-channels> <model> <ms>\n";
+		return 0;
 	}
 	int argi = 1;
 	bool outputPlot = false;
