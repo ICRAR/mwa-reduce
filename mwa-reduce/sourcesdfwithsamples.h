@@ -167,12 +167,22 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 			//	std::cerr << "Warning: ignoring non-finite result\n";
 		}
 		
-		typename std::map<NumericType, NumericType>::const_iterator begin() const
+		typedef typename std::map<NumericType, NumericType>::const_iterator const_iterator;
+		typedef typename std::map<NumericType, NumericType>::iterator iterator;
+		
+		const_iterator begin() const
 		{
 			return _fluxes.begin();
 		}
-		
-		typename std::map<NumericType, NumericType>::const_iterator end() const
+		iterator begin()
+		{
+			return _fluxes.begin();
+		}
+		const_iterator end() const
+		{
+			return _fluxes.end();
+		}
+		iterator end()
 		{
 			return _fluxes.end();
 		}

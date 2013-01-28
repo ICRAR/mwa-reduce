@@ -32,11 +32,14 @@ class Model
 		iterator begin() { return _sources.begin(); }
 		iterator end() { return _sources.end(); }
 		
+		void Optimize();
+		
 	private:
 		std::vector<ModelSource> _sources;
 		
 		static bool isCommentSymbol(char c) { return c=='#'; }
 		static bool isDelimiter(char c) { return c==' ' || c=='\t' || c=='\r' || c=='\n';	}
+		void addOptimized(const ModelSource &source);
 };
 
 #endif
