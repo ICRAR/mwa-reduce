@@ -69,14 +69,16 @@ int main(int argc, char *argv[])
 	{
 		for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
 		{
+			long double startFreq = band.BandStart() + newBandSize*newChIndex;
+			long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
+			std::cout << (endFreq+startFreq)*0.5;
 			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 			{
 				const SourceSDF<long double> &sdf = sourcePtr->Brightness();
-				long double startFreq = band.BandStart() + newBandSize*newChIndex;
-				long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
 				long double flux = sdf.IntegratedFlux(startFreq, endFreq);
-				std::cout << (endFreq+startFreq)*0.5 << '\t' << flux << '\n';
+				std::cout << '\t' << flux;
 			}
+			std::cout << '\n';
 		}
 	}
 	
