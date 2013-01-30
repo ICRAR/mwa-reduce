@@ -22,6 +22,11 @@ class Model
 		
 		Model(const char *filename);
 		
+		void operator=(const Model &source)
+		{
+			_sources = source._sources;
+		}
+		
 		size_t SourceCount() { return _sources.size(); }
 		ModelSource &Source(size_t index) { return _sources[index]; }
 		const ModelSource &Source(size_t index) const { return _sources[index]; }
@@ -33,6 +38,8 @@ class Model
 		iterator end() { return _sources.end(); }
 		
 		void Optimize();
+		
+		void AddSource(const ModelSource &source) { _sources.push_back(source); }
 		
 	private:
 		std::vector<ModelSource> _sources;

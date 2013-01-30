@@ -70,8 +70,8 @@ int main(int argc, char **argv)
 		 */
 		Array<complex_t> data(dataShape);
 		Array<bool> flags(dataShape);
-		long double sourceFlux[model.SourceCount()*channelCount];
-		long unsigned sourceMeasCount[model.SourceCount()*channelCount];
+		long double *sourceFlux = new long double[model.SourceCount()*channelCount];
+		long unsigned *sourceMeasCount = new long unsigned[model.SourceCount()*channelCount];
 		for(size_t i=0;i!=model.SourceCount()*channelCount;++i)
 		{
 			sourceFlux[i] = 0.0;

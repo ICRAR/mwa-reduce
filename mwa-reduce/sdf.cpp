@@ -11,12 +11,12 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-o] [-s <scale>] <new-nr-channels> <model> <ms>\n";
+		"\tsdf [-p] [-o] [-s <scale>] [-t <threshold>] <new-nr-channels> <model> <ms>\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, optimize = false;
-	long double scale = 1.0;
+	bool outputPlot = false, optimize = false, applyThreshold = false;
+	long double scale = 1.0, threshold = 0.0;
 	while(argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
@@ -26,6 +26,11 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			scale = atof(argv[argi]);
+		} else if(strcmp(argv[argi], "-t") == 0)
+		{
+			++argi;
+			threshold = atof(argv[argi]);
+			applyThreshold = true;
 		} else if(strcmp(argv[argi], "-o") == 0)
 		{
 			optimize = true;
@@ -42,6 +47,16 @@ int main(int argc, char *argv[])
 	
 	if(optimize)
 		model.Optimize();
+	if(applyThreshold)
+	{
+		Model temp;
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			if(sourcePtr->Brightness().IntegratedFlux(band.BandStart(), band.BandEnd()) >= threshold)
+				temp.AddSource(*sourcePtr);
+		}
+		model = temp;
+	}
 	
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 	{
@@ -69,14 +84,16 @@ int main(int argc, char *argv[])
 	{
 		for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
 		{
+			long double startFreq = band.BandStart() + newBandSize*newChIndex;
+			long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
+			std::cout << (endFreq+startFreq)*0.5;
 			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 			{
 				const SourceSDF<long double> &sdf = sourcePtr->Brightness();
-				long double startFreq = band.BandStart() + newBandSize*newChIndex;
-				long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
 				long double flux = sdf.IntegratedFlux(startFreq, endFreq);
-				std::cout << (endFreq+startFreq)*0.5 << '\t' << flux << '\n';
+				std::cout << '\t' << flux;
 			}
+			std::cout << '\n';
 		}
 	}
 	

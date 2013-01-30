@@ -25,27 +25,30 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 				else return _fluxes.begin()->second;
 			}
 			
-			typename FluxMap::const_iterator after = _fluxes.lower_bound(frequencyHz);
-			if(after->first == frequencyHz)
-				return after->second;
+			// 'right' will be first item which frequency >= frequencyHz
+			typename FluxMap::const_iterator right = _fluxes.lower_bound(frequencyHz);
+			if(right->first == frequencyHz)
+				return right->second;
 			
-			// If this frequency is outside the range, we extrapolate the nearest SI
-			if(after == _fluxes.begin())
+			typename FluxMap::const_iterator left;
+			
+			// If the requested frequency is outside the range, we extrapolate the SI of the full range
+			if(right == _fluxes.begin() || right == _fluxes.end())
 			{
-				++after;
-			} else if(after == _fluxes.end())
-			{
-				--after;
+				left = _fluxes.begin();
+				right = _fluxes.end();
+				--right;
+			} else {
+				// Requested frequency is within range (no extrapolation required)
+				left = right;
+				--left;
 			}
 			
-			typename FluxMap::const_iterator before = after;
-			--before;
-			
 			NumericType
-				freqA = before->first,
-				fluxA = before->second,
-				freqB = after->first,
-				fluxB = after->second;
+				freqA = left->first,
+				fluxA = left->second,
+				freqB = right->first,
+				fluxB = right->second;
 			
 			return SourceSDFWithSI<NumericType>::FluxAtFrequency(fluxA, freqA, fluxB, freqB, frequencyHz);
 		}
@@ -58,7 +61,7 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 			typename FluxMap::const_iterator iter = _fluxes.lower_bound(startFrequency);
 			
 			/** Handle special cases */
-			if(_fluxes.size() <= 2 || iter == _fluxes.end())
+			if(_fluxes.size() <= 2)
 			{
 				if(_fluxes.empty())
 					return 0.0;
@@ -72,37 +75,44 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 						fluxB = _fluxes.rbegin()->second;
 					
 					return SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
-				} else { // all keys are lower, so take last two
-					typename FluxMap::const_reverse_iterator end = _fluxes.rbegin();
-					NumericType
-						freqB = end->first,
-						fluxB = end->second;
-						++end;
-					NumericType
-						freqA = end->first,
-						fluxA = end->second;
-					return SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
 				}
+			}
+			if(iter == _fluxes.end()) { // all keys are lower, so take entire range
+				NumericType
+					freqA = _fluxes.begin()->first,
+					fluxA = _fluxes.begin()->second,
+					freqB = _fluxes.rbegin()->first,
+					fluxB = _fluxes.rbegin()->second;
+				return SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
 			}
 			
 			if(iter != _fluxes.begin()) --iter;
 			
 			if(iter->first >= endFrequency) {
 				// all keys are outside range, higher than range
-				typename FluxMap::const_iterator begin = _fluxes.begin();
 				NumericType
-					freqA = begin->first,
-					fluxA = begin->second;
-					++begin;
-				NumericType
-					freqB = begin->first,
-					fluxB = begin->second;
+					freqA = _fluxes.begin()->first,
+					fluxA = _fluxes.begin()->second,
+					freqB = _fluxes.rbegin()->first,
+					fluxB = _fluxes.rbegin()->second;
 				return SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
 			}
-				
-			NumericType leftFrequency = startFrequency;
 			
 			NumericType integratedSum = 0.0;
+			NumericType leftFrequency = startFrequency;
+			if(leftFrequency < iter->first)
+			{
+				// requested frequency is below first item; extrapolate
+				NumericType
+					freqA = _fluxes.begin()->first,
+					fluxA = _fluxes.begin()->second,
+					freqB = _fluxes.rbegin()->first,
+					fluxB = _fluxes.rbegin()->second;
+				NumericType sumTerm = SourceSDFWithSI<NumericType>::IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, iter->first);
+				integratedSum += sumTerm * (iter->first - startFrequency);
+				leftFrequency = iter->first;
+			}
+				
 			while(iter != _fluxes.end() && iter->first < endFrequency)
 			{
 				typename FluxMap::const_iterator left = iter;
@@ -110,9 +120,12 @@ class SourceSDFWithSamples : public SourceSDF<NumericType>
 				++right;
 				
 				NumericType rightFrequency;
-				// If this is past the sampled frequencies, extrapolate last 2 samples
+				
+				// If this is past the sampled frequencies, extrapolate full range
 				if(right == _fluxes.end()) {
-					--right; --left;
+					left = _fluxes.begin();
+					right = _fluxes.end();
+					--right;
 					rightFrequency = endFrequency;
 				} else {
 					rightFrequency = right->first;
