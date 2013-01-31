@@ -70,9 +70,10 @@ class RaDecCoord
 				hrs = -hrs;
 				s << '-';
 			}
+			hrs = ((round(hrs*60.0L*60.0L*10.0L))+0.5) / (60.0L*60.0L*10.0L);
 			int hrsInt = int(floor(hrs)), minInt = int(floor(fmod(hrs,1.0L)*60.0L)),
 				secInt = int(floor(fmod(hrs*60.0L,1.0L)*(60.0L))),
-				subSecInt = int(round(fmod(hrs*(60.0L*60.0L),1.0L)*(10.0L)));
+				subSecInt = int(floor(fmod(hrs*(60.0L*60.0L),1.0L)*(10.0L)));
 			s << (char) ((hrsInt/10)+'0') << (char) ((hrsInt%10)+'0') << 'h'
 				<< (char) ((minInt/10)+'0') << (char) ((minInt%10)+'0') << 'm'
 				<< (char) ((secInt/10)+'0') << (char) ((secInt%10)+'0')
@@ -89,8 +90,9 @@ class RaDecCoord
 				deg = -deg;
 				s << '-';
 			}
+			deg = (round(deg*60.0L*60.0L)+0.5) / (60.0L*60.0L);
 			int degInt = int(floor(deg)), minInt = int(floor(fmod(deg,1.0)*60.0)),
-				secInt = int(round(fmod(deg,1.0/60.0)*(60.0*60.0)));
+				secInt = int(floor(fmod(deg,1.0/60.0)*(60.0*60.0)));
 			s << (char) ((degInt/10)+'0') << (char) ((degInt%10)+'0') << 'd'
 				<< (char) ((minInt/10)+'0') << (char) ((minInt%10)+'0') << 'm'
 				<< (char) ((secInt/10)+'0') << (char) ((secInt%10)+'0') << 's';
