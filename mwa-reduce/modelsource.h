@@ -6,7 +6,7 @@
 
 #include "sourcesdf.h"
 #include "sourcesdfwithsamples.h"
-#include "RaDecCoord.h"
+#include "radeccoord.h"
 
 class ModelSource
 {

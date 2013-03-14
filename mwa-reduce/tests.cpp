@@ -1,8 +1,9 @@
 #include <iostream>
 
 #include "sourcesdfwithsamples.h"
+#include "radeccoord.h"
 
-int main(int argc, char *argv[])
+void testSourceSDFWithSamples()
 {
 	SourceSDFWithSamples<long double> sdf1;
 	sdf1.AddSample(1.0, 2.0);
@@ -91,4 +92,25 @@ int main(int argc, char *argv[])
 	std::cout << "SDF5 int[2,4] : expecting 0, is " << sdf5.IntegratedFlux(2.0, 4.0) << '\n';
 	std::cout << "SDF5 int[0,2] : expecting 4, is " << sdf5.IntegratedFlux(0.0, 2.0) << '\n';
 	std::cout << "SDF5 int[0,4] : expecting 2, is " << sdf5.IntegratedFlux(0.0, 4.0) << '\n';
+}
+
+void testRaDecCoord()
+{
+	std::cout.precision(12);
+	std::cout << "ParseRA(\"00h00m00.0s\")=" << RaDecCoord::ParseRA("00h00m00.0s") << '\n';
+	std::cout << "ParseRA(\"12h00m00.0s\")=" << RaDecCoord::ParseRA("12h00m00.0s") << '\n';
+	std::cout << "ParseRA(\"00:00:00.0\")=" << RaDecCoord::ParseRA("00:00:00.0") << '\n';
+	std::cout << "ParseRA(\"11:59:59.9\")=" << RaDecCoord::ParseRA("11:59:59.9") << '\n';
+	std::cout << "ParseRA(\"-11:59:59.9\")=" << RaDecCoord::ParseRA("-11:59:59.9") << '\n';
+	std::cout << "ParseDec(\"00d00m00.0s\")=" << RaDecCoord::ParseDec("00d00m00.0s") << '\n';
+	std::cout << "ParseDec(\"90d00m00.0s\")=" << RaDecCoord::ParseDec("90d00m00.0s") << '\n';
+	std::cout << "ParseDec(\"00.00.00.0\")=" << RaDecCoord::ParseDec("00.00.00.0") << '\n';
+	std::cout << "ParseDec(\"89.59.59.9\")=" << RaDecCoord::ParseDec("89.59.59.9") << '\n';
+	std::cout << "ParseDec(\"-89.59.59.9\")=" << RaDecCoord::ParseDec("-89.59.59.9") << '\n';
+}
+
+int main(int argc, char *argv[])
+{
+	testRaDecCoord();
+	testSourceSDFWithSamples();
 }

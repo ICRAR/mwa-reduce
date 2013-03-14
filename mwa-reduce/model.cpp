@@ -1,5 +1,5 @@
 #include "model.h"
-#include "RaDecCoord.h"
+#include "radeccoord.h"
 
 #include <cstdlib>
 #include <string>
