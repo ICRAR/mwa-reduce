@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(mwa-reduce)
 
-set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall -DNDEBUG -march=native")
+set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall -DNDEBUG -march=native -msse4.1")
 
 find_library(CASA_MS_LIB casa_ms REQUIRED)
 find_library(CASA_TABLES_LIB casa_tables REQUIRED)
@@ -11,8 +11,9 @@ find_library(CASA_MEASURES_LIB casa_measures REQUIRED)
 find_library(FFTW3_LIB fftw3 REQUIRED)
 find_package(Boost COMPONENTS thread system REQUIRED)
 find_library(FITSIO_LIB cfitsio REQUIRED)
+find_library(DL_LIB dl REQUIRED)
 
-set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_CASA_LIB})
+set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_MEASURES_LIB} ${CASA_CASA_LIB} ${DL_LIB})
 
 find_path(CASA_INCLUDE_DIR NAMES ms/MeasurementSets/MeasurementSet.h PATHS /usr/local/include/casacore PATH_SUFFIXES casacore)
 
@@ -40,6 +41,7 @@ add_executable(imgclean imgclean.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(mrcmodel mrcmodel.cpp fitsreader.cpp mrccatalogue.cpp)
 add_executable(phasecal phasecal.cpp model.cpp predicter.cpp)
 add_executable(sdf sdf.cpp model.cpp)
+add_executable(simcompress simcompress.cpp gausencoder.cpp)
 add_executable(subtract subtract.cpp)
 add_executable(subtrmodel subtrmodel.cpp model.cpp predicter.cpp)
 add_executable(spectrum spectrum.cpp model.cpp predicter.cpp)
@@ -67,8 +69,9 @@ target_link_libraries(flagsubbands ${CASA_LIBS})
 target_link_libraries(imgclean ${FITSIO_LIB})
 target_link_libraries(phasecal ${CASA_LIBS})
 target_link_libraries(sdf ${CASA_LIBS})
+target_link_libraries(simcompress ${CASA_LIBS} gsl)
 target_link_libraries(subtract ${CASA_LIBS})
 target_link_libraries(subtrmodel ${CASA_LIBS})
 target_link_libraries(spectrum ${CASA_LIBS})
 
-target_link_libraries(aoimage ${CASA_LIBS} ${CASA_MEASURES_LIB} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
+target_link_libraries(aoimage ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
