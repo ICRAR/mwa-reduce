@@ -17,11 +17,14 @@ class BandData
 			if(spwCount != 1) throw std::runtime_error("Set should have exactly one spectral window");
 			
 			casa::ROScalarColumn<int> numChanCol(spwTable, casa::MSSpectralWindow::columnName(casa::MSSpectralWindowEnums::NUM_CHAN));
-			_channelCount = numChanCol.get(0);
+			int temp;
+			numChanCol.get(0, temp);
+			_channelCount = temp;
 			if(_channelCount == 0) throw std::runtime_error("No channels in set");
 			
 			casa::ROArrayColumn<double> chanFreqCol(spwTable, casa::MSSpectralWindow::columnName(casa::MSSpectralWindowEnums::CHAN_FREQ));
-			casa::Array<double> channelFrequencies = chanFreqCol.get(0);
+			casa::Array<double> channelFrequencies;
+			chanFreqCol.get(0, channelFrequencies, true);
 			
 			_channelFrequencies = new double[_channelCount];
 			size_t index = 0;
@@ -54,7 +57,10 @@ class BandData
 		}
 		double FrequencyStep() const
 		{
-			return _channelFrequencies[1] - _channelFrequencies[0];
+		  if(_channelCount > 1)
+		    return _channelFrequencies[1] - _channelFrequencies[0];
+		  else
+		    return 0.0;
 		}
 		double BandStart() const
 		{

@@ -13,13 +13,14 @@
 	#include <xmmintrin.h>
 	#include <emmintrin.h>
 	#include <smmintrin.h>
-	#define DO_VECTORIZE true
-#else
 	#define DO_VECTORIZE false
+#else
+	#define DO_VECTORIZE true
 #endif
 
-#define USE_DFT false
+#define USE_DFT true
 #define TWO_STAGE_FFT true
+#define USE_DFT_PRECALC_TABLE true
 
 using std::size_t;
 
@@ -33,11 +34,13 @@ BTPImager::BTPImager(size_t imageCount, size_t imgSize, NumType pixelScale) :
 	_imageData(new ImageNum*[imageCount]),
 	_lookupSqrtLMTerm(0),
 	_isInitialized(false),
+	_skippedTimesteps(0),
 	_pixelScale(pixelScale),
 	_imgSize(imgSize),
 	_imageCount(imageCount),
 	_weightCounters(new NumType[_imageCount]),
-	_overallMaxUVDist(0.0)
+	_overallMaxUVDist(0.0),
+	_precalcedDFT(0)
 {
 	if(_imgSize%4 != 0)
 	{
@@ -88,26 +91,36 @@ BTPImager::~BTPImager()
 	delete[] _imageData;
 	delete[] _weightCounters;
 	delete[] _lookupSqrtLMTerm;
+	delete[] _precalcedDFT;
 }
 
 void BTPImager::Initialize(NumType smallestUVDistTimesLambda, NumType largestUVDistTimesLambda, NumType highestFrequency, NumType frequencyStep, size_t channelCount)
 {
 	deinitialize();
 	
+	if(channelCount == 1) {
+	  frequencyStep = 1.0;
+	  _sampleDist = 2*_imgSize*128;
+	  _startChannel = _imgSize*128;
+	} else {
+	  _frequencyStep = frequencyStep;
+	  _sampleDist = 2*((size_t) round(highestFrequency/frequencyStep));
+	  _startChannel = (size_t) round(highestFrequency/_frequencyStep - (channelCount-1));
+	}
 	_highestFrequency = highestFrequency;
-	_frequencyStep = frequencyStep;
 	_channelCount = channelCount;
-	_sampleDist = 2*((size_t) round(highestFrequency/frequencyStep));
 
 	if(fmod(highestFrequency, frequencyStep) > frequencyStep*0.0001 && !USE_DFT)
 	{
 		std::cout << "WARNING: For now, to be able to perform exact gridding without DFT, your channels frequencies need to be\n"
 			"an exact multiply of the frequency step! (offset: " << fmod(highestFrequency, frequencyStep) << " Hz)\n";
 	}
-	_startChannel = (size_t) round(highestFrequency/_frequencyStep - (channelCount-1));
 	_minLambda = frequencyToWavelength(_highestFrequency);
 	NumType uvDist = smallestUVDistTimesLambda / _minLambda;
-	_largestFFTSize = std::max((size_t) (_sampleDist/(_pixelScale * (2.0*uvDist))), 2*_sampleDist);
+	if(_channelCount == 1)
+	  _largestFFTSize = 2*_sampleDist;
+	else
+	  _largestFFTSize = std::max((size_t) (_sampleDist/(_pixelScale * (2.0*uvDist))), 2*_sampleDist);
 	_largestFFTSize = _largestFFTSize + (15 - ((_largestFFTSize-1)%16));
 	
 	_fftInputs = new FftwComplex*[_imageCount];
@@ -142,6 +155,9 @@ void BTPImager::Initialize(NumType smallestUVDistTimesLambda, NumType largestUVD
 	if(maxUVDist > _overallMaxUVDist)
 		_overallMaxUVDist = maxUVDist;
 	
+	if(USE_DFT_PRECALC_TABLE && USE_DFT)
+		precalcDFT();
+	
 	_isInitialized = true;
 }
 
@@ -171,11 +187,46 @@ void BTPImager::deinitialize()
 	}
 }
 
+void BTPImager::precalcDFT()
+{
+	size_t dftSize = 2*_sampleDist;
+	
+	delete[] _precalcedDFT;
+	_precalcedDFT = new NumType[dftSize*2 * _channelCount];
+	
+	NumType fftCentre = dftSize * 0.5;
+	NumType lowestFrequency = _highestFrequency - (_frequencyStep * (_channelCount-1));
+	const size_t indexAdd = (_channelCount == 1) ? 
+		(_sampleDist/2) : (lowestFrequency / _frequencyStep);
+		
+	NumType *precalcPtr = _precalcedDFT;
+	for(size_t ch = 0; ch != _channelCount; ++ch)
+	{
+		double expChFactor = 2.0 * M_PI * (indexAdd + ch) / NumType(dftSize);
+		for(size_t x = 0; x != dftSize; ++x)
+		{
+			double angle = expChFactor * ((int) x - fftCentre);
+			double sinAngle, cosAngle;
+			sincos(angle, &sinAngle, &cosAngle);
+			*precalcPtr = sinAngle;
+			++precalcPtr;
+			*precalcPtr = cosAngle;
+			++precalcPtr;
+		}
+	}
+}
+
 void BTPImager::AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTimesLambda, NumType wTimesLambda, const std::complex<float> *data, NumType zenithDistance, NumType paralacticAngle, NumType weight)
 {
 	//if(imageIndex != 0 || _weightCounters[0]!=0.0) return;
 	NumType phi = atan2(vTimesLambda, uTimesLambda);
 	NumType uvDist = sqrt(uTimesLambda*uTimesLambda + vTimesLambda*vTimesLambda) / _minLambda;
+	
+	if(uvDist > 0.5/_pixelScale)
+	{
+		_skippedTimesteps++;
+		return;
+	}
 	
 	// Steps to be taken:
 	// 1. Create a 1D array with the data in it (in 'u' dir) and otherwise zerod.
@@ -241,6 +292,7 @@ void BTPImager::AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTi
 		size_t maxSrcX, minSrcX;
 		if(minSrcXDb <= 0.0 || maxSrcXDb >= fftSize)
 		{
+		  std::cout << "DFT warning: image larger than fft output: fft will not completely fill image (" << minSrcXDb << " <=0 or " << maxSrcXDb << " >= fftSize (=" << fftSize << "))\n";
 			minSrcX = 0;
 			maxSrcX = fftSize;
 		} else {
@@ -248,23 +300,48 @@ void BTPImager::AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTi
 			maxSrcX = size_t(maxSrcXDb);
 		}
 		
-		for(size_t x = minSrcX; x != maxSrcX; ++x)
+		//for(size_t x = minSrcX; x != maxSrcX; ++x)
+		for(size_t x = 0; x != fftSize; ++x)
 			fftOut[x] = 0.0;
-			
-		NumType lowestFrequency = _highestFrequency - (_frequencyStep * (_channelCount-1));
-		double fftFactor = sqrt(_channelCount*2) / fftSize;
-		for(size_t ch = 0; ch != _channelCount; ++ch)
+		
+		if(USE_DFT_PRECALC_TABLE)
 		{
-			double
-				valueReal = data[ch].real() * fftFactor,
-				valueImag = data[ch].imag() * fftFactor,
-				expChFactor = 2.0 * M_PI * (lowestFrequency / _frequencyStep + ch) / fftSize;
-			for(size_t x = minSrcX; x != maxSrcX; ++x)
+			const NumType *precalcPtr = _precalcedDFT;
+			for(size_t ch = 0; ch != _channelCount; ++ch)
 			{
-				double angle = expChFactor * (int) (x - fftCentre);
-				double sinAngle, cosAngle;
-				sincos(angle, &sinAngle, &cosAngle);
-				fftOut[x] += valueReal * cosAngle - valueImag * sinAngle;
+				// These values need to be divided by two because we add them twice
+				// (once conjugated and once normal). This is done at the end when
+				// normalizing the image.
+				double
+					valueReal = data[ch].real()*2.0,
+					valueImag = data[ch].imag()*2.0;
+				precalcPtr += minSrcX*2;
+				for(size_t x = minSrcX; x != maxSrcX; ++x)
+				{
+					double sinAngle = *precalcPtr; ++precalcPtr;
+					double cosAngle = *precalcPtr; ++precalcPtr;
+					fftOut[x] += valueReal * cosAngle - valueImag * sinAngle;
+				}
+				precalcPtr += (fftSize-maxSrcX)*2;
+			}
+		} else {
+			NumType lowestFrequency = _highestFrequency - (_frequencyStep * (_channelCount-1));
+			const size_t indexAdd = (_channelCount == 1) ? 
+				(_sampleDist/2) : (lowestFrequency / _frequencyStep);
+			
+			for(size_t ch = 0; ch != _channelCount; ++ch)
+			{
+				double
+					valueReal = data[ch].real()*2.0,
+					valueImag = data[ch].imag()*2.0,
+					expChFactor = 2.0 * M_PI * (indexAdd + ch) / double(fftSize);
+				for(size_t x = minSrcX; x != maxSrcX; ++x)
+				{
+					double angle = expChFactor * ((int) x - (int) fftCentre);
+					double sinAngle, cosAngle;
+					sincos(angle, &sinAngle, &cosAngle);
+					fftOut[x] += valueReal * cosAngle - valueImag * sinAngle;
+				}
 			}
 		}
 	} else {
@@ -275,16 +352,14 @@ void BTPImager::AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTi
 			fftInp[i][1] = 0.0;
 		}
 		
-		// fftw gives unnormalized results; have to divide by sqrt n.
 		// Have to divide by two, because we add the series twice (non-conjugate and conjugate)
 		// but will do that when normalizing images.
-		NumType fftFactor = 1.0; //1.0 / sqrt(_channelCount);
-		NumType mulFactor = fftFactor;// * _channelCount*sqrt(2) / (_sampleDist/(_pixelScale * (2.0*uvDist)));
 		const size_t startChannel = _startChannel, channelCount = _channelCount;
+		//std::cout << fftSize << ": " << startChannel << " - +" << channelCount << '\n';
 		for(size_t ch=0;ch!=channelCount;++ch)
 		{
-			fftInp[(startChannel + ch)][0] = data->real() * mulFactor;
-			fftInp[(startChannel + ch)][1] = data->imag() * mulFactor;
+			fftInp[(startChannel + ch)][0] = data->real();
+			fftInp[(startChannel + ch)][1] = data->imag();
 			++data;
 		}
 		
@@ -313,6 +388,7 @@ void BTPImager::AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTi
 			leftX = size_t(round((minSrcXDb-thisCentre)*secStageOversize+thisCentre));
 			rightX = size_t(round((maxSrcXDb-thisCentre)*secStageOversize+thisCentre+1));
 		}
+		//std::cout << leftX << " - " << rightX << '\n';
 		
 		size_t resampleR2CSize;
 		fftw_plan resamplePlanR2C;
@@ -365,11 +441,13 @@ void BTPImager::AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTi
 		transformX *= resampleFactor;
 		transformY *= resampleFactor;
 	} else {
-		std::cout << "Did not supersample.\n";
+		if(TWO_STAGE_FFT)
+			std::cout << "Did not supersample.\n";
 	}
 	
 	if(!DO_VECTORIZE) {
 		size_t srcXLLimit = (size_t) -1, srcXULimit = 0;
+		//std::cout << "ftsize="<<fftSize<<", uvdist="<<uvDist<<", transformGen="<<transformGen << ", phi="<<phi*180.0/M_PI<< '\n';
 		for(size_t y=0;y!=_imgSize;++y)
 		{
 			NumType m = (mid - (NumType) y) * scaleLM;
@@ -384,19 +462,23 @@ void BTPImager::AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTi
 				NumType lw = l + sqrtlmTerm * tanZsinChi;
 				NumType srcX = lw * transformX + yrTransformed;
 				
-				if(false) { //DEBUG
-					size_t srcXIndexLimit = (size_t) round(srcX) + fftCentre;
+				if(true) { //DEBUG
+					size_t srcXIndexLimit = (size_t) round(srcX + fftCentre);
 					if(srcXIndexLimit > srcXULimit) srcXULimit = srcXIndexLimit;
 					if(srcXIndexLimit < srcXLLimit) srcXLLimit = srcXIndexLimit;
+					if((srcXIndexLimit < minSrcXDb || srcXIndexLimit > maxSrcXDb) && !TWO_STAGE_FFT)
+						std::cout << "Warning: out of bounds in projection!\n";
 				}
 				
-				size_t srcXIndex = ((size_t) round(srcX) + fftCentre) % fftSize;
+				//size_t srcXIndex = ((size_t) round(srcX) + fftCentre) % fftSize;
+				size_t srcXIndex = (size_t) round(srcX + fftCentre);
 				*destPtr += fftOut[srcXIndex];
 				++destPtr;
 				++lookupSqrtLMTermPtr;
 			}
 		}
-		//std::cout << "LLimit: " << srcXLLimit << " ULimit: " << srcXULimit << '\n';
+		//std::cout << "LLimit: " << srcXLLimit << " ULimit: " << srcXULimit <<
+		//"\nvs: " << minSrcXDb << " - " << maxSrcXDb << '\n';
 	} else {
 		/** VECTORIZED VERSION */
 		const __m128 tanZcosChi_ps = _mm_set1_ps(tanZcosChi);

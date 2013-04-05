@@ -63,7 +63,9 @@ struct ImageInfo
 {
 	double phaseCentreRA, phaseCentreDec;
 	double highestFrequency, lowestFrequency;
-	bool onlyModel;
+	bool onlyModel, haveTimeRange, haveUVRange;
+	size_t timeRangeStart, timeRangeStop;
+	size_t uvRangeStart, uvRangeStop;
 	enum Polarization polarization;
 };
 
@@ -362,12 +364,12 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	unsigned polarizationCount = dataShape[0];
 	std::cout << " DONE\n";
 	
-	std::cout << "ChannelCount: " << channelCount << ", polarizationCount: " << polarizationCount << '\n';
-	
-	std::cout << "Initializing weights... " << std::flush;
 	NumType
 		highestFrequency = (bandData.HighestFrequency()*2.0 - bandData.FrequencyStep()*(avgFactor-1))*0.5,
 		frequencyStep = bandData.FrequencyStep()*avgFactor;
+	std::cout << "ChannelCount: " << channelCount << ", polarizationCount: " << polarizationCount << ", freqstep: " << frequencyStep << '\n';
+	
+	std::cout << "Initializing weights... " << std::flush;
 	ImageWeights weights(imager.ImageSize(), channelCount, imager.PixelScale(), highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
 	bool weightsNeedData = true;
 	if(info.onlyModel) weightsNeedData = false;
@@ -407,6 +409,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	//use wgs or ant1Pos?! differ by 1%
 	double latitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
 	MEpoch curtime = timeColumn(0);
+	size_t curTimeIndex = (size_t) (-1);
 	MeasFrame frame(ant1Pos, curtime);
 	MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
 	MDirection hadec = MDirection::Convert(refDir, hadecRef)();
@@ -444,11 +447,12 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 		{
 			if(ant1Column(row) != ant2Column(row))
 			{
-				dataColumn.get(row, data);
-				flagColumn.get(row, flags);
+				bool isSelected = true;
+				
 				if(curtime.getValue() != timeColumn(row).getValue())
 				{
 					curtime = timeColumn(row);
+					++curTimeIndex;
 					frame.set(curtime);
 					MDirection::Ref ref(casa::MDirection::HADEC, frame);
 					hadec = MDirection::Convert(refDir, ref)();
@@ -471,10 +475,19 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					double zenithDistance2 = asin(cosDec * sinHA / sin(azimuth));
 					double pAngle3 = asin(-sin(azimuth) * cosLat / cosDec);
 					//std::cout << "Z=" << (zenithDistance*180/M_PI) << ", Z2=" << (zenithDistance2*180/M_PI) << ", pangle=" << (pAngle*180.0/M_PI) << ", pangleold=" << (atan2(cosLat * sinHA, sinLat * cosDec - cosLat * sinDec * cosHA)*180/M_PI) << "pAngle3=" << (pAngle3*180.0/M_PI) << '\n';
+					
 					pAngle = -pAngle;
+					// I think this is because of southern hemisphere.
+					// For Northern hemisphere, no negation is needed.
 					zenithDistance = -zenithDistance;
 					
 					std::cout << '.' << std::flush;
+				}
+				
+				if(info.haveTimeRange)
+				{
+					if(curTimeIndex < info.timeRangeStart || curTimeIndex >= info.timeRangeStop)
+						isSelected = false;
 				}
 				
 				ImageWork work;
@@ -483,34 +496,49 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 				work.uTimesLambda = *uvwIter; ++uvwIter;
 				work.vTimesLambda = *uvwIter; ++uvwIter;
 				work.wTimesLambda = *uvwIter;
-				work.zenithDistance = zenithDistance;
-				work.paralacticAngle = pAngle;
-				std::complex<float> *outPtr = new std::complex<float>[channelCount];
-				work.data = outPtr;
-				casa::Array<std::complex<float> >::const_iterator inPtr = data.begin();
-				casa::Array<bool>::const_iterator flagPtr = flags.begin();
 				
-				size_t sampleCount = readData(info.polarization, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
-				
-				if(avgFactor != 1)
+				if(info.haveUVRange)
 				{
-					outPtr = work.data;
-					std::complex<float> *avgInPtr = work.data;
-					for(size_t ch=0;ch!=channelCount/avgFactor;++ch)
-					{
-						std::complex<float> avgSample(0.0, 0.0);
-						for(size_t a=0;a!=avgFactor;++a)
-						{
-							avgSample += *avgInPtr;
-							++avgInPtr;
-						}
-						*outPtr = std::complex<float>(avgSample.real() / avgFactor, avgSample.imag() / avgFactor);
-						++outPtr;
-					}
+					double uv = sqrt(work.uTimesLambda*work.uTimesLambda + 
+						work.vTimesLambda*work.vTimesLambda);
+					if(uv < info.uvRangeStart || uv > info.uvRangeStop)
+						isSelected = false;
 				}
-				double weight = weights.ApplyWeights(work.data, formattedFlags, work.uTimesLambda, work.vTimesLambda);
-				work.weight = weight * avgFactor;
-				worklane.write(work);
+				
+				if(isSelected)
+				{
+					dataColumn.get(row, data);
+					flagColumn.get(row, flags);
+					
+					work.zenithDistance = zenithDistance;
+					work.paralacticAngle = pAngle;
+					std::complex<float> *outPtr = new std::complex<float>[channelCount];
+					work.data = outPtr;
+					casa::Array<std::complex<float> >::const_iterator inPtr = data.begin();
+					casa::Array<bool>::const_iterator flagPtr = flags.begin();
+					
+					size_t sampleCount = readData(info.polarization, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
+					
+					if(avgFactor != 1)
+					{
+						outPtr = work.data;
+						std::complex<float> *avgInPtr = work.data;
+						for(size_t ch=0;ch!=channelCount/avgFactor;++ch)
+						{
+							std::complex<float> avgSample(0.0, 0.0);
+							for(size_t a=0;a!=avgFactor;++a)
+							{
+								avgSample += *avgInPtr;
+								++avgInPtr;
+							}
+							*outPtr = std::complex<float>(avgSample.real() / avgFactor, avgSample.imag() / avgFactor);
+							++outPtr;
+						}
+					}
+					double weight = weights.ApplyWeights(work.data, formattedFlags, work.uTimesLambda, work.vTimesLambda);
+					work.weight = weight * avgFactor;
+					worklane.write(work);
+				}
 			}
 		}
 		std::cout << '\n';
@@ -546,6 +574,9 @@ int main(int argc, char *argv[])
 	const char *columnName = "DATA", *modelFilename = 0;
 	bool onlyModel = false;
 	enum Polarization pol = StokesIPol;
+	bool haveTimeRange = false, haveUVRange = false;
+	size_t timeRangeStart, timeRangeStop;
+	size_t uvRangeStart, uvRangeStop;
 	while(argc - argi >= 1 && argv[argi][0]=='-')
 	{
 		if(argc - argi >= 2 && strcmp(argv[argi], "-avg")==0)
@@ -571,6 +602,22 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			modelFilename = argv[argi];
+		}
+		else if(argc - argi >= 3 && strcmp(argv[argi], "-timerange")==0)
+		{
+			haveTimeRange = true;
+			++argi;
+			timeRangeStart = atoi(argv[argi]);
+			++argi;
+			timeRangeStop = atoi(argv[argi]);
+		}
+		else if(argc - argi >= 3 && strcmp(argv[argi], "-uvrange")==0)
+		{
+			haveUVRange = true;
+			++argi;
+			uvRangeStart = atoi(argv[argi]);
+			++argi;
+			uvRangeStop = atoi(argv[argi]);
 		}
 		else if(strcmp(argv[argi], "-xx")==0)
 		{
@@ -607,6 +654,12 @@ int main(int argc, char *argv[])
 	imageInfo.highestFrequency = 0.0;
 	imageInfo.onlyModel = onlyModel;
 	imageInfo.polarization = pol;
+	imageInfo.haveTimeRange = haveTimeRange;
+	imageInfo.timeRangeStart = timeRangeStart;
+	imageInfo.timeRangeStop = timeRangeStop;
+	imageInfo.haveUVRange = haveUVRange;
+	imageInfo.uvRangeStart = uvRangeStart;
+	imageInfo.uvRangeStop = uvRangeStop;
 	std::cout << "DONE\n";
 	
 	while(argi < argc)
@@ -617,6 +670,9 @@ int main(int argc, char *argv[])
 		
 		ImageNum *imageData = new ImageNum[imager.ImageSize() * imager.ImageSize()];
 		imager.GetIntermediateResult(imageData);
+		
+		if(imager.SkippedTimesteps() != 0)
+			std::cout << "Skipped " << imager.SkippedTimesteps() << " timesteps because their frequency was higher than imaging resolution.\n";
 		
 		if(modelFilename != 0)
 		{

@@ -19,6 +19,8 @@ class BTPImager
 		
 		void AddTimestep(size_t imageIndex, NumType uTimesLambda, NumType vTimesLambda, NumType wTimesLambda, const std::complex<float> *data, NumType zenithDistance, NumType paralacticAngle, NumType weight);
 		
+		void precalcDFT();
+		
 		void GetIntermediateResult(ImageNum *imageData);
 		
 		std::size_t ImageCount() const { return _imageCount; }
@@ -30,6 +32,8 @@ class BTPImager
 			return speedOfLight() / frequency; 
 		}
 		NumType OverallMaxUVDist() const { return _overallMaxUVDist; }
+		
+		const size_t SkippedTimesteps() const { return _skippedTimesteps; }
 	private:
 		typedef double FftwNum;
 		typedef fftw_complex FftwComplex;
@@ -50,12 +54,14 @@ class BTPImager
 		ImageNum **_imageData;
 		FastNum *_lookupSqrtLMTerm;
 		bool _isInitialized;
+		size_t _skippedTimesteps;
 
 		NumType _highestFrequency, _frequencyStep, _pixelScale, _minLambda;
 		std::size_t _channelCount, _imgSize, _sampleDist, _largestFFTSize, _startChannel, _imageCount;
 		NumType *_weightCounters;
 		
 		NumType _overallMaxUVDist;
+		NumType *_precalcedDFT;
 };
 
 #endif

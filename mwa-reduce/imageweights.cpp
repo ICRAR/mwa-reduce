@@ -21,7 +21,7 @@ double ImageWeights::GetCountWeight(double u, double v)
 {
 	double x = round(u*_imageSize*_pixelScale + _imageSize/2);
 	double y = round(v*_imageSize*_pixelScale + _imageSize/2);
-	if(x >= 0.0 && x <= _imageSize && y >= 0.0 && y <= _imageSize)
+	if(x >= 0.0 && x < _imageSize && y >= 0.0 && y < _imageSize)
 		return 1.0 / (double) _counts[(size_t) x + (size_t) y*_imageSize];
 	else {
 		std::cout << "Weights did not fit in grid.\n";
@@ -81,7 +81,7 @@ void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, doub
 			double wavelength = frequencyToWavelength(_lowestFrequency + _frequencyStep*ch);
 			double x = round(uTimesLambda*_imageSize*_pixelScale/wavelength + _imageSize/2);
 			double y = round(vTimesLambda*_imageSize*_pixelScale/wavelength + _imageSize/2);
-			if(x >= 0.0 && x <= _imageSize && y >= 0.0 && y <= _imageSize)
+			if(x >= 0.0 && x < _imageSize && y >= 0.0 && y < _imageSize)
 			{
 				size_t index = (size_t) x + (size_t) y*_imageSize;
 				_counts[index] += 2;

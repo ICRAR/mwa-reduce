@@ -12,8 +12,9 @@ class ImageWeights
 		double GetWeight(double u, double v)
 		{
 			//return GetUniformWeight(u ,v);
-			return GetCountWeight(u ,v);
-			// return GetNaturalWeight(u, v);
+			//return GetCountWeight(u ,v);
+			return GetInverseTaperedWeight(u, v);
+			//return GetNaturalWeight(u ,v);
 		}
 		double GetNaturalWeight(double u, double v) const
 		{
@@ -21,6 +22,10 @@ class ImageWeights
 		}
 		double GetCountWeight(double u, double v);
 		double GetUniformWeight(double u, double v);
+		double GetInverseTaperedWeight(double u, double v)
+		{
+			return sqrt(u*u + v*v);
+		}
 
 		double ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda);
 
