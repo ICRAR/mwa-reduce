@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 		 * Flag
 		 */
 		Array<bool> flags(flagsShape);
-		Array<bool>::iterator flagPtr = flags.begin();
+		Array<bool>::contiter flagPtr = flags.cbegin();
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
 			for(size_t p=0; p!=polarizationCount; ++p)

@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 			if(ant1Column.get(rowIndex) != ant2Column.get(rowIndex))
 			{
 				flagsColumn.get(rowIndex, flags);
-				Array<bool>::iterator flagPtr = flags.begin();
+				Array<bool>::contiter flagPtr = flags.cbegin();
 				if(timestepIndex < timestepCount)
 				{
 					for(size_t ch=0; ch!=channelCount;++ch)
