@@ -8,7 +8,7 @@ class FitsWriter
 	public:
 		FitsWriter(const std::string &filename) 
 		: _filename(filename) { }
-		template<typename NumType> void Write(NumType *image, size_t imgSize, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+		template<typename NumType> void Write(NumType *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
 	private:
 		std::string _filename;
 		

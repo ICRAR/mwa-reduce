@@ -60,6 +60,30 @@ class ImageCoordinates
 			m = (midY - (T) y) * pixelSizeY;
 		}
 		
+		template<typename T>
+		static void LMToXY(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, ssize_t &x, ssize_t &y)
+		{
+			T midX = (T) width / 2.0, midY = (T) height / 2.0;
+			x = l / pixelSizeX + midX;
+			y = -m / pixelSizeY - midY;
+		}
+		
+		template<typename T>
+		static void FitsXYToLM(size_t x, size_t y, T pixelSizeX, T pixelSizeY, size_t width, size_t height, T &l, T &m)
+		{
+			T midX = (T) width / 2.0, midY = (T) height / 2.0;
+			l = ((T) x - midX) * pixelSizeX;
+			m = ((T) y - midY) * pixelSizeY;
+		}
+		
+		template<typename T>
+		static void FitsLMToXY(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, ssize_t &x, ssize_t &y)
+		{
+			T midX = (T) width / 2.0, midY = (T) height / 2.0;
+			x = l / pixelSizeX + midX;
+			y = m / pixelSizeY + midY;
+		}
+		
 	private:
 		ImageCoordinates();
 };

@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		std::cout << "DONE!\nPredicting model... " << std::flush;
+		std::cout << "DONE!\nPredicting model with " << model.SourceCount() << " sources ... " << std::flush;
 		Predicter predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), avgChannelCount);
 		predicter.Initialize(model);
 		size_t timeIndex = 0;
@@ -817,7 +817,7 @@ int main(int argc, char *argv[])
 			if(iteration < 1000) offsetNameStr << '0';
 			offsetNameStr << iteration << ".txt";
 			save(tempNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, phaseOffsets, false);*/
-		} while(iteration < 250 && stdError > 0.0000001);
+		} while(iteration < 250 && stdError > 0.000001);
 		
 		if(fitSlope) {
 			for(size_t a = 0; a!=antennaCount; ++a)

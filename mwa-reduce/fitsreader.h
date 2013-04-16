@@ -24,13 +24,14 @@ class FitsReader
 		double PixelSizeY() const { return _pixelSizeY; }
 	private:
 		float readFloatKey(const char *key);
+		void readFloatKeyIfExists(const char *key, float &dest);
 		std::string readStringKey(const char *key);
 		
 		std::string _filename;
 		fitsfile *_fitsPtr;
 		
 		void initialize();
-		void checkStatus(int status);
+		void checkStatus(int status, const std::string &operation=std::string());
 		
 		size_t _imgWidth, _imgHeight;
 		double _phaseCentreRA, _phaseCentreDec;

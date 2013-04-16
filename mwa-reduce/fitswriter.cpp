@@ -24,7 +24,7 @@ void FitsWriter::checkStatus(int status)
 }
 
 template<typename NumType>
-void FitsWriter::Write(NumType *image, size_t imgSize, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY)
+void FitsWriter::Write(NumType *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY)
 {
 	int status = 0;
 	fitsfile *fptr;
@@ -34,8 +34,8 @@ void FitsWriter::Write(NumType *image, size_t imgSize, double phaseCentreRA, dou
 	// append image HDU
 	int bitPixInt = FLOAT_IMG;
 	long naxes[2];
-	naxes[0] = imgSize;
-	naxes[1] = imgSize;
+	naxes[0] = width;
+	naxes[1] = height;
 	fits_create_img(fptr, bitPixInt, 2, naxes, &status);
 	checkStatus(status);
 	float zero = 0, one = 1, equinox = 2000.0;
@@ -46,7 +46,7 @@ void FitsWriter::Write(NumType *image, size_t imgSize, double phaseCentreRA, dou
 	fits_write_key(fptr, TSTRING, "BTYPE", (void*) "Intensity", "", &status); checkStatus(status);
 	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) "AOImager", "Imager written by Andre Offringa", &status); checkStatus(status);
 	float phaseCentreRADeg = (phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (phaseCentreDec/M_PI)*180.0;
-	float centrePixelX = (imgSize / 2.0)+1, centrePixelY = (imgSize / 2.0)+1;
+	float centrePixelX = (width / 2.0)+1, centrePixelY = (height / 2.0)+1;
 	float stepXDeg = -(pixelSizeX/M_PI)*180.0, stepYDeg = (pixelSizeY/M_PI)*180.0;
 	fits_write_key(fptr, TSTRING, "CTYPE1", (void*) "RA---SIN", "Right ascension angle cosine", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status);
@@ -66,20 +66,20 @@ void FitsWriter::Write(NumType *image, size_t imgSize, double phaseCentreRA, dou
 	if(sizeof(NumType)==8)
 	{
 		double nullValue = 0.0;
-		fits_write_pixnull(fptr, TDOUBLE, firstpixel, imgSize*imgSize, image, &nullValue, &status);
+		fits_write_pixnull(fptr, TDOUBLE, firstpixel, width*height, image, &nullValue, &status);
 	}
 	else if(sizeof(NumType)==4)
 	{
 		float nullValue = 0.0;
-		fits_write_pixnull(fptr, TFLOAT, firstpixel, imgSize*imgSize, image, &nullValue, &status);
+		fits_write_pixnull(fptr, TFLOAT, firstpixel, width*height, image, &nullValue, &status);
 	}
 	else
 	{
 		double nullValue = 0.0;
-		size_t totalSize = imgSize * imgSize;
+		size_t totalSize = width*height;
 		std::vector<double> copy(totalSize);
 		for(size_t i=0;i!=totalSize;++i) copy[i] = image[i];
-		fits_write_pixnull(fptr, TDOUBLE, firstpixel, imgSize*imgSize, &copy[0], &nullValue, &status);
+		fits_write_pixnull(fptr, TDOUBLE, firstpixel, totalSize, &copy[0], &nullValue, &status);
 	}
 	checkStatus(status);
 	
@@ -87,6 +87,6 @@ void FitsWriter::Write(NumType *image, size_t imgSize, double phaseCentreRA, dou
 	checkStatus(status);
 }
 
-template void FitsWriter::Write<long double>(long double *image, size_t imgSize, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
-template void FitsWriter::Write<double>(double *image, size_t imgSize, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
-template void FitsWriter::Write<float>(float *image, size_t imgSize, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+template void FitsWriter::Write<long double>(long double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+template void FitsWriter::Write<double>(double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+template void FitsWriter::Write<float>(float *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);

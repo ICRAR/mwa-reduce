@@ -134,9 +134,9 @@ int main(int argc, char *argv[])
 		std::cout << "Stopped on peak " << peak << '\n';
 		
 		FitsWriter imgWriter(outImageName);
-		imgWriter.Write<double>(&image[0], width, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
+		imgWriter.Write<double>(&image[0], width, height, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
 		
 		FitsWriter modelWriter(modelImageName);
-		modelWriter.Write<double>(&model[0], width, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
+		modelWriter.Write<double>(&model[0], width, height, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY());
 	}
 }

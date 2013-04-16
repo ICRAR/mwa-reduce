@@ -80,10 +80,10 @@ int main(int argc, char *argv[])
 	}
 	
 	FitsWriter imgWriter(outImageName);
-	imgWriter.Write<double>(outImage, width, ra, dec, pixelSizeX, pixelSizeY);
+	imgWriter.Write<double>(outImage, width, height, ra, dec, pixelSizeX, pixelSizeY);
 	delete[] outImage;
 	
 	FitsWriter weightsWriter(outWeightName);
-	weightsWriter.Write<double>(outWeights, width, ra, dec, pixelSizeX, pixelSizeY);
+	weightsWriter.Write<double>(outWeights, width, height, ra, dec, pixelSizeX, pixelSizeY);
 	delete[] outWeights;
 }

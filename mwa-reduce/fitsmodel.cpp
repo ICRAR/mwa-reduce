@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 		else
 			spectralIndex = 0.0;
 		if(argc > 3)
-			refFreq = atof(argv[3]);
+			refFreq = atof(argv[3]) * 1000000;
 		else
 			refFreq = 100000000.0;
 		FitsReader fitsReader(fitsFilename);
