@@ -19,6 +19,11 @@
 
 int main(int argc, char *argv[])
 {
+	if(argc != 4)
+	{
+		std::cout << "Syntax: beam <input fitsfile> <frequency-in-hz> <measurementset>\n";
+		return 0;
+	}
 	const char *inpFitsname = argv[1];
 	double frequency = atoi(argv[2]);
 	const char *msName = argv[3];
@@ -57,7 +62,22 @@ int main(int argc, char *argv[])
 	std::vector<double> outImageX(width*height), outImageY(width*height);
 	const casa::Unit radUnit("rad");
 	double midX = (double) width / 2.0, midY = (double) height / 2.0;
-	const double delays[16] = {6,9,12,15,4,7,10,13,2,5,8,11,0,3,6,9};
+	
+	casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
+	casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
+	casa::Array<int> delaysArr = delaysCol(0);
+	casa::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
+	double delays[16];
+	std::cout << "Delays: [";
+	for(int i=0; i!=16; ++i)
+	{
+		delays[i] = delaysArrPtr[i];
+		std::cout << delays[i];
+		if(i != 15) std::cout << ',';
+	}
+	std::cout << "]\n";
+	//const double delays[16] = {6,9,12,15,4,7,10,13,2,5,8,11,0,3,6,9};
+		
 	TileBeam tilebeam(delays);
 	
 	double *xPtr = &outImageX[0], *yPtr = &outImageY[0];
@@ -89,7 +109,7 @@ int main(int argc, char *argv[])
 			sincos(dec, &sinDec, &cosDec);
 			double cosHA = cos(ha);
 			double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
-			if(x==width/2 && y==height/2) std::cout << "Zenith distance: " << zenithDistance/M_PI*180;
+			if(x==width/2 && y==height/2) std::cout << "Zenith distance: " << zenithDistance/M_PI*180 << " deg";
 			casa::MDirection azel = j2000ToAzelGeo(imageDir);
 			double azimuth = azel.getValue().get()[0];
 			
@@ -104,8 +124,10 @@ int main(int argc, char *argv[])
 		std::cout << '.' << std::flush;
 	}
 	
+	std::cout << "\nWriting...\n";
 	FitsWriter xWriter("beam-x.fits"), yWriter("beam-y.fits");
 	
-	xWriter.Write<double>(&outImageX[0], width, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY());
-	yWriter.Write<double>(&outImageY[0], width, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY());
+	xWriter.Write<double>(&outImageX[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY());
+	yWriter.Write<double>(&outImageY[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY());
+	
 }

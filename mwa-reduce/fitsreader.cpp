@@ -4,7 +4,7 @@
 #include <sstream>
 #include <cmath>
 
-void FitsReader::checkStatus(int status) 
+void FitsReader::checkStatus(int status, const std::string &operation) 
 {
 	if(status) {
 		/* fits_get_errstatus returns at most 30 characters */
@@ -12,7 +12,9 @@ void FitsReader::checkStatus(int status)
 		fits_get_errstatus(status, err_text);
 		char err_msg[81];
 		std::stringstream errMsg;
-		errMsg << "CFITSIO reported error when performing IO on file '" << _filename << "':" << err_text << " (";
+		if(!operation.empty())
+			errMsg << "During operation " << operation << ", ";
+		errMsg << "CFITSIO reported error when performing IO on file '" << _filename << "': " << err_text << " (";
 		while(fits_read_errmsg(err_msg))
 			errMsg << err_msg;
 		errMsg << ')';
@@ -25,8 +27,17 @@ float FitsReader::readFloatKey(const char *key)
 	int status = 0;
 	float floatValue;
 	fits_read_key(_fitsPtr, TFLOAT, key, &floatValue, 0, &status);
-	checkStatus(status);
+	checkStatus(status, key);
 	return floatValue;
+}
+
+void FitsReader::readFloatKeyIfExists(const char *key, float &dest)
+{
+	int status = 0;
+	float floatValue;
+	fits_read_key(_fitsPtr, TFLOAT, key, &floatValue, 0, &status);
+	if(status == 0)
+		dest = floatValue;
 }
 
 std::string FitsReader::readStringKey(const char *key)
@@ -34,7 +45,7 @@ std::string FitsReader::readStringKey(const char *key)
 	int status = 0;
 	char keyStr[256];
 	fits_read_key(_fitsPtr, TSTRING, key, keyStr, 0, &status);
-	checkStatus(status);
+	checkStatus(status, key);
 	return std::string(keyStr);
 }
 
@@ -63,11 +74,15 @@ void FitsReader::initialize()
 	_imgWidth = naxes[0];
 	_imgHeight = naxes[1];
 	
-	if(readFloatKey("BSCALE") != 1.0)
+	float bScale = 1.0, bZero = 0.0, equinox = 2000.0;
+	readFloatKeyIfExists("BSCALE", bScale);
+	readFloatKeyIfExists("BZERO", bZero);
+	readFloatKeyIfExists("EQUINOX", equinox);
+	if(bScale != 1.0)
 		throw std::runtime_error("Invalid value for BSCALE");
-	if(readFloatKey("BZERO") != 0.0)
+	if(bZero != 0.0)
 		throw std::runtime_error("Invalid value for BZERO");
-	if(readFloatKey("EQUINOX") != 2000.0)
+	if(equinox != 2000.0)
 		throw std::runtime_error("Invalid value for EQUINOX: "+readStringKey("EQUINOX"));
 	
 	if(readStringKey("CTYPE1") != "RA---SIN")

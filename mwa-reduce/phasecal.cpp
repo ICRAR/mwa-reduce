@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		std::cout << "DONE!\nPredicting model... " << std::flush;
+		std::cout << "DONE!\nPredicting model with " << model.SourceCount() << " sources ... " << std::flush;
 		Predicter predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), avgChannelCount);
 		predicter.Initialize(model);
 		size_t timeIndex = 0;
