@@ -132,8 +132,9 @@ class SourceSDFWithSI : public SourceSDF<NumericType>
 		{
 			std::ostringstream s;
 			s << "spectralindex "
-			  << FluxAtFrequency(_refFreqA) << ' ' << _refFreqA/1000000.0 << ' '
-			  << FluxAtFrequency(_refFreqB) << ' ' << _refFreqB/1000000.0;
+				<< FluxAtFrequency(_refFreqA) << ' ' << SpectralIndex();
+			//  << FluxAtFrequency(_refFreqA) << ' ' << _refFreqA/1000000.0 << ' '
+			//  << FluxAtFrequency(_refFreqB) << ' ' << _refFreqB/1000000.0;
 			return s.str();
 		}
 
