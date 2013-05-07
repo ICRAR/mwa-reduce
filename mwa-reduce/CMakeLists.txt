@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.6)
 
 project(mwa-reduce)
 
-set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall -DNDEBUG -march=native -msse4.1")
+set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wall -DNDEBUG -march=native -msse4.1")
 
 find_library(CASA_MS_LIB casa_ms REQUIRED)
 find_library(CASA_TABLES_LIB casa_tables REQUIRED)
@@ -12,6 +12,7 @@ find_library(FFTW3_LIB fftw3 REQUIRED)
 find_package(Boost COMPONENTS thread system REQUIRED)
 find_library(FITSIO_LIB cfitsio REQUIRED)
 find_library(DL_LIB dl REQUIRED)
+find_path(FITSIO_INCLUDE_DIR NAMES fitsio.h)
 
 set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_MEASURES_LIB} ${CASA_CASA_LIB} ${DL_LIB})
 
@@ -19,8 +20,27 @@ find_path(CASA_INCLUDE_DIR NAMES ms/MeasurementSets/MeasurementSet.h PATHS /usr/
 
 include_directories(${CASA_INCLUDE_DIR})
 include_directories(${Boost_INCLUDE_DIR})
+include_directories(${FITSIO_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
+
+# The following stuff will set the "rpath" correctly, so that
+# LD_LIBRARY_PATH doesn't have to be set.
+
+# use, i.e. don't skip the full RPATH for the build tree
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+# when building, don't use the install RPATH already
+# (but later on when installing)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+# the RPATH to be used when installing, but only if it's not a system directory
+LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+IF("${isSystemDir}" STREQUAL "-1")
+   SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ENDIF("${isSystemDir}" STREQUAL "-1")
 
 add_executable(addimg addimg.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(apparently apparently.cpp model.cpp fitsreader.cpp)
