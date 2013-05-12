@@ -8,6 +8,8 @@
 #include <tables/Tables/ArrayColumn.h>
 #include <tables/Tables/ScalarColumn.h>
 
+#include "stdint.h"
+
 using namespace casa;
 
 void ApplyGain(std::complex<float> &val, bool &flag, long double g)
@@ -22,7 +24,7 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: applygains <ms> <passband-txt-file>\n"
+		std::cout << "Usage: applygains <ms> <gains-bin-file>\n"
 			"Will apply the found gains. Visibilities with zero gain will be flagged.";
 	} else {
 		MeasurementSet ms(argv[1], Table::Update);
@@ -59,8 +61,10 @@ int main(int argc, char **argv)
 		 * Read the gains file
 		 */
 		std::cout << "Reading gains file..." << std::flush;
-		size_t antInFile, chanInFile, polInFile;
-		gainsFile >> antInFile >> chanInFile >> polInFile;
+		uint64_t antInFile, chanInFile, polInFile;
+		gainsFile.read(reinterpret_cast<char*>(&antInFile), sizeof(antInFile));
+		gainsFile.read(reinterpret_cast<char*>(&chanInFile), sizeof(chanInFile));
+		gainsFile.read(reinterpret_cast<char*>(&polInFile), sizeof(polInFile));
 		if(antInFile != antennaCount) throw std::runtime_error("Antenna counts do not match");
 		if(polInFile != polarizationCount) throw std::runtime_error("Polarization counts do not match");
 		if(channelCount%chanInFile!=0) throw std::runtime_error("Channel counts do not match");
@@ -72,11 +76,15 @@ int main(int argc, char **argv)
 			{
 				gains[a] = new long double*[chanInFile];
 				gains[a][0] = new long double[polarizationCount];
-				size_t antNo;
-				gainsFile >> antNo;
-				if(antNo != a) throw std::runtime_error("File corrupted: antenna numbers do not match");
+				//size_t antNo;
+				//gainsFile >> antNo;
+				//if(antNo != a) throw std::runtime_error("File corrupted: antenna numbers do not match");
 				for(size_t p = 0; p!=polarizationCount; ++p)
-					gainsFile >> gains[a][0][p];
+				{
+					double curGain;
+					gainsFile.read(reinterpret_cast<char*>(&curGain), sizeof(curGain));
+					gains[a][0][p] = curGain;
+				}
 			}
 		} else {
 			for(size_t a = 0; a!=antennaCount; ++a)
@@ -87,13 +95,17 @@ int main(int argc, char **argv)
 			}
 			for(size_t ch = 0; ch!=chanInFile; ++ch)
 			{
-				size_t chNo;
-				gainsFile >> chNo;
-				if(chNo != ch) throw std::runtime_error("File corrupted: Channel numbers do no match");
+				//size_t chNo;
+				//gainsFile >> chNo;
+				//if(chNo != ch) throw std::runtime_error("File corrupted: Channel numbers do no match");
 				for(size_t p = 0; p!=polarizationCount; ++p)
 				{
 					for(size_t a = 0; a!=antennaCount; ++a)
-						gainsFile >> gains[a][ch][p];
+					{
+						double curGain;
+						gainsFile.read(reinterpret_cast<char*>(&curGain), sizeof(curGain));
+						gains[a][ch][p] = curGain;
+					}
 				}
 			}
 		}

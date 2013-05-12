@@ -11,9 +11,11 @@
 
 #include <cmath>
 #include <fstream>
+
 #include "banddata.h"
 #include "predicter.h"
 #include "model.h"
+#include "stdint.h"
 
 using namespace casa;
 
@@ -411,14 +413,18 @@ void FitPhases(size_t channelCount, size_t polarizationCount, long double *phase
 	}
 }
 
-void SavePhases(const char *outName, size_t antennaCount, size_t avgChannelCount, size_t inpChannelCount, size_t polarizationCount, const lcomplex_t* const* solutions, bool fitSlope)
+void SavePhases(const char *outTxtName, const char *outBinName, uint64_t antennaCount, uint64_t avgChannelCount, uint64_t inpChannelCount, uint64_t polarizationCount, const lcomplex_t* const* solutions, bool fitSlope)
 {
-	std::ofstream outFile(outName);
+	std::ofstream outFile(outTxtName);
+	std::ofstream outBinFile(outBinName, std::ios_base::binary);
 	outFile.precision(10);
 	outFile << antennaCount << '\t';
+	outBinFile.write(reinterpret_cast<char*>(&antennaCount), sizeof(antennaCount));
 	if(avgChannelCount == 1)
 	{
 		outFile << avgChannelCount << '\t' << polarizationCount << '\n';
+		outBinFile.write(reinterpret_cast<char*>(&avgChannelCount), sizeof(avgChannelCount));
+		outBinFile.write(reinterpret_cast<char*>(&polarizationCount), sizeof(polarizationCount));
 		for(size_t a = 0; a!=antennaCount; ++a)
 		{
 			outFile << a;
@@ -428,9 +434,13 @@ void SavePhases(const char *outName, size_t antennaCount, size_t avgChannelCount
 				{
 					size_t pIndex = (p==0) ? 0 : 1;
 					const lcomplex_t *antennaSols = solutions[a];
-					outFile << '\t' << atan2(antennaSols[pIndex].imag(), antennaSols[pIndex].real());
+					double phase = atan2l(antennaSols[pIndex].imag(), antennaSols[pIndex].real());
+					outFile << '\t' << phase;
+					outBinFile.write(reinterpret_cast<char*>(&phase), sizeof(phase));
 				} else {
 					outFile << "\t0.0";
+					double phase = 0.0;
+					outBinFile.write(reinterpret_cast<char*>(&phase), sizeof(phase));
 				}
 			}
 			outFile << '\n';
@@ -439,6 +449,8 @@ void SavePhases(const char *outName, size_t antennaCount, size_t avgChannelCount
 		size_t eIndex = 0;
 		size_t outpChannelCount = fitSlope ? inpChannelCount : avgChannelCount;
 		outFile << outpChannelCount << '\t' << polarizationCount << '\n';
+		outBinFile.write(reinterpret_cast<char*>(&outpChannelCount), sizeof(outpChannelCount));
+		outBinFile.write(reinterpret_cast<char*>(&polarizationCount), sizeof(polarizationCount));
 		for(size_t ch = 0; ch!=outpChannelCount; ++ch)
 		{
 			outFile << ch;
@@ -449,12 +461,18 @@ void SavePhases(const char *outName, size_t antennaCount, size_t avgChannelCount
 					for(size_t a = 0; a!=antennaCount; ++a)
 					{
 						const lcomplex_t *antennaSols = solutions[a];
-						outFile << '\t' << atan2(antennaSols[eIndex].imag(), antennaSols[eIndex].real());
+						double phase = atan2l(antennaSols[eIndex].imag(), antennaSols[eIndex].real());
+						outFile << '\t' << phase;
+						outBinFile.write(reinterpret_cast<char*>(&phase), sizeof(phase));
 					}
 					++eIndex;
 				} else {
 					for(size_t a = 0; a!=antennaCount; ++a)
+					{
 						outFile << "\t0.0";
+						double phase = 0.0;
+						outBinFile.write(reinterpret_cast<char*>(&phase), sizeof(phase));
+					}
 				}
 			}
 			outFile << '\n';
@@ -462,17 +480,21 @@ void SavePhases(const char *outName, size_t antennaCount, size_t avgChannelCount
 	}
 }
 
-void SaveGains(const char *outName, size_t antennaCount, size_t avgChannelCount, size_t inpChannelCount, size_t polarizationCount, const lcomplex_t* const* solutions, bool fitSlope)
+void SaveGains(const char *outTxtName, const char *outBinName, uint64_t antennaCount, uint64_t avgChannelCount, uint64_t inpChannelCount, uint64_t polarizationCount, const lcomplex_t* const* solutions, bool fitSlope)
 {
 	/**
 	* Print results
 	*/
-	std::ofstream outFile(outName);
+	std::ofstream outFile(outTxtName);
+	std::ofstream outBinFile(outBinName, std::ios_base::binary);
 	outFile.precision(10);
 	outFile << antennaCount << '\t';
+	outBinFile.write(reinterpret_cast<char*>(&antennaCount), sizeof(antennaCount));
 	if(avgChannelCount == 1)
 	{
 		outFile << avgChannelCount << '\t' << polarizationCount << '\n';
+		outBinFile.write(reinterpret_cast<char*>(&avgChannelCount), sizeof(avgChannelCount));
+		outBinFile.write(reinterpret_cast<char*>(&polarizationCount), sizeof(polarizationCount));
 		for(size_t a = 0; a!=antennaCount; ++a)
 		{
 			outFile << a;
@@ -483,9 +505,13 @@ void SaveGains(const char *outName, size_t antennaCount, size_t avgChannelCount,
 					size_t pIndex = (p==0) ? 0 : 1;
 					const lcomplex_t *antennaGains = solutions[a];
 					const lcomplex_t g = antennaGains[pIndex];
-					outFile << '\t' << 1.0/sqrt(g.real()*g.real() + g.imag()*g.imag());
+					double gain = 1.0L/sqrtl(g.real()*g.real() + g.imag()*g.imag());
+					outFile << '\t' << gain;
+					outBinFile.write(reinterpret_cast<char*>(&gain), sizeof(gain));
 				} else {
 					outFile << "\t1.0";
+					double gain = 1.0;
+					outBinFile.write(reinterpret_cast<char*>(&gain), sizeof(gain));
 				}
 			}
 			outFile << '\n';
@@ -494,6 +520,8 @@ void SaveGains(const char *outName, size_t antennaCount, size_t avgChannelCount,
 		size_t eIndex = 0;
 		size_t outpChannelCount = fitSlope ? inpChannelCount : avgChannelCount;
 		outFile << outpChannelCount << '\t' << polarizationCount << '\n';
+		outBinFile.write(reinterpret_cast<char*>(&outpChannelCount), sizeof(outpChannelCount));
+		outBinFile.write(reinterpret_cast<char*>(&polarizationCount), sizeof(polarizationCount));
 		for(size_t ch = 0; ch!=outpChannelCount; ++ch)
 		{
 			outFile << ch;
@@ -505,12 +533,18 @@ void SaveGains(const char *outName, size_t antennaCount, size_t avgChannelCount,
 					{
 						const lcomplex_t *antennaGain = solutions[a];
 						const lcomplex_t g = antennaGain[eIndex];
-						outFile << '\t' << 1.0/sqrt(g.real()*g.real() + g.imag()*g.imag());
+						double gain = 1.0L/sqrtl(g.real()*g.real() + g.imag()*g.imag());
+						outFile << '\t' << gain;
+						outBinFile.write(reinterpret_cast<char*>(&gain), sizeof(gain));
 					}
 					++eIndex;
 				} else {
 					for(size_t a = 0; a!=antennaCount; ++a)
+					{
 						outFile << "\t1.0";
+						double gain = 1.0;
+						outBinFile.write(reinterpret_cast<char*>(&gain), sizeof(gain));
+					}
 				}
 			}
 			outFile << '\n';
@@ -817,7 +851,7 @@ int main(int argc, char *argv[])
 			if(iteration < 1000) offsetNameStr << '0';
 			offsetNameStr << iteration << ".txt";
 			save(tempNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, phaseOffsets, false);*/
-		} while(iteration < 250 && stdError > 0.000001);
+		} while(iteration < 250 && stdError > 0.0000000000001);
 		
 		if(fitSlope) {
 			for(size_t a = 0; a!=antennaCount; ++a)
@@ -827,8 +861,8 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		SavePhases(outNamePhases, antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, fitSlope);
-		SaveGains(outNameGains, antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, fitSlope);
+		SavePhases(outNamePhases, "phases.bin", antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, fitSlope);
+		SaveGains(outNameGains, "gains.bin", antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, fitSlope);
 				
 		for(size_t e=0; e!=matrixSize; ++e) 
 		{
