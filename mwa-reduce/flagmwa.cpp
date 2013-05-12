@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 						for(size_t ch=0; ch!=channelsPerSubband; ++ch)
 						{
 							bool doFlag = false;
-							if(std::abs(ch*2-channelsPerSubband)*2 < centreChannelCount) doFlag=true;
+							if(std::abs((long) (ch*2-channelsPerSubband))*2 < (long) centreChannelCount) doFlag=true;
 							if(ch < sideChannelCount || ch >= channelsPerSubband-sideChannelCount)
 								doFlag = true;
 							for(size_t p=0; p!=polarizationCount; ++p)

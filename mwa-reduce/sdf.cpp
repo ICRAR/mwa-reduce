@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, optimize = false, applyThreshold = false;
+	bool outputPlot = false, outputSIs = false, optimize = false, applyThreshold = false;
 	long double scale = 1.0, threshold = 0.0;
 	while(argv[argi][0]=='-')
 	{
@@ -26,6 +26,9 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			scale = atof(argv[argi]);
+		} else if(strcmp(argv[argi], "-si") == 0)
+		{
+			outputSIs = true;
 		} else if(strcmp(argv[argi], "-t") == 0)
 		{
 			++argi;
@@ -43,7 +46,6 @@ int main(int argc, char *argv[])
 	Model model(argv[argi+1]);
 	casa::MeasurementSet ms(argv[argi+2]);
 	BandData band(ms.spectralWindow());
-	const long double newBandSize = (band.BandEnd() - band.BandStart()) / newChannelCount;
 	
 	if(optimize)
 		model.Optimize();
@@ -58,25 +60,40 @@ int main(int argc, char *argv[])
 		model = temp;
 	}
 	
+	const long double newBandSize = (band.BandEnd() - band.BandStart()) / newChannelCount;
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 	{
-		SourceSDFWithSamples<long double> newSdf;
 		const SourceSDF<long double> &sdf = sourcePtr->Brightness();
-		for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
+		if(outputSIs)
 		{
-			long double startFreq = band.BandStart() + newBandSize*newChIndex;
-			long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
-			long double flux;
-			if(newChannelCount < band.ChannelCount())
-				flux = sdf.IntegratedFlux(startFreq, endFreq);
-			else
-				flux = sdf.FluxAtFrequency((startFreq+endFreq)*0.5);
-			
-			newSdf.AddSample(flux*scale, (startFreq+endFreq)*0.5);
+			long double startFreq = band.BandStart();
+			long double endFreq = band.BandEnd();
+			SourceSDFWithSI<long double> newSdf(
+				sdf.FluxAtFrequency(startFreq), startFreq,
+				sdf.FluxAtFrequency(endFreq), endFreq);
+			if(!outputPlot) {
+				sourcePtr->SetBrightness(newSdf);
+				std::cout << sourcePtr->ToStringLine() << '\n';
+			}
 		}
-		if(!outputPlot) {
-			sourcePtr->SetBrightness(newSdf);
-			std::cout << sourcePtr->ToStringLine() << '\n';
+		else {
+			SourceSDFWithSamples<long double> newSdf;
+			for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
+			{
+				long double startFreq = band.BandStart() + newBandSize*newChIndex;
+				long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
+				long double flux;
+				if(newChannelCount < band.ChannelCount())
+					flux = sdf.IntegratedFlux(startFreq, endFreq);
+				else
+					flux = sdf.FluxAtFrequency((startFreq+endFreq)*0.5);
+				
+				newSdf.AddSample(flux*scale, (startFreq+endFreq)*0.5);
+			}
+			if(!outputPlot) {
+				sourcePtr->SetBrightness(newSdf);
+				std::cout << sourcePtr->ToStringLine() << '\n';
+			}
 		}
 	}
 	
