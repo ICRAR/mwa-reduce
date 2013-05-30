@@ -132,6 +132,7 @@ class SourceSDFWithSI : public SourceSDF<NumericType>
 		{
 			std::ostringstream s;
 			s << "spectralindex "
+				<< _refFreqA/1000000.0 << ' '
 				<< FluxAtFrequency(_refFreqA) << ' ' << SpectralIndex();
 			//  << FluxAtFrequency(_refFreqA) << ' ' << _refFreqA/1000000.0 << ' '
 			//  << FluxAtFrequency(_refFreqB) << ' ' << _refFreqB/1000000.0;
@@ -151,12 +152,21 @@ inline SourceSDF<NumericType> *SourceSDF<NumericType>::ParseLine(std::vector<std
 {
 	if(*firstToken == "spectralindex")
 	{
-		NumericType
-			fluxA = strtold((firstToken+1)->c_str(), 0),
-			refFreqA = strtold((firstToken+2)->c_str(), 0)*1000000.0,
-			fluxB = strtold((firstToken+3)->c_str(), 0),
-			refFreqB = strtold((firstToken+4)->c_str(), 0)*1000000.0;
-		return new SourceSDFWithSI<NumericType>(fluxA, refFreqA, fluxB, refFreqB);
+		if(endToken - firstToken == 5)
+		{
+			NumericType
+				fluxA = strtold((firstToken+1)->c_str(), 0),
+				refFreqA = strtold((firstToken+2)->c_str(), 0)*1000000.0,
+				fluxB = strtold((firstToken+3)->c_str(), 0),
+				refFreqB = strtold((firstToken+4)->c_str(), 0)*1000000.0;
+			return new SourceSDFWithSI<NumericType>(fluxA, refFreqA, fluxB, refFreqB);
+		} else {
+			NumericType
+				refFreq = strtold((firstToken+1)->c_str(), 0)*1000000.0,
+				flux = strtold((firstToken+2)->c_str(), 0),
+				si = strtold((firstToken+3)->c_str(), 0);
+			return new SourceSDFWithSI<NumericType>(flux, si, refFreq);
+		}
 	} else if(*firstToken == "sampled")
 	{
 		++firstToken;

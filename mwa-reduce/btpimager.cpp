@@ -18,8 +18,8 @@
 	#define DO_VECTORIZE true
 #endif
 
-#define USE_DFT false
-#define TWO_STAGE_FFT true
+#define USE_DFT true
+#define TWO_STAGE_FFT false
 #define USE_DFT_PRECALC_TABLE true
 
 using std::size_t;

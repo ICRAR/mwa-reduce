@@ -833,24 +833,7 @@ int main(int argc, char *argv[])
 			std::cout << "Standard error: " << GainToString(stdError) << '\n';
 			
 			bool gotBetter = stdError < prevAbsError;
-			//if(!gotBetter) { ++gotWorseCount; stepSize*=0.9; }
 			++iteration;
-
-			/*stringstream solNameStr;
-			solNameStr << "temp/sol-";
-			if(iteration < 10) solNameStr << '0';
-			if(iteration < 100) solNameStr << '0';
-			if(iteration < 1000) solNameStr << '0';
-			solNameStr << iteration << ".txt";
-			save(solNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, false);*/
-			
-			/*stringstream offsetNameStr;
-			offsetNameStr << "temp/offset-";
-			if(iteration < 10) offsetNameStr << '0';
-			if(iteration < 100) offsetNameStr << '0';
-			if(iteration < 1000) offsetNameStr << '0';
-			offsetNameStr << iteration << ".txt";
-			save(tempNameStr.str().c_str(), antennaCount, avgChannelCount, inpChannelCount, polarizationCount, phaseOffsets, false);*/
 		} while(iteration < 250 && stdError > 0.0000000000001);
 		
 		if(fitSlope) {

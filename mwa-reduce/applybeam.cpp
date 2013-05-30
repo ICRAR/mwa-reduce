@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	std::vector<double>::iterator beamIter = beamImage.begin();
 	for(std::vector<double>::iterator i=inpImage.begin(); i!=inpImage.end(); ++i)
 	{
-		*i /= *beamIter;
+		*i /= *beamIter * *beamIter;
 		++beamIter;
 	}
 	

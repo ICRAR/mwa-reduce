@@ -33,7 +33,7 @@ Model::Model(const char* filename)
 					tokens.push_back(line.substr(tokenStart, tokenEnd-tokenStart));
 			}
 			
-			if(tokens.size() >= 8)
+			if(tokens.size() >= 7)
 			{
 				ModelSource source;
 				source.SetName(tokens[0]);
@@ -47,7 +47,7 @@ Model::Model(const char* filename)
 				delete sdf;
 				_sources.push_back(source);
 			} else {
-				throw std::runtime_error("Invalid token count on line");
+				throw std::runtime_error("Invalid number of tokens on line");
 			}
 		}
 	}
