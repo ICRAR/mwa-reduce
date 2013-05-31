@@ -1,17 +1,18 @@
 #include "calibrationmethod.h"
 
-CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna) :
-	_data(nChannels, nAntenna),
-	_weights(nChannels, nAntenna),
+CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t nTimesteps) :
+	_data(nChannels, nAntenna, nTimesteps),
+	_model(nChannels, nAntenna, nTimesteps),
+	_weights(nChannels, nAntenna, nTimesteps),
 	_nChannels(nChannels),
 	_nAntenna(nAntenna)
 {
 }
 
-void CalibrationMethod::AddData(const std::complex<float>* data, const float* weights, const std::complex<double>* predictedValues, size_t antenna1, size_t antenna2)
+void CalibrationMethod::AddData(const std::complex<float>* data, const float* weights, const std::complex<double>* predictedValues, size_t antenna1, size_t antenna2, size_t timestep)
 {
-	std::complex<double> *destDataPtr = _data.ValuePtr(antenna1, antenna2);
-	double *destWeightPtr = _weights.ValuePtr(antenna1, antenna2);
+	std::complex<double> *destDataPtr = _data.ValuePtr(antenna1, antenna2, timestep);
+	double *destWeightPtr = _weights.ValuePtr(antenna1, antenna2, timestep);
 	
 	const std::complex<float>* dataEndPtr = data + _nChannels * 4;
 	
@@ -30,9 +31,17 @@ void CalibrationMethod::AddData(const std::complex<float>* data, const float* we
 			++destDataPtr;
 			++destWeightPtr;
 		}
-		
-		multiplyWithInverse2x2(destDataPtr-4, model);
 	}
+}
+
+void CalibrationMethod::calculateNextIter(size_t ant)
+{
+	// Calculate the next Jones estimate for the given ant, based on
+	// the previous Jones estimates.
+	
+	// Calculate:
+	// JONES[ant] = SUM_{k in Nant} MODEL[ant,k] JONES[k] VIS^H[ant,k] times
+	//            ( SUM_{k in Nant} VIS[ant,k] JONES^H[k] JONES[k] VIS^H[ant,k] )^-1
 }
 
 void CalibrationMethod::multiplyWithInverse2x2(std::complex<double>* lhs, std::complex<double>* rhs)
