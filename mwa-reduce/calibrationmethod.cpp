@@ -1,6 +1,7 @@
 #include "calibrationmethod.h"
 
 #include <iostream>
+#include <cmath>
 
 CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t nTimesteps) :
 	_data(nChannels, nAntenna, nTimesteps),
@@ -31,18 +32,52 @@ void CalibrationMethod::AddData(const std::complex<float>* data, const float* we
 	
 	while(data != dataEndPtr)
 	{
+		double minWeight = *weights;
 		for(size_t i=0; i!=4; ++i)
 		{
-			*destDataPtr = std::complex<double>(*data);
-			*destModelPtr = *predictedValues;
-			*destWeightPtr = *weights;
+			if(std::isfinite(data->real()) && std::isfinite(data->imag()))
+			{
+				*destDataPtr = std::complex<double>(*data);
+				*destModelPtr = *predictedValues;
+				if(*weights < minWeight)
+					minWeight = *weights;
+			}
+			else {
+				*destDataPtr = std::complex<double>(0.0, 0.0);
+				*destModelPtr = *predictedValues;
+			}
 			
 			++data;
 			++weights;
 			++predictedValues;
 			++destDataPtr;
 			++destModelPtr;
-			++destWeightPtr;
+		}
+		
+		*destWeightPtr = minWeight;
+		++destWeightPtr;
+	}
+}
+
+void CalibrationMethod::applyWeightsToData()
+{
+	for(size_t timestep=0; timestep!=_nTimesteps; ++timestep)
+	{
+		for(size_t antenna2 = 0; antenna2!=_nAntenna; ++antenna2)
+		{
+			for(size_t antenna1 = 0; antenna1!=_nAntenna; ++antenna1)
+			{
+				std::complex<double> *dataPtr = _data.ValuePtr(antenna1, antenna2, timestep);
+				double *weightPtr = _weights.ValuePtr(antenna1, antenna2, timestep);
+				for(size_t ch=0; ch!=_nChannels; ++ch)
+				{
+					for(size_t p=0; p!=4; ++p)
+					{
+						*dataPtr *= *weightPtr;
+					}
+					++weightPtr;
+				}
+			}
 		}
 	}
 }
@@ -52,6 +87,8 @@ void CalibrationMethod::Execute(double precisionLimit)
 	std::vector<std::complex<double> > nextJones(_nAntenna * 4 * _nChannels);
 	
 	bool continueIterating;
+	
+	applyWeightsToData();
 	
 	do
 	{
@@ -76,7 +113,7 @@ void CalibrationMethod::Execute(double precisionLimit)
 					changeSizes[p+ant*4] += std::norm(*jonesPtr - *nextJonesPtr);
 					
 					// TODO stepsize based on something
-					const double STEPSIZE = 0.5;
+					const double STEPSIZE = 0.25;
 					*jonesPtr = *jonesPtr * (1.0-STEPSIZE) + *nextJonesPtr * STEPSIZE;
 					
 					++jonesPtr;
