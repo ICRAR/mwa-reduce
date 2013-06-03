@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calcphaseoffsets [-a <nr>] [-f] <model> <measurementset.ms> <phases.txt> <gains.txt>\n\n"
+			<< "Usage: phasecal [-a <nr>] [-f] <model> <measurementset.ms> <phases.txt> <gains.txt>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
