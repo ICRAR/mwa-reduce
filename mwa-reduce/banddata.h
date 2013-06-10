@@ -62,6 +62,14 @@ class BandData
 		  else
 		    return 0.0;
 		}
+		double LongestWavelength() const
+		{
+			return ChannelWavelength(0);
+		}
+		double SmallestWavelength() const
+		{
+			return ChannelWavelength(_channelCount-1);
+		}
 		double BandStart() const
 		{
 			return LowestFrequency() - FrequencyStep()*0.5;
