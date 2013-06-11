@@ -1,6 +1,7 @@
 #include "fitsreader.h"
 #include "fitswriter.h"
 #include "imagecoordinates.h"
+#include "radeccoord.h"
 
 #include <vector>
 #include <stdexcept>
@@ -175,14 +176,26 @@ int main(int argc, char *argv[])
 			"All images should be fits files. First image will define the size and pointing centre.\n";
 	}
 	int argi = 1;
-	bool overrideSize = false;
+	bool overrideSize = false, overrideCentre = false;
 	size_t width = 0, height = 0;
-	if(strcmp(argv[argi], "-s") == 0)
+	long double altRA = 0.0, altDec = 0.0;
+	while(argv[argi][0] == '-')
 	{
-		overrideSize = true;
-		width = atoi(argv[argi+1]);
-		height = atoi(argv[argi+2]);
-		argi += 3;
+		if(strcmp(argv[argi], "-s") == 0)
+		{
+			overrideSize = true;
+			width = atoi(argv[argi+1]);
+			height = atoi(argv[argi+2]);
+			argi += 3;
+		}
+		else if(strcmp(argv[argi], "-c") == 0)
+		{
+			overrideCentre = true;
+			altRA = RaDecCoord::ParseRA(argv[argi+1]);
+			altDec = RaDecCoord::ParseDec(argv[argi+2]);
+			argi += 3;
+		}
+		else throw std::runtime_error("Bad parameter");
 	}
 	const char
 		*outImageName = argv[argi],
@@ -199,8 +212,14 @@ int main(int argc, char *argv[])
 	ImageInfo outImage(size);
 	outImage.width = width;
 	outImage.height = height;
-	outImage.ra = templateReader.PhaseCentreRA();
-	outImage.dec = templateReader.PhaseCentreDec();
+	if(overrideCentre)
+	{
+		outImage.ra = altRA;
+		outImage.dec = altDec;
+	} else {
+		outImage.ra = templateReader.PhaseCentreRA();
+		outImage.dec = templateReader.PhaseCentreDec();
+	}
 	outImage.pixelSizeX = templateReader.PixelSizeX();
 	outImage.pixelSizeY = templateReader.PixelSizeY();
 	for(size_t i=0; i!=size; ++i)
