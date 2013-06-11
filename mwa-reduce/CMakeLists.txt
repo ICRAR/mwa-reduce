@@ -69,6 +69,8 @@ add_executable(subtrmodel subtrmodel.cpp model.cpp predicter.cpp)
 add_executable(spectrum spectrum.cpp model.cpp predicter.cpp)
 add_executable(tests tests.cpp)
 add_executable(testbugcasams testbugcasams.cpp)
+add_executable(wlimager wlimager.cpp fitswriter.cpp layeredimager.cpp)
+set_target_properties(wlimager PROPERTIES COMPILE_FLAGS "-std=c++11")
 
 add_executable(aoimage aoimage.cpp btpimager.cpp fitswriter.cpp imageweights.cpp model.cpp modelrenderer.cpp)
 
@@ -100,5 +102,6 @@ target_link_libraries(subtract ${CASA_LIBS})
 target_link_libraries(subtrmodel ${CASA_LIBS})
 target_link_libraries(spectrum ${CASA_LIBS})
 target_link_libraries(testbugcasams ${CASA_LIBS})
+target_link_libraries(wlimager ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
 
 target_link_libraries(aoimage ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})

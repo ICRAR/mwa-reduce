@@ -24,7 +24,7 @@ void FitsWriter::checkStatus(int status)
 }
 
 template<typename NumType>
-void FitsWriter::Write(NumType *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY)
+void FitsWriter::Write(const NumType *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY)
 {
 	int status = 0;
 	fitsfile *fptr;
@@ -66,12 +66,12 @@ void FitsWriter::Write(NumType *image, size_t width, size_t height, double phase
 	if(sizeof(NumType)==8)
 	{
 		double nullValue = 0.0;
-		fits_write_pixnull(fptr, TDOUBLE, firstpixel, width*height, image, &nullValue, &status);
+		fits_write_pixnull(fptr, TDOUBLE, firstpixel, width*height, const_cast<double*>(reinterpret_cast<const double*>(image)), &nullValue, &status);
 	}
 	else if(sizeof(NumType)==4)
 	{
 		float nullValue = 0.0;
-		fits_write_pixnull(fptr, TFLOAT, firstpixel, width*height, image, &nullValue, &status);
+		fits_write_pixnull(fptr, TFLOAT, firstpixel, width*height, const_cast<float*>(reinterpret_cast<const float*>(image)), &nullValue, &status);
 	}
 	else
 	{
@@ -87,6 +87,6 @@ void FitsWriter::Write(NumType *image, size_t width, size_t height, double phase
 	checkStatus(status);
 }
 
-template void FitsWriter::Write<long double>(long double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
-template void FitsWriter::Write<double>(double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
-template void FitsWriter::Write<float>(float *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+template void FitsWriter::Write<long double>(const long double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+template void FitsWriter::Write<double>(const double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+template void FitsWriter::Write<float>(const float *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
