@@ -148,7 +148,8 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 			
 			_imageData[xSrc + ySrc*_width] += val.real() + val.imag();*/
 			
-			_imageData[xSrc + ySrc*_width] += (source->real() + source->imag()) * c + (source->real() - source->imag()) * s;
+			//_imageData[xSrc + ySrc*_width] += (source->real() + source->imag()) * c + (source->real() - source->imag()) * s;
+			_imageData[xSrc + ySrc*_width] += source->real() * c - source->imag() * s;
 			
 			++source;
 		}
