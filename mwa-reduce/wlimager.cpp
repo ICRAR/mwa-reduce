@@ -38,8 +38,39 @@ void workThread(lane<WorkItem> *workLane, LayeredImager *imager)
 
 int main(int argc, char* argv[])
 {
-	const char *msName(argv[1]);
-	const char *fitsfileName(argv[2]);
+	int argi = 1;
+	size_t imgWidth = 2048, imgHeight = 2048;
+	double pixelScale = 0.01 * M_PI / 180.0;
+	size_t nWLayers = 64;
+	
+	while(argv[argi][0] == '-')
+	{
+		const char *param = &argv[argi][1];
+		if(strcmp(param, "size") == 0)
+		{
+			imgWidth = atoi(argv[argi+1]);
+			imgHeight = atoi(argv[argi+2]);
+			argi += 2;
+		}
+		else if(strcmp(param, "scale") == 0)
+		{
+			pixelScale = atof(argv[argi+1]) * M_PI / 180.0;
+			++argi;
+		}
+		else if(strcmp(param, "nwlayers") == 0)
+		{
+			nWLayers = atoi(argv[argi+1]);
+			++argi;
+		}
+		else {
+			throw std::runtime_error("Unknown parameter");
+		}
+		
+		++argi;
+	}
+	
+	const char *msName(argv[argi]);
+	const char *fitsfileName(argv[argi+1]);
 	
 	std::cout << "Opening " << msName << "... " << std::flush;
 	casa::MeasurementSet ms(msName);
@@ -85,7 +116,7 @@ int main(int argc, char* argv[])
 	casa::Array<std::complex<float> > data(dataShape);
 	casa::Array<bool> flags(dataShape);
 	unsigned polarizationCount = dataShape[0];
-	std::cout << " DONE\n";
+	std::cout << " DONE (" << polarizationCount << ")\n";
 	
 	// Determine min and max w
 	std::cout << "Determining min and max w... " << std::flush;
@@ -95,8 +126,9 @@ int main(int argc, char* argv[])
 		if(ant1Column(row) != ant2Column(row))
 		{
 			casa::Vector<double> uvwArray = uvwColumn(row);
-			double wHi = fabs(uvwArray(2) / bandData.SmallestWavelength());
-			double wLo = fabs(uvwArray(2) / bandData.LongestWavelength());
+			double wInM = uvwArray(2);
+			double wHi = fabs(wInM / bandData.SmallestWavelength());
+			double wLo = fabs(wInM / bandData.LongestWavelength());
 			maxW = std::max(maxW, wHi);
 			minW = std::min(minW, wLo);
 		}
@@ -108,13 +140,11 @@ int main(int argc, char* argv[])
 	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
 	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
 
-	const size_t nWLayers = 64;
-	const size_t imgWidth = 2048, imgHeight = 2048;
-	const double pixelScale = 0.01 * M_PI / 180.0;
 	LayeredImager imager(imgWidth, imgHeight, pixelScale);
 	imager.PrepareForObservation(nWLayers, memSize*2/4, minW, maxW, bandData);
 	
 	std::vector<size_t> sampleCount(nWLayers);
+	size_t matchingRows = 0;
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
 		if(ant1Column(row) != ant2Column(row))
@@ -126,6 +156,7 @@ int main(int argc, char* argv[])
 				double w = wInMeters / bandData.ChannelWavelength(ch);
 				++sampleCount[imager.WToLayer(w)];
 			}
+			++matchingRows;
 		}
 	}
 	std::cout << "Visibility count per layer: ";
@@ -184,7 +215,7 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
-		std::cout << "Pass " << pass << ", rows that were required: " << rowsRead << '/' << ms.nrow() << '\n';
+		std::cout << "Pass " << pass << ", rows that were required: " << rowsRead << '/' << matchingRows << '\n';
 		totalRowsRead += rowsRead;
 		
 		workLane.write_end();
@@ -193,7 +224,7 @@ int main(int argc, char* argv[])
 		std::cout << "Summing down layers...\n";
 		imager.FinishPass();
 	}
-	std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / ms.nrow() - 100.0) << "%)\n";
+	std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / matchingRows - 100.0) << "%)\n";
 	
 	std::cout << "Writing image... " << std::flush;
 	imager.FinalizeImage();

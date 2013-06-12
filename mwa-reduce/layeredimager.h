@@ -69,6 +69,7 @@ class LayeredImager
 			return (_nWLayers * layerRangeIndex) / _nPasses;
 		}
 		void projectOnImageAndCorrect(const std::complex<double> *source, double w);
+		void initializeSqrtLMLookupTable();
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelScale;
@@ -76,6 +77,7 @@ class LayeredImager
 		
 		std::vector<std::vector<std::complex<double>>> _layeredUVData;
 		double *_imageData;
+		std::vector<double> _sqrtLMLookupTable;
 };
 
 #endif
