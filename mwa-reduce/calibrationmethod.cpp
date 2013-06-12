@@ -2,11 +2,13 @@
 
 #include <iostream>
 #include <cmath>
+#include <sstream>
 
 CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t nTimesteps) :
 	_data(nChannels, nAntenna, nTimesteps),
 	_model(nChannels, nAntenna, nTimesteps),
 	_weights(nChannels, nAntenna, nTimesteps),
+	_weightSums(1, nAntenna, 1),
 	_jonesSolutions(nAntenna * 4 * nChannels),
 	_nChannels(nChannels),
 	_nAntenna(nAntenna),
@@ -45,6 +47,7 @@ void CalibrationMethod::AddData(const std::complex<float>* data, const float* we
 			else {
 				*destDataPtr = std::complex<double>(0.0, 0.0);
 				*destModelPtr = *predictedValues;
+				minWeight = 0.0;
 			}
 			
 			++data;
@@ -61,19 +64,28 @@ void CalibrationMethod::AddData(const std::complex<float>* data, const float* we
 
 void CalibrationMethod::applyWeightsToData()
 {
+	_weightSums.SetAll(0.0);
+	
 	for(size_t timestep=0; timestep!=_nTimesteps; ++timestep)
 	{
 		for(size_t antenna2 = 0; antenna2!=_nAntenna; ++antenna2)
 		{
-			for(size_t antenna1 = 0; antenna1!=_nAntenna; ++antenna1)
+			for(size_t antenna1 = 0; antenna1!=antenna2; ++antenna1)
 			{
 				std::complex<double> *dataPtr = _data.ValuePtr(antenna1, antenna2, timestep);
+				std::complex<double> *modelPtr = _model.ValuePtr(antenna1, antenna2, timestep);
 				double *weightPtr = _weights.ValuePtr(antenna1, antenna2, timestep);
+				double &weightSum = *_weightSums.ValuePtr(antenna1, antenna2, 0);
 				for(size_t ch=0; ch!=_nChannels; ++ch)
 				{
+					const double w = *weightPtr;
+					weightSum += w;
 					for(size_t p=0; p!=4; ++p)
 					{
-						*dataPtr *= *weightPtr;
+						*dataPtr *= w;
+						*modelPtr *= w;
+						++dataPtr;
+						++modelPtr;
 					}
 					++weightPtr;
 				}
@@ -82,21 +94,105 @@ void CalibrationMethod::applyWeightsToData()
 	}
 }
 
+double CalibrationMethod::totalDistance(size_t antenna)
+{
+	double distance = 0.0, weightSum = 0.0;
+	for(size_t timestep=0; timestep!=_nTimesteps; ++timestep)
+	{
+		for(size_t antenna1 = 0; antenna1!=_nAntenna; ++antenna1)
+		{
+			if(antenna1 != antenna)
+			{
+				const std::complex<double> *data = _data.ValuePtr(antenna, antenna1, timestep);
+				const std::complex<double> *model = _model.ValuePtr(antenna, antenna1, timestep);
+				const std::complex<double> *jones1 = &_jonesSolutions[antenna1 * _nChannels * 4];
+				const std::complex<double> *jones2 = &_jonesSolutions[antenna * _nChannels * 4];
+				for(size_t ch=0; ch!=_nChannels; ++ch)
+				{
+					std::complex<double> j1TimesD[4] = {
+						(jones1[0] * data[0] + jones1[1] * data[2]),
+						(jones1[0] * data[1] + jones1[1] * data[3]),
+						(jones1[2] * data[0] + jones1[3] * data[2]),
+						(jones1[2] * data[1] + jones1[3] * data[3])
+					};
+					std::complex<double> j1DJ2[4] = {
+						(j1TimesD[0] * std::conj(jones2[0/* (0^H) */]) + j1TimesD[1] * std::conj(jones2[1/* (2^H) */])),
+						(j1TimesD[0] * std::conj(jones2[2/* (1^H) */]) + j1TimesD[1] * std::conj(jones2[3/* (3^H) */])),
+						(j1TimesD[2] * std::conj(jones2[0/* (0^H) */]) + j1TimesD[3] * std::conj(jones2[1/* (2^H) */])),
+						(j1TimesD[2] * std::conj(jones2[2/* (1^H) */]) + j1TimesD[3] * std::conj(jones2[3/* (3^H) */]))
+					};
+					std::complex<double> distances[4] = {
+						model[0] - j1DJ2[0], model[1] - j1DJ2[1],
+						model[2] - j1DJ2[2], model[3] - j1DJ2[3]
+					};
+					distance +=
+						std::norm(distances[0]) + std::norm(distances[1]) +
+						std::norm(distances[2]) + std::norm(distances[3]);
+					
+					data += 4;
+					model += 4;
+					jones1 += 4;
+					jones2 += 4;
+				}
+				
+				weightSum += *_weightSums.ValuePtr(antenna, antenna1, 0);
+			}
+		}
+	}
+	if(weightSum == 0.0)
+		return 0.0;
+	else
+		return sqrt(distance / (weightSum * 4));
+}
+
+double CalibrationMethod::totalDistance()
+{
+	double distance = 0.0;
+	for(size_t antenna = 0; antenna!=_nAntenna; ++antenna)
+	{
+		distance += totalDistance(antenna);
+	}
+	return distance;
+}
+
+void CalibrationMethod::reportDistances()
+{
+	double sumDistance = 0.0;
+	std::cout << "Distances: ";
+	for(size_t ant=0; ant!=_nAntenna; ++ant)
+	{
+		double thisDistance = totalDistance(ant);
+		std::cout << "a" << ant << ": " << thisDistance << '\t' << std::flush;
+		sumDistance += thisDistance;
+	}
+	std::cout << "\nTotal average: " << (sumDistance / _nAntenna) << '\n';
+}
+
 void CalibrationMethod::Execute(double precisionLimit)
 {
-	std::vector<std::complex<double> > nextJones(_nAntenna * 4 * _nChannels);
-	
 	bool continueIterating;
+	size_t iterationNumber = 0;
 	
+	_weightSums.SetAll(_nChannels * _nTimesteps);
+	//reportDistances();
+	
+	std::cout << "Weighting data.\n";
 	applyWeightsToData();
 	
 	do
 	{
+		++iterationNumber;
+		std::cout << "Iteration " << iterationNumber << '\n';
+		
+		//reportDistances();
+		
+		std::vector<std::complex<double> > nextJones(_jonesSolutions);
+		
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
 			// TODO weight the data
 			
-			calculateNextIter(ant, &nextJones[ant*4]);
+			calculateNextIter(ant, &nextJones[ant*4*_nChannels]);
 			
 			// TODO take weights out
 		}
@@ -120,11 +216,10 @@ void CalibrationMethod::Execute(double precisionLimit)
 					++nextJonesPtr;
 				}
 				
-				if(ant==1 && ch==15)
+				if(ant==1 && (ch==15 || ch==14 || ch==13))
 				{
-					std::cout << "Current value of Jones matrix for ant 1, ch 15:\n"
-						" (" << jonesPtr[-4] << " " << jonesPtr[-3] << ")\n"
-						" (" << jonesPtr[-2] << " " << jonesPtr[-1] << ")\n";
+					std::cout << "Current value of Jones matrix for ant 1, ch " << ch << ":\n"
+					<< matrixToString(jonesPtr-4);
 				}
 			}
 		}
@@ -150,7 +245,18 @@ void CalibrationMethod::Execute(double precisionLimit)
 			" (" << globalChangeSizes[0] << " " << globalChangeSizes[1] << ")\n"
 			" (" << globalChangeSizes[2] << " " << globalChangeSizes[3] << ")\n";
 		
-	} while(continueIterating);
+	} while(continueIterating && iterationNumber<100);
+}
+
+std::string CalibrationMethod::matrixToString(std::complex<double> *matrix)
+{
+	std::stringstream s;
+	double s1, s2;
+	singularValues2x2(matrix, s1, s2);
+	s <<
+		" (" << matrix[0] << " " << matrix[1] << ")\tamplitudes=(" << abs(matrix[0]) << ' ' << abs(matrix[1]) << ") SV=\t" << s1 << "\n"
+		" (" << matrix[2] << " " << matrix[3] << ")\t           (" << abs(matrix[2]) << ' ' << abs(matrix[3]) << ")    \t" << s2 << '\n';
+	return s.str();
 }
 
 void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *nextJones)
@@ -163,8 +269,7 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	//            ( SUM_{k!=ant in Nant} DATA[ant,k] JONES^H[k] JONES[k] DATA^H[ant,k] )^-1
 	// (From Mitchel et al., 2008)
 	
-	for(size_t i=0; i!=4 * _nChannels; ++i)
-		nextJones[i] = std::complex<double>(0.0, 0.0);
+	std::vector<std::complex<double> > solutions(4 * _nChannels);
 	
 	std::vector<std::complex<double> > rTerm(4 * _nChannels);
 	for(size_t t=0; t!=_nTimesteps; ++t)
@@ -175,9 +280,9 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 			{
 				std::complex<double> *dataPtr = _data.ValuePtr(ant, k, t);
 				std::complex<double> *modelPtr = _model.ValuePtr(ant, k, t);
-				std::complex<double> *jonesPtr = &_jonesSolutions[k * 4];
+				std::complex<double> *jonesPtr = &_jonesSolutions[k * 4 * _nChannels];
 				std::complex<double> *rTermPtr = &rTerm[0];
-				std::complex<double> *nextJonesPtr = nextJones;
+				std::complex<double> *nextJonesPtr = &solutions[0];
 			
 				for(size_t ch=0; ch!=_nChannels; ++ch)
 				{
@@ -218,14 +323,19 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	
 	for(size_t ch=0; ch!=_nChannels; ++ch)
 	{
-		multiplyWithInverse2x2(&nextJones[ch * 4], &rTerm[ch * 4]);
+		if(multiplyWithInverse2x2(&solutions[ch * 4], &rTerm[ch * 4]))
+		{
+			for(size_t i=0; i!=4; ++i)
+				nextJones[ch * 4 + i] = solutions[ch * 4 + i];
+		}
 	}
 }
 
-void CalibrationMethod::multiplyWithInverse2x2(std::complex<double>* lhs, std::complex<double>* rhs)
+bool CalibrationMethod::multiplyWithInverse2x2(std::complex<double>* lhs, const std::complex<double>* rhs)
 {
 	std::complex<double> d = ((rhs[0]*rhs[3]) - (rhs[1]*rhs[2]));
-	std::complex<double> oneOverDeterminant = (d != 0.0) ? (1.0 / d) : 0.0;
+	if(d == 0.0) return false;
+	std::complex<double> oneOverDeterminant = 1.0 / d;
 	std::complex<double> temp[4];
 	temp[0] = rhs[3] * oneOverDeterminant;
 	temp[1] = -rhs[1] * oneOverDeterminant;
@@ -239,4 +349,26 @@ void CalibrationMethod::multiplyWithInverse2x2(std::complex<double>* lhs, std::c
 	temp2 = lhs[2];
 	lhs[2] = lhs[2] * temp[0] + lhs[3] * temp[2];
 	lhs[3] = temp2 * temp[1] + lhs[3] * temp[3];
+	return true;
+}
+
+void CalibrationMethod::singularValues2x2(const std::complex<double>* matrix, double &e1, double &e2)
+{
+	// This is not the ultimate fastest method, since we
+	// don't need to calculate the imaginary values of b,c at all.
+	std::complex<double> temp[4] = {
+		matrix[0] * std::conj(matrix[0]) + matrix[2] * std::conj(matrix[1]),
+		matrix[1] * std::conj(matrix[0]) + matrix[3] * std::conj(matrix[1]),
+		matrix[0] * std::conj(matrix[2]) + matrix[2] * std::conj(matrix[3]),
+		matrix[1] * std::conj(matrix[2]) + matrix[3] * std::conj(matrix[3])
+	};
+	// Use quadratic formula, with a=1.
+	double
+		b = (-temp[0] - temp[3]).real(),
+		c = (temp[0]*temp[3] - temp[1]*temp[2]).real(),
+		d = b*b - (4.0*1.0)*c,
+		sqrtd = sqrt(d);
+
+	e1 = sqrt((-b + sqrtd) * 0.5);
+	e2 = sqrt((-b - sqrtd) * 0.5);
 }

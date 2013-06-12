@@ -8,24 +8,41 @@
 #include <tables/Tables/ScalarColumn.h>
 
 #include <iostream>
+#include <fstream>
 #include <stdexcept>
+#include <stdint.h>
 
 int main(int argc, char *argv[])
 {
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate <model> <measurementset.ms> <phases.txt> <gains.txt>\n\n"
+			<< "Usage: calibrate [-p <phases.txt> <gains.txt>] <model> <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
 	} else {
 		int argi = 1;
+		bool savePlotFiles = false;
+		std::string plotPhaseFile, plotGainFile;
+		
+		while(argv[argi][0] == '-')
+		{
+			if(strcmp(argv[argi], "-p") == 0)
+			{
+				savePlotFiles = true;
+				plotPhaseFile = argv[argi+1];
+				plotGainFile = argv[argi+2];
+				argi += 3;
+			}
+			else throw std::runtime_error("Invalid parameter");
+		}
+		
 		if(argc <= argi + 2) throw std::runtime_error("Incorrect parameters");
+		
 		const char *modelName = argv[argi];
 		const char *msName = argv[argi+1];
-		const char *outNamePhases = argv[argi+2];
-		const char *outNameGains = argv[argi+3];
+		const char *outName = argv[argi+2];
 		casa::MeasurementSet ms(msName);
 		
 		std::cout << "Reading model... " << std::flush;
@@ -120,7 +137,8 @@ int main(int argc, char *argv[])
 				double w = *i;
 				for(size_t ch = 0; ch!=channelCount; ++ch)
 				{
-					if(flagPtr[ch]) weightsPtr[ch] = 0.0;
+					for(size_t p=0; p!=4; ++p)
+						if(flagPtr[ch*4+p]) weightsPtr[ch*4+p] = 0.0;
 					
 					double lambda = bandData.ChannelWavelength(ch);
 					std::complex<double> p = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch);
@@ -136,5 +154,67 @@ int main(int argc, char *argv[])
 		std::cout << "DONE\nCalibrating...\n";
 		
 		calMethod.Execute(0.0001);
+		
+		std::ofstream outputStream(outName);
+		struct {
+			char intro[8];
+			uint32_t fileType;
+			uint32_t structureType;
+			uint32_t timestepCount, antennaCount, channelCount, polarizationCount;
+		} header;
+		strcpy(header.intro, "MWAOCAL");
+		header.fileType = 0; // Complex jones solutions
+		header.structureType = 0; // ordered real/imag, polarization, channel, antenna, time
+		header.timestepCount = 1;
+		header.antennaCount = antennaCount;
+		header.channelCount = channelCount;
+		header.polarizationCount = 4;
+		outputStream.write(reinterpret_cast<const char*>(&header), sizeof(header));
+		double timeStart = 0.0, timeEnd = 0.0;
+		outputStream.write(reinterpret_cast<const char*>(&timeStart), sizeof(timeStart));
+		outputStream.write(reinterpret_cast<const char*>(&timeEnd), sizeof(timeEnd));
+		for(size_t ant=0; ant!=antennaCount; ++ant)
+		{
+			for(size_t ch=0; ch!=channelCount; ++ch)
+			{
+				for(size_t p=0; p!=4; ++p)
+				{
+					const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
+					outputStream.write(reinterpret_cast<const char*>(&val), sizeof(val));
+				}
+			}
+		}
+		
+		
+		if(savePlotFiles)
+		{
+			std::ofstream phasePlotStream(plotPhaseFile.c_str()), gainPlotStream(plotGainFile.c_str());
+			phasePlotStream << antennaCount << ' ' << channelCount << " 4\n";
+			gainPlotStream << antennaCount << ' ' << channelCount << " 4\n";
+			
+			for(size_t ch=0; ch!=channelCount; ++ch)
+			{
+				phasePlotStream << ch << '\t';
+				gainPlotStream << ch << '\t';
+				for(size_t p=0; p!=4; ++p)
+				{
+					for(size_t ant=0; ant!=antennaCount; ++ant)
+					{
+						const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
+						double s1, s2;
+						calMethod.SolutionSingularValue(ant, ch, s1, s2);
+						switch(p)
+						{
+							case 0: gainPlotStream << '\t' << s1; break;
+							case 1: case 2: gainPlotStream << '\t' << 0.0; break;
+							case 3: gainPlotStream << '\t' << s2;
+						}
+						phasePlotStream << '\t' << std::arg(val);
+					}
+				}
+				phasePlotStream << '\n';
+				gainPlotStream << '\n';
+			}
+		}
 	}
 }
