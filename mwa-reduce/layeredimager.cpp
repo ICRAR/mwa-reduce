@@ -1,24 +1,34 @@
 #include "layeredimager.h"
 
-#include <iostream>
-
 #include <fftw3.h>
 
-LayeredImager::LayeredImager(size_t width, size_t height, double pixelScale) :
+#include <iostream>
+#include <stack>
+
+#include <boost/thread/thread.hpp>
+
+LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount) :
 	_width(width),
 	_height(height),
-	_pixelScale(pixelScale)
+	_pixelSizeX(pixelSizeX),
+	_pixelSizeY(pixelSizeY),
+	_imageData(fftThreadCount),
+	_nFFTThreads(fftThreadCount)
 {
 	size_t imgSize = _height * _width;
-	posix_memalign(reinterpret_cast<void**>(&_imageData), sizeof(double)*2, imgSize * sizeof(double));
-	memset(_imageData, 0, imgSize * sizeof(double));
+	for(size_t i=0; i!=_nFFTThreads; ++i)
+	{
+		posix_memalign(reinterpret_cast<void**>(&_imageData[i]), sizeof(double)*2, imgSize * sizeof(double));
+		memset(_imageData[i], 0, imgSize * sizeof(double));
+	}
 	
 	initializeSqrtLMLookupTable();
 }
 
 LayeredImager::~LayeredImager()
 {
-	free(_imageData);
+	for(size_t i=0; i!=_nFFTThreads; ++i)
+		free(_imageData[i]);
 }
 
 void LayeredImager::PrepareForObservation(size_t nWLayers, size_t maxMem, double minW, double maxW, const BandData &bandData)
@@ -47,32 +57,55 @@ void LayeredImager::StartPass(size_t passIndex)
 	}
 }
 
-void LayeredImager::FinishPass()
+void LayeredImager::fftThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex)
 {
 	size_t imgSize = _width * _height;
 	std::complex<double> *fftwIn = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
 	std::complex<double> *fftwOut = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
 	
+	boost::mutex::scoped_lock lock(*mutex);
 	fftw_plan plan =
 		fftw_plan_dft_2d(_width, _height,
 			reinterpret_cast<fftw_complex*>(fftwIn), reinterpret_cast<fftw_complex*>(fftwOut),
 			FFTW_BACKWARD, FFTW_ESTIMATE);
-
+		
 	size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
-	size_t nPlanes = layerRangeStart(_curLayerRangeIndex+1) - layerOffset;
-	for(size_t plane=0; plane!=nPlanes; ++plane)
+
+	while(!tasks->empty())
 	{
+		size_t layer = tasks->top();
+		tasks->pop();
+		lock.unlock();
+		
 		// Fourier transform the layer
-		std::vector<std::complex<double>> &uvData = _layeredUVData[plane];
+		std::vector<std::complex<double>> &uvData = _layeredUVData[layer];
 		memcpy(fftwIn, &uvData[0], imgSize * sizeof(double) * 2);
 		fftw_execute(plan);
 		
 		// Add layer to full image
-		projectOnImageAndCorrect(fftwOut, LayerToW(plane + layerOffset));
+		projectOnImageAndCorrect(fftwOut, LayerToW(layer + layerOffset), threadIndex);
+		
+		// lock for accessing tasks in guard
+		lock.lock();
 	}
 	
 	fftw_free(fftwIn);
 	fftw_free(fftwOut);
+}
+
+void LayeredImager::FinishPass()
+{
+	size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
+	size_t nPlanes = layerRangeStart(_curLayerRangeIndex+1) - layerOffset;
+	std::stack<size_t> planes;
+	for(size_t plane=0; plane!=nPlanes; ++plane)
+		planes.push(plane);
+	
+	boost::mutex mutex;
+	boost::thread_group threadGroup;
+	for(size_t i=0; i!=_nFFTThreads; ++i)
+		threadGroup.add_thread(new boost::thread(&LayeredImager::fftThreadFunction, this, &mutex, &planes, 0));
+	threadGroup.join_all();
 }
 
 void LayeredImager::AddData(const std::complex<float>* data, double uInM, double vInM, double wInM)
@@ -102,8 +135,8 @@ void LayeredImager::AddData(const std::complex<float>* data, double uInM, double
 			size_t layerIndex = wLayer - layerOffset;
 			std::vector<std::complex<double>> &uvData = _layeredUVData[layerIndex];
 			int
-				x = int(round(u * _pixelScale * _width)),
-				y = int(round(v * _pixelScale * _height));
+				x = int(round(u * _pixelSizeX * _width)),
+				y = int(round(v * _pixelSizeY * _height));
 			if(x < 0) x += _width;
 			if(y < 0) y += _height;
 			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
@@ -116,15 +149,29 @@ void LayeredImager::AddData(const std::complex<float>* data, double uInM, double
 	}
 }
 
-void LayeredImager::FinalizeImage()
+void LayeredImager::FinalizeImage(double multiplicationFactor)
 {
 	_layeredUVData.clear();
-	std::vector<double> image(_width * _height);
+	
+	for(size_t i=1;i!=_nFFTThreads;++i)
+	{
+		double *primaryData = _imageData[0];
+		double *endPtr = _imageData[i] + (_width * _height);
+		for(double *dataPtr = _imageData[i]; dataPtr!=endPtr; ++dataPtr)
+		{
+			*primaryData += *dataPtr;
+			++primaryData;
+		}
+	}
+	double *dataPtr = _imageData[0];
 	for(size_t y=0;y!=_height;++y)
 	{
+		double m = ((double) y-(_height/2)) * _pixelSizeY;
 		for(size_t x=0;x!=_width;++x)
 		{
-			image[x + y*_width] *= 1.0; //TODO
+			double l = ((double) x-(_width/2)) * _pixelSizeX;
+			*dataPtr *= multiplicationFactor * sqrt(1.0 - l*l - m*m);
+			++dataPtr;
 		}
 	}
 }
@@ -137,22 +184,23 @@ void LayeredImager::initializeSqrtLMLookupTable()
 	{
 		size_t ySrc = (_height - 1 - y) + _height / 2;
 		if(ySrc >= _height) ySrc -= _height;
-		double m = ((double) ySrc-(_height/2)) * _pixelScale;
+		double m = ((double) ySrc-(_height/2)) * _pixelSizeY;
 		
 		for(size_t x=0;x!=_width;++x)
 		{
 			size_t xSrc = x + _width / 2;
 			if(xSrc >= _width) xSrc -= _width;
 			
-			double l = ((double) xSrc-(_width/2)) * _pixelScale;
+			double l = ((double) xSrc-(_width/2)) * _pixelSizeX;
 			*iter = (sqrt(1.0 - l*l - m*m)-1.0);
 			iter++;
 		}
 	}
 }
 
-void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source, double w)
+void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex)
 {
+	double *data = _imageData[threadIndex];
 	const double twoPiW = -2.0 * M_PI * w;
 	std::vector<double>::const_iterator sqrtLMIter = _sqrtLMLookupTable.begin();
 	for(size_t y=0;y!=_height;++y)
@@ -172,7 +220,7 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 				source->real() * c - source->imag() * s,
 				source->real() * s + source->imag() * c
 			);*/
-			_imageData[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
+			data[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
 			
 			++source;
 			++sqrtLMIter;

@@ -1,17 +1,20 @@
 #ifndef LAYERED_IMAGER_H
 #define LAYERED_IMAGER_H
 
+#include "banddata.h"
+
+#include <boost/thread/mutex.hpp>
+
 #include <cmath>
 #include <cstring>
 #include <complex>
 #include <vector>
-
-#include "banddata.h"
+#include <stack>
 
 class LayeredImager
 {
 	public:
-		LayeredImager(size_t width, size_t height, double pixelScale);
+		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount);
 		~LayeredImager();
 		
 		void PrepareForObservation(size_t nWLayers, size_t maxMem, double minW, double maxW, const BandData &bandData);
@@ -59,25 +62,30 @@ class LayeredImager
 		
 		void AddData(const std::complex<float>* data, double uInM, double vInM, double wInM);
 		
-		void FinalizeImage();
+		void FinalizeImage(double multiplicationFactor);
 		
-		const double *Image() { return _imageData; }
+		const double *Image() { return _imageData[0]; }
+		
+		size_t NFFTThreads() const { return _nFFTThreads; }
+		void SetNFFTThreads(size_t nfftThreads) { _nFFTThreads = nfftThreads; }
 		
 	private:
 		size_t layerRangeStart(size_t layerRangeIndex) const
 		{
 			return (_nWLayers * layerRangeIndex) / _nPasses;
 		}
-		void projectOnImageAndCorrect(const std::complex<double> *source, double w);
+		void projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex);
 		void initializeSqrtLMLookupTable();
+		void fftThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
-		double _minW, _maxW, _pixelScale;
+		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
 		const BandData *_bandData;
 		
 		std::vector<std::vector<std::complex<double>>> _layeredUVData;
-		double *_imageData;
+		std::vector<double*> _imageData;
 		std::vector<double> _sqrtLMLookupTable;
+		size_t _nFFTThreads;
 };
 
 #endif

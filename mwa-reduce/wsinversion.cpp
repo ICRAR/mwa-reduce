@@ -1,7 +1,4 @@
-#include "banddata.h"
-#include "lane.h"
-#include "layeredimager.h"
-#include "fitswriter.h"
+#include "wsinversion.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <measures/Measures/MDirection.h>
@@ -16,64 +13,10 @@
 
 #include <boost/thread/thread.hpp>
 
-struct WorkItem {
-	double u, v, w;
-	std::complex<float> *data;
-};
-
-void processWork(WorkItem &work, LayeredImager *imager)
+void WSInversion::Execute()
 {
-	imager->AddData(work.data, work.u, work.v, work.w);
-	delete[] work.data;
-}
-
-void workThread(lane<WorkItem> *workLane, LayeredImager *imager)
-{
-	WorkItem workItem;
-	while(workLane->read(workItem))
-	{
-		processWork(workItem, imager);
-	}
-}
-
-int main(int argc, char* argv[])
-{
-	int argi = 1;
-	size_t imgWidth = 2048, imgHeight = 2048;
-	double pixelScale = 0.01 * M_PI / 180.0;
-	size_t nWLayers = 64;
-	
-	while(argv[argi][0] == '-')
-	{
-		const char *param = &argv[argi][1];
-		if(strcmp(param, "size") == 0)
-		{
-			imgWidth = atoi(argv[argi+1]);
-			imgHeight = atoi(argv[argi+2]);
-			argi += 2;
-		}
-		else if(strcmp(param, "scale") == 0)
-		{
-			pixelScale = atof(argv[argi+1]) * M_PI / 180.0;
-			++argi;
-		}
-		else if(strcmp(param, "nwlayers") == 0)
-		{
-			nWLayers = atoi(argv[argi+1]);
-			++argi;
-		}
-		else {
-			throw std::runtime_error("Unknown parameter");
-		}
-		
-		++argi;
-	}
-	
-	const char *msName(argv[argi]);
-	const char *fitsfileName(argv[argi+1]);
-	
-	std::cout << "Opening " << msName << "... " << std::flush;
-	casa::MeasurementSet ms(msName);
+	std::cout << "Opening " << MeasurementSetPath() << "... " << std::flush;
+	casa::MeasurementSet ms(MeasurementSetPath());
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
 	/**
@@ -93,8 +36,9 @@ int main(int argc, char* argv[])
 	std::cout << 'C' << std::flush;
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, "DATA");
+	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, DataColumnName());
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
+	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 	
@@ -108,13 +52,11 @@ int main(int argc, char* argv[])
 	casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
 	casa::MDirection j2000 = casa::MDirection::Convert(refDir, j2000Ref)();
 	casa::Vector<casa::Double> j2000Val = j2000.getValue().get();
-	double phaseCentreRA = j2000Val[0];
-	double phaseCentreDec = j2000Val[1];
+	_phaseCentreRA = j2000Val[0];
+	_phaseCentreDec = j2000Val[1];
 	
 	std::cout << 'D' << std::flush;
 	casa::IPosition dataShape = dataColumn.shape(0);
-	casa::Array<std::complex<float> > data(dataShape);
-	casa::Array<bool> flags(dataShape);
 	unsigned polarizationCount = dataShape[0];
 	std::cout << " DONE (" << polarizationCount << ")\n";
 	
@@ -140,10 +82,11 @@ int main(int argc, char* argv[])
 	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
 	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
 
-	LayeredImager imager(imgWidth, imgHeight, pixelScale);
-	imager.PrepareForObservation(nWLayers, memSize*2/4, minW, maxW, bandData);
+	long cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), cpuCount));
+	_imager->PrepareForObservation(WGridSize(), memSize*2/4, minW, maxW, bandData);
 	
-	std::vector<size_t> sampleCount(nWLayers);
+	std::vector<size_t> sampleCount(WGridSize());
 	size_t matchingRows = 0;
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
@@ -154,7 +97,7 @@ int main(int argc, char* argv[])
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
 				double w = wInMeters / bandData.ChannelWavelength(ch);
-				++sampleCount[imager.WToLayer(w)];
+				++sampleCount[_imager->WToLayer(w)];
 			}
 			++matchingRows;
 		}
@@ -166,14 +109,18 @@ int main(int argc, char* argv[])
 	}
 	std::cout << '\n';
 	
+	casa::Array<std::complex<float>> data(dataShape);
+	casa::Array<float> weights(dataShape);
+	casa::Array<bool> flags(dataShape);
 	size_t totalRowsRead = 0;
-	for(size_t pass=0; pass!=imager.NPasses(); ++pass)
+	double totalWeight = 0.0;
+	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
 		std::cout << "Starting gridding pass " << pass << ".\n";
-		lane<WorkItem> workLane(16);
-		boost::thread thread(&workThread, &workLane, &imager);
+		_workLane.reset(new lane<WorkItem>(16));
+		boost::thread thread(&WSInversion::workThread, this);
 		
-		imager.StartPass(pass);
+		_imager->StartPass(pass);
 		
 		size_t rowsRead = 0;
 		for(size_t row=0; row!=ms.nrow(); ++row)
@@ -185,31 +132,51 @@ int main(int argc, char* argv[])
 					wInMeters = uvwArray(2),
 					w1 = wInMeters / bandData.LongestWavelength(),
 					w2 = wInMeters / bandData.SmallestWavelength();
-				if(imager.IsInLayerRange(w1, w2))
+				if(_imager->IsInLayerRange(w1, w2))
 				{
-					dataColumn.get(row, data);
-					flagColumn.get(row, flags);
-							
 					WorkItem newItem;
-					newItem.data = new std::complex<float>[channelCount];
 					newItem.u = uvwArray(0);
 					newItem.v = uvwArray(1);
 					newItem.w = wInMeters;
-					casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin();
+					newItem.data = new std::complex<float>[channelCount];
+					
+					weightColumn.get(row, weights);
+					flagColumn.get(row, flags);
+					casa::Array<float>::const_contiter weightPtr = weights.cbegin();
 					casa::Array<bool>::const_contiter flagPtr = flags.cbegin();
-					for(size_t ch=0; ch!=channelCount; ++ch)
+					
+					if(DoImagePSF())
 					{
-						if(*flagPtr)
-							newItem.data[ch] = 0;
-						else
-							newItem.data[ch] = *inPtr; // copy XX for now
-						for(size_t p=0; p!=polarizationCount; ++p)
+						for(size_t ch=0; ch!=channelCount; ++ch)
 						{
-							++inPtr;
-							++flagPtr;
+							if(*flagPtr)
+								newItem.data[ch] = 0;
+							else {
+								newItem.data[ch] = *weightPtr; // XX for now
+								totalWeight += *weightPtr;
+							}
+							weightPtr += polarizationCount;
+							flagPtr += polarizationCount;
 						}
 					}
-					workLane.write(newItem);
+					else {
+						dataColumn.get(row, data);
+								
+						casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin();
+						for(size_t ch=0; ch!=channelCount; ++ch)
+						{
+							if(*flagPtr)
+								newItem.data[ch] = 0;
+							else {
+								newItem.data[ch] = *inPtr * *weightPtr; // copy XX for now
+								totalWeight += *weightPtr;
+							}
+							weightPtr += polarizationCount;
+							inPtr += polarizationCount;
+							flagPtr += polarizationCount;
+						}
+					}
+					_workLane->write(newItem);
 					
 					++rowsRead;
 				}
@@ -218,17 +185,13 @@ int main(int argc, char* argv[])
 		std::cout << "Pass " << pass << ", rows that were required: " << rowsRead << '/' << matchingRows << '\n';
 		totalRowsRead += rowsRead;
 		
-		workLane.write_end();
+		_workLane->write_end();
 		thread.join();
 		
 		std::cout << "Summing down layers...\n";
-		imager.FinishPass();
+		_imager->FinishPass();
 	}
 	std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / matchingRows - 100.0) << "%)\n";
-	
-	std::cout << "Writing image... " << std::flush;
-	imager.FinalizeImage();
-	FitsWriter writer(fitsfileName);
-	writer.Write(imager.Image(), imgWidth, imgHeight, phaseCentreRA, phaseCentreDec, -pixelScale, pixelScale);
-	std::cout << "DONE\n";
+	std::cout << "Total weight: " << totalWeight << " Average per sample: " << totalWeight / (totalRowsRead * channelCount) << '\n';
+	_imager->FinalizeImage(1.0/totalWeight);
 }

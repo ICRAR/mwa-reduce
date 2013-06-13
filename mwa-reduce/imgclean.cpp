@@ -1,3 +1,4 @@
+#include "cleanalgorithm.h"
 #include "fitsreader.h"
 #include "fitswriter.h"
 #include "imagecoordinates.h"
@@ -5,64 +6,8 @@
 
 #include <vector>
 #include <stdexcept>
-#include <string>
+
 #include <iostream>
-#include <cmath>
-
-double FindPeak(const std::vector<double> &image, size_t width, size_t &x, size_t &y, bool allowNegativeComponents)
-{
-	double peakMax = fabs(*image.begin());
-	size_t peakIndex = 0;
-	size_t index = 0;
-	for(std::vector<double>::const_iterator i=image.begin(); i!=image.end(); ++i)
-	{
-		double value = *i;
-		if(allowNegativeComponents) value = fabs(value);
-		if(value > peakMax)
-		{
-			peakIndex = index;
-			peakMax = fabs(*i);
-		}
-		++index;
-	}
-	x = peakIndex % width;
-	y = peakIndex / width;
-	return image[x + y*width];
-}
-
-void subtractPsf(std::vector<double> &image, const std::vector<double> &psf, size_t width, size_t height, size_t x, size_t y, double factor)
-{
-	size_t startX, startY, endX, endY;
-	ssize_t offsetX = x - width/2, offsetY = y - height/2;
-	
-	if(offsetX > 0)
-		startX = offsetX;
-	else
-		startX = 0;
-	
-	if(offsetY > 0)
-		startY = offsetY;
-	else
-		startY = 0;
-	
-	endX = x + width/2;
-	if(endX > width) endX = width;
-	
-	endY = y + height/2;
-	if(endY > height) endY = height;
-	
-	for(size_t ypos = startY; ypos != endY; ++ypos)
-	{
-		std::vector<double>::iterator imageIter = image.begin() + ypos * width + startX;
-		std::vector<double>::const_iterator psfIter = psf.begin() + (ypos - offsetY) * width + startX - offsetX;
-		for(size_t xpos = startX; xpos != endX; ++xpos)
-		{
-			*imageIter -= *psfIter * factor;
-			++imageIter;
-			++psfIter;
-		}
-	}
-}
 
 int main(int argc, char *argv[])
 {
@@ -102,7 +47,7 @@ int main(int argc, char *argv[])
 	inpReader.Read<double>(&image[0]);
 	
 	size_t componentX, componentY;
-	double peak = FindPeak(image, width, componentX, componentY, allowNegativeComponents);
+	double peak = CleanAlgorithm::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
 	if(onlyFindPeak)
 	{
 		double l, m, ra, dec;
@@ -124,11 +69,11 @@ int main(int argc, char *argv[])
 		{
 			if(iterationNumber % 10 == 0)
 				std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
-			subtractPsf(image, psf, width, height, componentX, componentY, subtractionFactor * peak);
+			CleanAlgorithm::SubtractImage(&image[0], &psf[0], width, height, componentX, componentY, subtractionFactor * peak);
 			model[componentX + componentY*width] += subtractionFactor * peak;
 			
 			lastPeak = peak;
-			peak = FindPeak(image, width, componentX, componentY, allowNegativeComponents);
+			peak = CleanAlgorithm::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
 			++iterationNumber;
 		}
 		std::cout << "Stopped on peak " << peak << '\n';
