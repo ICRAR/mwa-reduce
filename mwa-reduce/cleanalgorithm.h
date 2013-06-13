@@ -12,17 +12,27 @@ class CleanAlgorithm
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents)
 		{
 			double peakMax = fabs(*image);
+			const double *imgIter = image, *endPtr = image + width * height;
 			size_t peakIndex = 0;
 			size_t index = 0;
-			const double *endPtr = image + width * height;
-			for(const double *i=image; i!=endPtr; ++i)
+			while(!std::isfinite(peakMax) && imgIter!=endPtr)
+			{
+				peakMax = fabs(*imgIter);
+				++imgIter;
+				++index;
+				++peakIndex;
+			}
+			for(const double *i=imgIter; i!=endPtr; ++i)
 			{
 				double value = *i;
-				if(allowNegativeComponents) value = fabs(value);
-				if(value > peakMax)
+				if(std::isfinite(value))
 				{
-					peakIndex = index;
-					peakMax = fabs(*i);
+					if(allowNegativeComponents) value = fabs(value);
+					if(value > peakMax)
+					{
+						peakIndex = index;
+						peakMax = fabs(*i);
+					}
 				}
 				++index;
 			}

@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 					l = ((long double) x - (fitsReader.ImageWidth()/2)) * fitsReader.PixelSizeX(),
 					m = ((long double) y - (fitsReader.ImageHeight()/2)) * fitsReader.PixelSizeY();
 				double value = image[y*fitsReader.ImageWidth() + x];
-				if(value != 0.0)
+				if(value != 0.0 && std::isfinite(value))
 				{
 					ModelSource source;
 					long double ra, dec;
