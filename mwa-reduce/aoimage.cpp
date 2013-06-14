@@ -679,7 +679,7 @@ int main(int argc, char *argv[])
 			Model model(modelFilename);
 			std::cout << "Rendering " << model.SourceCount() << " sources to image... " << std::flush;
 			ModelRenderer renderer(imageInfo.phaseCentreRA, imageInfo.phaseCentreDec, pixelScale, pixelScale);
-			renderer.Render(imageData, imager.ImageSize(), model, 0.5 / imager.OverallMaxUVDist(), imageInfo.lowestFrequency, imageInfo.highestFrequency);
+			renderer.Render(imageData, imager.ImageSize(), imager.ImageSize(), model, 0.5 / imager.OverallMaxUVDist(), imageInfo.lowestFrequency, imageInfo.highestFrequency);
 			std::cout << "DONE\n";
 		}
 		

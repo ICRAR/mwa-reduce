@@ -23,6 +23,9 @@ class WSInversion : public InversionAlgorithm
 		virtual const double *ImageResult() const { return _imager->Image(); }
 		virtual double ImageResultRA() const { return _phaseCentreRA; }
 		virtual double ImageResultDec() const { return _phaseCentreDec; }
+		virtual double ImageFrequencyHigh() const { return _freqHigh; }
+		virtual double ImageFrequencyLow() const { return _freqLow; }
+		virtual double ImageBeamSize() const { return _beamSize; }
 	private:
 		struct WorkItem
 		{
@@ -50,6 +53,8 @@ class WSInversion : public InversionAlgorithm
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<lane<WorkItem>> _workLane;
 		double _phaseCentreRA, _phaseCentreDec;
+		double _freqHigh, _freqLow;
+		double _beamSize;
 		double _totalWeight;
 };
 

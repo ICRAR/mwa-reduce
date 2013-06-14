@@ -50,6 +50,8 @@ class CleanAlgorithm
 		void SetThreshold(double threshold) { _threshold = threshold; }
 		
 		void SetSubtractionGain(double gain) { _subtractionGain = gain; }
+		
+		static void GetModelFromImage(class Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq);
 
 	private:
 		double _threshold, _subtractionGain;

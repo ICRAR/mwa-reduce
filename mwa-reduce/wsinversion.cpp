@@ -32,6 +32,8 @@ void WSInversion::Execute()
 	std::cout << 'B' << std::flush;
 	BandData bandData(ms.spectralWindow());
 	size_t channelCount = bandData.ChannelCount();
+	_freqHigh = bandData.HighestFrequency();
+	_freqLow = bandData.LowestFrequency();
 	
 	std::cout << 'C' << std::flush;
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
@@ -62,19 +64,21 @@ void WSInversion::Execute()
 	
 	// Determine min and max w
 	std::cout << "Determining min and max w... " << std::flush;
-	double maxW= -1e100, minW = 1e100;
+	double maxW= -1e100, minW = 1e100, maxBaseline = 0.0;
 	for(size_t row=0;row!=ms.nrow();++row)
 	{
 		if(ant1Column(row) != ant2Column(row))
 		{
 			casa::Vector<double> uvwArray = uvwColumn(row);
-			double wInM = uvwArray(2);
+			double uInM = uvwArray(0), vInM = uvwArray(1), wInM = uvwArray(2);
 			double wHi = fabs(wInM / bandData.SmallestWavelength());
 			double wLo = fabs(wInM / bandData.LongestWavelength());
 			maxW = std::max(maxW, wHi);
 			minW = std::min(minW, wLo);
+			maxBaseline = std::max(maxBaseline, uInM*uInM + vInM*vInM + wInM*wInM);
 		}
 	}
+	_beamSize = bandData.SmallestWavelength() / sqrt(maxBaseline);
 	std::cout << "DONE (min,max w=" << minW << ',' << maxW << " lambdas)\n";
 	
 	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);

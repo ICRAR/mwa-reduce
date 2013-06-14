@@ -7,6 +7,7 @@
 #include "model.h"
 #include "fitsreader.h"
 #include "imagecoordinates.h"
+#include "cleanalgorithm.h"
 
 int main(int argc, char **argv)
 {
@@ -28,32 +29,13 @@ int main(int argc, char **argv)
 		FitsReader fitsReader(fitsFilename);
 		double *image = new double[fitsReader.ImageWidth() * fitsReader.ImageHeight()];
 		fitsReader.Read(image);
-		size_t sourceIndex = 0;
-		for(size_t y=0; y!=fitsReader.ImageHeight(); ++y)
+		
+		Model model;
+		CleanAlgorithm::GetModelFromImage(model, image, fitsReader.ImageWidth(), fitsReader.ImageHeight(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), spectralIndex, refFreq);
+		
+		for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
 		{
-			for(size_t x=0; x!=fitsReader.ImageWidth(); ++x)
-			{
-				long double
-					l = ((long double) x - (fitsReader.ImageWidth()/2)) * fitsReader.PixelSizeX(),
-					m = ((long double) y - (fitsReader.ImageHeight()/2)) * fitsReader.PixelSizeY();
-				double value = image[y*fitsReader.ImageWidth() + x];
-				if(value != 0.0 && std::isfinite(value))
-				{
-					ModelSource source;
-					long double ra, dec;
-					ImageCoordinates::LMToRaDec<long double>(l, m, fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), ra, dec);
-					std::stringstream nameStr;
-					nameStr << "component" << sourceIndex;
-					source.SetName(nameStr.str());
-					source.SetBrightness(SourceSDFWithSI<long double>(value, spectralIndex, refFreq));
-					//std::cout << l << ',' << m << "->" << ra << ',' << dec << '\n';
-					source.SetPosRA(ra);
-					source.SetPosDec(dec);
-					std::cout << source.ToStringLine() << '\n';
-					
-					++sourceIndex;
-				}
-			}
+			std::cout << i->ToStringLine() << '\n';
 		}
 		
 		delete[] image;

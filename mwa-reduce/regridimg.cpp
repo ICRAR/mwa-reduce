@@ -36,7 +36,7 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 	long double l, m;
 	long double ra, dec;
 	long double destL, destM;
-	ssize_t destX, destY;
+	int destX, destY;
 	
 	// Traverse top and bottom edges and find outer coordinates for those
 	for(size_t x=0; x!=sourceImage.width; ++x)
@@ -48,9 +48,9 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
 		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
-		if(destX >= (ssize_t) destImage.width) destX = destImage.width-1;
+		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
-		if(destY >= (ssize_t) destImage.height) destY = destImage.height-1;
+		if(destY >= (int) destImage.height) destY = destImage.height-1;
 		if(destY < 0) destY = 0;
 		
 		// Initialize coordinates during first iteration
@@ -74,9 +74,9 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
 		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
-		if(destX >= (ssize_t) destImage.width) destX = destImage.width-1;
+		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
-		if(destY >= (ssize_t) destImage.height) destY = destImage.height-1;
+		if(destY >= (int) destImage.height) destY = destImage.height-1;
 		if(destY < 0) destY = 0;
 		
 		destXLeft = std::min((size_t) destX, destXLeft);
@@ -95,9 +95,9 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
 		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
-		if(destX >= (ssize_t) destImage.width) destX = destImage.width-1;
+		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
-		if(destY >= (ssize_t) destImage.height) destY = destImage.height-1;
+		if(destY >= (int) destImage.height) destY = destImage.height-1;
 		if(destY < 0) destY = 0;
 		
 		destXLeft = std::min((size_t) destX, destXLeft);
@@ -112,9 +112,9 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
 		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
-		if(destX >= (ssize_t) destImage.width) destX = destImage.width-1;
+		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
-		if(destY >= (ssize_t) destImage.height) destY = destImage.height-1;
+		if(destY >= (int) destImage.height) destY = destImage.height-1;
 		if(destY < 0) destY = 0;
 		
 		destXLeft = std::min((size_t) destX, destXLeft);
@@ -144,11 +144,11 @@ void Regrid(ImageInfo &destImage, const ImageInfo &sourceImage)
 			ImageCoordinates::LMToRaDec<long double>(l, m, destImage.ra, destImage.dec, ra, dec);
 			
 			long double sourceL, sourceM;
-			ssize_t sourceX, sourceY;
+			int sourceX, sourceY;
 			ImageCoordinates::RaDecToLM<long double>(ra, dec, sourceImage.ra, sourceImage.dec, sourceL, sourceM);
 			ImageCoordinates::FitsLMToXY<long double>(sourceL, sourceM, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, sourceX, sourceY);
 			
-			if(sourceX >= 0 && sourceX < (ssize_t) sourceImage.width && sourceY >= 0 && sourceY < (ssize_t) sourceImage.height)
+			if(sourceX >= 0 && sourceX < (int) sourceImage.width && sourceY >= 0 && sourceY < (int) sourceImage.height)
 			{
 				size_t sourceValueIndex = sourceY * sourceImage.width + sourceX;
 				double sourceValue = sourceImage.values[sourceValueIndex];

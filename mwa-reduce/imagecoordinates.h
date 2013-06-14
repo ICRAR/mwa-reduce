@@ -61,7 +61,7 @@ class ImageCoordinates
 		}
 		
 		template<typename T>
-		static void LMToXY(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, ssize_t &x, ssize_t &y)
+		static void LMToXY(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, int &x, int &y)
 		{
 			T midX = (T) width / 2.0, midY = (T) height / 2.0;
 			x = l / pixelSizeX + midX;
@@ -77,7 +77,7 @@ class ImageCoordinates
 		}
 		
 		template<typename T>
-		static void FitsLMToXY(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, ssize_t &x, ssize_t &y)
+		static void FitsLMToXY(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, int &x, int &y)
 		{
 			T midX = (T) width / 2.0, midY = (T) height / 2.0;
 			x = l / pixelSizeX + midX;

@@ -1,4 +1,7 @@
 #include "cleanalgorithm.h"
+#include "imagecoordinates.h"
+#include "modelsource.h"
+#include "model.h"
 
 #include <iostream>
 #include <emmintrin.h>
@@ -74,4 +77,31 @@ void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage
 		++iterationNumber;
 	}
 	std::cout << "Stopped on peak " << peak << '\n';
+}
+
+void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq)
+{
+	for(size_t y=0; y!=height; ++y)
+	{
+		for(size_t x=0; x!=width; ++x)
+		{
+			double value = image[y*width + x];
+			if(value != 0.0 && std::isfinite(value))
+			{
+				long double l, m;
+				ImageCoordinates::FitsXYToLM<long double>(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
+			
+				ModelSource source;
+				long double ra, dec;
+				ImageCoordinates::LMToRaDec<long double>(l, m, phaseCentreRA, phaseCentreDec, ra, dec);
+				std::stringstream nameStr;
+				nameStr << "component" << model.SourceCount();
+				source.SetName(nameStr.str());
+				source.SetBrightness(SourceSDFWithSI<long double>(value, spectralIndex, refFreq));
+				source.SetPosRA(ra);
+				source.SetPosDec(dec);
+				model.AddSource(source);
+			}
+		}
+	}
 }

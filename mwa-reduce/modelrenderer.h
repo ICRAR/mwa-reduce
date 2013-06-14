@@ -12,7 +12,7 @@ class ModelRenderer
 		}
 		
 		template<typename NumType>
-		void Render(NumType* imageData, size_t imageSize, const class Model& model, long double beamSize, long double startFrequency, long double endFrequency);
+		void Render(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamSize, long double startFrequency, long double endFrequency);
 	private:
 		long double _phaseCentreRA;
 		long double _phaseCentreDec;
