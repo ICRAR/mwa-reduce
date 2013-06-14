@@ -46,6 +46,10 @@ class CleanAlgorithm
 		void ExecuteMajorIteration(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height);
 		
 		void SetMaxNIter(size_t nIter) { _maxIter = nIter; }
+		
+		void SetThreshold(double threshold) { _threshold = threshold; }
+		
+		void SetSubtractionGain(double gain) { _subtractionGain = gain; }
 
 	private:
 		double _threshold, _subtractionGain;

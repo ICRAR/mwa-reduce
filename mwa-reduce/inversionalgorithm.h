@@ -7,6 +7,8 @@
 class InversionAlgorithm
 {
 	public:
+		enum PolarizationEnum { XX, XY, YX, YY, StokesI };
+		
 		InversionAlgorithm() :
 			_imageWidth(1024),
 			_imageHeight(1024),
@@ -15,7 +17,8 @@ class InversionAlgorithm
 			_wGridSize(1),
 			_measurementSetPath(),
 			_dataColumnName("DATA"),
-			_doImagePSF(false)
+			_doImagePSF(false),
+			_polarization(StokesI)
 		{
 		}
 		virtual ~InversionAlgorithm()
@@ -29,7 +32,8 @@ class InversionAlgorithm
 		size_t WGridSize() const { return _wGridSize; }
 		const std::string &MeasurementSetPath() const { return _measurementSetPath; }
 		const std::string &DataColumnName() const { return _dataColumnName; }
-		bool DoImagePSF() { return _doImagePSF; }
+		bool DoImagePSF() const { return _doImagePSF; }
+		PolarizationEnum Polarization() const { return _polarization; }
 		
 		void SetImageWidth(size_t imageWidth)
 		{
@@ -63,6 +67,10 @@ class InversionAlgorithm
 		{
 			_doImagePSF = doImagePSF;
 		}
+		void SetPolarization(PolarizationEnum polarization)
+		{
+			_polarization = polarization;
+		}
 		
 		virtual void Execute() = 0;
 		
@@ -75,6 +83,7 @@ class InversionAlgorithm
 		size_t _wGridSize;
 		std::string _measurementSetPath, _dataColumnName;
 		bool _doImagePSF;
+		enum PolarizationEnum _polarization;
 };
 
 #endif

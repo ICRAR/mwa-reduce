@@ -9,6 +9,8 @@
 #include <complex>
 #include <memory>
 
+#include <casa/Arrays/Array.h>
+
 class WSInversion : public InversionAlgorithm
 {
 	public:
@@ -42,10 +44,13 @@ class WSInversion : public InversionAlgorithm
 				processWork(workItem);
 			}
 		}
+		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags);
+		void copyWeights(std::complex<float> *dest, size_t channelCount, const casa::Array<float> &weights, const casa::Array<bool> &flags);
 		
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<lane<WorkItem>> _workLane;
 		double _phaseCentreRA, _phaseCentreDec;
+		double _totalWeight;
 };
 
 #endif

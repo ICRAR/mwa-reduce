@@ -113,7 +113,7 @@ void WSInversion::Execute()
 	casa::Array<float> weights(dataShape);
 	casa::Array<bool> flags(dataShape);
 	size_t totalRowsRead = 0;
-	double totalWeight = 0.0;
+	_totalWeight = 0.0;
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
 		std::cout << "Starting gridding pass " << pass << ".\n";
@@ -142,39 +142,14 @@ void WSInversion::Execute()
 					
 					weightColumn.get(row, weights);
 					flagColumn.get(row, flags);
-					casa::Array<float>::const_contiter weightPtr = weights.cbegin();
-					casa::Array<bool>::const_contiter flagPtr = flags.cbegin();
 					
 					if(DoImagePSF())
 					{
-						for(size_t ch=0; ch!=channelCount; ++ch)
-						{
-							if(*flagPtr)
-								newItem.data[ch] = 0;
-							else {
-								newItem.data[ch] = *weightPtr; // XX for now
-								totalWeight += *weightPtr;
-							}
-							weightPtr += polarizationCount;
-							flagPtr += polarizationCount;
-						}
+						copyWeights(newItem.data, channelCount, weights, flags);
 					}
 					else {
 						dataColumn.get(row, data);
-								
-						casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin();
-						for(size_t ch=0; ch!=channelCount; ++ch)
-						{
-							if(*flagPtr)
-								newItem.data[ch] = 0;
-							else {
-								newItem.data[ch] = *inPtr * *weightPtr; // copy XX for now
-								totalWeight += *weightPtr;
-							}
-							weightPtr += polarizationCount;
-							inPtr += polarizationCount;
-							flagPtr += polarizationCount;
-						}
+						copyWeightedData(newItem.data, channelCount, data, weights, flags);
 					}
 					_workLane->write(newItem);
 					
@@ -188,10 +163,117 @@ void WSInversion::Execute()
 		_workLane->write_end();
 		thread.join();
 		
-		std::cout << "Summing down layers...\n";
+		std::cout << "Fourier transforming layers, w-term correction & summing in parallel...\n";
 		_imager->FinishPass();
 	}
 	std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / matchingRows - 100.0) << "%)\n";
-	std::cout << "Total weight: " << totalWeight << " Average per sample: " << totalWeight / (totalRowsRead * channelCount) << '\n';
-	_imager->FinalizeImage(1.0/totalWeight);
+	std::cout << "Total weight: " << _totalWeight << " Average per sample: " << _totalWeight / (totalRowsRead * channelCount) << '\n';
+	_imager->FinalizeImage(1.0/_totalWeight);
+}
+
+void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags)
+{
+	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin();
+	casa::Array<float>::const_contiter weightPtr = weights.cbegin();
+	casa::Array<bool>::const_contiter flagPtr = flags.cbegin();
+		
+	if(Polarization() == StokesI)
+	{
+		for(size_t ch=0; ch!=channelCount; ++ch)
+		{
+			if(*flagPtr)
+				dest[ch] = 0;
+			else {
+				dest[ch] = *inPtr * *weightPtr;
+				_totalWeight += *weightPtr;
+			}
+			weightPtr += 3;
+			inPtr += 3;
+			flagPtr += 3;
+			if(!*flagPtr)
+			{
+				dest[ch] += *inPtr * *weightPtr;
+				_totalWeight += *weightPtr;
+			}
+			++weightPtr;
+			++inPtr;
+			++flagPtr;
+		}
+	} else {
+		int polIndex;
+		switch(Polarization())
+		{
+			default: polIndex = 0; break;
+			case XY: polIndex = 1; break;
+			case YX: polIndex = 2; break;
+			case YY: polIndex = 3; break;
+		}
+		
+		inPtr += polIndex;
+		weightPtr += polIndex;
+		flagPtr += polIndex;
+		for(size_t ch=0; ch!=channelCount; ++ch)
+		{
+			if(*flagPtr)
+				dest[ch] = 0;
+			else {
+				dest[ch] = *inPtr * *weightPtr;
+				_totalWeight += *weightPtr;
+			}
+			weightPtr += 4;
+			inPtr += 4;
+			flagPtr += 4;
+		}
+	}
+}
+
+void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<float>& weights, const casa::Array<bool>& flags)
+{
+	casa::Array<float>::const_contiter weightPtr = weights.cbegin();
+	casa::Array<bool>::const_contiter flagPtr = flags.cbegin();
+		
+	if(Polarization() == StokesI)
+	{
+		for(size_t ch=0; ch!=channelCount; ++ch)
+		{
+			if(*flagPtr)
+				dest[ch] = 0;
+			else {
+				dest[ch] = *weightPtr;
+				_totalWeight += *weightPtr;
+			}
+			weightPtr += 3;
+			flagPtr += 3;
+			if(!*flagPtr)
+			{
+				dest[ch] += *weightPtr;
+				_totalWeight += *weightPtr;
+			}
+			++weightPtr;
+			++flagPtr;
+		}
+	} else {
+		int polIndex;
+		switch(Polarization())
+		{
+			default: polIndex = 0; break;
+			case XY: polIndex = 1; break;
+			case YX: polIndex = 2; break;
+			case YY: polIndex = 3; break;
+		}
+		
+		weightPtr += polIndex;
+		flagPtr += polIndex;
+		for(size_t ch=0; ch!=channelCount; ++ch)
+		{
+			if(*flagPtr)
+				dest[ch] = 0;
+			else {
+				dest[ch] = *weightPtr;
+				_totalWeight += *weightPtr;
+			}
+			weightPtr += 4;
+			flagPtr += 4;
+		}
+	}
 }

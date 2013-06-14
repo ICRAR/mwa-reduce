@@ -6,6 +6,8 @@
 #include <iostream>
 #include <memory>
 
+#include <boost/algorithm/string.hpp>
+
 int main(int argc, char *argv[])
 {
 	if(argc < 3)
@@ -15,18 +17,24 @@ int main(int argc, char *argv[])
 			"Options can be:\n"
 			"\t-size <width> <height>\n"
 			"\t-scale <pixel-scale>\n"
-			"\t   Scale of a pixel in degrees, e.g. 0.012 for 1 arcmin resolution.\n"
+			"\t   Scale of a pixel in degrees, e.g. 0.012.\n"
 			"\t-nwlayers <nwlayers>\n"
 			"\t   Number of w-layers to use\n"
 			"\t-niter <niter>\n"
-			"\t   Maximum number of clean iterations to perform\n";
+			"\t   Maximum number of clean iterations to perform\n"
+			"\t-threshold <threshold>\n"
+			"\t   Stopping clean thresholding in Jy\n"
+			"\t-gain <gain>\n"
+			"\t   Cleaning gain: Ratio of peak that will be subtracted in each iteration\n"
+			"\t-pol <xx, yy, xy, yx or stokesi>\n";
 		return -1;
 	}
 	
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
-	double pixelScale = 0.01 * M_PI / 180.0;
+	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1;
 	size_t nWLayers = 64, nIter = 500;
+	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	
 	while(argv[argi][0] == '-')
 	{
@@ -47,9 +55,35 @@ int main(int argc, char *argv[])
 			nWLayers = atoi(argv[argi+1]);
 			++argi;
 		}
+		else if(strcmp(param, "gain") == 0)
+		{
+			gain = atof(argv[argi + 1]);
+			++argi;
+		}
 		else if(strcmp(param, "niter") == 0)
 		{
 			nIter = atoi(argv[argi + 1]);
+			++argi;
+		}
+		else if(strcmp(param, "threshold") == 0)
+		{
+			threshold = atof(argv[argi + 1]);
+			++argi;
+		}
+		else if(strcmp(param, "pol") == 0)
+		{
+			std::string polStr = argv[argi + 1];
+			boost::to_lower(polStr);
+			if(polStr == "xx")
+				polarization = InversionAlgorithm::XX;
+			else if(polStr == "xy")
+				polarization = InversionAlgorithm::XY;
+			else if(polStr == "yx")
+				polarization = InversionAlgorithm::YX;
+			else if(polStr == "yy")
+				polarization = InversionAlgorithm::YY;
+			else if(polStr == "stokesi")
+				polarization = InversionAlgorithm::StokesI;
 			++argi;
 		}
 		else {
@@ -69,6 +103,7 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetPixelSizeX(pixelScale);
 	inversionAlgorithm->SetPixelSizeY(pixelScale);
 	inversionAlgorithm->SetWGridSize(nWLayers);
+	inversionAlgorithm->SetPolarization(polarization);
 	
 	inversionAlgorithm->SetDoImagePSF(true);
 	inversionAlgorithm->Execute();
@@ -91,6 +126,8 @@ int main(int argc, char *argv[])
 	
 	CleanAlgorithm cleanAlgorithm;
 	cleanAlgorithm.SetMaxNIter(nIter);
+	cleanAlgorithm.SetThreshold(threshold);
+	cleanAlgorithm.SetSubtractionGain(gain);
 	cleanAlgorithm.ExecuteMajorIteration(&residual[0], &model[0], &psf[0], imgWidth, imgHeight);
 	
 	std::cout << "Writing residual image... " << std::flush;

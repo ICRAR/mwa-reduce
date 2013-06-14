@@ -88,6 +88,7 @@ void LayeredImager::fftThreadFunction(boost::mutex *mutex, std::stack<size_t> *t
 		// lock for accessing tasks in guard
 		lock.lock();
 	}
+	lock.unlock();
 	
 	fftw_free(fftwIn);
 	fftw_free(fftwOut);
@@ -104,7 +105,7 @@ void LayeredImager::FinishPass()
 	boost::mutex mutex;
 	boost::thread_group threadGroup;
 	for(size_t i=0; i!=_nFFTThreads; ++i)
-		threadGroup.add_thread(new boost::thread(&LayeredImager::fftThreadFunction, this, &mutex, &planes, 0));
+		threadGroup.add_thread(new boost::thread(&LayeredImager::fftThreadFunction, this, &mutex, &planes, i));
 	threadGroup.join_all();
 }
 
