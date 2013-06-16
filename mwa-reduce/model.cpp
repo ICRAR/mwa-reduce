@@ -9,6 +9,8 @@
 Model::Model(const char* filename)
 {
 	std::ifstream file(filename);
+	if(file.bad())
+		throw std::runtime_error("Error opening model file");
 	
 	while(file.good())
 	{
@@ -82,4 +84,13 @@ void Model::addOptimized(const ModelSource& source)
 		}
 	}
 	_sources.push_back(source);
+}
+
+void Model::Save(const char* filename)
+{
+	std::ofstream file(filename);
+	for(const_iterator i=begin(); i!=end(); ++i)
+	{
+		file << i->ToStringLine() << '\n';
+	}
 }

@@ -89,7 +89,7 @@ void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t
 			if(value != 0.0 && std::isfinite(value))
 			{
 				long double l, m;
-				ImageCoordinates::FitsXYToLM<long double>(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
+				ImageCoordinates::XYToLM<long double>(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
 			
 				ModelSource source;
 				long double ra, dec;

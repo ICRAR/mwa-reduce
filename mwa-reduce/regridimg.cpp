@@ -42,11 +42,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 	for(size_t x=0; x!=sourceImage.width; ++x)
 	{
 		// Determine RA,DEC for top edge position in source image
-		ImageCoordinates::FitsXYToLM<long double>(x, 0, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		ImageCoordinates::XYToLM<long double>(x, 0, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
-		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
+		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
@@ -68,11 +68,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		destYBottom = std::max((size_t) destY, destYBottom);
 		
 		// Determine RA,DEC for bottom edge position in source image
-		ImageCoordinates::FitsXYToLM<long double>(x, sourceImage.height-1, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		ImageCoordinates::XYToLM<long double>(x, sourceImage.height-1, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
-		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
+		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
@@ -89,11 +89,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 	for(size_t y=0; y!=sourceImage.height; ++y)
 	{
 		// Determine RA,DEC for left edge position in source image
-		ImageCoordinates::FitsXYToLM<long double>(0, y, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		ImageCoordinates::XYToLM<long double>(0, y, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
-		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
+		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
@@ -106,11 +106,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		destYBottom = std::max((size_t) destY, destYBottom);
 		
 		// Determine RA,DEC for right edge position in source image
-		ImageCoordinates::FitsXYToLM<long double>(sourceImage.width-1, y, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		ImageCoordinates::XYToLM<long double>(sourceImage.width-1, y, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
-		ImageCoordinates::FitsLMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
+		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
 		if(destX < 0) destX = 0;
@@ -139,14 +139,14 @@ void Regrid(ImageInfo &destImage, const ImageInfo &sourceImage)
 		for(size_t x=xLeft; x<xRight; ++x)
 		{
 			long double l, m;
-			ImageCoordinates::FitsXYToLM<long double>(x, y, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, l, m);
+			ImageCoordinates::XYToLM<long double>(x, y, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, l, m);
 			long double ra, dec;
 			ImageCoordinates::LMToRaDec<long double>(l, m, destImage.ra, destImage.dec, ra, dec);
 			
 			long double sourceL, sourceM;
 			int sourceX, sourceY;
 			ImageCoordinates::RaDecToLM<long double>(ra, dec, sourceImage.ra, sourceImage.dec, sourceL, sourceM);
-			ImageCoordinates::FitsLMToXY<long double>(sourceL, sourceM, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, sourceX, sourceY);
+			ImageCoordinates::LMToXY<long double>(sourceL, sourceM, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, sourceX, sourceY);
 			
 			if(sourceX >= 0 && sourceX < (int) sourceImage.width && sourceY >= 0 && sourceY < (int) sourceImage.height)
 			{

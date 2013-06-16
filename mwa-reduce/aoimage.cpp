@@ -689,7 +689,7 @@ int main(int argc, char *argv[])
 		else
 			std::cout << "Writing final fits file... " << std::flush;
 		FitsWriter writer(fitsfile);
-		writer.Write(imageData, imager.ImageSize(), imager.ImageSize(), imageInfo.phaseCentreRA, imageInfo.phaseCentreDec, -pixelScale, pixelScale);
+		writer.Write(imageData, imager.ImageSize(), imager.ImageSize(), imageInfo.phaseCentreRA, imageInfo.phaseCentreDec, pixelScale, pixelScale);
 		delete[] imageData;
 		std::cout << "DONE\n";
 	}

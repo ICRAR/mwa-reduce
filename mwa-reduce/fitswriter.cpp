@@ -47,7 +47,7 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) "AOImager", "Imager written by Andre Offringa", &status); checkStatus(status);
 	float phaseCentreRADeg = (phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (phaseCentreDec/M_PI)*180.0;
 	float centrePixelX = (width / 2.0)+1, centrePixelY = (height / 2.0)+1;
-	float stepXDeg = (pixelSizeX/M_PI)*180.0, stepYDeg = (pixelSizeY/M_PI)*180.0;
+	float stepXDeg = (-pixelSizeX/M_PI)*180.0, stepYDeg = (pixelSizeY/M_PI)*180.0;
 	fits_write_key(fptr, TSTRING, "CTYPE1", (void*) "RA---SIN", "Right ascension angle cosine", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "CRVAL1", (void*) &phaseCentreRADeg, "", &status); checkStatus(status);

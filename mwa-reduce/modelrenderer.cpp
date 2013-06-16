@@ -17,7 +17,6 @@ template void ModelRenderer::Render(double* imageData, size_t imageWidth, size_t
 template<typename NumType>
 void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency)
 {
-	long double midX = (long double) imageWidth / 2.0, midY = (long double) imageHeight / 2.0;
 	int boundingBoxSize = ceil(beamSize * 5.0 / (0.5 * (_pixelScaleL + _pixelScaleM)));
 	std::cout << "Render bounding box: " << boundingBoxSize << '\n';
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
@@ -56,8 +55,8 @@ void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHe
 			NumType *imageDataPtr = imageData + y*imageWidth+xLeft;
 			for(int x=xLeft; x!=xRight; ++x)
 			{
-				long double l = ((NumType) x - midX) * -_pixelScaleL;
-				long double m = (midY - (NumType) y) * -_pixelScaleM;
+				long double l, m;
+				ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, l, m);
 				long double dist = sqrt((l-sourceL)*(l-sourceL) + (m-sourceM)*(m-sourceM));
 				long double g = gaus(dist, beamSize);
 				(*imageDataPtr) += NumType(g * g * intFlux);

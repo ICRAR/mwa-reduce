@@ -88,7 +88,7 @@ void FitsReader::initialize()
 	if(readStringKey("CTYPE1") != "RA---SIN")
 		throw std::runtime_error("Invalid value for CTYPE1");
 	_phaseCentreRA = readFloatKey("CRVAL1") * (M_PI / 180.0);
-	_pixelSizeX = readFloatKey("CDELT1") * (M_PI / 180.0);
+	_pixelSizeX = readFloatKey("CDELT1") * (-M_PI / 180.0);
 	if(readStringKey("CUNIT1") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT1");
 	

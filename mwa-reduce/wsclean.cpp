@@ -29,7 +29,9 @@ int main(int argc, char *argv[])
 			"\t-gain <gain>\n"
 			"\t   Cleaning gain: Ratio of peak that will be subtracted in each iteration\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
-			"\t-datacolumn <columnname>\n";
+			"\t-datacolumn <columnname>\n"
+			"\t-addmodel <modelfile>\n"
+			"\t-savemodel <modelfile>\n";
 		return -1;
 	}
 	
@@ -37,7 +39,7 @@ int main(int argc, char *argv[])
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1;
 	size_t nWLayers = 64, nIter = 500;
-	std::string columnName = "DATA";
+	std::string columnName = "DATA", addModelFilename, saveModelFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	
 	while(argv[argi][0] == '-')
@@ -81,7 +83,8 @@ int main(int argc, char *argv[])
 		}
 		else if(strcmp(param, "pol") == 0)
 		{
-			std::string polStr = argv[argi + 1];
+			++argi;
+			std::string polStr = argv[argi];
 			boost::to_lower(polStr);
 			if(polStr == "xx")
 				polarization = InversionAlgorithm::XX;
@@ -93,7 +96,16 @@ int main(int argc, char *argv[])
 				polarization = InversionAlgorithm::YY;
 			else if(polStr == "stokesi")
 				polarization = InversionAlgorithm::StokesI;
+		}
+		else if(strcmp(param, "addmodel") == 0)
+		{
 			++argi;
+			addModelFilename = argv[argi];
+		}
+		else if(strcmp(param, "savemodel") == 0)
+		{
+			++argi;
+			saveModelFilename = argv[argi];
 		}
 		else {
 			throw std::runtime_error("Unknown parameter");
@@ -128,7 +140,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing psf image... " << std::flush;
 	FitsWriter psfWriter(std::string(fileNamePrefix) + "-psf.fits");
-	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, -pixelScale, pixelScale);
+	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
 	inversionAlgorithm->SetDoImagePSF(false);
@@ -136,6 +148,11 @@ int main(int argc, char *argv[])
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
 	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 	inversionAlgorithm.reset();
+	
+	std::cout << "Writing dirty image... " << std::flush;
+	FitsWriter dirtyWriter(std::string(fileNamePrefix) + "-dirty.fits");
+	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+	std::cout << "DONE\n";
 	
 	CleanAlgorithm cleanAlgorithm;
 	cleanAlgorithm.SetMaxNIter(nIter);
@@ -145,16 +162,27 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing residual image... " << std::flush;
 	FitsWriter resWriter(std::string(fileNamePrefix) + "-residual.fits");
-	resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, -pixelScale, pixelScale);
+	resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
 	std::cout << "Writing model image... " << std::flush;
 	FitsWriter modelWriter(std::string(fileNamePrefix) + "-model.fits");
-	modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, -pixelScale, pixelScale);
+	modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
 	Model model;
-	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, ra, dec, -pixelScale, pixelScale, 0.0, (freqHigh+freqLow)*0.5);	
+	if(!addModelFilename.empty())
+	{
+		std::cout << "Reading model from " << addModelFilename << "... " << std::flush;
+		model = Model(addModelFilename.c_str());
+	}
+	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, 0.0, (freqHigh+freqLow)*0.5);
+	if(!saveModelFilename.empty())
+	{
+		std::cout << "Saving model to " << saveModelFilename << "... " << std::flush;
+		model.Save(saveModelFilename.c_str());
+	}
+	
 	std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
 	ModelRenderer renderer(ra, dec, pixelScale, pixelScale);
 	renderer.Render(&residual[0], imgWidth, imgHeight, model, beamSize, freqLow, freqHigh);
@@ -162,7 +190,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing restored image... " << std::flush;
 	FitsWriter restoredWriter(std::string(fileNamePrefix) + "-image.fits");
-	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, -pixelScale, pixelScale);
+	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
 }

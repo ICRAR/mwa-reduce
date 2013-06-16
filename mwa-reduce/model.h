@@ -41,6 +41,8 @@ class Model
 		
 		void AddSource(const ModelSource &source) { _sources.push_back(source); }
 		
+		void Save(const char *filename);
+		
 	private:
 		std::vector<ModelSource> _sources;
 		
