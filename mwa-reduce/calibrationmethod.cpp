@@ -184,7 +184,7 @@ void CalibrationMethod::Execute(double precisionLimit)
 		++iterationNumber;
 		std::cout << "Iteration " << iterationNumber << '\n';
 		
-		//reportDistances();
+		reportDistances();
 		
 		std::vector<std::complex<double> > nextJones(_jonesSolutions);
 		
@@ -245,7 +245,7 @@ void CalibrationMethod::Execute(double precisionLimit)
 			" (" << globalChangeSizes[0] << " " << globalChangeSizes[1] << ")\n"
 			" (" << globalChangeSizes[2] << " " << globalChangeSizes[3] << ")\n";
 		
-	} while(continueIterating && iterationNumber<100);
+	} while(continueIterating && iterationNumber<25);
 }
 
 std::string CalibrationMethod::matrixToString(std::complex<double> *matrix)

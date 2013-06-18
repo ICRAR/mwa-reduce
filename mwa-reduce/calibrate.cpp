@@ -1,6 +1,7 @@
 #include "calibrationmethod.h"
 #include "model.h"
 #include "banddata.h"
+#include "solutionfile.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -10,7 +11,6 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
-#include <stdint.h>
 
 int main(int argc, char *argv[])
 {
@@ -154,25 +154,13 @@ int main(int argc, char *argv[])
 		std::cout << "DONE\nCalibrating...\n";
 		
 		calMethod.Execute(0.0001);
-		
-		std::ofstream outputStream(outName);
-		struct {
-			char intro[8];
-			uint32_t fileType;
-			uint32_t structureType;
-			uint32_t timestepCount, antennaCount, channelCount, polarizationCount;
-		} header;
-		strcpy(header.intro, "MWAOCAL");
-		header.fileType = 0; // Complex jones solutions
-		header.structureType = 0; // ordered real/imag, polarization, channel, antenna, time
-		header.timestepCount = 1;
-		header.antennaCount = antennaCount;
-		header.channelCount = channelCount;
-		header.polarizationCount = 4;
-		outputStream.write(reinterpret_cast<const char*>(&header), sizeof(header));
-		double timeStart = 0.0, timeEnd = 0.0;
-		outputStream.write(reinterpret_cast<const char*>(&timeStart), sizeof(timeStart));
-		outputStream.write(reinterpret_cast<const char*>(&timeEnd), sizeof(timeEnd));
+
+		SolutionFile solutionFile;
+		solutionFile.SetAntennaCount(antennaCount);
+		solutionFile.SetChannelCount(channelCount);
+		solutionFile.SetPolarizationCount(4);
+		solutionFile.OpenForWriting(outName);
+
 		for(size_t ant=0; ant!=antennaCount; ++ant)
 		{
 			for(size_t ch=0; ch!=channelCount; ++ch)
@@ -180,7 +168,7 @@ int main(int argc, char *argv[])
 				for(size_t p=0; p!=4; ++p)
 				{
 					const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
-					outputStream.write(reinterpret_cast<const char*>(&val), sizeof(val));
+					solutionFile.WriteNextSolution(val);
 				}
 			}
 		}
