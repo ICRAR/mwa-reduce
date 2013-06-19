@@ -184,17 +184,13 @@ void CalibrationMethod::Execute(double precisionLimit)
 		++iterationNumber;
 		std::cout << "Iteration " << iterationNumber << '\n';
 		
-		reportDistances();
+		//reportDistances();
 		
 		std::vector<std::complex<double> > nextJones(_jonesSolutions);
 		
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
-			// TODO weight the data
-			
 			calculateNextIter(ant, &nextJones[ant*4*_nChannels]);
-			
-			// TODO take weights out
 		}
 		
 		std::complex<double> *jonesPtr = &_jonesSolutions[0];
@@ -356,18 +352,20 @@ void CalibrationMethod::singularValues2x2(const std::complex<double>* matrix, do
 {
 	// This is not the ultimate fastest method, since we
 	// don't need to calculate the imaginary values of b,c at all.
+  // Calculate M M^H
 	std::complex<double> temp[4] = {
-		matrix[0] * std::conj(matrix[0]) + matrix[2] * std::conj(matrix[1]),
-		matrix[1] * std::conj(matrix[0]) + matrix[3] * std::conj(matrix[1]),
-		matrix[0] * std::conj(matrix[2]) + matrix[2] * std::conj(matrix[3]),
-		matrix[1] * std::conj(matrix[2]) + matrix[3] * std::conj(matrix[3])
+		matrix[0] * std::conj(matrix[0]) + matrix[1] * std::conj(matrix[1]),
+		matrix[0] * std::conj(matrix[2]) + matrix[1] * std::conj(matrix[3]),
+		matrix[2] * std::conj(matrix[0]) + matrix[3] * std::conj(matrix[1]),
+		matrix[2] * std::conj(matrix[2]) + matrix[3] * std::conj(matrix[3])
 	};
 	// Use quadratic formula, with a=1.
+       double
+	 b = -temp[0].real() - temp[3].real(),
+	 c = temp[0].real()*temp[3].real() - (temp[1]*temp[2]).real(),
+	 d = b*b - (4.0*1.0)*c;
 	double
-		b = (-temp[0] - temp[3]).real(),
-		c = (temp[0]*temp[3] - temp[1]*temp[2]).real(),
-		d = b*b - (4.0*1.0)*c,
-		sqrtd = sqrt(d);
+	  sqrtd = sqrt(d);
 
 	e1 = sqrt((-b + sqrtd) * 0.5);
 	e2 = sqrt((-b - sqrtd) * 0.5);
