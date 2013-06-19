@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-p <phases.txt> <gains.txt>] <model> <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-p <phases.txt> <gains.txt>] [-l <limit>] [-i <niter>] <model> <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
 		int argi = 1;
 		bool savePlotFiles = false;
 		std::string plotPhaseFile, plotGainFile;
+		size_t niter = 25;
+		double limit = 0.0001;
 		
 		while(argv[argi][0] == '-')
 		{
@@ -34,6 +36,16 @@ int main(int argc, char *argv[])
 				plotPhaseFile = argv[argi+1];
 				plotGainFile = argv[argi+2];
 				argi += 3;
+			}
+			else if(strcmp(argv[argi], "-i") == 0)
+			{
+				niter = atoi(argv[argi+1]);
+				argi += 2;
+			}
+			else if(strcmp(argv[argi], "-l") == 0)
+			{
+				limit = atof(argv[argi+1]);
+				argi += 2;
 			}
 			else throw std::runtime_error("Invalid parameter");
 		}
@@ -153,7 +165,7 @@ int main(int argc, char *argv[])
 		}
 		std::cout << "DONE\nCalibrating...\n";
 		
-		calMethod.Execute(0.0001);
+		calMethod.Execute(limit, niter);
 
 		SolutionFile solutionFile;
 		solutionFile.SetAntennaCount(antennaCount);
