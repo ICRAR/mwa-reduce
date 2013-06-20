@@ -14,9 +14,11 @@ int main(int argc, char *argv[])
 {
 	if(argc < 3)
 	{
-		std::cout << "Syntax:\twsclean [options] <input-ms> <image-prefix>\n"
+		std::cout << "Syntax:\twsclean [options] <input-ms>\n"
 			"Will create cleaned images of the input ms. DATA column will be used by default.\n"
 			"Options can be:\n"
+			"\t-name <image-prefix>\n"
+			"\t   Use image-prefix as prefix for output files. Default is 'wsclean'.\n"
 			"\t-size <width> <height>\n"
 			"\t-scale <pixel-scale>\n"
 			"\t   Scale of a pixel in degrees, e.g. 0.012.\n"
@@ -41,6 +43,7 @@ int main(int argc, char *argv[])
 	size_t nWLayers = 64, nIter = 500;
 	std::string columnName = "DATA", addModelFilename, saveModelFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
+	std::string prefixName = "wsclean";
 	
 	while(argv[argi][0] == '-')
 	{
@@ -107,6 +110,11 @@ int main(int argc, char *argv[])
 			++argi;
 			saveModelFilename = argv[argi];
 		}
+		else if(strcmp(param, "name") == 0)
+		{
+			++argi;
+			prefixName = argv[argi];
+		}
 		else {
 			throw std::runtime_error("Unknown parameter");
 		}
@@ -114,11 +122,14 @@ int main(int argc, char *argv[])
 		++argi;
 	}
 	
-	const char *msName(argv[argi]);
-	const char *fileNamePrefix(argv[argi+1]);
+	if(argi == argc)
+		throw std::runtime_error("No input measurement sets given.");
 	
 	std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion());
-	inversionAlgorithm->SetMeasurementSetPath(msName);
+	
+	for(int i=argi; i != argc; ++i)
+		inversionAlgorithm->AddMeasurementSetPath(argv[i]);
+	
 	inversionAlgorithm->SetImageWidth(imgWidth);
 	inversionAlgorithm->SetImageHeight(imgHeight);
 	inversionAlgorithm->SetPixelSizeX(pixelScale);
@@ -139,7 +150,7 @@ int main(int argc, char *argv[])
 		beamSize = inversionAlgorithm->ImageBeamSize();
 	
 	std::cout << "Writing psf image... " << std::flush;
-	FitsWriter psfWriter(std::string(fileNamePrefix) + "-psf.fits");
+	FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
 	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
@@ -150,7 +161,7 @@ int main(int argc, char *argv[])
 	inversionAlgorithm.reset();
 	
 	std::cout << "Writing dirty image... " << std::flush;
-	FitsWriter dirtyWriter(std::string(fileNamePrefix) + "-dirty.fits");
+	FitsWriter dirtyWriter(std::string(prefixName) + "-dirty.fits");
 	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
@@ -161,12 +172,12 @@ int main(int argc, char *argv[])
 	cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight);
 	
 	std::cout << "Writing residual image... " << std::flush;
-	FitsWriter resWriter(std::string(fileNamePrefix) + "-residual.fits");
+	FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
 	resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
 	std::cout << "Writing model image... " << std::flush;
-	FitsWriter modelWriter(std::string(fileNamePrefix) + "-model.fits");
+	FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
 	modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	
@@ -189,7 +200,7 @@ int main(int argc, char *argv[])
 	std::cout << "DONE\n";
 	
 	std::cout << "Writing restored image... " << std::flush;
-	FitsWriter restoredWriter(std::string(fileNamePrefix) + "-image.fits");
+	FitsWriter restoredWriter(std::string(prefixName) + "-image.fits");
 	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
 	

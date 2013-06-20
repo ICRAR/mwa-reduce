@@ -31,7 +31,7 @@ LayeredImager::~LayeredImager()
 		free(_imageData[i]);
 }
 
-void LayeredImager::PrepareForObservation(size_t nWLayers, size_t maxMem, double minW, double maxW, const BandData &bandData)
+void LayeredImager::PrepareWLayers(size_t nWLayers, size_t maxMem, double minW, double maxW)
 {
 	_minW = minW;
 	_maxW = maxW;
@@ -43,7 +43,6 @@ void LayeredImager::PrepareForObservation(size_t nWLayers, size_t maxMem, double
 	std::cout << "Will process " << (_nWLayers / _nPasses) << " w-layers per pass.\n";
 	
 	_curLayerRangeIndex = 0;
-	_bandData = &bandData;
 }
 
 void LayeredImager::StartPass(size_t passIndex)

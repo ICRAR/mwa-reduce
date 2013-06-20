@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 	const char *fitsfileName(argv[argi+1]);
 	
 	WSInversion inversionAlgorithm;
-	inversionAlgorithm.SetMeasurementSetPath(msName);
+	inversionAlgorithm.AddMeasurementSetPath(msName);
 	inversionAlgorithm.SetImageWidth(imgWidth);
 	inversionAlgorithm.SetImageHeight(imgHeight);
 	inversionAlgorithm.SetPixelSizeX(pixelScale);

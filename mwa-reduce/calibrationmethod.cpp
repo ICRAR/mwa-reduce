@@ -204,7 +204,7 @@ void CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 		++iterationNumber;
 		std::cout << "Iteration " << iterationNumber << '\n';
 		
-		reportDistances();
+		//reportDistances();
 		
 		std::vector<std::complex<double> > nextJones(_jonesSolutions);
 		

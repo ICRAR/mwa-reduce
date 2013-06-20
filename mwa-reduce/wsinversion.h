@@ -11,6 +11,10 @@
 
 #include <casa/Arrays/Array.h>
 
+namespace casa {
+	class MeasurementSet;
+}
+
 class WSInversion : public InversionAlgorithm
 {
 	public:
@@ -32,6 +36,17 @@ class WSInversion : public InversionAlgorithm
 			double u, v, w;
 			std::complex<float> *data;
 		};
+		
+		struct MSData
+		{
+			casa::MeasurementSet *ms;
+			size_t channelCount, polarizationCount, matchingRows, totalRowsRead;
+			double minW, maxW;
+		};
+		
+		void initializeMeasurementSet(const std::string &measurementSet, MSData &msData);
+		void gridMeasurementSet(MSData &msData);
+		void countSamplesPerLayer(MSData &msData);
 
 		void processWork(WorkItem &work)
 		{
@@ -47,8 +62,8 @@ class WSInversion : public InversionAlgorithm
 				processWork(workItem);
 			}
 		}
-		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags);
-		void copyWeights(std::complex<float> *dest, size_t channelCount, const casa::Array<float> &weights, const casa::Array<bool> &flags);
+		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
+		void copyWeights(std::complex<float> *dest, size_t channelCount, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<lane<WorkItem>> _workLane;
