@@ -3,11 +3,24 @@
 
 #include <complex>
 
+#include <measures/Measures/MDirection.h>
+#include <measures/Measures/MCDirection.h>
+
+namespace casa
+{
+	class MEpoch;
+	class MPosition;
+};
+
 class TileBeam
 {
 public:
 	TileBeam(const double *delays);
-		
+	
+	void AnalyticGain(casa::MDirection &referenceDir, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y);
+	
+	void AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double latitude, double frequencyHz, double &x, double &y);
+	
 	void AnalyticGain(double zenithAngle, double azimuth, double frequencyHz, double &x, double &y);
 private:
 	double _dipoleSize; // height of dipole

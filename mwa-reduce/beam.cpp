@@ -9,10 +9,10 @@
 #include <tables/Tables/ScalarColumn.h>
 
 #include <measures/Measures/MDirection.h>
-#include <measures/Measures/MCDirection.h>
 #include <measures/Measures/MEpoch.h>
 #include <measures/Measures/MPosition.h>
 #include <measures/Measures/MCPosition.h>
+
 #include <measures/TableMeasures/ScalarMeasColumn.h>
 
 #include <stdexcept>
@@ -61,7 +61,6 @@ int main(int argc, char *argv[])
 	
 	std::vector<double> outImageX(width*height), outImageY(width*height);
 	const casa::Unit radUnit("rad");
-	double midX = (double) width / 2.0, midY = (double) height / 2.0;
 	
 	casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
 	casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
@@ -81,10 +80,6 @@ int main(int argc, char *argv[])
 	TileBeam tilebeam(delays);
 	
 	double *xPtr = &outImageX[0], *yPtr = &outImageY[0];
-	casa::MDirection imageDir(casa::MVDirection(
-		casa::Quantity(0.0, radUnit),     // RA
-		casa::Quantity(0.0, radUnit)),  // DEC
-		j2000Ref);
 	casa::MDirection::Convert
 		j2000ToHaDec(j2000Ref, hadecRef),
 		j2000ToAzelGeo(j2000Ref, azelgeoRef);
@@ -92,29 +87,12 @@ int main(int argc, char *argv[])
 	{
 		for(size_t x=0;x!=width;++x)
 		{
-			double l = ((double) x - midX) * pixelSizeX;
-			double m = (midY - (double) y) * pixelSizeY;
-			double ra, dec;
+			double l, m, ra, dec;
+			ImageCoordinates::XYToLM(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
 			ImageCoordinates::LMToRaDec(l, m, reader.PhaseCentreRA(), reader.PhaseCentreDec(), ra, dec);
 			
-			imageDir.set(casa::MVDirection(
-				casa::Quantity(ra, radUnit),     // RA
-				casa::Quantity(dec,radUnit)));
-			// convert ra, dec to za, az
-			casa::MDirection hadec = j2000ToHaDec(imageDir);
-			double ha = hadec.getValue().get()[0];
-			double sinLat, cosLat;
-			sincos(latitude, &sinLat, &cosLat);
-			double sinDec, cosDec;
-			sincos(dec, &sinDec, &cosDec);
-			double cosHA = cos(ha);
-			double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
-			if(x==width/2 && y==height/2) std::cout << "Zenith distance: " << zenithDistance/M_PI*180 << " deg";
-			casa::MDirection azel = j2000ToAzelGeo(imageDir);
-			double azimuth = azel.getValue().get()[0];
-			
 			double xPow, yPow;
-			tilebeam.AnalyticGain(zenithDistance, azimuth, frequency, xPow, yPow);
+			tilebeam.AnalyticGain(ra, dec, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, latitude, frequency, xPow, yPow);
 			
 			*xPtr = xPow;
 			*yPtr = yPow;

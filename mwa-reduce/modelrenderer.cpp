@@ -12,10 +12,10 @@ T ModelRenderer::gaus(T x, T sigma) const
 	return exp(T(-0.5) * xi * xi);// / (sigma * sqrt(T(2.0) * M_PIl));
 }
 
-template void ModelRenderer::Render(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency);
+template void ModelRenderer::Render(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex);
 
 template<typename NumType>
-void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency)
+void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex)
 {
 	int boundingBoxSize = ceil(beamSize * 5.0 / (0.5 * (_pixelScaleL + _pixelScaleM)));
 	std::cout << "Render bounding box: " << boundingBoxSize << '\n';
@@ -26,8 +26,8 @@ void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHe
 			posDec = src->PosDec(),
 			sourceL, sourceM;
 		ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
-		const SourceSDF<long double> &brightness = src->Brightness();
-		const long double intFlux = brightness.IntegratedFlux(startFrequency, endFrequency);
+		const SpectralEnergyDistribution &sed = src->SED();
+		const long double intFlux = sed.IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
 		
 		//std::cout << "Source: " << src->PosRA() << "," << src->PosDec() << " Phase centre: " << _phaseCentreRA << "," << _phaseCentreDec << " beamsize: " << beamSize << "\n";
 			

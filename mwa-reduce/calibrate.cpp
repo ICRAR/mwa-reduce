@@ -149,15 +149,13 @@ int main(int argc, char *argv[])
 				double w = *i;
 				for(size_t ch = 0; ch!=channelCount; ++ch)
 				{
-					for(size_t p=0; p!=4; ++p)
-						if(flagPtr[ch*4+p]) weightsPtr[ch*4+p] = 0.0;
-					
 					double lambda = bandData.ChannelWavelength(ch);
-					std::complex<double> p = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch);
-					modelValues[ch*4] = p;
-					modelValues[ch*4 + 1] = 0;
-					modelValues[ch*4 + 2] = 0;
-					modelValues[ch*4 + 3] = p;
+					for(size_t p=0; p!=4; ++p)
+					{
+						if(flagPtr[ch*4+p]) weightsPtr[ch*4+p] = 0.0;
+						std::complex<double> pVal = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
+						modelValues[ch*4+p] = pVal;
+					}
 				}
 					
 				calMethod.AddData(dataPtr, weightsPtr, &modelValues[0], antenna1, antenna2, timeIndex);

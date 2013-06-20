@@ -97,7 +97,7 @@ void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t
 				std::stringstream nameStr;
 				nameStr << "component" << model.SourceCount();
 				source.SetName(nameStr.str());
-				source.SetBrightness(SourceSDFWithSI<long double>(value, spectralIndex, refFreq));
+				source.SetSED(SpectralEnergyDistribution(value, refFreq, spectralIndex));
 				source.SetPosRA(ra);
 				source.SetPosDec(dec);
 				model.AddSource(source);

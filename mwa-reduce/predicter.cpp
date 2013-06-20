@@ -9,9 +9,15 @@ void Predicter::Initialize(ModelSource& source)
 	ImageCoordinates::RaDecToLM<NumType>(source.PosRA(), source.PosDec(), _ra0, _dec0, l, m);
 	parameters->l = l;
 	parameters->m = m;
-	parameters->brightness = new NumType[_channelCount];
+	parameters->brightness = new NumType[_channelCount*4];
 	for(size_t ch=0;ch!=_channelCount;++ch)
-		parameters->brightness[ch] = source.Brightness().FluxAtFrequency(ch, _channelCount, _startFrequency, _endFrequency);
+	{
+		for(size_t p=0; p!=4; ++p)
+		{
+			parameters->brightness[ch*4+p] =
+				source.SED().FluxAtFrequency(ch, _channelCount, _startFrequency, _endFrequency, p);
+		}
+	}
 	parameters->lmsqrt = sqrt(1.0 - l*l - m*m);
 	
 	source.SetUserData(parameters);
@@ -23,7 +29,7 @@ void Predicter::Initialize(Model& model)
 		Initialize(*i);
 }
 
-Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex)
+Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex)
 {
 	switch(source.Type())
 	{
@@ -33,7 +39,7 @@ Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, Num
 			NumType l = parameters->l, m = parameters->m;
 			NumType lmsqrt = parameters->lmsqrt;
 			NumType angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
-			NumType fact = parameters->brightness[channelIndex] / lmsqrt;
+			NumType fact = parameters->brightness[channelIndex*4+polarizationIndex] / lmsqrt;
 			double sinangle, cosangle;
 			sincos(angle, &sinangle, &cosangle);
 			return CNumType(fact * cosangle, fact * sinangle);
@@ -42,10 +48,10 @@ Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, Num
 	return 0.0;
 }
 
-Predicter::CNumType Predicter::Predict(const Model& model, NumType u, NumType v, NumType w, size_t channelIndex)
+Predicter::CNumType Predicter::Predict(const Model& model, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex)
 {
 	CNumType sum(0.0, 0.0);
 	for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
-		sum += Predict(*i, u, v, w, channelIndex);
+		sum += Predict(*i, u, v, w, channelIndex, polarizationIndex);
 	return sum;
 }

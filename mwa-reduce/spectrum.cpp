@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 		for(Model::iterator source=model.begin();source!=model.end();++source)
 		{
 			ModelSource &s = *source;
-			s.SetBrightness(SourceSDFWithSI<long double>(1.0, 0.0, 1.0));
+			s.SetSED(SpectralEnergyDistribution(1.0, 1.0));
 		}
 		
 		MeasurementSet ms(argv[argi+1], Table::Update);
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 							size_t sourceIndex = ch * model.SourceCount();
 							for(Model::const_iterator source=model.begin();source!=model.end();++source)
 							{
-								Predicter::CNumType predicted = predicter.Predict(*source, u/lambda, v/lambda, w/lambda, ch);
+								Predicter::CNumType predicted = predicter.Predict(*source, u/lambda, v/lambda, w/lambda, ch, p);
 								// add real(data * conj(predicted))
 								sourceFlux[sourceIndex] += real * predicted.real() + imag * predicted.imag();
 								sourceMeasCount[sourceIndex]++;
@@ -125,15 +125,15 @@ int main(int argc, char **argv)
 			size_t sourceIndex = 0;
 			for(Model::iterator source=model.begin();source!=model.end();++source)
 			{
-				SourceSDFWithSamples<long double> sdf;
+				SpectralEnergyDistribution sed;
 				size_t itemIndex = sourceIndex;
 				for(size_t ch=0; ch!=channelCount;++ch)
 				{
-					sdf.AddSample((sourceFlux[itemIndex] / sourceMeasCount[itemIndex]), bandData.ChannelFrequency(ch));
+					sed.AddMeasurement(sourceFlux[itemIndex] / sourceMeasCount[itemIndex], bandData.ChannelFrequency(ch));
 					itemIndex += model.SourceCount();
 				}
-				source->SetBrightness(sdf);
-				std::cout << source->ToStringLine() << '\n';
+				source->SetSED(sed);
+				std::cout << source->ToString() << '\n';
 				++sourceIndex;
 			}
 		} else {

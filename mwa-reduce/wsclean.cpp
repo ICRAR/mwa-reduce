@@ -196,7 +196,16 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
 	ModelRenderer renderer(ra, dec, pixelScale, pixelScale);
-	renderer.Render(&residual[0], imgWidth, imgHeight, model, beamSize, freqLow, freqHigh);
+	size_t polarizationIndex;
+	switch(polarization)
+	{
+		case InversionAlgorithm::StokesI:
+		case InversionAlgorithm::XX: polarizationIndex = 0; break;
+		case InversionAlgorithm::XY: polarizationIndex = 1; break;
+		case InversionAlgorithm::YX: polarizationIndex = 2; break;
+		case InversionAlgorithm::YY: polarizationIndex = 3; break;
+	}
+	renderer.Render(&residual[0], imgWidth, imgHeight, model, beamSize, freqLow, freqHigh, polarizationIndex);
 	std::cout << "DONE\n";
 	
 	std::cout << "Writing restored image... " << std::flush;

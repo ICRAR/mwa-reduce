@@ -93,25 +93,21 @@ int main(int argc, char **argv)
 				for(size_t ch=0; ch!=channelCount; ++ch)
 				{
 					double lambda = bandData.ChannelWavelength(ch);
-					std::complex<float> predicted;
-					if(revert || setvis)
-						predicted = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch);
-					else
-						predicted = -predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch);
 					if(setvis)
 					{
 						for(size_t p=0;p!=polarizationCount;++p) {
-							if(polarizationCount!=4 || p==0 || p==3)
-								*dataPtr = predicted;
-							else
-								*dataPtr = std::complex<float>(0.0, 0.0);
+							*dataPtr = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
 							++dataPtr;
 						}
 					} else {
 						for(size_t p=0;p!=polarizationCount;++p)
 						{
-							if(polarizationCount!=4 || p==0 || p==3)
-								*dataPtr += predicted;
+							std::complex<float> predicted;
+							if(revert)
+								predicted = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
+							else
+								predicted = -predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
+							*dataPtr += predicted;
 							++dataPtr;
 						}
 					}

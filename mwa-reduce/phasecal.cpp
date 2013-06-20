@@ -740,9 +740,10 @@ int main(int argc, char *argv[])
 				for(size_t ch = 0; ch!=avgChannelCount; ++ch)
 				{
 					double lambda = bandData.ChannelWavelength(ch*channelCount/avgChannelCount);
-					lcomplex_t p = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch);
-					predictedData.DataX(timeIndex, ch) = p;
-					predictedData.DataY(timeIndex, ch) = p;
+					lcomplex_t px = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, 0);
+					lcomplex_t py = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, 3);
+					predictedData.DataX(timeIndex, ch) = px;
+					predictedData.DataY(timeIndex, ch) = py;
 					
 					// Data was not divided by N yet during "averaging", do now
 					long double avgFactorX = weights.WeightX(timeIndex, ch)!=0 ?

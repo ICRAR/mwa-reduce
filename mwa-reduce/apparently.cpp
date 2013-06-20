@@ -133,10 +133,8 @@ int main(int argc, char **argv)
 			}
 			else {
 				if(value > 0.0) {
-					source.SetBrightness(SourceSDFWithSI<long double>(value, 0.0, 1.0));
-					std::cout << source.ToStringLine() << '\n';
-				} else {
-					std::cout << '#' << source.ToStringLine() << '\n';
+					source.SetSED(SpectralEnergyDistribution(value, 1.0));
+					std::cout << source.ToString() << '\n';
 				}
 			}
 		}

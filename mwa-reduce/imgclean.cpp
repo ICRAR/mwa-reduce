@@ -57,8 +57,8 @@ int main(int argc, char *argv[])
 		source.SetName("clcomp");
 		source.SetPosRA(ra);
 		source.SetPosDec(dec);
-		source.SetBrightness(SourceSDFWithSI<long double>(peak, 0.0, 1.0));
-		std::cout << source.ToStringLine() << '\n';
+		source.SetSED(SpectralEnergyDistribution(peak, 1.0));
+		std::cout << source.ToString() << '\n';
 	} else {
 		double lastPeak = peak;
 		std::cout << "Initial peak: " << peak << '\n';

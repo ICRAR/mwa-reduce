@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 		Model temp;
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			if(sourcePtr->Brightness().IntegratedFlux(band.BandStart(), band.BandEnd()) >= threshold)
+			if(sourcePtr->SED().IntegratedFlux(band.BandStart(), band.BandEnd(), 0) >= threshold)
 				temp.AddSource(*sourcePtr);
 		}
 		model = temp;
@@ -63,36 +63,36 @@ int main(int argc, char *argv[])
 	const long double newBandSize = (band.BandEnd() - band.BandStart()) / newChannelCount;
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 	{
-		const SourceSDF<long double> &sdf = sourcePtr->Brightness();
+		const SpectralEnergyDistribution &sed = sourcePtr->SED();
 		if(outputSIs)
 		{
 			long double startFreq = band.BandStart();
 			long double endFreq = band.BandEnd();
-			SourceSDFWithSI<long double> newSdf(
-				sdf.FluxAtFrequency(startFreq), startFreq,
-				sdf.FluxAtFrequency(endFreq), endFreq);
+			SpectralEnergyDistribution newSED(
+				sed.FluxAtFrequency(startFreq, 0), startFreq,
+				sed.FluxAtFrequency(endFreq, 0), endFreq);
 			if(!outputPlot) {
-				sourcePtr->SetBrightness(newSdf);
-				std::cout << sourcePtr->ToStringLine() << '\n';
+				sourcePtr->SetSED(newSED);
+				std::cout << sourcePtr->ToString() << '\n';
 			}
 		}
 		else {
-			SourceSDFWithSamples<long double> newSdf;
+			SpectralEnergyDistribution newSED;
 			for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
 			{
 				long double startFreq = band.BandStart() + newBandSize*newChIndex;
 				long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
 				long double flux;
 				if(newChannelCount < band.ChannelCount())
-					flux = sdf.IntegratedFlux(startFreq, endFreq);
+					flux = sed.IntegratedFlux(startFreq, endFreq, 0);
 				else
-					flux = sdf.FluxAtFrequency((startFreq+endFreq)*0.5);
+					flux = sed.FluxAtFrequency((startFreq+endFreq)*0.5, 0);
 				
-				newSdf.AddSample(flux*scale, (startFreq+endFreq)*0.5);
+				newSED.AddMeasurement(flux*scale, (startFreq+endFreq)*0.5);
 			}
 			if(!outputPlot) {
-				sourcePtr->SetBrightness(newSdf);
-				std::cout << sourcePtr->ToStringLine() << '\n';
+				sourcePtr->SetSED(newSED);
+				std::cout << sourcePtr->ToString() << '\n';
 			}
 		}
 	}
@@ -106,8 +106,8 @@ int main(int argc, char *argv[])
 			std::cout << (endFreq+startFreq)*0.5;
 			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 			{
-				const SourceSDF<long double> &sdf = sourcePtr->Brightness();
-				long double flux = sdf.IntegratedFlux(startFreq, endFreq);
+				const SpectralEnergyDistribution &sed = sourcePtr->SED();
+				long double flux = sed.IntegratedFlux(startFreq, endFreq, 0);
 				std::cout << '\t' << flux;
 			}
 			std::cout << '\n';

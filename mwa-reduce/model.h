@@ -11,11 +11,13 @@ class Model
 		typedef std::vector<ModelSource>::iterator iterator;
 		typedef std::vector<ModelSource>::const_iterator const_iterator;
 		
-		Model()
+		Model() :
+			_polarizationType(FullXY)
 		{
 		}
 
 		Model(const Model &source) :
+			_polarizationType(source._polarizationType),
 			_sources(source._sources)
 		{
 		}
@@ -24,6 +26,7 @@ class Model
 		
 		void operator=(const Model &source)
 		{
+			_polarizationType = source._polarizationType;
 			_sources = source._sources;
 		}
 		
@@ -43,7 +46,10 @@ class Model
 		
 		void Save(const char *filename);
 		
+		enum PolarizationType { FullXY };
+		
 	private:
+		enum PolarizationType _polarizationType;
 		std::vector<ModelSource> _sources;
 		
 		static bool isCommentSymbol(char c) { return c=='#'; }

@@ -5,6 +5,12 @@
 
 #define SPEED_OF_LIGHT 299792458.0        // speed of light in m/s
 
+#include <measures/Measures/MDirection.h>
+#include <measures/Measures/MEpoch.h>
+#include <measures/Measures/MPosition.h>
+#include <measures/Measures/MCPosition.h>
+#include <measures/Measures/MeasConvert.h>
+
 // Based on code from Daniel Mitchel
 // 2012-02-13
 // taken from the RTS codebase
@@ -26,6 +32,45 @@ TileBeam::TileBeam(const double *delays) :
 		_dipoleHeight[i] = dipoleHeight[i] * _dipoleSeparations;
 		_delays[i] = delays[i]*SPEED_OF_LIGHT*_delayStep;
 	}
+}
+
+void TileBeam::AnalyticGain(casa::MDirection &referenceDir, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y)
+{
+	casa::MeasFrame frame(arrayPos, time);
+	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
+	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
+	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
+	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
+	double latitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
+	
+	casa::MDirection::Convert
+		j2000ToHaDec(j2000Ref, hadecRef),
+		j2000ToAzelGeo(j2000Ref, azelgeoRef);
+		
+	AnalyticGain(raRad, decRad, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, latitude, frequencyHz, x, y);
+}
+
+void TileBeam::AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double latitude, double frequencyHz, double &x, double &y)
+{
+	static const casa::Unit radUnit("rad");
+	casa::MDirection imageDir(casa::MVDirection(
+		casa::Quantity(raRad, radUnit),     // RA
+		casa::Quantity(decRad,radUnit)),  // DEC
+		ref);
+	
+	// convert ra, dec to za, az
+	casa::MDirection hadec = j2000ToHaDec(imageDir);
+	double ha = hadec.getValue().get()[0];
+	double sinLat, cosLat;
+	sincos(latitude, &sinLat, &cosLat);
+	double sinDec, cosDec;
+	sincos(decRad, &sinDec, &cosDec);
+	double cosHA = cos(ha);
+	double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
+	casa::MDirection azel = j2000ToAzelGeo(imageDir);
+	double azimuth = azel.getValue().get()[0];
+	
+	AnalyticGain(zenithDistance, azimuth, frequencyHz, x, y);
 }
 
 void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequencyHz, double &x, double &y)

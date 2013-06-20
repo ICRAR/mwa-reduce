@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 		
 		for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
 		{
-			std::cout << i->ToStringLine() << '\n';
+			std::cout << i->ToString() << '\n';
 		}
 		
 		delete[] image;

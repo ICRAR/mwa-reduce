@@ -1,0 +1,23 @@
+skymodel fileformat 1.0
+// polarisation full-xy
+source {
+  name "HydA"
+  component {
+    type point
+    position 09h18m05.8s -12d05m44s
+    measurement {
+      type absolute
+      frequency 74 MHz
+      bandwidth 0 MHz
+      fluxdensity Jy 579.59 0 0 579.59
+      // fluxdensity-stddev Jy 1.0 0 0 1.0
+      // spectral-index ..
+      // beam-value 1 0 0 1
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 243.0 0 0 243.0
+    }
+  }
+}
+

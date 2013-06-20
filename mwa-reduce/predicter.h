@@ -20,8 +20,8 @@ class Predicter
 		void Initialize(class ModelSource &model);
 		void Initialize(class Model &model);
 		
-		CNumType Predict(const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex);
-		CNumType Predict(const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex);
+		CNumType Predict(const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
+		CNumType Predict(const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
 	private:
 		struct SourceParameters
 		{
