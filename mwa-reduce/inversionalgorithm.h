@@ -20,6 +20,7 @@ class InversionAlgorithm
 			_measurementSetPaths(),
 			_dataColumnName("DATA"),
 			_doImagePSF(false),
+			_doSubtractModel(false),
 			_polarization(StokesI),
 			_weighting(DistanceWeighted)
 		{
@@ -37,6 +38,7 @@ class InversionAlgorithm
 		size_t MeasurementSetCount() const { return _measurementSetPaths.size(); }
 		const std::string &DataColumnName() const { return _dataColumnName; }
 		bool DoImagePSF() const { return _doImagePSF; }
+		bool DoSubtractModel() const { return _doSubtractModel; }
 		PolarizationEnum Polarization() const { return _polarization; }
 		WeightingEnum Weighting() const { return _weighting; }
 		
@@ -80,8 +82,14 @@ class InversionAlgorithm
 		{
 			_weighting = weighting;
 		}
+		void SetDoSubtractModel(bool doSubtractModel)
+		{
+			_doSubtractModel = doSubtractModel;
+		}
 		
-		virtual void Execute() = 0;
+		virtual void Invert() = 0;
+		
+		virtual void InvertToVisibilities(const double *image) = 0;
 		
 		virtual const double *ImageResult() const = 0;
 		virtual double ImageResultRA() const = 0;
@@ -95,7 +103,7 @@ class InversionAlgorithm
 		size_t _wGridSize;
 		std::vector<std::string> _measurementSetPaths;
 		std::string _dataColumnName;
-		bool _doImagePSF;
+		bool _doImagePSF, _doSubtractModel;
 		enum PolarizationEnum _polarization;
 		enum WeightingEnum _weighting;
 };

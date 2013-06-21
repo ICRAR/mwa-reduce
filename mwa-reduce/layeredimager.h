@@ -18,6 +18,7 @@ class LayeredImager
 		~LayeredImager();
 		
 		void PrepareWLayers(size_t nWLayers, size_t maxMem, double minW, double maxW);
+		
 		void PrepareBand(const BandData &bandData)
 		{
 			_bandData = &bandData;
@@ -60,13 +61,22 @@ class LayeredImager
 			return _nPasses;
 		}
 		
-		void StartPass(size_t passIndex);
-		
-		void FinishPass();
-		
+		// Inversion (uv to image) methods
 		void AddData(const std::complex<float>* data, double uInM, double vInM, double wInM);
 		
+		void StartInversionPass(size_t passIndex);
+		
+		void FinishInversionPass();
+		
 		void FinalizeImage(double multiplicationFactor);
+		
+		// Sampling (image to uv) methods
+		void PrepareImageForVisibilitySampling(const double *image, double multiplicationFactor);
+		
+		void StartVisibilitySamplingPass(size_t passIndex);
+		
+		void SampleData(std::complex<float>* data, double uInM, double vInM, double wInM);
+		
 		
 		const double *Image() { return _imageData[0]; }
 		
@@ -79,8 +89,10 @@ class LayeredImager
 			return (_nWLayers * layerRangeIndex) / _nPasses;
 		}
 		void projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex);
+		void copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w);
 		void initializeSqrtLMLookupTable();
-		void fftThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);
+		void fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);
+		void fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks);
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY;

@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <casa/Arrays/Array.h>
+#include <tables/Tables/ArrayColumn.h>
 
 namespace casa {
 	class MeasurementSet;
@@ -22,7 +23,9 @@ class WSInversion : public InversionAlgorithm
 		{
 		}
 	
-		virtual void Execute();
+		virtual void Invert();
+		
+		virtual void InvertToVisibilities(const double *image);
 		
 		virtual const double *ImageResult() const { return _imager->Image(); }
 		virtual double ImageResultRA() const { return _phaseCentreRA; }
@@ -31,16 +34,22 @@ class WSInversion : public InversionAlgorithm
 		virtual double ImageFrequencyLow() const { return _freqLow; }
 		virtual double ImageBeamSize() const { return _beamSize; }
 	private:
-		struct WorkItem
+		struct InversionWorkItem
 		{
 			double u, v, w;
 			std::complex<float> *data;
+		};
+		struct SamplingWorkItem
+		{
+			double u, v, w;
+			std::complex<float> *data;
+			size_t rowIndex;
 		};
 		
 		struct MSData
 		{
 			casa::MeasurementSet *ms;
-			size_t channelCount, polarizationCount, matchingRows, totalRowsRead;
+			size_t channelCount, polarizationCount, matchingRows, totalRowsProcessed;
 			double minW, maxW;
 		};
 		
@@ -48,25 +57,41 @@ class WSInversion : public InversionAlgorithm
 		void gridMeasurementSet(MSData &msData);
 		void countSamplesPerLayer(MSData &msData);
 
-		void processWork(WorkItem &work)
+		void processWork(InversionWorkItem &work)
 		{
 			_imager->AddData(work.data, work.u, work.v, work.w);
 			delete[] work.data;
 		}
 
+		void sampleToMeasurementSet(MSData &msData);
+
 		void workThread()
 		{
-			WorkItem workItem;
-			while(_workLane->read(workItem))
+			InversionWorkItem workItem;
+			while(_inversionWorkLane->read(workItem))
 			{
 				processWork(workItem);
 			}
 		}
+		void visSampleThread();
 		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		void copyWeights(std::complex<float> *dest, size_t channelCount, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
+		int polarizationIndex() const
+		{
+			switch(Polarization())
+			{
+				default: return 0;
+				case XY: return 1;
+				case YX: return 2;
+				case YY: return 3;
+			}
+		}
+
 		
 		std::unique_ptr<LayeredImager> _imager;
-		std::unique_ptr<lane<WorkItem>> _workLane;
+		std::unique_ptr<lane<InversionWorkItem>> _inversionWorkLane;
+		std::unique_ptr<lane<SamplingWorkItem>> _samplingWorkLane;
+		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
 		double _phaseCentreRA, _phaseCentreDec;
 		double _freqHigh, _freqLow;
 		double _beamSize;

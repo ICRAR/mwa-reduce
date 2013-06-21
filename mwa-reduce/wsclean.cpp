@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
 	std::string columnName = "DATA", addModelFilename, saveModelFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
+	bool majorIterations = false;
 	
 	while(argv[argi][0] == '-')
 	{
@@ -110,6 +111,10 @@ int main(int argc, char *argv[])
 			++argi;
 			saveModelFilename = argv[argi];
 		}
+		else if(strcmp(param, "major") == 0)
+		{
+			majorIterations = true;
+		}
 		else if(strcmp(param, "name") == 0)
 		{
 			++argi;
@@ -139,7 +144,7 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetDataColumnName(columnName);
 	
 	inversionAlgorithm->SetDoImagePSF(true);
-	inversionAlgorithm->Execute();
+	inversionAlgorithm->Invert();
 	std::vector<double> psf(imgWidth * imgHeight);
 	memcpy(&psf[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 	const double
@@ -155,10 +160,12 @@ int main(int argc, char *argv[])
 	std::cout << "DONE\n";
 	
 	inversionAlgorithm->SetDoImagePSF(false);
-	inversionAlgorithm->Execute();
+	inversionAlgorithm->Invert();
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
 	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
-	inversionAlgorithm.reset();
+	
+	if(!majorIterations)
+		inversionAlgorithm.reset();
 	
 	std::cout << "Writing dirty image... " << std::flush;
 	FitsWriter dirtyWriter(std::string(prefixName) + "-dirty.fits");
@@ -180,6 +187,19 @@ int main(int argc, char *argv[])
 	FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
 	modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
 	std::cout << "DONE\n";
+	
+	if(majorIterations)
+	{
+		inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+		inversionAlgorithm->SetDoSubtractModel(true);
+		inversionAlgorithm->Invert();
+		memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+		inversionAlgorithm.reset();
+		std::cout << "Writing residual image... " << std::flush;
+		FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
+		resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+		std::cout << "DONE\n";
+	}
 	
 	Model model;
 	if(!addModelFilename.empty())

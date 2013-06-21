@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 	inversionAlgorithm.SetWGridSize(nWLayers);
 	inversionAlgorithm.SetDoImagePSF(psf);
 	
-	inversionAlgorithm.Execute();
+	inversionAlgorithm.Invert();
 	
 	std::cout << "Writing image... " << std::flush;
 	FitsWriter writer(fitsfileName);

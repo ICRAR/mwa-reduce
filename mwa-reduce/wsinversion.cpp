@@ -8,6 +8,8 @@
 #include <measures/Measures/MCPosition.h>
 #include <measures/TableMeasures/ScalarMeasColumn.h>
 
+#include <tables/Tables/ArrColDesc.h>
+
 #include <iostream>
 #include <stdexcept>
 
@@ -121,6 +123,9 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, DataColumnName());
+	std::unique_ptr<casa::ROArrayColumn<casa::Complex>> modelColumn;
+	if(DoSubtractModel() && !DoImagePSF())
+		modelColumn.reset(new casa::ArrayColumn<std::complex<float>>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 	
 	casa::IPosition dataShape = dataColumn.shape(0);
 	msData.polarizationCount = dataShape[0];
@@ -128,7 +133,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	BandData bandData(ms.spectralWindow());
 	_imager->PrepareBand(bandData);
 	
-	casa::Array<std::complex<float>> data(dataShape);
+	casa::Array<std::complex<float>> data(dataShape), modelData(dataShape);
 	casa::Array<float> weights(dataShape);
 	casa::Array<bool> flags(dataShape);
 	size_t rowsRead = 0;
@@ -143,7 +148,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				w2 = wInMeters / bandData.SmallestWavelength();
 			if(_imager->IsInLayerRange(w1, w2))
 			{
-				WorkItem newItem;
+				InversionWorkItem newItem;
 				newItem.u = uvwArray(0);
 				newItem.v = uvwArray(1);
 				newItem.w = wInMeters;
@@ -170,19 +175,149 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				}
 				else {
 					dataColumn.get(row, data);
+					if(DoSubtractModel())
+					{
+						modelColumn->get(row, modelData);
+						casa::Array<casa::Complex>::contiter modelIter = modelData.cbegin();
+						for(casa::Array<casa::Complex>::contiter iter = data.cbegin(); iter!=data.cend(); ++iter)
+						{
+							*iter -= *modelIter;
+							modelIter++;
+						}
+					}
 					copyWeightedData(newItem.data, msData.channelCount, data, weights, flags, rowWeight);
 				}
-				_workLane->write(newItem);
+				_inversionWorkLane->write(newItem);
 				
 				++rowsRead;
 			}
 		}
 	}
+	modelColumn.reset();
 	std::cout << "Rows that were required: " << rowsRead << '/' << msData.matchingRows << '\n';
-	msData.totalRowsRead += rowsRead;
+	msData.totalRowsProcessed += rowsRead;
 }
 
-void WSInversion::Execute()
+void WSInversion::sampleToMeasurementSet(MSData &msData)
+{
+	casa::MeasurementSet &ms(*msData.ms);
+	ms.reopenRW();
+	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
+	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
+	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
+	
+	if(!ms.isColumn(casa::MSMainEnums::MODEL_DATA))
+	{
+		std::cout << "Adding model data column... " << std::flush;
+		casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(ms.columnName(casa::MSMainEnums::MODEL_DATA), dataColumn.shape(0));
+		//modelColumnDesc.setOptions(casa::ColumnDesc::Direct);
+		ms.addColumn(modelColumnDesc);
+		std::cout << "DONE\n";
+	}
+	
+	_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+	
+	msData.polarizationCount = _modelColumn->shape(0)[0];
+	
+	BandData bandData(ms.spectralWindow());
+	_imager->PrepareBand(bandData);
+	
+	size_t rowsProcessed = 0;
+	
+	_samplingWorkLane.reset(new lane<SamplingWorkItem>(16));
+	boost::thread thread(&WSInversion::visSampleThread, this);
+		
+	/* Start by reading the u,v,ws in, so we don't need IO access
+	 * from this thread during further processing */
+	std::vector<double> us, vs, ws;
+	std::vector<size_t> rowIndices;
+	for(size_t row=0; row!=ms.nrow(); ++row)
+	{
+		if(ant1Column(row) != ant2Column(row))
+		{
+			casa::Vector<double> uvwArray = uvwColumn(row);
+			const double
+				wInMeters = uvwArray(2),
+				w1 = wInMeters / bandData.LongestWavelength(),
+				w2 = wInMeters / bandData.SmallestWavelength();
+			if(_imager->IsInLayerRange(w1, w2))
+			{
+				us.push_back(uvwArray(0));
+				vs.push_back(uvwArray(1));
+				ws.push_back(uvwArray(2));
+				rowIndices.push_back(row);
+				++rowsProcessed;
+			}
+		}
+	}
+	
+	for(size_t i=0; i!=us.size(); ++i)
+	{
+		SamplingWorkItem newItem;
+		newItem.u = us[i];
+		newItem.v = vs[i];
+		newItem.w = ws[i];
+		newItem.data = new std::complex<float>[msData.channelCount];
+		newItem.rowIndex = rowIndices[i];
+				
+		_imager->SampleData(newItem.data, newItem.u, newItem.v, newItem.w);
+		
+		_samplingWorkLane->write(newItem);
+	}
+	std::cout << "Rows that were required: " << rowsProcessed << '/' << msData.matchingRows << '\n';
+	msData.totalRowsProcessed += rowsProcessed;
+	
+	_samplingWorkLane->write_end();
+	thread.join();
+		
+	_modelColumn.reset();
+}
+
+void WSInversion::visSampleThread()
+{
+	SamplingWorkItem workItem;
+	
+	// Read one, which makes sure other thread has initialized the ms
+	if(!_samplingWorkLane->read(workItem))
+		return;
+	
+	casa::IPosition shape = _modelColumn->shape(0);
+	casa::Array<std::complex<float>> data(shape);
+	size_t polarizationCount = shape[0], channelCount = shape[1];
+	
+	int polIndex = polarizationIndex();
+	do
+	{
+		_modelColumn->get(workItem.rowIndex, data);
+		casa::Array<std::complex<float>>::contiter dataIter = data.cbegin();
+		
+		if(Polarization() == StokesI)
+		{
+			for(size_t ch=0; ch!=channelCount; ++ch)
+			{
+				if(std::isfinite(workItem.data[ch].real()))
+				{
+					*dataIter = workItem.data[ch];
+					*(dataIter + 3) = workItem.data[ch];
+				}
+				dataIter += 4;
+			}
+		} else {
+			for(size_t ch=0; ch!=channelCount; ++ch)
+			{
+				if(std::isfinite(workItem.data[ch].real()))
+					*(dataIter+polIndex) = workItem.data[ch];
+				dataIter += 4;
+			}
+		}
+		_modelColumn->put(workItem.rowIndex, data);
+	}
+	while(_samplingWorkLane->read(workItem));
+}
+
+
+void WSInversion::Invert()
 {
 	std::vector<MSData> msDataVector(MeasurementSetCount());
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
@@ -212,31 +347,79 @@ void WSInversion::Execute()
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
 		std::cout << "Starting gridding pass " << pass << ".\n";
-		_workLane.reset(new lane<WorkItem>(16));
+		_inversionWorkLane.reset(new lane<InversionWorkItem>(16));
 		boost::thread thread(&WSInversion::workThread, this);
 		
-		_imager->StartPass(pass);
+		_imager->StartInversionPass(pass);
 		
 		for(size_t i=0; i!=MeasurementSetCount(); ++i)
 			gridMeasurementSet(msDataVector[i]);
 		
-		_workLane->write_end();
+		_inversionWorkLane->write_end();
 		thread.join();
 		
 		std::cout << "Fourier transforming layers, w-term correction & summing in parallel...\n";
-		_imager->FinishPass();
+		_imager->FinishInversionPass();
 	}
 	
 	size_t totalRowsRead = 0, totalMatchingRows = 0;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 	{
-		totalRowsRead += msDataVector[i].totalRowsRead;
+		totalRowsRead += msDataVector[i].totalRowsProcessed;
 		totalMatchingRows += msDataVector[i].matchingRows;
 	}
 	
 	std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 	
 	_imager->FinalizeImage(1.0/_totalWeight);
+}
+
+void WSInversion::InvertToVisibilities(const double *image)
+{
+	std::vector<MSData> msDataVector(MeasurementSetCount());
+	for(size_t i=0; i!=MeasurementSetCount(); ++i)
+		initializeMeasurementSet(MeasurementSetPath(i), msDataVector[i]);
+	
+	double minW = msDataVector[0].minW;
+	double maxW = msDataVector[0].maxW;
+	for(size_t i=1; i!=MeasurementSetCount(); ++i)
+	{
+		if(msDataVector[i].minW < minW) minW = msDataVector[i].minW;
+		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
+	}
+	
+	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
+	int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
+	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
+	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
+
+	long cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), cpuCount));
+	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
+	
+	for(size_t i=0; i!=MeasurementSetCount(); ++i)
+		countSamplesPerLayer(msDataVector[i]);
+	
+	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
+	{
+		std::cout << "W-term correction & fourier transforming layers to uv space (in parallel)...\n";
+		_imager->PrepareImageForVisibilitySampling(image, 1.0);
+		
+		std::cout << "Starting visibility sampling pass " << pass << ".\n";
+		_imager->StartVisibilitySamplingPass(pass);
+		
+		for(size_t i=0; i!=MeasurementSetCount(); ++i)
+			sampleToMeasurementSet(msDataVector[i]);
+	}
+	
+	size_t totalRowsWritten = 0, totalMatchingRows = 0;
+	for(size_t i=0; i!=MeasurementSetCount(); ++i)
+	{
+		totalRowsWritten += msDataVector[i].totalRowsProcessed;
+		totalMatchingRows += msDataVector[i].matchingRows;
+	}
+	
+	std::cout << "Total rows written: " << totalRowsWritten << " (overhead: " << round(totalRowsWritten * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 }
 
 void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight)
@@ -268,14 +451,7 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCoun
 			++flagPtr;
 		}
 	} else {
-		int polIndex;
-		switch(Polarization())
-		{
-			default: polIndex = 0; break;
-			case XY: polIndex = 1; break;
-			case YX: polIndex = 2; break;
-			case YY: polIndex = 3; break;
-		}
+		int polIndex = polarizationIndex();
 		
 		inPtr += polIndex;
 		weightPtr += polIndex;
@@ -321,14 +497,7 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, co
 			++flagPtr;
 		}
 	} else {
-		int polIndex;
-		switch(Polarization())
-		{
-			default: polIndex = 0; break;
-			case XY: polIndex = 1; break;
-			case YX: polIndex = 2; break;
-			case YY: polIndex = 3; break;
-		}
+		int polIndex = polarizationIndex();
 		
 		weightPtr += polIndex;
 		flagPtr += polIndex;

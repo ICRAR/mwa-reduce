@@ -45,7 +45,7 @@ void LayeredImager::PrepareWLayers(size_t nWLayers, size_t maxMem, double minW, 
 	_curLayerRangeIndex = 0;
 }
 
-void LayeredImager::StartPass(size_t passIndex)
+void LayeredImager::StartInversionPass(size_t passIndex)
 {
 	_curLayerRangeIndex = passIndex;
 	size_t nLayersInPass = layerRangeStart(passIndex+1) - layerRangeStart(passIndex);
@@ -56,9 +56,66 @@ void LayeredImager::StartPass(size_t passIndex)
 	}
 }
 
-void LayeredImager::fftThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex)
+void LayeredImager::StartVisibilitySamplingPass(size_t passIndex)
 {
-	size_t imgSize = _width * _height;
+	_curLayerRangeIndex = passIndex;
+	size_t layerOffset = layerRangeStart(passIndex);
+	size_t nLayersInPass = layerRangeStart(passIndex+1) - layerOffset;
+	_layeredUVData.resize(nLayersInPass);
+	for(size_t l=0; l!=nLayersInPass; ++l)
+		_layeredUVData[l].resize(_width * _height);
+	
+	std::stack<size_t> layers;
+	for(size_t layer=0; layer!=nLayersInPass; ++layer)
+		layers.push(layer);
+	
+	boost::mutex mutex;
+	boost::thread_group threadGroup;
+	for(size_t i=0; i!=_nFFTThreads; ++i)
+		threadGroup.add_thread(new boost::thread(&LayeredImager::fftToUVThreadFunction, this, &mutex, &layers));
+	threadGroup.join_all();
+}
+
+void LayeredImager::fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks)
+{
+	const size_t imgSize = _width * _height;
+	std::complex<double> *fftwIn = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
+	std::complex<double> *fftwOut = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
+	
+	boost::mutex::scoped_lock lock(*mutex);
+	fftw_plan plan =
+		fftw_plan_dft_2d(_width, _height,
+			reinterpret_cast<fftw_complex*>(fftwIn), reinterpret_cast<fftw_complex*>(fftwOut),
+			FFTW_FORWARD, FFTW_ESTIMATE);
+		
+	const size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
+
+	while(!tasks->empty())
+	{
+		size_t layer = tasks->top();
+		tasks->pop();
+		lock.unlock();
+		
+		// Make copy of input and w-correct it
+		copyImageToLayerAndInverseCorrect(fftwIn, LayerToW(layer + layerOffset));
+		
+		// Fourier transform the layer
+		fftw_execute(plan);
+		std::vector<std::complex<double>> &uvData = _layeredUVData[layer];
+		memcpy(&uvData[0], fftwOut, imgSize * sizeof(double) * 2);
+		
+		// lock for accessing tasks in guard
+		lock.lock();
+	}
+	lock.unlock();
+	
+	fftw_free(fftwIn);
+	fftw_free(fftwOut);
+}
+
+void LayeredImager::fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex)
+{
+	const size_t imgSize = _width * _height;
 	std::complex<double> *fftwIn = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
 	std::complex<double> *fftwOut = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
 	
@@ -68,7 +125,7 @@ void LayeredImager::fftThreadFunction(boost::mutex *mutex, std::stack<size_t> *t
 			reinterpret_cast<fftw_complex*>(fftwIn), reinterpret_cast<fftw_complex*>(fftwOut),
 			FFTW_BACKWARD, FFTW_ESTIMATE);
 		
-	size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
+	const size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
 
 	while(!tasks->empty())
 	{
@@ -93,7 +150,7 @@ void LayeredImager::fftThreadFunction(boost::mutex *mutex, std::stack<size_t> *t
 	fftw_free(fftwOut);
 }
 
-void LayeredImager::FinishPass()
+void LayeredImager::FinishInversionPass()
 {
 	size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
 	size_t nPlanes = layerRangeStart(_curLayerRangeIndex+1) - layerOffset;
@@ -104,7 +161,7 @@ void LayeredImager::FinishPass()
 	boost::mutex mutex;
 	boost::thread_group threadGroup;
 	for(size_t i=0; i!=_nFFTThreads; ++i)
-		threadGroup.add_thread(new boost::thread(&LayeredImager::fftThreadFunction, this, &mutex, &planes, i));
+		threadGroup.add_thread(new boost::thread(&LayeredImager::fftToImageThreadFunction, this, &mutex, &planes, i));
 	threadGroup.join_all();
 }
 
@@ -149,6 +206,53 @@ void LayeredImager::AddData(const std::complex<float>* data, double uInM, double
 	}
 }
 
+void LayeredImager::SampleData(std::complex<float>* data, double uInM, double vInM, double wInM)
+{
+ 	const size_t
+		layerOffset = layerRangeStart(_curLayerRangeIndex),
+		layerRangeEnd = layerRangeStart(_curLayerRangeIndex+1);
+	for(size_t ch=0; ch!=_bandData->ChannelCount(); ++ch)
+	{
+		double
+			wavelength = _bandData->ChannelWavelength(ch),
+			u = uInM / wavelength,
+			v = vInM / wavelength,
+			w = wInM / wavelength;
+		bool isConjugated = (w < 0.0);
+		if(isConjugated)
+		{
+			u = -u;
+			v = -v;
+			w = -w;
+		}
+		size_t
+			wLayer = WToLayer(w);
+		if(wLayer >= layerOffset && wLayer < layerRangeEnd)
+		{
+			size_t layerIndex = wLayer - layerOffset;
+			std::vector<std::complex<double>> &uvData = _layeredUVData[layerIndex];
+			int
+				x = int(round(u * _pixelSizeX * _width)),
+				y = int(round(v * _pixelSizeY * _height));
+			if(x < 0) x += _width;
+			if(y < 0) y += _height;
+			std::complex<double> sample;
+			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+			{
+				sample = uvData[x + y*_width];
+			} else {
+				//std::cout << "Sampling outside uv-plane (" << x << "," << y << ")\n";
+			}
+			if(isConjugated)
+				data[ch] = sample;
+			else
+				data[ch] = std::conj(sample);
+		} else {
+			data[ch] = std::complex<double>(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
+		}
+	}
+}
+
 void LayeredImager::FinalizeImage(double multiplicationFactor)
 {
 	_layeredUVData.clear();
@@ -172,6 +276,22 @@ void LayeredImager::FinalizeImage(double multiplicationFactor)
 			double l = ((double) x-(_width/2)) * _pixelSizeX;
 			*dataPtr *= multiplicationFactor * sqrt(1.0 - l*l - m*m);
 			++dataPtr;
+		}
+	}
+}
+
+void LayeredImager::PrepareImageForVisibilitySampling(const double *image, double multiplicationFactor)
+{
+	double *dataPtr = _imageData[0];
+	for(size_t y=0;y!=_height;++y)
+	{
+		double m = ((double) y-(_height/2)) * _pixelSizeY;
+		for(size_t x=0;x!=_width;++x)
+		{
+			double l = ((double) x-(_width/2)) * _pixelSizeX;
+			*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
+			++dataPtr;
+			++image;
 		}
 	}
 }
@@ -223,6 +343,33 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 			data[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
 			
 			++source;
+			++sqrtLMIter;
+		}
+	}
+}
+
+void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w)
+{
+	double *data = _imageData[0];
+	const double twoPiW = 2.0 * M_PI * w;
+	std::vector<double>::const_iterator sqrtLMIter = _sqrtLMLookupTable.begin();
+	for(size_t y=0;y!=_height;++y)
+	{
+		size_t yDest = y + _height / 2;
+		if(yDest >= _height) yDest -= _height;
+		
+		for(size_t x=0;x!=_width;++x)
+		{
+			size_t xDest = (_width - 1 - x) + _width / 2;
+			if(xDest >= _width) xDest -= _width;
+			
+			double rad = twoPiW * *sqrtLMIter;
+			double s, c;
+			sincos(rad, &s, &c);
+			double dataVal = data[xDest + yDest*_width];
+			*dest = std::complex<double>(dataVal*c, -dataVal*s);
+			
+			++dest;
 			++sqrtLMIter;
 		}
 	}
