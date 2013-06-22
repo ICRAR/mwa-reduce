@@ -360,7 +360,7 @@ void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest
 		
 		for(size_t x=0;x!=_width;++x)
 		{
-			size_t xDest = (_width - 1 - x) + _width / 2;
+			size_t xDest = (_width - x) + _width / 2;
 			if(xDest >= _width) xDest -= _width;
 			
 			double rad = twoPiW * *sqrtLMIter;
