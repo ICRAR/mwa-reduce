@@ -48,9 +48,16 @@ class WSInversion : public InversionAlgorithm
 		
 		struct MSData
 		{
-			casa::MeasurementSet *ms;
-			size_t channelCount, polarizationCount, matchingRows, totalRowsProcessed;
-			double minW, maxW;
+			public:
+				MSData() : matchingRows(0), totalRowsProcessed(0) { }
+				std::unique_ptr<casa::MeasurementSet> ms;
+				size_t channelCount, polarizationCount, matchingRows, totalRowsProcessed;
+				double minW, maxW;
+			
+			private:
+				MSData(const MSData &source);
+				
+				void operator=(const MSData &source);
 		};
 		
 		void initializeMeasurementSet(const std::string &measurementSet, MSData &msData);

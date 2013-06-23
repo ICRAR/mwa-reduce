@@ -41,7 +41,7 @@ class Measurement
 		
 		long double FrequencyHz() const { return _frequencyHz; }
 		
-		void SetFrequency(long double frequencyHz) { _frequencyHz = frequencyHz; }
+		void SetFrequencyHz(long double frequencyHz) { _frequencyHz = frequencyHz; }
 		
 		long double FluxDensity(size_t polarizationIndex) const { return _fluxDensities[polarizationIndex]; }
 		
@@ -132,7 +132,7 @@ class SpectralEnergyDistribution
 			measurement.SetFluxDensity(1, 0.0);
 			measurement.SetFluxDensity(2, 0.0);
 			measurement.SetFluxDensity(3, fluxDensityJy);
-			measurement.SetFrequency(frequencyHz);
+			measurement.SetFrequencyHz(frequencyHz);
 			_measurements.insert(std::pair<long double, Measurement>(frequencyHz, measurement));
 		}
 		
@@ -143,7 +143,7 @@ class SpectralEnergyDistribution
 			measurementA.SetFluxDensity(1, 0.0);
 			measurementA.SetFluxDensity(2, 0.0);
 			measurementA.SetFluxDensity(3, fluxDensityJy);
-			measurementA.SetFrequency(frequencyHz);
+			measurementA.SetFrequencyHz(frequencyHz);
 			_measurements.insert(std::pair<long double, Measurement>(frequencyHz, measurementA));
 			if(spectralIndex != 0.0)
 			{
@@ -158,7 +158,7 @@ class SpectralEnergyDistribution
 				measurementB.SetFluxDensity(1, 0.0);
 				measurementB.SetFluxDensity(2, 0.0);
 				measurementB.SetFluxDensity(3, fluxB);
-				measurementB.SetFrequency(refFreqB);
+				measurementB.SetFrequencyHz(refFreqB);
 				_measurements.insert(std::pair<long double, Measurement>(refFreqB, measurementB));
 			}
 		}
@@ -239,6 +239,12 @@ class SpectralEnergyDistribution
 					log(referenceFrequencyBHz/referenceFrequencyAHz);
 				return fluxDensityAJy * std::pow(requestedFrequency/referenceFrequencyAHz, si);
 			}
+		}
+		
+		long double FluxAtChannel(size_t channelIndex, size_t channelCount, long double startFreq, long double endFreq, size_t polarizationIndex) const
+		{
+			long double freq = startFreq + (long double) channelIndex * (endFreq - startFreq) / (long double) (channelCount-1);
+			return FluxAtFrequency(freq, polarizationIndex);
 		}
 		
 		long double IntegratedFlux(long double startFrequency, long double endFrequency, size_t polarizationIndex) const

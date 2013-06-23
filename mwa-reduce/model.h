@@ -48,6 +48,15 @@ class Model
 		
 		enum PolarizationType { FullXY };
 		
+		double TotalFlux(double frequencyStartHz, double frequencyEndHz, size_t polarizationIndex) const
+		{
+			double flux = 0.0;
+			for(const_iterator i=begin(); i!=end(); ++i)
+				flux += i->SED().IntegratedFlux(frequencyStartHz, frequencyEndHz, polarizationIndex);
+			
+			return flux;
+		}
+		
 	private:
 		enum PolarizationType _polarizationType;
 		std::vector<ModelSource> _sources;

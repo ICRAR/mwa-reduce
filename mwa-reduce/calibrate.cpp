@@ -11,20 +11,21 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <memory>
 
 int main(int argc, char *argv[])
 {
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-p <phases.txt> <gains.txt>] [-l <limit>] [-i <niter>] <model> <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-p <phases.txt> <gains.txt>] [-l <limit>] [-i <niter>] [-m <model>] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
 	} else {
 		int argi = 1;
 		bool savePlotFiles = false;
-		std::string plotPhaseFile, plotGainFile;
+		std::string plotPhaseFile, plotGainFile, modelFile;
 		size_t niter = 25;
 		double limit = 0.0001;
 		
@@ -47,19 +48,19 @@ int main(int argc, char *argv[])
 				limit = atof(argv[argi+1]);
 				argi += 2;
 			}
+			else if(strcmp(argv[argi], "-m") == 0)
+			{
+				modelFile = argv[argi+1];
+				argi += 2;
+			}
 			else throw std::runtime_error("Invalid parameter");
 		}
 		
-		if(argc <= argi + 2) throw std::runtime_error("Incorrect parameters");
+		if(argc <= argi + 1) throw std::runtime_error("Incorrect parameters");
 		
-		const char *modelName = argv[argi];
-		const char *msName = argv[argi+1];
-		const char *outName = argv[argi+2];
+		const char *msName = argv[argi];
+		const char *outName = argv[argi+1];
 		casa::MeasurementSet ms(msName);
-		
-		std::cout << "Reading model... " << std::flush;
-		Model model(modelName);
-		std::cout << "DONE\n";
 		
 		std::cout << "Reading meta data... " << std::flush;
 		
@@ -92,6 +93,7 @@ int main(int argc, char *argv[])
 		casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 		casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 		casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
+		std::unique_ptr<casa::ROArrayColumn<complex_t>> modelColumn;
 		
 		casa::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
@@ -111,14 +113,28 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		std::cout << "DONE (" << timestepCount << ")\nReading data & predicting model... " << std::flush;
-		
 		CalibrationMethod calMethod(channelCount, antennaCount, timestepCount);
-		Predicter predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount);
-		predicter.Initialize(model);
+		std::cout << "DONE (" << timestepCount << ")\n";
+		
+		std::unique_ptr<Model> model;
+		std::unique_ptr<Predicter> predicter;
+		if(modelFile.empty())
+		{
+			std::cout << "Reading data and model column... " << std::flush;
+			modelColumn.reset(new casa::ROArrayColumn<complex_t>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+		}
+		else {
+			std::cout << "Reading model... " << std::flush;
+			model.reset(new Model(modelFile.c_str()));
+			std::cout << "DONE\n";
+			predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount));
+			predicter->Initialize(*model);
+			predicter->ReportSources(*model);
+			std::cout << "Reading data & predicting model... " << std::flush;
+		}
 		
 		std::vector<std::complex<double> > modelValues(4 * channelCount);
-		casa::Array<complex_t> data(dataShape);
+		casa::Array<complex_t> data(dataShape), modelData(dataShape);
 		casa::Array<float> weights(dataShape);
 		casa::Array<bool> flags(dataShape);
 		size_t timeIndex = 0;
@@ -147,14 +163,30 @@ int main(int argc, char *argv[])
 				double u = *i; ++i;
 				double v = *i; ++i;
 				double w = *i;
-				for(size_t ch = 0; ch!=channelCount; ++ch)
+				
+				if(modelFile.empty())
 				{
-					double lambda = bandData.ChannelWavelength(ch);
-					for(size_t p=0; p!=4; ++p)
+					modelColumn->get(rowIndex, modelData);
+					std::complex<float> *modelDataPtr = modelData.cbegin();
+					for(size_t ch = 0; ch!=channelCount; ++ch)
 					{
-						if(flagPtr[ch*4+p]) weightsPtr[ch*4+p] = 0.0;
-						std::complex<double> pVal = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
-						modelValues[ch*4+p] = pVal;
+						for(size_t p=0; p!=4; ++p)
+						{
+							modelValues[ch*4+p] = *modelDataPtr;
+							++modelDataPtr;
+						}
+					}
+				}
+				else {
+					for(size_t ch = 0; ch!=channelCount; ++ch)
+					{
+						double lambda = bandData.ChannelWavelength(ch);
+						for(size_t p=0; p!=4; ++p)
+						{
+							if(flagPtr[ch*4+p]) weightsPtr[ch*4+p] = 0.0;
+							std::complex<double> pVal = predicter->Predict(*model, u/lambda, v/lambda, w/lambda, ch, p);
+							modelValues[ch*4+p] = pVal;
+						}
 					}
 				}
 					

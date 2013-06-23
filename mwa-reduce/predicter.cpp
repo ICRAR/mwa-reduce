@@ -15,7 +15,7 @@ void Predicter::Initialize(ModelSource& source)
 		for(size_t p=0; p!=4; ++p)
 		{
 			parameters->brightness[ch*4+p] =
-				source.SED().FluxAtFrequency(ch, _channelCount, _startFrequency, _endFrequency, p);
+				source.SED().FluxAtChannel(ch, _channelCount, _startFrequency, _endFrequency, p);
 		}
 	}
 	parameters->lmsqrt = sqrt(1.0 - l*l - m*m);
@@ -27,6 +27,16 @@ void Predicter::Initialize(Model& model)
 {
 	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
 		Initialize(*i);
+}
+
+void Predicter::ReportSources(Model& model)
+{
+	std::cout << "Model predicter initialized with " << model.SourceCount() << " sources of total [";
+	
+	std::cout << model.TotalFlux(_startFrequency, _endFrequency, 0);
+	for(size_t p=1; p!=4; ++p)
+		std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, p);
+	std::cout << "]\n";
 }
 
 Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex)

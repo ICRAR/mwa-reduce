@@ -18,7 +18,7 @@
 void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInversion::MSData& msData)
 {
 	std::cout << "Opening " << measurementSet << "... " << std::flush;
-	msData.ms = new casa::MeasurementSet(measurementSet);
+	msData.ms.reset(new casa::MeasurementSet(measurementSet));
 	casa::MeasurementSet &ms(*msData.ms);
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
@@ -125,7 +125,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, DataColumnName());
 	std::unique_ptr<casa::ROArrayColumn<casa::Complex>> modelColumn;
 	if(DoSubtractModel() && !DoImagePSF())
-		modelColumn.reset(new casa::ArrayColumn<std::complex<float>>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+		modelColumn.reset(new casa::ROArrayColumn<std::complex<float>>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 	
 	casa::IPosition dataShape = dataColumn.shape(0);
 	msData.polarizationCount = dataShape[0];
@@ -206,19 +206,30 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
+	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+	msData.polarizationCount = dataColumn.shape(0)[0];
+	
 	if(!ms.isColumn(casa::MSMainEnums::MODEL_DATA))
 	{
 		std::cout << "Adding model data column... " << std::flush;
-		casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
-		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(ms.columnName(casa::MSMainEnums::MODEL_DATA), dataColumn.shape(0));
-		//modelColumnDesc.setOptions(casa::ColumnDesc::Direct);
-		ms.addColumn(modelColumnDesc);
+		casa::IPosition shape = dataColumn.shape(0);
+		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(ms.columnName(casa::MSMainEnums::MODEL_DATA), shape);
+		ms.addColumn(modelColumnDesc, "StandardStMan", true, true);
+		
+		casa::Array<casa::Complex> zeroArray(shape);
+		for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
+			*i = std::complex<float>(0.0, 0.0);
+		
+		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+		
+		for(size_t row=0; row!=ms.nrow(); ++row)
+			_modelColumn->put(row, zeroArray);
+		
 		std::cout << "DONE\n";
 	}
-	
-	_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-	
-	msData.polarizationCount = _modelColumn->shape(0)[0];
+	else {
+		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+	}
 	
 	BandData bandData(ms.spectralWindow());
 	_imager->PrepareBand(bandData);
@@ -284,7 +295,7 @@ void WSInversion::visSampleThread()
 	
 	casa::IPosition shape = _modelColumn->shape(0);
 	casa::Array<std::complex<float>> data(shape);
-	size_t polarizationCount = shape[0], channelCount = shape[1];
+	size_t channelCount = shape[1];
 	
 	int polIndex = polarizationIndex();
 	do

@@ -87,7 +87,7 @@ class ModelParser
 			while(getToken(token) && token != "}")
 			{
 				if(token == "frequency") {
-					measurement.SetFrequency(getTokenAsDouble()*1000000.0);
+					measurement.SetFrequencyHz(getTokenAsDouble()*1000000.0);
 					getToken(token);
 				}
 				else if(token == "fluxdensity") {
