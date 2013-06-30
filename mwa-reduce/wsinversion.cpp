@@ -330,7 +330,7 @@ void WSInversion::visSampleThread()
 
 void WSInversion::Invert()
 {
-	std::vector<MSData> msDataVector(MeasurementSetCount());
+	MSData msDataVector[MeasurementSetCount()];
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		initializeMeasurementSet(MeasurementSetPath(i), msDataVector[i]);
 	
