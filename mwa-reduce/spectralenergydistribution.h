@@ -193,11 +193,11 @@ class SpectralEnergyDistribution
 			}
 			
 			// 'right' will be first item which frequency >= frequencyHz
-			typename FluxMap::const_iterator right = _measurements.lower_bound(frequencyHz);
+			FluxMap::const_iterator right = _measurements.lower_bound(frequencyHz);
 			if(right->first == frequencyHz)
 				return right->second.FluxDensity(polarizationIndex);
 			
-			typename FluxMap::const_iterator left;
+			FluxMap::const_iterator left;
 			
 			// If the requested frequency is outside the range, we extrapolate the SI of the full range
 			if(right == _measurements.begin() || right == _measurements.end())
@@ -252,7 +252,7 @@ class SpectralEnergyDistribution
 			if(startFrequency == endFrequency)
 				return FluxAtFrequency(startFrequency, polarizationIndex);
 			
-			typename FluxMap::const_iterator iter = _measurements.lower_bound(startFrequency);
+			FluxMap::const_iterator iter = _measurements.lower_bound(startFrequency);
 			
 			/** Handle special cases */
 			if(_measurements.size() <= 2)
@@ -309,8 +309,8 @@ class SpectralEnergyDistribution
 				
 			while(iter != _measurements.end() && iter->first < endFrequency)
 			{
-				typename FluxMap::const_iterator left = iter;
-				typename FluxMap::const_iterator right = iter;
+				FluxMap::const_iterator left = iter;
+				FluxMap::const_iterator right = iter;
 				++right;
 				
 				long double rightFrequency;
