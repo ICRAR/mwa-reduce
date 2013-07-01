@@ -14,8 +14,9 @@ int main(int argc, char *argv[])
 {
 	if(argc < 3)
 	{
-		std::cout << "Syntax:\twsclean [options] <input-ms>\n"
-			"Will create cleaned images of the input ms. DATA column will be used by default.\n"
+		std::cout << "Syntax:\twsclean [options] <input-ms> [<2nd-ms> [..]]\n"
+			"Will create cleaned images of the input ms(es). DATA column will be used by default.\n"
+			"If multiple mses are specified, they need to be phase-rotated to the same point on the sky.\n"
 			"Options can be:\n"
 			"\t-name <image-prefix>\n"
 			"\t   Use image-prefix as prefix for output files. Default is 'wsclean'.\n"
