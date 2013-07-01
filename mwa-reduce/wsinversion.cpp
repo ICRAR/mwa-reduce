@@ -35,8 +35,18 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	std::cout << 'B' << std::flush;
 	BandData bandData(ms.spectralWindow());
 	msData.channelCount = bandData.ChannelCount();
-	_freqHigh = bandData.HighestFrequency();
-	_freqLow = bandData.LowestFrequency();
+	if(_hasFrequencies)
+	{
+		_freqLow = std::min(_freqLow, bandData.LowestFrequency());
+		_freqHigh = std::max(_freqHigh, bandData.HighestFrequency());
+		_bandStart = std::min(_bandStart, bandData.BandStart());
+		_bandEnd = std::max(_bandEnd, bandData.BandEnd());
+	} else {
+		_freqLow = bandData.LowestFrequency();
+		_freqHigh = bandData.HighestFrequency();
+		_bandStart = bandData.BandStart();
+		_bandEnd = bandData.BandEnd();
+	}
 	
 	std::cout << 'C' << std::flush;
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));

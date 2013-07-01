@@ -94,8 +94,10 @@ class InversionAlgorithm
 		virtual const double *ImageResult() const = 0;
 		virtual double ImageResultRA() const = 0;
 		virtual double ImageResultDec() const = 0;
-		virtual double ImageFrequencyHigh() const = 0;
-		virtual double ImageFrequencyLow() const = 0;
+		virtual double ImageHighestFrequencyChannel() const = 0;
+		virtual double ImageLowestFrequencyChannel() const = 0;
+		virtual double ImageBandStart() const = 0;
+		virtual double ImageBandEnd() const = 0;
 		virtual double ImageBeamSize() const = 0;
 	protected:
 		size_t _imageWidth, _imageHeight;

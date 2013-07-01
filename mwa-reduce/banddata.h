@@ -55,6 +55,10 @@ class BandData
 		{
 			return _channelFrequencies[0];
 		}
+		double CentreFrequency() const
+		{
+			return (HighestFrequency() + LowestFrequency()) * 0.5;
+		}
 		double FrequencyStep() const
 		{
 		  if(_channelCount > 1)
@@ -77,6 +81,10 @@ class BandData
 		double BandEnd() const
 		{
 			return HighestFrequency() + FrequencyStep()*0.5;
+		}
+		double Bandwidth() const
+		{
+			return HighestFrequency() - LowestFrequency() + FrequencyStep();
 		}
 		
 	private:

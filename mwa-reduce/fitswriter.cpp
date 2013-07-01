@@ -24,7 +24,7 @@ void FitsWriter::checkStatus(int status)
 }
 
 template<typename NumType>
-void FitsWriter::Write(const NumType *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY)
+void FitsWriter::Write(const NumType *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double frequency, double bandwidth)
 {
 	int status = 0;
 	fitsfile *fptr;
@@ -33,9 +33,11 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	
 	// append image HDU
 	int bitPixInt = FLOAT_IMG;
-	long naxes[2];
+	long naxes[4];
 	naxes[0] = width;
 	naxes[1] = height;
+	naxes[2] = 1;
+	naxes[3] = 1;
 	fits_create_img(fptr, bitPixInt, 2, naxes, &status);
 	checkStatus(status);
 	float zero = 0, one = 1, equinox = 2000.0;
@@ -44,7 +46,7 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	fits_write_key(fptr, TSTRING, "BUNIT", (void*) "JY/BEAM", "Units are in Jansky per beam", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "EQUINOX", (void*) &equinox, "J2000", &status); checkStatus(status);
 	fits_write_key(fptr, TSTRING, "BTYPE", (void*) "Intensity", "", &status); checkStatus(status);
-	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) "AOImager", "Imager written by Andre Offringa", &status); checkStatus(status);
+	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) "AO/WSImager", "Imager written by Andre Offringa", &status); checkStatus(status);
 	float phaseCentreRADeg = (phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (phaseCentreDec/M_PI)*180.0;
 	float centrePixelX = (width / 2.0)+1, centrePixelY = (height / 2.0)+1;
 	float stepXDeg = (-pixelSizeX/M_PI)*180.0, stepYDeg = (pixelSizeY/M_PI)*180.0;
@@ -53,11 +55,25 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	fits_write_key(fptr, TFLOAT, "CRVAL1", (void*) &phaseCentreRADeg, "", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "CDELT1", (void*) &stepXDeg, "", &status); checkStatus(status);
 	fits_write_key(fptr, TSTRING, "CUNIT1", (void*) "deg", "", &status); checkStatus(status);
+	
 	fits_write_key(fptr, TSTRING, "CTYPE2", (void*) "DEC--SIN", "Declination angle cosine", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "CRPIX2", (void*) &centrePixelY, "", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "CRVAL2", (void*) &phaseCentreDecDeg, "", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "CDELT2", (void*) &stepYDeg, "", &status); checkStatus(status);
 	fits_write_key(fptr, TSTRING, "CUNIT2", (void*) "deg", "", &status); checkStatus(status);
+
+	fits_write_key(fptr, TSTRING, "CTYPE3", (void*) "FREQ", "Central frequency", &status); checkStatus(status);
+	fits_write_key(fptr, TFLOAT, "CRPIX3", (void*) &one, "", &status); checkStatus(status);
+	fits_write_key(fptr, TDOUBLE, "CRVAL3", (void*) &frequency, "", &status); checkStatus(status);
+	fits_write_key(fptr, TDOUBLE, "CDELT3", (void*) &bandwidth, "", &status); checkStatus(status);
+	fits_write_key(fptr, TSTRING, "CUNIT3", (void*) "Hz", "", &status); checkStatus(status);
+	
+	fits_write_key(fptr, TSTRING, "CTYPE4", (void*) "STOKES", "", &status); checkStatus(status);
+	fits_write_key(fptr, TFLOAT, "CRPIX4", (void*) &one, "", &status); checkStatus(status);
+	fits_write_key(fptr, TFLOAT, "CRVAL4", (void*) &one, "", &status); checkStatus(status);
+	fits_write_key(fptr, TFLOAT, "CDELT4", (void*) &one, "", &status); checkStatus(status);
+	fits_write_key(fptr, TSTRING, "CUNIT4", (void*) "Hz", "", &status); checkStatus(status);
+	
 	// RESTFRQ ?
 	fits_write_key(fptr, TSTRING, "SPECSYS", (void*) "TOPOCENT", "", &status); checkStatus(status);
 	
@@ -87,6 +103,6 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	checkStatus(status);
 }
 
-template void FitsWriter::Write<long double>(const long double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
-template void FitsWriter::Write<double>(const double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
-template void FitsWriter::Write<float>(const float *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY);
+template void FitsWriter::Write<long double>(const long double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double frequency, double bandwidth);
+template void FitsWriter::Write<double>(const double *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double frequency, double bandwidth);
+template void FitsWriter::Write<float>(const float *image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double frequency, double bandwidth);

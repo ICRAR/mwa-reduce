@@ -31,13 +31,23 @@ float FitsReader::readFloatKey(const char *key)
 	return floatValue;
 }
 
-void FitsReader::readFloatKeyIfExists(const char *key, float &dest)
+double FitsReader::readDoubleKey(const char *key)
+{
+	int status = 0;
+	double value;
+	fits_read_key(_fitsPtr, TDOUBLE, key, &value, 0, &status);
+	checkStatus(status, key);
+	return value;
+}
+
+bool FitsReader::readFloatKeyIfExists(const char *key, float &dest)
 {
 	int status = 0;
 	float floatValue;
 	fits_read_key(_fitsPtr, TFLOAT, key, &floatValue, 0, &status);
 	if(status == 0)
 		dest = floatValue;
+	return status == 0;
 }
 
 std::string FitsReader::readStringKey(const char *key)
@@ -98,6 +108,17 @@ void FitsReader::initialize()
 	_pixelSizeY = readFloatKey("CDELT2") * (M_PI / 180.0);
 	if(readStringKey("CUNIT2") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT2");
+	
+	if(naxis >= 3)
+	{
+		if(readStringKey("CTYPE3") != "FREQ")
+			throw std::runtime_error("Invalid value for CTYPE3");
+		_frequency = readFloatKey("CRVAL3");
+		_bandwidth = readFloatKey("CDELT3");
+	} else {
+		_frequency = 0.0;
+		_bandwidth = 0.0;
+	}
 }
 
 template void FitsReader::Read(double* image);

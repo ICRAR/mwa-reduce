@@ -19,7 +19,7 @@ namespace casa {
 class WSInversion : public InversionAlgorithm
 {
 	public:
-		WSInversion() : InversionAlgorithm()
+		WSInversion() : InversionAlgorithm(), _hasFrequencies(false)
 		{
 		}
 	
@@ -30,8 +30,10 @@ class WSInversion : public InversionAlgorithm
 		virtual const double *ImageResult() const { return _imager->Image(); }
 		virtual double ImageResultRA() const { return _phaseCentreRA; }
 		virtual double ImageResultDec() const { return _phaseCentreDec; }
-		virtual double ImageFrequencyHigh() const { return _freqHigh; }
-		virtual double ImageFrequencyLow() const { return _freqLow; }
+		virtual double ImageHighestFrequencyChannel() const { return _freqHigh; }
+		virtual double ImageLowestFrequencyChannel() const { return _freqLow; }
+		virtual double ImageBandStart() const { return _bandStart; }
+		virtual double ImageBandEnd() const { return _bandEnd; }
 		virtual double ImageBeamSize() const { return _beamSize; }
 	private:
 		struct InversionWorkItem
@@ -100,7 +102,9 @@ class WSInversion : public InversionAlgorithm
 		std::unique_ptr<lane<SamplingWorkItem>> _samplingWorkLane;
 		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
 		double _phaseCentreRA, _phaseCentreDec;
+		bool _hasFrequencies;
 		double _freqHigh, _freqLow;
+		double _bandStart, _bandEnd;
 		double _beamSize;
 		double _totalWeight;
 };
