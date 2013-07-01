@@ -38,7 +38,7 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	naxes[1] = height;
 	naxes[2] = 1;
 	naxes[3] = 1;
-	fits_create_img(fptr, bitPixInt, 2, naxes, &status);
+	fits_create_img(fptr, bitPixInt, 4, naxes, &status);
 	checkStatus(status);
 	float zero = 0, one = 1, equinox = 2000.0;
 	fits_write_key(fptr, TFLOAT, "BSCALE", (void*) &one, "", &status); checkStatus(status);
