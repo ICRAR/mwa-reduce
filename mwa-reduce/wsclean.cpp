@@ -144,6 +144,8 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	
+	
+	std::cout << " == Constructing PSF ==\n";
 	inversionAlgorithm->SetDoImagePSF(true);
 	inversionAlgorithm->Invert();
 	std::vector<double> psf(imgWidth * imgHeight);
@@ -162,6 +164,7 @@ int main(int argc, char *argv[])
 	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth);
 	std::cout << "DONE\n";
 	
+	std::cout << " == Constructing image ==\n";
 	inversionAlgorithm->SetDoImagePSF(false);
 	inversionAlgorithm->Invert();
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
@@ -175,6 +178,7 @@ int main(int argc, char *argv[])
 	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth);
 	std::cout << "DONE\n";
 	
+	std::cout << " == Cleaning ==\n";
 	CleanAlgorithm cleanAlgorithm;
 	cleanAlgorithm.SetMaxNIter(nIter);
 	cleanAlgorithm.SetThreshold(threshold);
@@ -193,7 +197,10 @@ int main(int argc, char *argv[])
 	
 	if(majorIterations)
 	{
+		std::cout << " == Converting model image to visibilities ==\n";
 		inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+		
+		std::cout << " == Constructing image ==\n";
 		inversionAlgorithm->SetDoSubtractModel(true);
 		inversionAlgorithm->Invert();
 		memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
