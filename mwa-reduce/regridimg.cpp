@@ -31,7 +31,7 @@ class ImageInfo
 		std::vector<double> values, weights;
 		size_t width, height;
 		double ra, dec, pixelSizeX, pixelSizeY;
-		double frequency, bandwidth;
+		double frequency, bandwidth, dateObs;
 };
 
 void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, size_t &destXLeft, size_t &destYTop, size_t &destXRight, size_t &destYBottom)
@@ -227,6 +227,7 @@ int main(int argc, char *argv[])
 	outImage.pixelSizeY = templateReader.PixelSizeY();
 	outImage.frequency = templateReader.Frequency();
 	outImage.bandwidth = templateReader.Bandwidth();
+	outImage.dateObs = templateReader.DateObs();
 	for(size_t i=0; i!=size; ++i)
 	{
 		outImage.values[i] = 0.0;
@@ -259,6 +260,7 @@ int main(int argc, char *argv[])
 		inpImage.pixelSizeY = inpReader.PixelSizeY();
 		inpImage.frequency = inpReader.Frequency();
 		inpImage.bandwidth = inpReader.Bandwidth();
+		inpImage.dateObs = inpReader.DateObs();
 		
 		Regrid(outImage, inpImage);
 	}
@@ -278,9 +280,9 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing " << outImageName << "...\n";
 	FitsWriter imgWriter(outImageName);
-	imgWriter.Write<double>(&outImage.values[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth);
+	imgWriter.Write<double>(&outImage.values[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth, outImage.dateObs);
 	
 	std::cout << "Writing " << outWeightName << "...\n";
 	FitsWriter weightsWriter(outWeightName);
-	weightsWriter.Write<double>(&outImage.weights[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth);
+	weightsWriter.Write<double>(&outImage.weights[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth, outImage.dateObs);
 }

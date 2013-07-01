@@ -50,6 +50,16 @@ bool FitsReader::readFloatKeyIfExists(const char *key, float &dest)
 	return status == 0;
 }
 
+bool FitsReader::readDoubleKeyIfExists(const char *key, double &dest)
+{
+	int status = 0;
+	float doubleValue;
+	fits_read_key(_fitsPtr, TDOUBLE, key, &doubleValue, 0, &status);
+	if(status == 0)
+		dest = doubleValue;
+	return status == 0;
+}
+
 std::string FitsReader::readStringKey(const char *key)
 {
 	int status = 0;
@@ -108,7 +118,7 @@ void FitsReader::initialize()
 	_pixelSizeY = readFloatKey("CDELT2") * (M_PI / 180.0);
 	if(readStringKey("CUNIT2") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT2");
-	
+	readDoubleKeyIfExists("DATE-OBS", _dateObs);
 	if(naxis >= 3)
 	{
 		if(readStringKey("CTYPE3") != "FREQ")

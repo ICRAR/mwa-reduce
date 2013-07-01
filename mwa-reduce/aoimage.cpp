@@ -62,7 +62,7 @@ enum Polarization { StokesIPol, XXPol, YYPol, PsfPol };
 struct ImageInfo
 {
 	double phaseCentreRA, phaseCentreDec;
-	double highestFrequency, lowestFrequency, bandwidth;
+	double highestFrequency, lowestFrequency, bandwidth, dateObs;
 	bool onlyModel, haveTimeRange, haveUVRange;
 	size_t timeRangeStart, timeRangeStop;
 	size_t uvRangeStart, uvRangeStop;
@@ -558,6 +558,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	info.highestFrequency = std::max(info.highestFrequency, bandData.HighestFrequency());
 	info.lowestFrequency = std::min(info.lowestFrequency, bandData.LowestFrequency());
 	info.bandwidth = std::max(bandData.Bandwidth(), info.highestFrequency - info.lowestFrequency);
+	info.dateObs = timeColumn(0).getValue().get();
 }
 
 int main(int argc, char *argv[])
@@ -654,6 +655,7 @@ int main(int argc, char *argv[])
 	imageInfo.lowestFrequency = 1e30;
 	imageInfo.highestFrequency = 0.0;
 	imageInfo.bandwidth = 0.0;
+	imageInfo.dateObs = 0.0;
 	imageInfo.onlyModel = onlyModel;
 	imageInfo.polarization = pol;
 	imageInfo.haveTimeRange = haveTimeRange;
@@ -691,7 +693,7 @@ int main(int argc, char *argv[])
 		else
 			std::cout << "Writing final fits file... " << std::flush;
 		FitsWriter writer(fitsfile);
-		writer.Write(imageData, imager.ImageSize(), imager.ImageSize(), imageInfo.phaseCentreRA, imageInfo.phaseCentreDec, pixelScale, pixelScale, (imageInfo.lowestFrequency + imageInfo.highestFrequency) * 0.5, imageInfo.bandwidth);
+		writer.Write(imageData, imager.ImageSize(), imager.ImageSize(), imageInfo.phaseCentreRA, imageInfo.phaseCentreDec, pixelScale, pixelScale, (imageInfo.lowestFrequency + imageInfo.highestFrequency) * 0.5, imageInfo.bandwidth, imageInfo.dateObs);
 		delete[] imageData;
 		std::cout << "DONE\n";
 	}

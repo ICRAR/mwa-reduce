@@ -25,10 +25,13 @@ class FitsReader
 		
 		double Frequency() const { return _frequency; }
 		double Bandwidth() const { return _bandwidth; }
+		
+		double DateObs() const { return _dateObs; }
 	private:
 		float readFloatKey(const char *key);
 		double readDoubleKey(const char *key);
 		bool readFloatKeyIfExists(const char *key, float &dest);
+		bool readDoubleKeyIfExists(const char *key, double &dest);
 		std::string readStringKey(const char *key);
 		
 		std::string _filename;
@@ -40,7 +43,7 @@ class FitsReader
 		size_t _imgWidth, _imgHeight;
 		double _phaseCentreRA, _phaseCentreDec;
 		double _pixelSizeX, _pixelSizeY;
-		double _frequency, _bandwidth;
+		double _frequency, _bandwidth, _dateObs;
 };
 
 #endif

@@ -35,6 +35,7 @@ class WSInversion : public InversionAlgorithm
 		virtual double ImageBandStart() const { return _bandStart; }
 		virtual double ImageBandEnd() const { return _bandEnd; }
 		virtual double ImageBeamSize() const { return _beamSize; }
+		virtual double ImageStartTime() const { return _startTime; }
 	private:
 		struct InversionWorkItem
 		{
@@ -107,6 +108,7 @@ class WSInversion : public InversionAlgorithm
 		double _bandStart, _bandEnd;
 		double _beamSize;
 		double _totalWeight;
+		double _startTime;
 };
 
 #endif
