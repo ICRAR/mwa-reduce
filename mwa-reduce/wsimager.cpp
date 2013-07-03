@@ -60,7 +60,10 @@ int main(int argc, char* argv[])
 	inversionAlgorithm.Invert();
 	
 	std::cout << "Writing image... " << std::flush;
+	double
+		bandStart = inversionAlgorithm.ImageBandStart(),
+		bandEnd = inversionAlgorithm.ImageBandEnd();
 	FitsWriter writer(fitsfileName);
-	writer.Write(inversionAlgorithm.ImageResult(), imgWidth, imgHeight, inversionAlgorithm.ImageResultRA(), inversionAlgorithm.ImageResultDec(), -pixelScale, pixelScale);
+	writer.Write(inversionAlgorithm.ImageResult(), imgWidth, imgHeight, inversionAlgorithm.ImageResultRA(), inversionAlgorithm.ImageResultDec(), -pixelScale, pixelScale, (bandStart + bandEnd) * 0.5, bandEnd - bandStart, inversionAlgorithm.ImageStartTime());
 	std::cout << "DONE\n";
 }

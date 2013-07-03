@@ -35,8 +35,22 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	std::cout << 'B' << std::flush;
 	BandData bandData(ms.spectralWindow());
 	msData.channelCount = bandData.ChannelCount();
-	_freqHigh = bandData.HighestFrequency();
-	_freqLow = bandData.LowestFrequency();
+	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
+	if(_hasFrequencies)
+	{
+		_freqLow = std::min(_freqLow, bandData.LowestFrequency());
+		_freqHigh = std::max(_freqHigh, bandData.HighestFrequency());
+		_bandStart = std::min(_bandStart, bandData.BandStart());
+		_bandEnd = std::max(_bandEnd, bandData.BandEnd());
+		_startTime = std::min(_startTime, timeColumn(0).getValue().get());
+	} else {
+		_freqLow = bandData.LowestFrequency();
+		_freqHigh = bandData.HighestFrequency();
+		_bandStart = bandData.BandStart();
+		_bandEnd = bandData.BandEnd();
+		_startTime = timeColumn(0).getValue().get();
+		_hasFrequencies = true;
+	}
 	
 	std::cout << 'C' << std::flush;
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
@@ -44,7 +58,6 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
-	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 	
 	std::cout << 'F' << std::flush;
 	casa::MSField fTable(ms.field());
@@ -331,6 +344,7 @@ void WSInversion::visSampleThread()
 void WSInversion::Invert()
 {
 	MSData msDataVector[MeasurementSetCount()];
+	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		initializeMeasurementSet(MeasurementSetPath(i), msDataVector[i]);
 	
@@ -388,6 +402,7 @@ void WSInversion::Invert()
 void WSInversion::InvertToVisibilities(const double *image)
 {
 	MSData msDataVector[MeasurementSetCount()];
+	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		initializeMeasurementSet(MeasurementSetPath(i), msDataVector[i]);
 	

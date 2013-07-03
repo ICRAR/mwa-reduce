@@ -15,20 +15,23 @@ class ImageInfo
 		ImageInfo() :
 			width(0), height(0),
 			ra(0.0), dec(0.0),
-			pixelSizeX(0.0), pixelSizeY(0.0)
+			pixelSizeX(0.0), pixelSizeY(0.0),
+			frequency(0.0), bandwidth(0.0)
 		{
 		}
 		ImageInfo(size_t size) :
 			values(size), weights(size),
 			width(0), height(0),
 			ra(0.0), dec(0.0),
-			pixelSizeX(0.0), pixelSizeY(0.0)
+			pixelSizeX(0.0), pixelSizeY(0.0),
+			frequency(0.0), bandwidth(0.0)
 		{
 		}
 		
 		std::vector<double> values, weights;
 		size_t width, height;
 		double ra, dec, pixelSizeX, pixelSizeY;
+		double frequency, bandwidth, dateObs;
 };
 
 void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, size_t &destXLeft, size_t &destYTop, size_t &destXRight, size_t &destYBottom)
@@ -222,6 +225,9 @@ int main(int argc, char *argv[])
 	}
 	outImage.pixelSizeX = templateReader.PixelSizeX();
 	outImage.pixelSizeY = templateReader.PixelSizeY();
+	outImage.frequency = templateReader.Frequency();
+	outImage.bandwidth = templateReader.Bandwidth();
+	outImage.dateObs = templateReader.DateObs();
 	for(size_t i=0; i!=size; ++i)
 	{
 		outImage.values[i] = 0.0;
@@ -252,6 +258,9 @@ int main(int argc, char *argv[])
 		inpImage.dec = inpReader.PhaseCentreDec();
 		inpImage.pixelSizeX = inpReader.PixelSizeX();
 		inpImage.pixelSizeY = inpReader.PixelSizeY();
+		inpImage.frequency = inpReader.Frequency();
+		inpImage.bandwidth = inpReader.Bandwidth();
+		inpImage.dateObs = inpReader.DateObs();
 		
 		Regrid(outImage, inpImage);
 	}
@@ -271,9 +280,9 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing " << outImageName << "...\n";
 	FitsWriter imgWriter(outImageName);
-	imgWriter.Write<double>(&outImage.values[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY);
+	imgWriter.Write<double>(&outImage.values[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth, outImage.dateObs);
 	
 	std::cout << "Writing " << outWeightName << "...\n";
 	FitsWriter weightsWriter(outWeightName);
-	weightsWriter.Write<double>(&outImage.weights[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY);
+	weightsWriter.Write<double>(&outImage.weights[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth, outImage.dateObs);
 }

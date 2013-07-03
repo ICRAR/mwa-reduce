@@ -14,8 +14,9 @@ int main(int argc, char *argv[])
 {
 	if(argc < 3)
 	{
-		std::cout << "Syntax:\twsclean [options] <input-ms>\n"
-			"Will create cleaned images of the input ms. DATA column will be used by default.\n"
+		std::cout << "Syntax:\twsclean [options] <input-ms> [<2nd-ms> [..]]\n"
+			"Will create cleaned images of the input ms(es). DATA column will be used by default.\n"
+			"If multiple mses are specified, they need to be phase-rotated to the same point on the sky.\n"
 			"Options can be:\n"
 			"\t-name <image-prefix>\n"
 			"\t   Use image-prefix as prefix for output files. Default is 'wsclean'.\n"
@@ -143,6 +144,8 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	
+	
+	std::cout << " == Constructing PSF ==\n";
 	inversionAlgorithm->SetDoImagePSF(true);
 	inversionAlgorithm->Invert();
 	std::vector<double> psf(imgWidth * imgHeight);
@@ -150,15 +153,19 @@ int main(int argc, char *argv[])
 	const double
 		ra = inversionAlgorithm->ImageResultRA(),
 		dec = inversionAlgorithm->ImageResultDec(),
-		freqHigh = inversionAlgorithm->ImageFrequencyHigh(),
-		freqLow = inversionAlgorithm->ImageFrequencyLow(),
-		beamSize = inversionAlgorithm->ImageBeamSize();
+		freqHigh = inversionAlgorithm->ImageHighestFrequencyChannel(),
+		freqLow = inversionAlgorithm->ImageLowestFrequencyChannel(),
+		freqCentre = (freqHigh + freqLow) * 0.5,
+		bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
+		beamSize = inversionAlgorithm->ImageBeamSize(),
+		dateObs = inversionAlgorithm->ImageStartTime();
 	
 	std::cout << "Writing psf image... " << std::flush;
 	FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
-	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
+	std::cout << " == Constructing image ==\n";
 	inversionAlgorithm->SetDoImagePSF(false);
 	inversionAlgorithm->Invert();
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
@@ -169,9 +176,10 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing dirty image... " << std::flush;
 	FitsWriter dirtyWriter(std::string(prefixName) + "-dirty.fits");
-	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
+	std::cout << " == Cleaning ==\n";
 	CleanAlgorithm cleanAlgorithm;
 	cleanAlgorithm.SetMaxNIter(nIter);
 	cleanAlgorithm.SetThreshold(threshold);
@@ -180,24 +188,27 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing residual image... " << std::flush;
 	FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
-	resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+	resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
 	std::cout << "Writing model image... " << std::flush;
 	FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
-	modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+	modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
 	if(majorIterations)
 	{
+		std::cout << " == Converting model image to visibilities ==\n";
 		inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+		
+		std::cout << " == Constructing image ==\n";
 		inversionAlgorithm->SetDoSubtractModel(true);
 		inversionAlgorithm->Invert();
 		memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 		inversionAlgorithm.reset();
 		std::cout << "Writing residual image... " << std::flush;
 		FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
-		resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+		resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 		std::cout << "DONE\n";
 	}
 	
@@ -230,7 +241,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing restored image... " << std::flush;
 	FitsWriter restoredWriter(std::string(prefixName) + "-image.fits");
-	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale);
+	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
 }

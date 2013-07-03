@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
 	size_t width = 0, height = 0;
 	double ra = 0.0, dec = 0.0, pixelSizeX = 0.0, pixelSizeY = 0.0;
 	double *outImage = 0, *outWeights = 0;
+	double frequency = 0.0, bandwidth = 0.0, dateObs = 0.0;
 	for(int argi=3; argi + 1 < argc; argi += 2)
 	{
 		const char *inpImageName = argv[argi];
@@ -32,6 +33,9 @@ int main(int argc, char *argv[])
 			dec = inpReader.PhaseCentreDec();
 			pixelSizeX = inpReader.PixelSizeX();
 			pixelSizeY = inpReader.PixelSizeY();
+			frequency = inpReader.Frequency();
+			bandwidth = inpReader.Bandwidth();
+			dateObs = inpReader.DateObs();
 			
 			const size_t size = width * height;
 			outImage = new double[size];
@@ -80,10 +84,10 @@ int main(int argc, char *argv[])
 	}
 	
 	FitsWriter imgWriter(outImageName);
-	imgWriter.Write<double>(outImage, width, height, ra, dec, pixelSizeX, pixelSizeY);
+	imgWriter.Write<double>(outImage, width, height, ra, dec, pixelSizeX, pixelSizeY, frequency, bandwidth, dateObs);
 	delete[] outImage;
 	
 	FitsWriter weightsWriter(outWeightName);
-	weightsWriter.Write<double>(outWeights, width, height, ra, dec, pixelSizeX, pixelSizeY);
+	weightsWriter.Write<double>(outWeights, width, height, ra, dec, pixelSizeX, pixelSizeY, frequency, bandwidth, dateObs);
 	delete[] outWeights;
 }

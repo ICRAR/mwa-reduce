@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 	std::cout << "\nWriting...\n";
 	FitsWriter xWriter("beam-x.fits"), yWriter("beam-y.fits");
 	
-	xWriter.Write<double>(&outImageX[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY());
-	yWriter.Write<double>(&outImageY[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY());
+	xWriter.Write<double>(&outImageX[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
+	yWriter.Write<double>(&outImageY[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
 	
 }
