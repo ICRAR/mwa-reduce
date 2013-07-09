@@ -2,14 +2,17 @@
 #include "imagecoordinates.h"
 #include "modelsource.h"
 #include "model.h"
+#include "lane.h"
 
 #include <iostream>
+#include <boost/thread/thread.hpp>
 #include <emmintrin.h>
 
 CleanAlgorithm::CleanAlgorithm() :
 	_threshold(0.0),
 	_subtractionGain(0.1),
-	_maxIter(500)
+	_maxIter(500),
+	_allowNegativeComponents(false)
 {
 }
 
@@ -57,26 +60,133 @@ void CleanAlgorithm::SubtractImage(double *image, const double *psf, size_t widt
 	}
 }
 
-
-void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height)
+void CleanAlgorithm::partialSubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor, size_t startY, size_t endY)
 {
-	bool allowNegativeComponents = false;
+	size_t startX, endX;
+	int offsetX = (int) x - width/2, offsetY = (int) y - height/2;
 	
+	if(offsetX > 0)
+		startX = offsetX;
+	else
+		startX = 0;
+	
+	if(offsetY > (int) startY)
+		startY = offsetY;
+	
+	endX = x + width/2;
+	if(endX > width) endX = width;
+	
+	bool isAligned = ((endX - startX) % 2) == 0;
+	if(!isAligned) --endX;
+	
+	endY = std::min(y + height/2, endY);
+	
+	for(size_t ypos = startY; ypos < endY; ++ypos)
+	{
+		double *imageIter = image + ypos * width + startX;
+		const double *psfIter = psf + (ypos - offsetY) * width + startX - offsetX;
+		for(size_t xpos = startX; xpos != endX; xpos+=2)
+		{
+			*imageIter = *imageIter - (*psfIter * factor);
+			*(imageIter+1) = *(imageIter+1) - (*(psfIter+1) * factor);
+			imageIter+=2;
+			psfIter+=2;
+		}
+		if(!isAligned)
+			*imageIter -= *psfIter * factor;
+	}
+}
+
+void CleanAlgorithm::ExecuteMajorIterationST(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height)
+{
 	size_t componentX, componentY;
-	double peak = CleanAlgorithm::FindPeak(dataImage, width, height, componentX, componentY, allowNegativeComponents);
+	double peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
 	std::cout << "Initial peak: " << peak << '\n';
 	size_t iterationNumber = 0;
 	while(fabs(peak) > _threshold && iterationNumber < _maxIter)
 	{
 		if(iterationNumber % 10 == 0)
 			std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
-		CleanAlgorithm::SubtractImage(dataImage, psfImage, width, height, componentX, componentY, _subtractionGain * peak);
+		SubtractImage(dataImage, psfImage, width, height, componentX, componentY, _subtractionGain * peak);
 		modelImage[componentX + componentY*width] += _subtractionGain * peak;
 		
-		peak = CleanAlgorithm::FindPeak(dataImage, width, height, componentX, componentY, allowNegativeComponents);
+		peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
 		++iterationNumber;
 	}
 	std::cout << "Stopped on peak " << peak << '\n';
+}
+
+void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height)
+{
+	size_t componentX, componentY;
+	double peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
+	std::cout << "Initial peak: " << peak << '\n';
+	size_t iterationNumber = 0;
+
+	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	std::vector<std::unique_ptr<lane<CleanTask>>> taskLanes(cpuCount);
+	std::vector<std::unique_ptr<lane<CleanResult>>> resultLanes(cpuCount);
+	boost::thread_group threadGroup;
+	for(size_t i=0; i!=cpuCount; ++i)
+	{
+		taskLanes[i].reset(new lane<CleanTask>(1));
+		resultLanes[i].reset(new lane<CleanResult>(1));
+		CleanThreadData cleanThreadData;
+		cleanThreadData.width = width;
+		cleanThreadData.height = height;
+		cleanThreadData.dataImage = dataImage;
+		cleanThreadData.psfImage = psfImage;
+		cleanThreadData.startY = (height*i)/cpuCount;
+		cleanThreadData.endY = height*(i+1)/cpuCount;
+		threadGroup.add_thread(new boost::thread(&CleanAlgorithm::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
+	}
+	while(fabs(peak) > _threshold && iterationNumber < _maxIter)
+	{
+		if(iterationNumber % 10 == 0)
+			std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
+		
+		CleanTask task;
+		task.cleanCompX = componentX;
+		task.cleanCompY = componentY;
+		task.peakLevel = peak;
+		for(size_t i=0; i!=cpuCount; ++i)
+			taskLanes[i]->write(task);
+		
+		modelImage[componentX + componentY*width] += _subtractionGain * peak;
+		
+		peak = 0.0;
+		for(size_t i=0; i!=cpuCount; ++i)
+		{
+			CleanResult result;
+			resultLanes[i]->read(result);
+			if(result.peakLevel >= peak)
+			{
+				peak = result.peakLevel;
+				componentX = result.nextPeakX;
+				componentY = result.nextPeakY;
+			}
+		}
+		
+		++iterationNumber;
+	}
+	for(size_t i=0; i!=cpuCount; ++i)
+		taskLanes[i]->write_end();
+	threadGroup.join_all();
+	std::cout << "Stopped on peak " << peak << '\n';
+}
+
+void CleanAlgorithm::cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult> *resultLane, CleanThreadData cleanData)
+{
+	CleanTask task;
+	while(taskLane->read(task))
+	{
+		partialSubtractImage(cleanData.dataImage, cleanData.psfImage, cleanData.width, cleanData.height, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakLevel, cleanData.startY, cleanData.endY);
+		
+		CleanResult result;
+		result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.width, cleanData.height, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY);
+		
+		resultLane->write(result);
+	}
 }
 
 void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq)
