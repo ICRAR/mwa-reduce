@@ -165,6 +165,41 @@ void LayeredImager::FinishInversionPass()
 	threadGroup.join_all();
 }
 
+void LayeredImager::makeKernel(std::vector<double> &kernel, double alpha, size_t overSamplingFactor)
+{
+	size_t
+		n = kernel.size(),
+		mid = (n+1)/2;
+	std::vector<double> sincKernel(mid);
+	const double filterRatio = 1.0 / double(overSamplingFactor); // FILTER POINT / TOTAL BANDWIDTH
+	sincKernel[0] = filterRatio;
+	for(size_t i=1; i!=mid; i++)
+	{
+		double x = i;
+		sincKernel[i] = sin(M_PI*filterRatio*x)/(M_PI*x);
+	}
+	const double overB0Alpha = 1.0 / bessel0(alpha, 1e-8);
+	for(size_t i=0; i!=mid; i++)
+		kernel[mid+i-1] = sincKernel[i] * bessel0(alpha * sqrt(1-(i*i/(n*n))), 1e-8) * overB0Alpha;
+	for(size_t i=0; i!=mid-1; i++)
+		kernel[i] = kernel[kernel.size()-2-i];
+}
+
+double LayeredImager::bessel0(double x, double precision)
+{
+	double
+		d = 0,
+		ds = 1,
+		s = 1;
+	do
+	{
+		d += 2;
+		ds *= x*x/(d*d);
+		s += ds;
+	} while (ds > s*precision);
+	return s;
+}
+
 void LayeredImager::AddData(const std::complex<float>* data, double uInM, double vInM, double wInM)
 {
  	const size_t

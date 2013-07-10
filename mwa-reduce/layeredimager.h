@@ -94,6 +94,9 @@ class LayeredImager
 		void fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);
 		void fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks);
 		
+		void makeKernel(std::vector<double> &kernel, double alpha, size_t overSamplingFactor);
+		double bessel0(double x, double precision);
+		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
 		const BandData *_bandData;
