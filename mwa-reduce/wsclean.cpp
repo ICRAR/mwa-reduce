@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
 	bool majorIterations = false;
+	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	
 	while(argv[argi][0] == '-')
 	{
@@ -121,6 +122,18 @@ int main(int argc, char *argv[])
 			++argi;
 			prefixName = argv[argi];
 		}
+		else if(strcmp(param, "gridmode") == 0)
+		{
+			++argi;
+			std::string gridModeStr = argv[argi];
+			boost::to_lower(gridModeStr);
+			if(gridModeStr == "kb" || gridModeStr == "kaiserbessel" || gridModeStr == "kaiser-bessel")
+				gridMode = LayeredImager::KaiserBessel;
+			else if(gridModeStr == "nn" || gridModeStr == "nearestneighbour")
+				gridMode = LayeredImager::NearestNeighbour;
+			else
+				throw std::runtime_error("Invalid gridding mode: should be either kb (Kaiser-Bessel) or nn (NearestNeighbour)");
+		}
 		else {
 			throw std::runtime_error("Unknown parameter");
 		}
@@ -132,6 +145,7 @@ int main(int argc, char *argv[])
 		throw std::runtime_error("No input measurement sets given.");
 	
 	std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion());
+	static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 	
 	for(int i=argi; i != argc; ++i)
 		inversionAlgorithm->AddMeasurementSetPath(argv[i]);
@@ -164,6 +178,16 @@ int main(int argc, char *argv[])
 	FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
 	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
+	
+	if(inversionAlgorithm->HasGriddingCorrectionImage())
+	{
+		std::cout << "Writing gridding correction image... " << std::flush;
+		FitsWriter griddingWriter(std::string(prefixName) + "-gridding.fits");
+		std::vector<double> gridding(imgWidth * imgHeight);
+		inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
+		griddingWriter.Write(&gridding[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+		std::cout << "DONE\n";
+	}
 	
 	std::cout << " == Constructing image ==\n";
 	inversionAlgorithm->SetDoImagePSF(false);

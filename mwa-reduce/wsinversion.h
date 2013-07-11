@@ -19,7 +19,7 @@ namespace casa {
 class WSInversion : public InversionAlgorithm
 {
 	public:
-		WSInversion() : InversionAlgorithm(), _hasFrequencies(false)
+		WSInversion() : InversionAlgorithm(), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour)
 		{
 		}
 	
@@ -36,6 +36,12 @@ class WSInversion : public InversionAlgorithm
 		virtual double ImageBandEnd() const { return _bandEnd; }
 		virtual double ImageBeamSize() const { return _beamSize; }
 		virtual double ImageStartTime() const { return _startTime; }
+		
+		enum LayeredImager::GridModeEnum GridMode() const { return _gridMode; }
+		void SetGridMode(LayeredImager::GridModeEnum gridMode) { _gridMode = gridMode; }
+		
+		virtual bool HasGriddingCorrectionImage() const { return _gridMode == LayeredImager::KaiserBessel; }
+		virtual void GetGriddingCorrectionImage(double *image) const { _imager->GetGriddingCorrectionImage(image); }
 	private:
 		struct InversionWorkItem
 		{
@@ -109,6 +115,7 @@ class WSInversion : public InversionAlgorithm
 		double _beamSize;
 		double _totalWeight;
 		double _startTime;
+		LayeredImager::GridModeEnum _gridMode;
 };
 
 #endif

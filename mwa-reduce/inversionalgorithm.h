@@ -100,6 +100,9 @@ class InversionAlgorithm
 		virtual double ImageBandEnd() const = 0;
 		virtual double ImageBeamSize() const = 0;
 		virtual double ImageStartTime() const = 0;
+		
+		virtual bool HasGriddingCorrectionImage() const = 0;
+		virtual void GetGriddingCorrectionImage(double *image) const = 0;
 	protected:
 		size_t _imageWidth, _imageHeight;
 		double _pixelSizeX, _pixelSizeY;

@@ -14,6 +14,8 @@
 class LayeredImager
 {
 	public:
+		enum GridModeEnum { NearestNeighbour, KaiserBessel };
+		
 		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount);
 		~LayeredImager();
 		
@@ -77,12 +79,15 @@ class LayeredImager
 		
 		void SampleData(std::complex<float>* data, double uInM, double vInM, double wInM);
 		
-		
 		const double *Image() { return _imageData[0]; }
 		
 		size_t NFFTThreads() const { return _nFFTThreads; }
 		void SetNFFTThreads(size_t nfftThreads) { _nFFTThreads = nfftThreads; }
 		
+		enum GridModeEnum GridMode() const { return _gridMode; }
+		void SetGridMode(enum GridModeEnum mode) { _gridMode = mode; }
+		
+		void GetGriddingCorrectionImage(double* image) const;
 	private:
 		size_t layerRangeStart(size_t layerRangeIndex) const
 		{
@@ -94,12 +99,20 @@ class LayeredImager
 		void fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);
 		void fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks);
 		
+		void makeKernels();
 		void makeKernel(std::vector<double> &kernel, double alpha, size_t overSamplingFactor);
 		double bessel0(double x, double precision);
+		template<bool Inverse>
+		void correctImageForKernel(double *image) const;
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
 		const BandData *_bandData;
+		
+		enum GridModeEnum _gridMode;
+		size_t _overSamplingFactor, _kernelSize;
+		std::vector<double> _1dKernel;
+		std::vector<std::vector<double>> _griddingKernels;
 		
 		std::vector<std::vector<std::complex<double>>> _layeredUVData;
 		std::vector<double*> _imageData;

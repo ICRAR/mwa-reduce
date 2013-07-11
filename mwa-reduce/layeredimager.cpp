@@ -3,6 +3,7 @@
 #include <fftw3.h>
 
 #include <iostream>
+#include <fstream>
 #include <stack>
 
 #include <boost/thread/thread.hpp>
@@ -12,6 +13,9 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_height(height),
 	_pixelSizeX(pixelSizeX),
 	_pixelSizeY(pixelSizeY),
+	_gridMode(NearestNeighbour),
+	_overSamplingFactor(15),
+	_kernelSize(7),
 	_imageData(fftThreadCount),
 	_nFFTThreads(fftThreadCount)
 {
@@ -23,6 +27,7 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	}
 	
 	initializeSqrtLMLookupTable();
+	makeKernels();
 }
 
 LayeredImager::~LayeredImager()
@@ -165,35 +170,72 @@ void LayeredImager::FinishInversionPass()
 	threadGroup.join_all();
 }
 
+void LayeredImager::makeKernels()
+{
+	_griddingKernels.resize(_overSamplingFactor * _overSamplingFactor);
+	_1dKernel.resize(_kernelSize*_overSamplingFactor);
+	const double alpha = _kernelSize;
+	makeKernel(_1dKernel, alpha, _overSamplingFactor);
+	
+	std::vector<std::vector<double>>::iterator gridKernelIter = _griddingKernels.begin();
+	for(size_t j=0; j!=_overSamplingFactor; ++j)
+	{
+		for(size_t i=0; i!=_overSamplingFactor; ++i)
+		{
+			std::vector<double> &kernel = _griddingKernels[(_overSamplingFactor-j-1)*_overSamplingFactor + _overSamplingFactor - i - 1];
+			kernel.resize(_kernelSize * _kernelSize);
+			std::vector<double>::iterator kernelValueIter = kernel.begin();
+			for(size_t y=0; y!=_kernelSize; ++y)
+			{
+				for(size_t x=0; x!=_kernelSize; ++x)
+				{
+					size_t xIndex = x*_overSamplingFactor + i, yIndex = y*_overSamplingFactor + j;
+					*kernelValueIter = _1dKernel[xIndex] * _1dKernel[yIndex];
+					++kernelValueIter;
+				}
+			}
+			++gridKernelIter;
+		}
+	}
+}
+
 void LayeredImager::makeKernel(std::vector<double> &kernel, double alpha, size_t overSamplingFactor)
 {
 	size_t
 		n = kernel.size(),
-		mid = (n+1)/2;
+		mid = n/2;
 	std::vector<double> sincKernel(mid);
 	const double filterRatio = 1.0 / double(overSamplingFactor); // FILTER POINT / TOTAL BANDWIDTH
 	sincKernel[0] = filterRatio;
-	for(size_t i=1; i!=mid; i++)
+	for(size_t i=1; i!=mid+1; i++)
 	{
 		double x = i;
 		sincKernel[i] = sin(M_PI*filterRatio*x)/(M_PI*x);
 	}
-	const double overB0Alpha = 1.0 / bessel0(alpha, 1e-8);
+	const double
+		normFactor = double(overSamplingFactor) / bessel0(alpha, 1e-8),
+		nSquared = n*n;
+	for(size_t i=0; i!=mid+1; i++)
+		kernel[mid+i] = sincKernel[i] * bessel0(alpha * sqrt(1.0-(double(i*i)/nSquared)), 1e-8) * normFactor;
 	for(size_t i=0; i!=mid; i++)
-		kernel[mid+i-1] = sincKernel[i] * bessel0(alpha * sqrt(1-(i*i/(n*n))), 1e-8) * overB0Alpha;
-	for(size_t i=0; i!=mid-1; i++)
-		kernel[i] = kernel[kernel.size()-2-i];
+		kernel[i] = kernel[n-1-i];
+	
+	std::ofstream file("kernel.txt");
+	for(size_t i=0; i!=n; i++)
+		file << i << '\t' << kernel[i] << '\t' << (bessel0(alpha * sqrt(1.0-(double(i*i)/nSquared)), 1e-8) * normFactor) << '\n';
 }
 
 double LayeredImager::bessel0(double x, double precision)
 {
+	// Calculate I_0 = SUM of m 0 -> inf [ (x/2)^(2m) ]
+	// This is the unnormalized bessel function of order 0.
 	double
-		d = 0,
-		ds = 1,
-		s = 1;
+		d = 0.0,
+		ds = 1.0,
+		s = 1.0;
 	do
 	{
-		d += 2;
+		d += 2.0;
 		ds *= x*x/(d*d);
 		s += ds;
 	} while (ds > s*precision);
@@ -226,16 +268,70 @@ void LayeredImager::AddData(const std::complex<float>* data, double uInM, double
 		{
 			size_t layerIndex = wLayer - layerOffset;
 			std::vector<std::complex<double>> &uvData = _layeredUVData[layerIndex];
-			int
-				x = int(round(u * _pixelSizeX * _width)),
-				y = int(round(v * _pixelSizeY * _height));
-			if(x < 0) x += _width;
-			if(y < 0) y += _height;
-			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+			if(_gridMode == KaiserBessel)
 			{
-				uvData[x + y*_width] += sample;
-			} else {
-				//std::cout << "Sample fell off uv-plane (" << x << "," << y << ")\n";
+				double
+					xExact = u * _pixelSizeX * _width,
+					yExact = v * _pixelSizeY * _height;
+				int
+					x = round(xExact),
+					y = round(yExact),
+					xKernel = round((xExact - double(x)) * _overSamplingFactor),
+					yKernel = round((yExact - double(y)) * _overSamplingFactor);
+				xKernel = (xKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
+				yKernel = (yKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
+				std::vector<double> &kernel = _griddingKernels[xKernel + yKernel*_overSamplingFactor];
+				int mid = _kernelSize / 2;
+				if(x < 0) x += _width;
+				if(y < 0) y += _height;
+				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+				{
+					// Are we on the edge?
+					if(x < mid || x+mid+1 >= int(_width) || y < mid || y+mid+1 >= int(_height))
+					{
+						std::vector<double>::iterator kernelIter = kernel.begin();
+						for(size_t j=0; j!=_kernelSize; ++j)
+						{
+							size_t cy = ((y+j+_height-mid) % _height) * _width;
+							for(size_t i=0; i!=_kernelSize; ++i)
+							{
+								size_t cx = (x+i+_width-mid) % _width;
+								std::complex<double> *uvRowPtr = &uvData[cx + cy];
+								*uvRowPtr += std::complex<double>(sample.real() * (*kernelIter), sample.imag() * (*kernelIter));
+								++kernelIter;
+							}
+						}
+					}
+					else {
+						x -= mid;
+						y -= mid;
+						std::vector<double>::iterator kernelIter = kernel.begin();
+						for(size_t j=0; j!=_kernelSize; ++j)
+						{
+							std::complex<double> *uvRowPtr = &uvData[x + y*_width];
+							for(size_t i=0; i!=_kernelSize; ++i)
+							{
+								*uvRowPtr += std::complex<double>(sample.real() * (*kernelIter), sample.imag() * (*kernelIter));
+								++uvRowPtr;
+								++kernelIter;
+							}
+							++y;
+						}
+					}
+				}
+			}
+			else {
+				int
+					x = int(round(u * _pixelSizeX * _width)),
+					y = int(round(v * _pixelSizeY * _height));
+				if(x < 0) x += _width;
+				if(y < 0) y += _height;
+				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+				{
+					uvData[x + y*_width] += sample;
+				} else {
+					//std::cout << "Sample fell off uv-plane (" << x << "," << y << ")\n";
+				}
 			}
 		}
 	}
@@ -272,11 +368,66 @@ void LayeredImager::SampleData(std::complex<float>* data, double uInM, double vI
 			if(x < 0) x += _width;
 			if(y < 0) y += _height;
 			std::complex<double> sample;
-			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+			if(_gridMode == KaiserBessel)
 			{
-				sample = uvData[x + y*_width];
-			} else {
-				//std::cout << "Sampling outside uv-plane (" << x << "," << y << ")\n";
+				sample = 0.0;
+				double
+					xExact = u * _pixelSizeX * _width,
+					yExact = v * _pixelSizeY * _height;
+				int
+					x = round(xExact),
+					y = round(yExact),
+					xKernel = round((xExact - double(x)) * _overSamplingFactor),
+					yKernel = round((yExact - double(y)) * _overSamplingFactor);
+				xKernel = (xKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
+				yKernel = (yKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
+				std::vector<double> &kernel = _griddingKernels[xKernel + yKernel*_overSamplingFactor];
+				int mid = _kernelSize / 2;
+				if(x < 0) x += _width;
+				if(y < 0) y += _height;
+				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+				{
+					// Are we on the edge?
+					if(x < mid || x+mid+1 >= int(_width) || y < mid || y+mid+1 >= int(_height))
+					{
+						std::vector<double>::iterator kernelIter = kernel.begin();
+						for(size_t j=0; j!=_kernelSize; ++j)
+						{
+							size_t cy = ((y+j+_height-mid) % _height) * _width;
+							for(size_t i=0; i!=_kernelSize; ++i)
+							{
+								size_t cx = (x+i+_width-mid) % _width;
+								std::complex<double> *uvRowPtr = &uvData[cx + cy];
+								sample += std::complex<double>(uvRowPtr->real() * (*kernelIter), uvRowPtr->imag() * (*kernelIter));
+								++kernelIter;
+							}
+						}
+					}
+					else {
+						x -= mid;
+						y -= mid;
+						std::vector<double>::iterator kernelIter = kernel.begin();
+						for(size_t j=0; j!=_kernelSize; ++j)
+						{
+							std::complex<double> *uvRowPtr = &uvData[x + y*_width];
+							for(size_t i=0; i!=_kernelSize; ++i)
+							{
+								sample += std::complex<double>(uvRowPtr->real() * (*kernelIter), uvRowPtr->imag() * (*kernelIter));
+								++uvRowPtr;
+								++kernelIter;
+							}
+							++y;
+						}
+					}
+				}
+			}
+			else {
+				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+				{
+					sample = uvData[x + y*_width];
+				} else {
+					//std::cout << "Sampling outside uv-plane (" << x << "," << y << ")\n";
+				}
 			}
 			if(isConjugated)
 				data[ch] = sample;
@@ -291,7 +442,7 @@ void LayeredImager::SampleData(std::complex<float>* data, double uInM, double vI
 void LayeredImager::FinalizeImage(double multiplicationFactor)
 {
 	_layeredUVData.clear();
-	
+
 	for(size_t i=1;i!=_nFFTThreads;++i)
 	{
 		double *primaryData = _imageData[0];
@@ -302,6 +453,7 @@ void LayeredImager::FinalizeImage(double multiplicationFactor)
 			++primaryData;
 		}
 	}
+	
 	double *dataPtr = _imageData[0];
 	for(size_t y=0;y!=_height;++y)
 	{
@@ -313,6 +465,48 @@ void LayeredImager::FinalizeImage(double multiplicationFactor)
 			++dataPtr;
 		}
 	}
+	
+	if(_gridMode == KaiserBessel)
+		correctImageForKernel<false>(_imageData[0]);
+}
+
+template<bool Inverse>
+void LayeredImager::correctImageForKernel(double *image) const
+{
+	const size_t n = _width * _overSamplingFactor;
+	double
+		*fftwIn = reinterpret_cast<double*>(fftw_malloc(n/2 * sizeof(double))),
+		*fftwOut = reinterpret_cast<double*>(fftw_malloc(n/2 * sizeof(double)));
+	
+	fftw_plan plan = fftw_plan_r2r_1d(n/2, fftwIn, fftwOut, FFTW_REDFT01, FFTW_ESTIMATE);
+	memset(fftwIn, 0, n/2 * sizeof(double));
+	memcpy(fftwIn, &_1dKernel[_kernelSize*_overSamplingFactor/2], (_kernelSize*_overSamplingFactor/2+1) * sizeof(double));
+	fftw_execute(plan);
+	fftw_free(fftwIn);
+	
+	double normFactor = 1.0 / (_overSamplingFactor * _overSamplingFactor);
+	for(size_t y=0; y!=_height; ++y)
+	{
+		for(size_t x=0; x!=_width; ++x)
+		{
+			double xVal = (x>=_width/2) ? fftwOut[x-_width/2] : fftwOut[_width/2-x];
+			double yVal = (y>=_height/2) ? fftwOut[y-_height/2] : fftwOut[_height/2-y];
+			if(Inverse)
+				*image *= xVal * yVal * normFactor;
+			else
+				*image /= xVal * yVal * normFactor;
+			++image;
+		}
+	}
+	
+	fftw_free(fftwOut);
+}
+
+void LayeredImager::GetGriddingCorrectionImage(double *image) const
+{
+	for(size_t i=0; i!=_width*_height; ++i)
+		image[i] = 1.0;
+	correctImageForKernel<true>(image);
 }
 
 void LayeredImager::PrepareImageForVisibilitySampling(const double *image, double multiplicationFactor)
@@ -328,6 +522,10 @@ void LayeredImager::PrepareImageForVisibilitySampling(const double *image, doubl
 			++dataPtr;
 			++image;
 		}
+	}
+	if(_gridMode == KaiserBessel)
+	{
+		correctImageForKernel<true>(_imageData[0]);
 	}
 }
 

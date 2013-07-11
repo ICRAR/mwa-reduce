@@ -363,6 +363,7 @@ void WSInversion::Invert()
 
 	long cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
 	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), cpuCount));
+	_imager->SetGridMode(_gridMode);
 	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
@@ -421,6 +422,7 @@ void WSInversion::InvertToVisibilities(const double *image)
 
 	long cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
 	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), cpuCount));
+	_imager->SetGridMode(_gridMode);
 	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
