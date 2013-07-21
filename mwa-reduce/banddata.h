@@ -36,6 +36,17 @@ class BandData
 			}
 		}
 		
+		BandData(const BandData &source, size_t startChannel, size_t endChannel)
+		{
+			_channelCount = endChannel - startChannel;
+			if(_channelCount == 0) throw std::runtime_error("No channels in set");
+			
+			_channelFrequencies = new double[_channelCount];
+			for(size_t index = 0; index != _channelCount; ++index)
+			{
+				_channelFrequencies[index] = source._channelFrequencies[index + startChannel];
+			}
+		}		
 		
 		size_t ChannelCount() const { return _channelCount; }
 		

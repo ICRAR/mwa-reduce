@@ -8,10 +8,37 @@
 #include <tables/Tables/ArrayColumn.h>
 #include <tables/Tables/ScalarColumn.h>
 
+#include <boost/thread/thread.hpp>
+
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
 #include <memory>
+#include <queue>
+
+struct ThreadData
+{
+	boost::mutex *mutex;
+	std::queue<size_t> *tasks;
+	std::vector<std::unique_ptr<CalibrationMethod>> *calMethods;
+	double limit;
+	size_t nIter;
+};
+
+void ThreadFunction(ThreadData &data)
+{
+	std::cout << "Thread signing up for duty!\n";
+	boost::mutex::scoped_lock lock(*data.mutex);
+	while(!data.tasks->empty()) {
+		size_t taskIndex = data.tasks->front();
+		data.tasks->pop();
+		lock.unlock();
+		(*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+		lock.lock();
+		std::cout << "Finished calibrating channel " << taskIndex << '\n';
+	}
+	std::cout << "Thread done.\n";
+}
 
 int main(int argc, char *argv[])
 {
@@ -112,138 +139,184 @@ int main(int argc, char *argv[])
 				time = timeColumn(rowIndex);
 			}
 		}
-		
-		CalibrationMethod calMethod(channelCount, antennaCount, timestepCount);
 		std::cout << "DONE (" << timestepCount << ")\n";
+
+		long int
+			pageCount = sysconf(_SC_PHYS_PAGES),
+			pageSize = sysconf(_SC_PAGE_SIZE);
+		int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
+		double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
+		std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
+
+		size_t nBaselines = antennaCount * (antennaCount-1) / 2;
+		size_t samplesPerChannel = nBaselines * timestepCount * 4;
+		// 2 for complex data, 2 for complex model, 1 for weights
+		double memPerChannel = samplesPerChannel * 5 * sizeof(double);
+		std::cout << "One channel takes " << round(memPerChannel*10.0/(1024*1024))/10.0 << " MB of mem.\n";
+		size_t channelsPerPass = memSize / memPerChannel;
+		if(channelsPerPass > channelCount)
+			channelsPerPass = channelCount;
+		if(channelsPerPass == 0) {
+			std::cout << "WARNING: NOT ENOUGH MEMORY FOR EVEN ONE CHANNEL, expect very bad performance.\n";
+			channelsPerPass = 1;
+		}
+		size_t passCount = channelCount / channelsPerPass;
+		std::cout << "Number of channels that fit in memory: " << channelsPerPass << '\n';
 		
 		std::unique_ptr<Model> model;
-		std::unique_ptr<Predicter> predicter;
-		if(modelFile.empty())
-		{
-			std::cout << "Reading data and model column... " << std::flush;
-			modelColumn.reset(new casa::ROArrayColumn<complex_t>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+		if(!modelFile.empty()) {
+				std::cout << "Reading model... " << std::flush;
+				model.reset(new Model(modelFile.c_str()));
+				std::cout << "DONE\n";
 		}
-		else {
-			std::cout << "Reading model... " << std::flush;
-			model.reset(new Model(modelFile.c_str()));
-			std::cout << "DONE\n";
-			predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount));
-			predicter->Initialize(*model);
-			predicter->ReportSources(*model);
-			std::cout << "Reading data & predicting model... " << std::flush;
-		}
-		
-		std::vector<std::complex<double> > modelValues(4 * channelCount);
-		casa::Array<complex_t> data(dataShape), modelData(dataShape);
-		casa::Array<float> weights(dataShape);
-		casa::Array<bool> flags(dataShape);
-		size_t timeIndex = 0;
-		time = timeColumn(0);
-		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
-		{
-			if(timeColumn(rowIndex) != time)
-			{
-				++timeIndex;
-				time = timeColumn(rowIndex);
-				std::cout << '.' << std::flush;
+
+		for(size_t pass=0; pass!=passCount; ++pass) {
+			size_t
+				startChannel = (channelCount * pass) / passCount,
+				endChannel = (channelCount * (pass+1)) / passCount,
+				partChannelCount = endChannel - startChannel;
+
+			BandData partBandData(bandData, startChannel, endChannel);
+
+			std::vector<std::unique_ptr<CalibrationMethod>> calMethods(partChannelCount);
+			for(size_t ch=0; ch!=partChannelCount; ++ch)
+				calMethods[ch].reset(new CalibrationMethod(1, antennaCount, timestepCount));
+			std::unique_ptr<Predicter> predicter;
+			if(modelFile.empty()) {
+				std::cout << "Reading data and model column... " << std::flush;
+				modelColumn.reset(new casa::ROArrayColumn<complex_t>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 			}
-			// Cross correlation?
-			size_t antenna1 = ant1Column.get(rowIndex), antenna2 = ant2Column.get(rowIndex);
-			if(antenna1 != antenna2)
+			else {
+				predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, partBandData.LowestFrequency(), partBandData.HighestFrequency(), partChannelCount));
+				predicter->Initialize(*model);
+				predicter->ReportSources(*model);
+				std::cout << "Reading data & predicting model... " << std::flush;
+			}
+		
+			std::vector<std::complex<double> > modelValues(4 * channelCount);
+			casa::Array<complex_t> data(dataShape), modelData(dataShape);
+			casa::Array<float> weights(dataShape);
+			casa::Array<bool> flags(dataShape);
+			size_t timeIndex = 0;
+			time = timeColumn(0);
+			for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
 			{
-				dataColumn.get(rowIndex, data);
-				weightColumn.get(rowIndex, weights);
-				flagColumn.get(rowIndex, flags);
-				std::complex<float> *dataPtr = data.cbegin();
-				float *weightsPtr = weights.cbegin();
-				bool *flagPtr = flags.cbegin();
-				
-				casa::Array<double> uvwArray = uvwColumn(rowIndex);
-				casa::Array<double>::const_iterator i = uvwArray.begin();
-				double u = *i; ++i;
-				double v = *i; ++i;
-				double w = *i;
-				
-				if(modelFile.empty())
+				if(timeColumn(rowIndex) != time)
 				{
-					modelColumn->get(rowIndex, modelData);
-					std::complex<float> *modelDataPtr = modelData.cbegin();
-					for(size_t ch = 0; ch!=channelCount; ++ch)
-					{
-						for(size_t p=0; p!=4; ++p)
-						{
-							modelValues[ch*4+p] = *modelDataPtr;
-							++modelDataPtr;
+					++timeIndex;
+					time = timeColumn(rowIndex);
+					std::cout << '.' << std::flush;
+				}
+				// Cross correlation?
+				size_t antenna1 = ant1Column.get(rowIndex), antenna2 = ant2Column.get(rowIndex);
+				if(antenna1 != antenna2)
+			  {
+					dataColumn.get(rowIndex, data);
+					weightColumn.get(rowIndex, weights);
+					flagColumn.get(rowIndex, flags);
+					std::complex<float> *dataPtr = data.cbegin();
+					float *weightsPtr = weights.cbegin();
+					bool *flagPtr = flags.cbegin();
+				
+					casa::Array<double> uvwArray = uvwColumn(rowIndex);
+					casa::Array<double>::const_iterator i = uvwArray.begin();
+					double u = *i; ++i;
+					double v = *i; ++i;
+					double w = *i;
+				
+					if(modelFile.empty())
+				  {
+						modelColumn->get(rowIndex, modelData);
+						std::complex<float> *modelDataPtr = modelData.cbegin();
+						for(size_t ch = 0; ch!=channelCount; ++ch)
+					  {
+							for(size_t p=0; p!=4; ++p)
+						  {
+								modelValues[ch*4+p] = *modelDataPtr;
+								++modelDataPtr;
+							}
 						}
 					}
-				}
-				else {
-					for(size_t ch = 0; ch!=channelCount; ++ch)
-					{
-						double lambda = bandData.ChannelWavelength(ch);
-						for(size_t p=0; p!=4; ++p)
-						{
-							if(flagPtr[ch*4+p]) weightsPtr[ch*4+p] = 0.0;
-							std::complex<double> pVal = predicter->Predict(*model, u/lambda, v/lambda, w/lambda, ch, p);
-							modelValues[ch*4+p] = pVal;
+					else {
+						for(size_t ch = 0; ch!=partChannelCount; ++ch)
+					  {
+							double lambda = partBandData.ChannelWavelength(ch);
+							size_t chIndex = (ch + startChannel) * 4;
+							for(size_t p=0; p!=4; ++p)
+						  {
+								if(flagPtr[chIndex+p]) weightsPtr[chIndex+p] = 0.0;
+								std::complex<double> pVal = predicter->Predict(*model, u/lambda,  v/lambda, w/lambda, ch, p);
+								modelValues[chIndex+p] = pVal;
+						  }
 						}
-					}
-				}
-					
-				calMethod.AddData(dataPtr, weightsPtr, &modelValues[0], antenna1, antenna2, timeIndex);
-			}
-		}
-		std::cout << "DONE\nCalibrating...\n";
-		
-		calMethod.Execute(limit, niter);
-
-		SolutionFile solutionFile;
-		solutionFile.SetAntennaCount(antennaCount);
-		solutionFile.SetChannelCount(channelCount);
-		solutionFile.SetPolarizationCount(4);
-		solutionFile.OpenForWriting(outName);
-
-		for(size_t ant=0; ant!=antennaCount; ++ant)
-		{
-			for(size_t ch=0; ch!=channelCount; ++ch)
-			{
-				for(size_t p=0; p!=4; ++p)
-				{
-					const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
-					solutionFile.WriteNextSolution(val);
+						calMethods[ch]->AddData(dataPtr, weightsPtr, &modelValues[0], antenna1, antenna2, timeIndex);
+					}					
 				}
 			}
-		}
+			std::cout << "DONE\nCalibrating...\n";
 		
-		
-		if(savePlotFiles)
-		{
-			std::ofstream phasePlotStream(plotPhaseFile.c_str()), gainPlotStream(plotGainFile.c_str());
-			phasePlotStream << antennaCount << ' ' << channelCount << " 4\n";
-			gainPlotStream << antennaCount << ' ' << channelCount << " 4\n";
-			
-			for(size_t ch=0; ch!=channelCount; ++ch)
+			std::vector<size_t> tasks(partChannelCount);
+			for(size_t ch=0; ch!=partChannelCount; ++ch)
+				tasks[ch] = ch;
+			size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+			boost::thread_group threadGroup;
 			{
-				phasePlotStream << ch << '\t';
-				gainPlotStream << ch << '\t';
-				for(size_t p=0; p!=4; ++p)
-				{
-					for(size_t ant=0; ant!=antennaCount; ++ant)
-					{
+				ThreadData threadData;
+				threadData.tasks = &tasks;
+				threadData.calMethods = &calMethods;
+				threadData.limit = limit;
+				threadData.nIter = niter;
+				threadGroup.add_thread(new boost::thread(threadData));
+			}
+
+			SolutionFile solutionFile;
+			solutionFile.SetAntennaCount(antennaCount);
+			solutionFile.SetChannelCount(channelCount);
+			solutionFile.SetPolarizationCount(4);
+			solutionFile.OpenForWriting(outName);
+
+			for(size_t ant=0; ant!=antennaCount; ++ant)
+		  {
+				for(size_t ch=0; ch!=channelCount; ++ch)
+			  {
+					for(size_t p=0; p!=4; ++p)
+				  {
 						const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
-						double s1, s2;
-						calMethod.SolutionSingularValue(ant, ch, s1, s2);
-						switch(p)
-						{
+						solutionFile.WriteNextSolution(val);
+					}
+				}
+			}
+			
+		
+			if(savePlotFiles)
+		  {
+				std::ofstream phasePlotStream(plotPhaseFile.c_str()), gainPlotStream(plotGainFile.c_str());
+				phasePlotStream << antennaCount << ' ' << channelCount << " 4\n";
+				gainPlotStream << antennaCount << ' ' << channelCount << " 4\n";
+				
+				for(size_t ch=0; ch!=channelCount; ++ch)
+			  {
+					phasePlotStream << ch << '\t';
+					gainPlotStream << ch << '\t';
+					for(size_t p=0; p!=4; ++p)
+				  {
+						for(size_t ant=0; ant!=antennaCount; ++ant)
+					  {
+							const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
+							double s1, s2;
+							calMethod.SolutionSingularValue(ant, ch, s1, s2);
+							switch(p)
+							{
 							case 0: gainPlotStream << '\t' << s1; break;
 							case 1: case 2: gainPlotStream << '\t' << 0.0; break;
 							case 3: gainPlotStream << '\t' << s2;
+							}
+							phasePlotStream << '\t' << std::arg(val);
 						}
-						phasePlotStream << '\t' << std::arg(val);
 					}
+					phasePlotStream << '\n';
+					gainPlotStream << '\n';
 				}
-				phasePlotStream << '\n';
-				gainPlotStream << '\n';
 			}
 		}
 	}
