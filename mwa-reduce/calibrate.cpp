@@ -18,6 +18,8 @@
 
 struct ThreadData
 {
+	ThreadData() { }
+	
 	boost::mutex *mutex;
 	std::queue<size_t> *tasks;
 	std::vector<std::unique_ptr<CalibrationMethod>> *calMethods;
@@ -25,7 +27,7 @@ struct ThreadData
 	size_t nIter;
 };
 
-void ThreadFunction(ThreadData &data)
+void ThreadFunction(ThreadData data)
 {
 	std::cout << "Thread signing up for duty!\n";
 	boost::mutex::scoped_lock lock(*data.mutex);
@@ -248,25 +250,26 @@ int main(int argc, char *argv[])
 								std::complex<double> pVal = predicter->Predict(*model, u/lambda,  v/lambda, w/lambda, ch, p);
 								modelValues[chIndex+p] = pVal;
 						  }
+							calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
 						}
-						calMethods[ch]->AddData(dataPtr, weightsPtr, &modelValues[0], antenna1, antenna2, timeIndex);
 					}					
 				}
 			}
 			std::cout << "DONE\nCalibrating...\n";
 		
-			std::vector<size_t> tasks(partChannelCount);
+			std::queue<size_t> tasks;
 			for(size_t ch=0; ch!=partChannelCount; ++ch)
-				tasks[ch] = ch;
+				tasks.push(ch);
 			size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 			boost::thread_group threadGroup;
+			for(size_t i=0; i!=cpuCount; ++i)
 			{
 				ThreadData threadData;
 				threadData.tasks = &tasks;
 				threadData.calMethods = &calMethods;
 				threadData.limit = limit;
 				threadData.nIter = niter;
-				threadGroup.add_thread(new boost::thread(threadData));
+				threadGroup.add_thread(new boost::thread(ThreadFunction, threadData));
 			}
 
 			SolutionFile solutionFile;
@@ -281,7 +284,7 @@ int main(int argc, char *argv[])
 			  {
 					for(size_t p=0; p!=4; ++p)
 				  {
-						const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
+						const std::complex<double> val = calMethods[ch]->JonesSolution(ant, ch, p);
 						solutionFile.WriteNextSolution(val);
 					}
 				}
@@ -302,9 +305,9 @@ int main(int argc, char *argv[])
 				  {
 						for(size_t ant=0; ant!=antennaCount; ++ant)
 					  {
-							const std::complex<double> val = calMethod.JonesSolution(ant, ch, p);
+							const std::complex<double> val = calMethods[ch]->JonesSolution(ant, ch, p);
 							double s1, s2;
-							calMethod.SolutionSingularValue(ant, ch, s1, s2);
+							calMethods[ch]->SolutionSingularValue(ant, ch, s1, s2);
 							switch(p)
 							{
 							case 0: gainPlotStream << '\t' << s1; break;
