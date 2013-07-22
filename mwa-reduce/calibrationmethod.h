@@ -56,7 +56,7 @@ class CalibrationMethod
 		
 		void AddData(const std::complex<float> *data, const float* weights, const std::complex<double> *predictedValues, size_t antenna1, size_t antenna2, size_t timestep);
 		
-		void Execute(double precisionLimit, size_t nIter);
+		size_t Execute(double precisionLimit, size_t nIter);
 		
 		const std::complex<double> &JonesSolution(size_t antenna, size_t channel, size_t polarization) const
 		{

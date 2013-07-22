@@ -35,9 +35,9 @@ void ThreadFunction(ThreadData data)
 		size_t taskIndex = data.tasks->front();
 		data.tasks->pop();
 		lock.unlock();
-		(*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+		size_t iters = (*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
 		lock.lock();
-		std::cout << "Finished calibrating channel " << taskIndex << '\n';
+		std::cout << "Finished calibrating channel " << taskIndex << " in " << iters << " iterations \n";
 	}
 	std::cout << "Thread done.\n";
 }
@@ -172,6 +172,12 @@ int main(int argc, char *argv[])
 				std::cout << "DONE\n";
 		}
 
+		SolutionFile solutionFile;
+		solutionFile.SetAntennaCount(antennaCount);
+		solutionFile.SetChannelCount(channelCount);
+		solutionFile.SetPolarizationCount(4);
+		solutionFile.OpenForWriting(outName);
+
 		for(size_t pass=0; pass!=passCount; ++pass) {
 			size_t
 				startChannel = (channelCount * pass) / passCount,
@@ -262,21 +268,18 @@ int main(int argc, char *argv[])
 				tasks.push(ch);
 			size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 			boost::thread_group threadGroup;
+			boost::mutex mutex;
 			for(size_t i=0; i!=cpuCount; ++i)
 			{
 				ThreadData threadData;
+				threadData.mutex = &mutex;
 				threadData.tasks = &tasks;
 				threadData.calMethods = &calMethods;
 				threadData.limit = limit;
 				threadData.nIter = niter;
 				threadGroup.add_thread(new boost::thread(ThreadFunction, threadData));
 			}
-
-			SolutionFile solutionFile;
-			solutionFile.SetAntennaCount(antennaCount);
-			solutionFile.SetChannelCount(channelCount);
-			solutionFile.SetPolarizationCount(4);
-			solutionFile.OpenForWriting(outName);
+			threadGroup.join_all();
 
 			for(size_t ant=0; ant!=antennaCount; ++ant)
 		  {
@@ -285,12 +288,11 @@ int main(int argc, char *argv[])
 					for(size_t p=0; p!=4; ++p)
 				  {
 						const std::complex<double> val = calMethods[ch]->JonesSolution(ant, ch, p);
-						solutionFile.WriteNextSolution(val);
+						solutionFile.WriteSolution(val, ant, ch, p);
 					}
 				}
 			}
 			
-		
 			if(savePlotFiles)
 		  {
 				std::ofstream phasePlotStream(plotPhaseFile.c_str()), gainPlotStream(plotGainFile.c_str());

@@ -73,6 +73,14 @@ class SolutionFile
     _outputStream->write(reinterpret_cast<const char*>(&val), sizeof(val));
   }
 
+  void WriteSolution(const std::complex<double> &val, size_t antenna, size_t channel, size_t polarization)
+  {
+		size_t index = (antenna * _header.channelCount + channel) * _header.polarizationCount + polarization;
+		size_t offset = sizeof(_header) + sizeof(double)*2;
+		_outputStream->seekp(offset + sizeof(val) * index, std::ios::beg);
+    _outputStream->write(reinterpret_cast<const char*>(&val), sizeof(val));
+  }
+
  private:
   struct {
     char intro[8];

@@ -188,7 +188,7 @@ void CalibrationMethod::reportDistances()
 	std::cout << "\nTotal average: " << (sumDistance / _nAntenna) << '\n';
 }
 
-void CalibrationMethod::Execute(double precisionLimit, size_t nIter)
+size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 {
 	bool continueIterating;
 	size_t iterationNumber = 0;
@@ -196,13 +196,13 @@ void CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 	_weightSums.SetAll(_nChannels * _nTimesteps);
 	//reportDistances();
 	
-	std::cout << "Weighting data.\n";
+	//std::cout << "Weighting data.\n";
 	applyWeightsToData();
 	
 	do
 	{
 		++iterationNumber;
-		std::cout << "Iteration " << iterationNumber << '\n';
+		//std::cout << "Iteration " << iterationNumber << '\n';
 		
 		//reportDistances();
 		
@@ -232,11 +232,11 @@ void CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 					++nextJonesPtr;
 				}
 				
-				if(ant==1 && (ch==15 || ch==14 || ch==13))
+				/*if(ant==1 && (ch==15 || ch==14 || ch==13))
 				{
 					std::cout << "Current value of Jones matrix for ant 1, ch " << ch << ":\n"
 					<< matrixToString(jonesPtr-4);
-				}
+				}*/
 			}
 		}
 		
@@ -257,11 +257,12 @@ void CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 				continueIterating = true;
 		}
 		
-		std::cout << "Average change to Jones solutions: \n"
-			" (" << globalChangeSizes[0] << " " << globalChangeSizes[1] << ")\n"
-			" (" << globalChangeSizes[2] << " " << globalChangeSizes[3] << ")\n";
+		//std::cout << "Average change to Jones solutions: \n"
+		//	" (" << globalChangeSizes[0] << " " << globalChangeSizes[1] << ")\n"
+		//	" (" << globalChangeSizes[2] << " " << globalChangeSizes[3] << ")\n";
 		
 	} while(continueIterating && iterationNumber<nIter);
+	return iterationNumber;
 }
 
 std::string CalibrationMethod::matrixToString(std::complex<double> *matrix)
