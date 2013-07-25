@@ -51,7 +51,12 @@ int main(int argc, char *argv[])
 	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
 	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
 	casa::MPosition wgs = casa::MPosition::Convert(ant1Pos, casa::MPosition::WGS84)();
-	double latitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
+	double arrLatitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
+	
+	casa::MDirection zenith(casa::MVDirection(0, M_PI), azelgeoRef);
+	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
+	double zenithHa = zenithHaDec.getValue().getValue()[0];
+	double zenithDec = zenithHaDec.getValue().getValue()[1];
 	
 	FitsReader reader(inpFitsname);
 	size_t width = reader.ImageWidth();
@@ -81,8 +86,8 @@ int main(int argc, char *argv[])
 	
 	double *xPtr = &outImageX[0], *yPtr = &outImageY[0];
 	casa::MDirection::Convert
-		j2000ToHaDec(j2000Ref, hadecRef),
-		j2000ToAzelGeo(j2000Ref, azelgeoRef);
+		j2000ToHaDecRef(j2000Ref, hadecRef),
+		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
 	for(size_t y=0;y!=height;++y)
 	{
 		for(size_t x=0;x!=width;++x)
@@ -92,7 +97,7 @@ int main(int argc, char *argv[])
 			ImageCoordinates::LMToRaDec(l, m, reader.PhaseCentreRA(), reader.PhaseCentreDec(), ra, dec);
 			
 			double xPow, yPow;
-			tilebeam.AnalyticGain(ra, dec, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, latitude, frequency, xPow, yPow);
+			tilebeam.AnalyticGain(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, frequency, xPow, yPow);
 			
 			*xPtr = xPow;
 			*yPtr = yPow;

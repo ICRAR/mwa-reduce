@@ -50,7 +50,7 @@ void TileBeam::AnalyticGain(casa::MDirection &referenceDir, casa::MEpoch &time, 
 	AnalyticGain(raRad, decRad, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, latitude, frequencyHz, x, y);
 }
 
-void TileBeam::AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double latitude, double frequencyHz, double &x, double &y)
+void TileBeam::AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double frequencyHz, double &x, double &y)
 {
 	static const casa::Unit radUnit("rad");
 	casa::MDirection imageDir(casa::MVDirection(
@@ -58,11 +58,11 @@ void TileBeam::AnalyticGain(double raRad, double decRad, const casa::MDirection:
 		casa::Quantity(decRad,radUnit)),  // DEC
 		ref);
 	
-	// convert ra, dec to za, az
+	// convert ra, dec to ha
 	casa::MDirection hadec = j2000ToHaDec(imageDir);
 	double ha = hadec.getValue().get()[0];
 	double sinLat, cosLat;
-	sincos(latitude, &sinLat, &cosLat);
+	sincos(arrLatitude, &sinLat, &cosLat);
 	double sinDec, cosDec;
 	sincos(decRad, &sinDec, &cosDec);
 	double cosHA = cos(ha);
@@ -112,6 +112,111 @@ void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequency
 	if(_zenithNorm)
 		groundPlane /= 2.0 * sin(twoPiOverLambda * _dipoleSize);
 
+	// response of the 2 tile polarizations
+	// gains due to forshortening
+	double dipole_ns = sqrt(1.0 - projectionNorth*projectionNorth);
+	double dipole_ew = sqrt(1.0 - projectionEast*projectionEast);
+
+	// voltage responses of the polarizations from an unpolarized source
+	// this is effectively the YY voltage gain
+	
+	double arrPower = (arrayFactor.real()*arrayFactor.real() + arrayFactor.imag()*arrayFactor.imag()) * groundPlane;
+	y = dipole_ns * arrPower; // gain_ns
+	// this is effectively the XX voltage gain
+	x = dipole_ew * arrPower; // gain_ew
+	
+}
+
+void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, double &x, double &y)
+{
+	static const casa::Unit radUnit("rad");
+	casa::MDirection imageDir(casa::MVDirection(
+		casa::Quantity(raRad, radUnit),     // RA
+		casa::Quantity(decRad,radUnit)),  // DEC
+		ref);
+	
+	// convert ra, dec to ha
+	casa::MDirection hadec = j2000ToHaDec(imageDir);
+	double ha = hadec.getValue().get()[0];
+	double sinLat, cosLat;
+	sincos(arrLatitude, &sinLat, &cosLat);
+	double sinDec, cosDec;
+	sincos(decRad, &sinDec, &cosDec);
+	double cosHA = cos(ha);
+	double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
+	casa::MDirection azel = j2000ToAzelGeo(imageDir);
+	double azimuth = azel.getValue().get()[0];
+	
+	AnalyticGain(zenithDistance, azimuth, frequencyHz, ha, decRad, haZenith, decZenith, x, y);
+}
+
+void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haZenith, double decZenith, std::complex<double> *gain)
+{
+	gain[0] = 0.0;
+	gain[1] = 0.0;
+	gain[2] = 0.0;
+	gain[3] = 0.0;
+	
+	// direction cosines (relative to zenith) for direction az,za
+	double sinZenith, cosZenith, sinAzimuth, cosAzimuth;
+	sincos(zenithAngle, &sinZenith, &cosZenith);
+	sincos(azimuth, &sinAzimuth, &cosAzimuth);
+
+	const double projectionEast = sinZenith * sinAzimuth;
+	const double projectionNorth = sinZenith * cosAzimuth;
+	const double projectionHeight = cosZenith;
+	
+	const double lambda = SPEED_OF_LIGHT / frequencyHz;
+	const double twoPiOverLambda = 2.0 * M_PI / lambda;
+	
+	const double cPhi = cosAzimuth, sPhi = sinAzimuth;
+	const double cTheta = cosZenith, sTheta = -sinZenith;
+	const double cPsi = cosAzimuth, sPsi = -sinAzimuth;
+	
+	/*const double factEE = cPsi*cPhi - cTheta*sPhi*sPsi;
+	const double factEN = cPsi*sPhi + cTheta*cPhi*sPsi;
+	const double factEH = sPsi*sTheta;
+	
+	const double factNE = -sPsi*cPhi - cTheta*sPhi*cPsi;
+	const double factNN = -sPsi*sPhi + cTheta*cPhi*cPsi;
+	const double factNH = cPsi*sTheta;
+	
+	const double factHE = sTheta*sPhi;
+	const double factHN = -sTheta*cPhi;
+	const double factHH = cTheta;*/
+
+	// dipole position within the tile
+	std::complex<double> arrayFactor = 0.0;
+	for(size_t i=0;i!=16;++i)
+	{
+		// relative dipole phase for a source at (theta,phi)
+		double rotation = twoPiOverLambda*(_dipoleEast[i]*projectionEast + _dipoleNorth[i]*projectionNorth +
+			_dipoleHeight[i]*projectionHeight - _delays[i]);
+		double rotSin, rotCos;
+		sincos(rotation, &rotSin, &rotCos);
+		std::complex<double> phaseShift = std::complex<double>(rotCos, rotSin);
+    arrayFactor += phaseShift;
+	}
+	arrayFactor /= 16.0;
+
+	double groundPlane;
+	
+  // make sure we filter out the bottom hemisphere
+	if(zenithAngle > M_PI)
+		groundPlane = 0.0;
+	else
+		groundPlane = 2.0 * sin(twoPiOverLambda * _dipoleSize * cosZenith);
+	
+	// normalize to zenith
+	if(_zenithNorm)
+		groundPlane /= 2.0 * sin(twoPiOverLambda * _dipoleSize);
+
+	double rot[4];
+	rot[0] =  cos(decZenith)*cos(dec) + sin(decZenith)*sin(dec)*cos(ha - haZenith);
+	rot[1] = -sin(decZenith)*sin(ha - haZenith);
+	rot[2] =  sin(dec)*sin(ha - haZenith);
+	rot[3] =  cos(ha - haZenith);
+	
 	// response of the 2 tile polarizations
 	// gains due to forshortening
 	double dipole_ns = sqrt(1.0 - projectionNorth*projectionNorth);
