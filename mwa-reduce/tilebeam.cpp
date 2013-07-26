@@ -127,7 +127,7 @@ void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequency
 	
 }
 
-void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, double &x, double &y)
+void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain)
 {
 	static const casa::Unit radUnit("rad");
 	casa::MDirection imageDir(casa::MVDirection(
@@ -147,7 +147,7 @@ void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection
 	casa::MDirection azel = j2000ToAzelGeo(imageDir);
 	double azimuth = azel.getValue().get()[0];
 	
-	AnalyticGain(zenithDistance, azimuth, frequencyHz, ha, decRad, haZenith, decZenith, x, y);
+	AnalyticJones(zenithDistance, azimuth, frequencyHz, ha, decRad, haZenith, decZenith, gain);
 }
 
 void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haZenith, double decZenith, std::complex<double> *gain)
@@ -217,17 +217,9 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	rot[2] =  sin(dec)*sin(ha - haZenith);
 	rot[3] =  cos(ha - haZenith);
 	
-	// response of the 2 tile polarizations
-	// gains due to forshortening
-	double dipole_ns = sqrt(1.0 - projectionNorth*projectionNorth);
-	double dipole_ew = sqrt(1.0 - projectionEast*projectionEast);
-
-	// voltage responses of the polarizations from an unpolarized source
-	// this is effectively the YY voltage gain
-	
-	double arrPower = (arrayFactor.real()*arrayFactor.real() + arrayFactor.imag()*arrayFactor.imag()) * groundPlane;
-	y = dipole_ns * arrPower; // gain_ns
-	// this is effectively the XX voltage gain
-	x = dipole_ew * arrPower; // gain_ew
-	
+	arrayFactor *= groundPlane;
+	gain[0] = rot[0] * arrayFactor;
+	gain[1] = rot[1] * arrayFactor;
+	gain[2] = rot[2] * arrayFactor;
+	gain[3] = rot[3] * arrayFactor;
 }

@@ -53,10 +53,14 @@ int main(int argc, char *argv[])
 	casa::MPosition wgs = casa::MPosition::Convert(ant1Pos, casa::MPosition::WGS84)();
 	double arrLatitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
 	
-	casa::MDirection zenith(casa::MVDirection(0, M_PI), azelgeoRef);
+	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
 	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
-	double zenithHa = zenithHaDec.getValue().getValue()[0];
-	double zenithDec = zenithHaDec.getValue().getValue()[1];
+	double zenithHa = zenithHaDec.getAngle().getValue()[0];
+	double zenithDec = zenithHaDec.getAngle().getValue()[1];
+	std::cout << "Zenith: "
+		<< (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0]*180.0/M_PI << " RA, "
+		<< zenithDec*180.0/M_PI << " dec, "
+		<< zenithHa*180.0/M_PI << " HA.\n";
 	
 	FitsReader reader(inpFitsname);
 	size_t width = reader.ImageWidth();
@@ -64,7 +68,9 @@ int main(int argc, char *argv[])
 	double pixelSizeX = reader.PixelSizeX();
 	double pixelSizeY = reader.PixelSizeY();
 	
-	std::vector<double> outImageX(width*height), outImageY(width*height);
+	std::vector<double>
+		outImageXX(width*height), outImageXY(width*height),
+		outImageYX(width*height), outImageYY(width*height);
 	const casa::Unit radUnit("rad");
 	
 	casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
@@ -80,14 +86,15 @@ int main(int argc, char *argv[])
 		if(i != 15) std::cout << ',';
 	}
 	std::cout << "]\n";
-	//const double delays[16] = {6,9,12,15,4,7,10,13,2,5,8,11,0,3,6,9};
 		
 	TileBeam tilebeam(delays);
 	
-	double *xPtr = &outImageX[0], *yPtr = &outImageY[0];
+	double *xxPtr = &outImageXX[0], *xyPtr = &outImageXY[0];
+	double *yxPtr = &outImageYX[0], *yyPtr = &outImageYY[0];
 	casa::MDirection::Convert
 		j2000ToHaDecRef(j2000Ref, hadecRef),
 		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
+
 	for(size_t y=0;y!=height;++y)
 	{
 		for(size_t x=0;x!=width;++x)
@@ -96,21 +103,22 @@ int main(int argc, char *argv[])
 			ImageCoordinates::XYToLM(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
 			ImageCoordinates::LMToRaDec(l, m, reader.PhaseCentreRA(), reader.PhaseCentreDec(), ra, dec);
 			
-			double xPow, yPow;
-			tilebeam.AnalyticGain(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, frequency, xPow, yPow);
+			std::complex<double> gain[4];
+			tilebeam.AnalyticJones(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, frequency, gain);
 			
-			*xPtr = xPow;
-			*yPtr = yPow;
+			//*xxPtr = xPow;
+			//*yyPtr = yPow;
 			
-			++xPtr; ++yPtr;
+			++xxPtr; ++xyPtr;
+			++yxPtr; ++yyPtr;
 		}
 		std::cout << '.' << std::flush;
 	}
 	
 	std::cout << "\nWriting...\n";
-	FitsWriter xWriter("beam-x.fits"), yWriter("beam-y.fits");
+	FitsWriter xxWriter("beam-xx.fits"), yyWriter("beam-yy.fits");
 	
-	xWriter.Write<double>(&outImageX[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
-	yWriter.Write<double>(&outImageY[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
+	xxWriter.Write<double>(&outImageXX[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
+	yyWriter.Write<double>(&outImageYY[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
 	
 }
