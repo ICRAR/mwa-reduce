@@ -12,7 +12,7 @@ Model::Model(const char *filename)
 {
 	ModelParser parser;
 	std::ifstream stream(filename);
-	if(stream.bad())
+	if(!stream.good())
 		throw std::runtime_error("Could not open model");
 	parser.Parse(*this, stream);
 }

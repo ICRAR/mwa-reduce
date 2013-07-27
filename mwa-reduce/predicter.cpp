@@ -1,8 +1,23 @@
 #include "predicter.h"
 #include "model.h"
 #include "imagecoordinates.h"
+#include "beamevaluator.h"
 
-void Predicter::Initialize(ModelSource& source)
+void Predicter::applyGain(double *dataVal, const double *gainA, const double *gainB)
+{
+  double solATimesData[4];
+  solATimesData[0] = gainA[0] * dataVal[0] + gainA[1] * dataVal[2];
+  solATimesData[1] = gainA[0] * dataVal[1] + gainA[1] * dataVal[3];
+  solATimesData[2] = gainA[2] * dataVal[0] + gainA[3] * dataVal[2];
+  solATimesData[3] = gainA[2] * dataVal[1] + gainA[3] * dataVal[3];
+
+  dataVal[0] = solATimesData[0] * gainB[0] + solATimesData[1] * gainB[1];
+  dataVal[1] = solATimesData[0] * gainB[2] + solATimesData[1] * gainB[3];
+  dataVal[2] = solATimesData[2] * gainB[0] + solATimesData[3] * gainB[1];
+  dataVal[3] = solATimesData[2] * gainB[2] + solATimesData[3] * gainB[3];
+}
+
+void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 {
 	SourceParameters *parameters = new SourceParameters();
 	NumType l, m;
@@ -12,31 +27,48 @@ void Predicter::Initialize(ModelSource& source)
 	parameters->brightness = new NumType[_channelCount*4];
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
+		double beamGains[4];
+		if(beamEvaluator != 0)
+		{
+			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
+			beamEvaluator->EvaluateGain(source.PosRA(), source.PosDec(), centreFreq, beamGains);
+		}
 		for(size_t p=0; p!=4; ++p)
 		{
 			parameters->brightness[ch*4+p] =
 				source.SED().FluxAtChannel(ch, _channelCount, _startFrequency, _endFrequency, p);
 		}
+		if(beamEvaluator != 0)
+		{
+			applyGain(&parameters->brightness[ch*4], beamGains, beamGains);
+		}
+		for(size_t p=0; p!=4; ++p)
+			_totalFlux[p] += parameters->brightness[ch*4+p];
 	}
 	parameters->lmsqrt = sqrt(1.0 - l*l - m*m);
 	
 	source.SetUserData(parameters);
 }
 
-void Predicter::Initialize(Model& model)
+void Predicter::Initialize(Model& model, BeamEvaluator *beamEvaluator)
 {
 	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
-		Initialize(*i);
+		Initialize(*i, beamEvaluator);
 }
 
 void Predicter::ReportSources(Model& model)
 {
-	std::cout << "Model predicter initialized with " << model.SourceCount() << " sources of total [";
+	std::cout << "Model predicter initialized with " << model.SourceCount() << " sources of apparent brightness [";
+	std::cout << (_totalFlux[0] / _channelCount);
+	for(size_t p=1; p!=4; ++p)
+		std::cout << ',' << (_totalFlux[p] / _channelCount);
+	std::cout << "]\n";
 	
+	std::cout << "(absolute brightness: [";
 	std::cout << model.TotalFlux(_startFrequency, _endFrequency, 0);
 	for(size_t p=1; p!=4; ++p)
 		std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, p);
-	std::cout << "]\n";
+	std::cout << "])\n";
 }
 
 Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex)

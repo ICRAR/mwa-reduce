@@ -68,11 +68,7 @@ int main(int argc, char *argv[])
 	double pixelSizeX = reader.PixelSizeX();
 	double pixelSizeY = reader.PixelSizeY();
 	
-	std::vector<double>
-		outImageXX(width*height), outImageXY(width*height),
-		outImageYX(width*height), outImageYY(width*height);
 	const casa::Unit radUnit("rad");
-	
 	casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
 	casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
 	casa::Array<int> delaysArr = delaysCol(0);
@@ -89,8 +85,13 @@ int main(int argc, char *argv[])
 		
 	TileBeam tilebeam(delays);
 	
-	double *xxPtr = &outImageXX[0], *xyPtr = &outImageXY[0];
-	double *yxPtr = &outImageYX[0], *yyPtr = &outImageYY[0];
+	std::vector<double> outImage[8];
+	double *imgPtr[8];
+	for(size_t i=0; i!=8; ++i)
+	{
+		outImage[i].resize(width*height);
+		imgPtr[i] = &outImage[i][0];
+	}
 	casa::MDirection::Convert
 		j2000ToHaDecRef(j2000Ref, hadecRef),
 		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
@@ -106,19 +107,26 @@ int main(int argc, char *argv[])
 			std::complex<double> gain[4];
 			tilebeam.AnalyticJones(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, frequency, gain);
 			
-			//*xxPtr = xPow;
-			//*yyPtr = yPow;
-			
-			++xxPtr; ++xyPtr;
-			++yxPtr; ++yyPtr;
+			for(size_t i=0; i!=4; ++i)
+			{
+				*imgPtr[i*2] = gain[i].real();
+				*imgPtr[i*2 + 1] = gain[i].imag();
+				++imgPtr[i*2];
+				++imgPtr[i*2 + 1];
+			}
 		}
 		std::cout << '.' << std::flush;
 	}
 	
 	std::cout << "\nWriting...\n";
-	FitsWriter xxWriter("beam-xx.fits"), yyWriter("beam-yy.fits");
 	
-	xxWriter.Write<double>(&outImageXX[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
-	yyWriter.Write<double>(&outImageYY[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
-	
+	const char *names[8] = {
+		"beam-xxr.fits", "beam-xxi.fits", "beam-xyr.fits", "beam-xyi.fits", 
+		"beam-yxr.fits", "beam-yxi.fits", "beam-yyr.fits", "beam-yyi.fits"
+	};
+	for(size_t i=0; i!=8; ++i)
+	{
+		FitsWriter writer(names[i]);
+		writer.Write<double>(&outImage[i][0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
+	}
 }

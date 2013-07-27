@@ -262,10 +262,11 @@ size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 		//	" (" << globalChangeSizes[2] << " " << globalChangeSizes[3] << ")\n";
 		
 	} while(continueIterating && iterationNumber<nIter);
+
 	return iterationNumber;
 }
 
-std::string CalibrationMethod::matrixToString(std::complex<double> *matrix)
+std::string CalibrationMethod::MatrixToString(const std::complex<double> *matrix)
 {
 	std::stringstream s;
 	double s1, s2;

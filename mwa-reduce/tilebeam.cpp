@@ -127,6 +127,27 @@ void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequency
 	
 }
 
+void TileBeam::AnalyticJones(casa::MDirection &referenceDir, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain)
+{
+	casa::MeasFrame frame(arrayPos, time);
+	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
+	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
+	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
+	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
+	double arrLatitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
+	
+	casa::MDirection::Convert
+		j2000ToHaDec(j2000Ref, hadecRef),
+		j2000ToAzelGeo(j2000Ref, azelgeoRef);
+		
+	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
+	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
+	double zenithHa = zenithHaDec.getAngle().getValue()[0];
+	double zenithDec = zenithHaDec.getAngle().getValue()[1];
+	
+	AnalyticJones(raRad, decRad, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, arrLatitude, zenithHa, zenithDec, frequencyHz, gain);
+}
+
 void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain)
 {
 	static const casa::Unit radUnit("rad");
@@ -169,11 +190,11 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	const double lambda = SPEED_OF_LIGHT / frequencyHz;
 	const double twoPiOverLambda = 2.0 * M_PI / lambda;
 	
-	const double cPhi = cosAzimuth, sPhi = sinAzimuth;
+	/*const double cPhi = cosAzimuth, sPhi = sinAzimuth;
 	const double cTheta = cosZenith, sTheta = -sinZenith;
 	const double cPsi = cosAzimuth, sPsi = -sinAzimuth;
 	
-	/*const double factEE = cPsi*cPhi - cTheta*sPhi*sPsi;
+	const double factEE = cPsi*cPhi - cTheta*sPhi*sPsi;
 	const double factEN = cPsi*sPhi + cTheta*cPhi*sPsi;
 	const double factEH = sPsi*sTheta;
 	

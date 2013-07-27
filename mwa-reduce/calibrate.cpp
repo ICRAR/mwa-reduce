@@ -2,6 +2,7 @@
 #include "model.h"
 #include "banddata.h"
 #include "solutionfile.h"
+#include "beamevaluator.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -37,6 +38,12 @@ void ThreadFunction(ThreadData data)
 		lock.unlock();
 		size_t iters = (*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
 		lock.lock();
+		if(taskIndex<=16)
+		{
+			std::cout << "Current value of Jones matrix for ant 1, ch " << taskIndex << ":\n"
+			<< CalibrationMethod::MatrixToString(& (*(data.calMethods))[taskIndex]->JonesSolution(1, 0, 0));
+		}
+	
 		std::cout << "Finished calibrating channel " << taskIndex << " in " << iters << " iterations \n";
 	}
 	std::cout << "Thread done.\n";
@@ -190,13 +197,15 @@ int main(int argc, char *argv[])
 			for(size_t ch=0; ch!=partChannelCount; ++ch)
 				calMethods[ch].reset(new CalibrationMethod(1, antennaCount, timestepCount));
 			std::unique_ptr<Predicter> predicter;
+			std::unique_ptr<BeamEvaluator> beamEvaluator;
 			if(modelFile.empty()) {
 				std::cout << "Reading data and model column... " << std::flush;
 				modelColumn.reset(new casa::ROArrayColumn<complex_t>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 			}
 			else {
-				predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, partBandData.LowestFrequency(), partBandData.HighestFrequency(), partChannelCount));
-				predicter->Initialize(*model);
+				beamEvaluator.reset(new BeamEvaluator(ms));
+				predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, partBandData.LowestFrequency(), partBandData.HighestFrequency(), partChannelCount, true));
+				predicter->Initialize(*model, &*beamEvaluator);
 				predicter->ReportSources(*model);
 				std::cout << "Reading data & predicting model... " << std::flush;
 			}
@@ -283,12 +292,12 @@ int main(int argc, char *argv[])
 
 			for(size_t ant=0; ant!=antennaCount; ++ant)
 		  {
-				for(size_t ch=0; ch!=channelCount; ++ch)
+				for(size_t ch=0; ch!=partChannelCount; ++ch)
 			  {
 					for(size_t p=0; p!=4; ++p)
 				  {
-						const std::complex<double> val = calMethods[ch]->JonesSolution(ant, ch, p);
-						solutionFile.WriteSolution(val, ant, ch, p);
+						const std::complex<double> val = calMethods[ch]->JonesSolution(ant, 0, p);
+						solutionFile.WriteSolution(val, ant, ch+startChannel, p);
 					}
 				}
 			}
@@ -296,20 +305,20 @@ int main(int argc, char *argv[])
 			if(savePlotFiles)
 		  {
 				std::ofstream phasePlotStream(plotPhaseFile.c_str()), gainPlotStream(plotGainFile.c_str());
-				phasePlotStream << antennaCount << ' ' << channelCount << " 4\n";
-				gainPlotStream << antennaCount << ' ' << channelCount << " 4\n";
+				phasePlotStream << antennaCount << ' ' << partChannelCount << " 4\n";
+				gainPlotStream << antennaCount << ' ' << partChannelCount << " 4\n";
 				
-				for(size_t ch=0; ch!=channelCount; ++ch)
+				for(size_t ch=0; ch!=partChannelCount; ++ch)
 			  {
-					phasePlotStream << ch << '\t';
-					gainPlotStream << ch << '\t';
+					phasePlotStream << (ch+startChannel) << '\t';
+					gainPlotStream << (ch+startChannel) << '\t';
 					for(size_t p=0; p!=4; ++p)
 				  {
 						for(size_t ant=0; ant!=antennaCount; ++ant)
 					  {
-							const std::complex<double> val = calMethods[ch]->JonesSolution(ant, ch, p);
+							const std::complex<double> val = calMethods[ch]->JonesSolution(ant, 0, p);
 							double s1, s2;
-							calMethods[ch]->SolutionSingularValue(ant, ch, s1, s2);
+							calMethods[ch]->SolutionSingularValue(ant, 0, s1, s2);
 							switch(p)
 							{
 							case 0: gainPlotStream << '\t' << s1; break;

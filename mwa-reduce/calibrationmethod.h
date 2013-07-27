@@ -67,6 +67,7 @@ class CalibrationMethod
 			singularValues2x2(&_jonesSolutions[(antenna * _nChannels + channel) * 4], s1, s2);
 		}
 
+		static std::string MatrixToString(const std::complex<double> *matrix);
 	private:
 		void calculateNextIter(size_t ant, std::complex<double> *nextJones);
 		
@@ -74,7 +75,6 @@ class CalibrationMethod
 		double totalDistance(size_t antenna);
 		double totalDistance();
 		void reportDistances();
-		std::string matrixToString(std::complex<double> *matrix);
 		
 		static bool multiplyWithInverse2x2(std::complex<double>* lhs, const std::complex<double>* rhs);
 		static void singularValues2x2(const std::complex<double>* matrix, double &e1, double &e2);
