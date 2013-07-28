@@ -8,6 +8,7 @@
 #include <tables/Tables/ArrayColumn.h>
 #include <tables/Tables/ScalarColumn.h>
 
+#include "beamevaluator.h"
 #include "banddata.h"
 #include "sourcesdf.h"
 #include "model.h"
@@ -64,14 +65,18 @@ int main(int argc, char **argv)
 		std::cout << "DONE\n";
 		std::cout << "RA=" << phaseCentreRA << " Dec=" << phaseCentreDec << '\n';
 		
+		BeamEvaluator beamEvaluator(ms);
 		Predicter predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount);
-		predicter.Initialize(model);
+		predicter.Initialize(model, &beamEvaluator);
+		predicter.ReportSources(model);
 		
 		/**
 		 * Subtract
 		 */
 		if(revert)
 			std::cout << "Adding back ";
+		else if(setvis)
+			std::cout << "Setting visibilities from ";
 		else
 			std::cout << "Subtracting ";
 		std::cout << model.SourceCount() << " sources... " << std::flush;

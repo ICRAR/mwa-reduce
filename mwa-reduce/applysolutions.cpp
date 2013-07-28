@@ -33,7 +33,7 @@ int main(int argc, char **argv)
   if(argc < 3)
     {
       std::cout << "Usage: applysolutions <ms> <gains-bin-file>\n"
-	"Will apply the found solution matrices.";
+	"Will apply the found solution matrices.\n";
     } else {
 		MeasurementSet ms(argv[1], Table::Update);
 		SolutionFile solutionFile;

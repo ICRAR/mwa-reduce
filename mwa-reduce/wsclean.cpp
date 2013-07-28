@@ -4,6 +4,8 @@
 #include "fitswriter.h"
 #include "modelrenderer.h"
 #include "model.h"
+#include "areaset.h"
+#include "parser/areaparser.h"
 
 #include <iostream>
 #include <memory>
@@ -42,13 +44,13 @@ int main(int argc, char *argv[])
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1;
 	size_t nWLayers = 64, nIter = 500;
-	std::string columnName = "DATA", addModelFilename, saveModelFilename;
+	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
 	bool majorIterations = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	
-	while(argv[argi][0] == '-')
+	while(argi < argc && argv[argi][0] == '-')
 	{
 		const char *param = &argv[argi][1];
 		if(strcmp(param, "size") == 0)
@@ -113,6 +115,11 @@ int main(int argc, char *argv[])
 			++argi;
 			saveModelFilename = argv[argi];
 		}
+		else if(strcmp(param, "cleanareas") == 0)
+		{
+			++argi;
+			cleanAreasFilename = argv[argi];
+		}
 		else if(strcmp(param, "major") == 0)
 		{
 			majorIterations = true;
@@ -157,7 +164,6 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetWGridSize(nWLayers);
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
-	
 	
 	std::cout << " == Constructing PSF ==\n";
 	inversionAlgorithm->SetDoImagePSF(true);
@@ -208,6 +214,18 @@ int main(int argc, char *argv[])
 	cleanAlgorithm.SetMaxNIter(nIter);
 	cleanAlgorithm.SetThreshold(threshold);
 	cleanAlgorithm.SetSubtractionGain(gain);
+	
+	std::unique_ptr<AreaSet> cleanAreas;
+	if(!cleanAreasFilename.empty())
+	{
+		cleanAreas.reset(new AreaSet());
+		AreaParser parser;
+		std::ifstream caFile(cleanAreasFilename.c_str());
+		parser.Parse(*cleanAreas, caFile);
+		cleanAreas->SetImageProperties(pixelScale, pixelScale, ra, dec, imgWidth, imgHeight);
+		cleanAlgorithm.SetCleanAreas(*cleanAreas);
+	}
+	
 	cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight);
 	
 	std::cout << "Writing residual image... " << std::flush;

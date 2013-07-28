@@ -68,7 +68,24 @@ class ImageCoordinates
 			y = m / pixelSizeY + midY;
 		}
 		
+		template<typename T>
+		static T AngularDistance(T ra1, T dec1, T ra2, T dec2)
+		{
+			T sinDec1, sinDec2, cosDec1, cosDec2;
+			SinCos(dec1, &sinDec1, &cosDec1);
+			SinCos(dec2, &sinDec2, &cosDec2);
+			return std::acos(sinDec1*sinDec2 + cosDec1*cosDec2*std::cos(ra1 - ra2));
+		}
 	private:
+		static void SinCos(double angle, double* sinAngle, double* cosAngle)
+		{ sincos(angle, sinAngle, cosAngle); }
+		
+		static void SinCos(long double angle, long double* sinAngle, long double* cosAngle)
+		{ sincosl(angle, sinAngle, cosAngle); }
+		
+		static void SinCos(float angle, float* sinAngle, float* cosAngle)
+		{ sincosf(angle, sinAngle, cosAngle); }
+		
 		ImageCoordinates();
 };
 

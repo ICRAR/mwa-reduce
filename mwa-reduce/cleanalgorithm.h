@@ -13,13 +13,13 @@ class CleanAlgorithm
 		
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents)
 		{
-			double peakMax = fabs(*image);
+			double peakMax = std::fabs(*image);
 			const double *imgIter = image, *endPtr = image + width * height;
 			size_t peakIndex = 0;
 			size_t index = 0;
 			while(!std::isfinite(peakMax) && imgIter!=endPtr)
 			{
-				peakMax = fabs(*imgIter);
+				peakMax = std::fabs(*imgIter);
 				++imgIter;
 				++index;
 				++peakIndex;
@@ -29,11 +29,11 @@ class CleanAlgorithm
 				double value = *i;
 				if(std::isfinite(value))
 				{
-					if(allowNegativeComponents) value = fabs(value);
+					if(allowNegativeComponents) value = std::fabs(value);
 					if(value > peakMax)
 					{
 						peakIndex = index;
-						peakMax = fabs(*i);
+						peakMax = std::fabs(*i);
 					}
 				}
 				++index;
@@ -42,6 +42,8 @@ class CleanAlgorithm
 			y = peakIndex / width;
 			return image[x + y*width];
 		}
+
+		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, const class AreaSet &cleanAreas);
 
 		static void SubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor);
 		
@@ -62,6 +64,7 @@ class CleanAlgorithm
 		
 		static void GetModelFromImage(class Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq);
 
+		void SetCleanAreas(const class AreaSet& cleanAreas) { _cleanAreas = &cleanAreas; }
 	private:
 		struct CleanTask
 		{
@@ -89,10 +92,12 @@ class CleanAlgorithm
 			y += startY;
 			return peakLevel;
 		}
+		static double partialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas);
 		
 		double _threshold, _subtractionGain;
 		size_t _maxIter;
 		bool _allowNegativeComponents;
+		const class AreaSet *_cleanAreas;
 };
 
 #endif

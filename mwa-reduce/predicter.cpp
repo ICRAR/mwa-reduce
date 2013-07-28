@@ -3,18 +3,18 @@
 #include "imagecoordinates.h"
 #include "beamevaluator.h"
 
-void Predicter::applyGain(double *dataVal, const double *gainA, const double *gainB)
+void Predicter::applyGain(double *dataVal, const std::complex<double> *gain)
 {
-  double solATimesData[4];
-  solATimesData[0] = gainA[0] * dataVal[0] + gainA[1] * dataVal[2];
-  solATimesData[1] = gainA[0] * dataVal[1] + gainA[1] * dataVal[3];
-  solATimesData[2] = gainA[2] * dataVal[0] + gainA[3] * dataVal[2];
-  solATimesData[3] = gainA[2] * dataVal[1] + gainA[3] * dataVal[3];
+  double gainSq[4];
+  gainSq[0] = std::fabs(gain[0] * gain[0] + gain[1] * gain[1]);
+  gainSq[1] = std::fabs(gain[0] * gain[2] + gain[1] * gain[3]);
+  gainSq[2] = std::fabs(gain[2] * gain[0] + gain[3] * gain[1]);
+  gainSq[3] = std::fabs(gain[2] * gain[2] + gain[3] * gain[3]);
 
-  dataVal[0] = solATimesData[0] * gainB[0] + solATimesData[1] * gainB[1];
-  dataVal[1] = solATimesData[0] * gainB[2] + solATimesData[1] * gainB[3];
-  dataVal[2] = solATimesData[2] * gainB[0] + solATimesData[3] * gainB[1];
-  dataVal[3] = solATimesData[2] * gainB[2] + solATimesData[3] * gainB[3];
+  dataVal[0] = dataVal[0] * gainSq[0] + dataVal[1] * gainSq[2];
+  dataVal[1] = dataVal[0] * gainSq[1] + dataVal[1] * gainSq[3];
+  dataVal[2] = dataVal[2] * gainSq[0] + dataVal[3] * gainSq[2];
+  dataVal[3] = dataVal[2] * gainSq[1] + dataVal[3] * gainSq[3];
 }
 
 void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
@@ -27,11 +27,12 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 	parameters->brightness = new NumType[_channelCount*4];
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
-		double beamGains[4];
+		std::complex<double> beamGains[4];
 		if(beamEvaluator != 0)
 		{
 			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
 			beamEvaluator->EvaluateGain(source.PosRA(), source.PosDec(), centreFreq, beamGains);
+			std::cout << centreFreq << ' ' << beamGains[0] << '\n';
 		}
 		for(size_t p=0; p!=4; ++p)
 		{
@@ -40,7 +41,7 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 		}
 		if(beamEvaluator != 0)
 		{
-			applyGain(&parameters->brightness[ch*4], beamGains, beamGains);
+			applyGain(&parameters->brightness[ch*4], beamGains);
 		}
 		for(size_t p=0; p!=4; ++p)
 			_totalFlux[p] += parameters->brightness[ch*4+p];

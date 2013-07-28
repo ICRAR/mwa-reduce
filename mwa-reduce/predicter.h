@@ -32,7 +32,7 @@ class Predicter
 		{
 			NumType l, m, lmsqrt, *brightness;
 		};
-		void applyGain(double *dataVal, const double *gainA, const double *gainB);
+		void applyGain(double *dataVal, const std::complex<double> *gain);
 		
 		NumType _ra0, _dec0, _startFrequency, _endFrequency;
 		size_t _channelCount;

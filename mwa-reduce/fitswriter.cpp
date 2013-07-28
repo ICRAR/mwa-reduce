@@ -7,6 +7,7 @@
 #include <fitsio2.h>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 
 void FitsWriter::checkStatus(int status) 
 {
@@ -88,17 +89,17 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	for(int i=0;i < 4;i++) firstpixel[i] = 1;
 	if(sizeof(NumType)==8)
 	{
-		double nullValue = 0.0;
+		double nullValue = std::numeric_limits<double>::max();
 		fits_write_pixnull(fptr, TDOUBLE, firstpixel, width*height, const_cast<double*>(reinterpret_cast<const double*>(image)), &nullValue, &status);
 	}
 	else if(sizeof(NumType)==4)
 	{
-		float nullValue = 0.0;
+		float nullValue = std::numeric_limits<float>::max();
 		fits_write_pixnull(fptr, TFLOAT, firstpixel, width*height, const_cast<float*>(reinterpret_cast<const float*>(image)), &nullValue, &status);
 	}
 	else
 	{
-		double nullValue = 0.0;
+		double nullValue = std::numeric_limits<double>::max();
 		size_t totalSize = width*height;
 		std::vector<double> copy(totalSize);
 		for(size_t i=0;i!=totalSize;++i) copy[i] = image[i];

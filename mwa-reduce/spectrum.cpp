@@ -12,6 +12,7 @@
 #include "sourcesdf.h"
 #include "model.h"
 #include "predicter.h"
+#include "spectrummaker.h"
 
 using namespace casa;
 
@@ -25,99 +26,14 @@ int main(int argc, char **argv)
 		size_t argi = 1;
 		Model model(argv[argi]);
 		Model measuredModel(model);
-		// Set all sources to flux 1 Jy
-		for(Model::iterator source=model.begin();source!=model.end();++source)
-		{
-			ModelSource &s = *source;
-			s.SetSED(SpectralEnergyDistribution(1.0, 1.0));
-		}
 		
-		MeasurementSet ms(argv[argi+1], Table::Update);
+		SpectrumMaker spectrumMaker;
+		spectrumMaker.AddMeasurementSet(argv[argi+1]);
 		
-		/**
-		 * Read some meta data from the measurement set
-		 */
-		BandData bandData(ms.spectralWindow());
-		size_t channelCount = bandData.ChannelCount();
+		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
+			spectrumMaker.AddSource(*s);
 		
-		MSField fieldTable = ms.field();
-		ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(MSFieldEnums::REFERENCE_DIR));
-		if(refDirColumn.nrow() != 1)
-			throw std::runtime_error("Field table nrow != 1");
-		Array<double> refDir = refDirColumn(0);
-		casa::Array<double>::const_iterator refDirIter = refDir.begin();
-		long double phaseCentreRA = *refDirIter; ++refDirIter;
-		long double phaseCentreDec = *refDirIter;
-		
-		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
-		
-		typedef float num_t;
-		typedef std::complex<num_t> complex_t;
-		ROScalarColumn<int> ant1Column(ms, ms.columnName(MSMainEnums::ANTENNA1));
-		ROScalarColumn<int> ant2Column(ms, ms.columnName(MSMainEnums::ANTENNA2));
-		ArrayColumn<complex_t> dataColumn(ms, ms.columnName(MSMainEnums::DATA));
-		ArrayColumn<bool> flagColumn(ms, ms.columnName(MSMainEnums::FLAG));
-		ROArrayColumn<double> uvwColumn(ms, ms.columnName(MSMainEnums::UVW));
-		
-		IPosition dataShape = dataColumn.shape(0);
-		unsigned polarizationCount = dataShape[0];
-		
-		Predicter predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount);
-		predicter.Initialize(model);
-		
-		/**
-		 * Calculate spectra
-		 */
-		Array<complex_t> data(dataShape);
-		Array<bool> flags(dataShape);
-		long double *sourceFlux = new long double[model.SourceCount()*channelCount];
-		long unsigned *sourceMeasCount = new long unsigned[model.SourceCount()*channelCount];
-		for(size_t i=0;i!=model.SourceCount()*channelCount;++i)
-		{
-			sourceFlux[i] = 0.0;
-			sourceMeasCount[i] = 0;
-		}
-		
-		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
-		{
-			// Cross correlation?
-			size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
-			if(a1 != a2)
-			{
-				dataColumn.get(rowIndex, data);
-				flagColumn.get(rowIndex, flags);
-				casa::Array<double> uvwArray = uvwColumn(rowIndex);
-				casa::Array<double>::const_iterator i = uvwArray.begin();
-				double u = *i; ++i;
-				double v = *i; ++i;
-				double w = *i;
-				
-				Array<complex_t>::iterator dataPtr = data.begin();
-				Array<bool>::iterator flagPtr = flags.begin();
-				for(size_t ch=0; ch!=channelCount; ++ch)
-				{
-					double lambda = bandData.ChannelWavelength(ch);
-					for(size_t p=0;p!=polarizationCount;++p)
-					{
-						float real = dataPtr->real(), imag = dataPtr->imag();
-						if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag) && (polarizationCount!=4 || p==0 || p==3))
-						{
-							size_t sourceIndex = ch * model.SourceCount();
-							for(Model::const_iterator source=model.begin();source!=model.end();++source)
-							{
-								Predicter::CNumType predicted = predicter.Predict(*source, u/lambda, v/lambda, w/lambda, ch, p);
-								// add real(data * conj(predicted))
-								sourceFlux[sourceIndex] += real * predicted.real() + imag * predicted.imag();
-								sourceMeasCount[sourceIndex]++;
-								++sourceIndex;
-							}
-						}
-						++dataPtr;
-						++flagPtr;
-					}
-				}
-			}
-		}
+		spectrumMaker.Measure();
 		
 		bool outputModel = true;
 		if(outputModel)

@@ -32,9 +32,9 @@ int main(int argc, char *argv[])
 		double dec = sourceIter->PosDec();
 		SpectralEnergyDistribution &sed = sourceIter->SED();
 		
-		double gains[4];
+		std::complex<double> gains[4];
 		beamEval.EvaluateGain(ra, dec, gains);
-		sed.SetConstantBeam(gains[0], gains[1], gains[2], gains[3]);
+		sed.SetConstantBeam(std::abs(gains[0]), std::abs(gains[1]), std::abs(gains[2]), std::abs(gains[3]));
 	}
 	
 	model.Save(argv[3]);

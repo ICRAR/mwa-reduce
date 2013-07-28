@@ -3,11 +3,13 @@
 
 #include "../model.h"
 
+#include "tokenizer.h"
+
 #include <cstdlib>
 #include <fstream>
 #include <stdexcept>
 
-class ModelParser
+class ModelParser : private Tokenizer
 {
 	public:
 		ModelParser()
@@ -16,7 +18,7 @@ class ModelParser
 		
 		void Parse(Model &model, std::ifstream &stream)
 		{
-			_stream = &stream;
+			SetStream(stream);
 			
 			std::string line;
 			std::getline(stream, line);
@@ -38,6 +40,7 @@ class ModelParser
 		void parseVersionLine(const std::string &line)
 		{
 		}
+		
 		void parseSource(ModelSource &source)
 		{
 			std::string token;
@@ -51,6 +54,7 @@ class ModelParser
 				else throw std::runtime_error("Unknown token");
 			}
 		}
+		
 		void parseComponent(ModelSource &source)
 		{
 			std::string token;
@@ -117,82 +121,6 @@ class ModelParser
 				else throw std::runtime_error("Unknown token");
 			}
 		}
-		std::string getString()
-		{
-			std::string token;
-			getToken(token);
-			if(token.size()<2 || token[0]!='\"' || token[token.size()-1]!='\"')
-				throw std::runtime_error("Expecting string");
-			return token.substr(1, token.size()-2);
-		}
-		double getTokenAsDouble()
-		{
-			std::string token;
-			getToken(token);
-			return atof(token.c_str());
-		}
-		
-		bool getToken(std::string &token)
-		{
-			if(!_stream->good()) return false;
-			
-			std::stringstream s;
-			bool finished = false;
-			enum { StateStart, StateInToken, StateInString, StateEscaped, StateInLineComment } state = StateStart;
-			do {
-				char c;
-				_stream->get(c);
-				if(!_stream->fail())
-				{
-					switch(state)
-					{
-						case StateStart:
-							if(!(c == ' ' || c == '\t' || c == '\n'))
-							{
-								if(c == '/')
-									state = StateEscaped;
-								else
-								{
-									s << c;
-									if(c == '\"')
-										state = StateInString;
-									else
-										state = StateInToken;
-								}
-							}
-							break;
-						case StateInString:
-							s << c;
-							if(c == '\"')
-								finished = true;
-							break;
-						case StateInToken:
-							if(c == ' ' || c == '\t' || c == '\n' || c == ';')
-								finished = true;
-							else
-								s << c;
-							break;
-						case StateEscaped:
-							if(c == '/')
-								state = StateInLineComment;
-							else
-								throw std::runtime_error("Incorrect /");
-						case StateInLineComment:
-							if(c == '\n')
-								state = StateStart;
-							break;
-					}
-				}
-				else {
-					token = s.str();
-					return !token.empty();
-				}
-			} while(!finished);
-			token = s.str();
-			return true;
-		}
-		
-		std::ifstream *_stream;
 };
 
 #endif

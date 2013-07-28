@@ -3,17 +3,49 @@
 #include "modelsource.h"
 #include "model.h"
 #include "lane.h"
+#include "areaset.h"
 
-#include <iostream>
 #include <boost/thread/thread.hpp>
 #include <emmintrin.h>
+
+#include <iostream>
+#include <limits>
 
 CleanAlgorithm::CleanAlgorithm() :
 	_threshold(0.0),
 	_subtractionGain(0.1),
 	_maxIter(500),
-	_allowNegativeComponents(false)
+	_allowNegativeComponents(false),
+	_cleanAreas(0)
 {
+}
+
+double CleanAlgorithm::partialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas)
+{
+	double peakMax = std::numeric_limits<double>::min();
+	size_t index = 0;
+	const double *imgIter = &image[startY*width];
+	x = 0; y = startY;
+	for(size_t yi=startY; yi!=endY; ++yi)
+	{
+		for(size_t xi=0; xi!=width; ++xi)
+		{
+			double value = *imgIter;
+			if(std::isfinite(value))
+			{
+				if(allowNegativeComponents) value = std::fabs(value);
+				if(value > peakMax && cleanAreas.AllowCleaningInImage(xi, yi))
+				{
+					x = xi;
+					y = yi;
+					peakMax = std::fabs(*imgIter);
+				}
+			}
+			++index;
+			++imgIter;
+		}
+	}
+	return image[x + y*width];
 }
 
 void CleanAlgorithm::SubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor)
@@ -183,7 +215,10 @@ void CleanAlgorithm::cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult
 		partialSubtractImage(cleanData.dataImage, cleanData.psfImage, cleanData.width, cleanData.height, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakLevel, cleanData.startY, cleanData.endY);
 		
 		CleanResult result;
-		result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.width, cleanData.height, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY);
+		if(_cleanAreas == 0)
+			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.width, cleanData.height, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY);
+		else
+			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.width, cleanData.height, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY, *_cleanAreas);
 		
 		resultLane->write(result);
 	}
