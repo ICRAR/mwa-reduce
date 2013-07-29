@@ -27,13 +27,6 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 	parameters->brightness = new NumType[_channelCount*4];
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
-		std::complex<double> beamGains[4];
-		if(beamEvaluator != 0)
-		{
-			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
-			beamEvaluator->EvaluateGain(source.PosRA(), source.PosDec(), centreFreq, beamGains);
-			std::cout << centreFreq << ' ' << beamGains[0] << '\n';
-		}
 		for(size_t p=0; p!=4; ++p)
 		{
 			parameters->brightness[ch*4+p] =
@@ -41,7 +34,8 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 		}
 		if(beamEvaluator != 0)
 		{
-			applyGain(&parameters->brightness[ch*4], beamGains);
+			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
+			beamEvaluator->AbsToApparent(source.PosRA(), source.PosDec(), centreFreq, &parameters->brightness[ch*4]);
 		}
 		for(size_t p=0; p!=4; ++p)
 			_totalFlux[p] += parameters->brightness[ch*4+p];

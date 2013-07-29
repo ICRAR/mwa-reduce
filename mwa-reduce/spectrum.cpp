@@ -20,66 +20,88 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum <model> <ms>\n"
+		std::cout << "Usage: spectrum <model> <output-model> <ms>\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
 		Model model(argv[argi]);
-		Model measuredModel(model);
 		
 		SpectrumMaker spectrumMaker;
-		spectrumMaker.AddMeasurementSet(argv[argi+1]);
+		spectrumMaker.AddMeasurementSet(argv[argi+2]);
 		
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			spectrumMaker.AddSource(*s);
 		
 		spectrumMaker.Measure();
 		
-		bool outputModel = true;
-		if(outputModel)
+		Model outputModel;
+		for(size_t sourceIndex = 0; sourceIndex!=model.SourceCount(); ++sourceIndex)
 		{
-			size_t sourceIndex = 0;
-			for(Model::iterator source=model.begin();source!=model.end();++source)
-			{
-				SpectralEnergyDistribution sed;
-				size_t itemIndex = sourceIndex;
-				for(size_t ch=0; ch!=channelCount;++ch)
-				{
-					sed.AddMeasurement(sourceFlux[itemIndex] / sourceMeasCount[itemIndex], bandData.ChannelFrequency(ch));
-					itemIndex += model.SourceCount();
-				}
-				source->SetSED(sed);
-				std::cout << source->ToString() << '\n';
-				++sourceIndex;
-			}
-		} else {
-			float sums[model.SourceCount()];
-			size_t counts[model.SourceCount()];
-			for(size_t i=0;i!=model.SourceCount();++i)
-			{
-				sums[i] = 0;
-				counts[i] = 0;
-			}
+			SpectralEnergyDistribution sed;
+			std::map<double, long double> spectrum[4];
+			for(size_t p=0; p!=4; ++p)
+				spectrumMaker.FluxPerFrequency(spectrum[p], sourceIndex, p);
 			
-			for(size_t ch=0; ch!=channelCount;++ch)
+			std::map<double, long double>::const_iterator
+				chIter1 = spectrum[1].begin(), chIter2 = spectrum[2].begin(), chIter3 = spectrum[3].begin();
+			for(std::map<double, long double>::const_iterator chIter0=spectrum[0].begin(); chIter0!=spectrum[0].end(); ++chIter0)
 			{
-				std::cout << ch << '\t' << bandData.ChannelFrequency(ch);
-				size_t sourceIndex = ch * model.SourceCount();
-				for(size_t s=0; s!=model.SourceCount();++s)
-				{
-					std::cout << '\t' << (sourceFlux[sourceIndex] / sourceMeasCount[sourceIndex]);
-					sums[s] += sourceFlux[sourceIndex];
-					counts[s] += sourceMeasCount[sourceIndex];
-					++sourceIndex;
-				}
-				std::cout << '\n';
+				Measurement m;
+				m.SetFluxDensity(0, chIter0->second);
+				m.SetFluxDensity(1, chIter1->second);
+				m.SetFluxDensity(2, chIter2->second);
+				m.SetFluxDensity(3, chIter3->second);
+				m.SetFrequencyHz(chIter0->first);
+				sed.AddMeasurement(m);
+				
+				++chIter1; ++chIter2; ++chIter3;
 			}
-			std::cout << "avg\tavg\t";
-			for(size_t i=0;i!=model.SourceCount();++i)
+			ModelSource source = model.Source(sourceIndex);
+			source.SetSED(sed);
+			outputModel.AddSource(source);
+		}
+		outputModel.Save(argv[argi+1]);
+		
+		std::ofstream plotStream("spectrum.plt");
+		plotStream <<
+			"set terminal postscript enhanced color\n"
+			"#set logscale y\n"
+			"#set xrange [0.001:]\n"
+			"#set yrange [-8:2]\n"
+			"set output \"spectrum.ps\"\n"
+			"set key bottom left\n"
+			"set xlabel \"Frequency (MHz)\"\n"
+			"set ylabel \"Flux (Jy)\"\n"
+			"plot \\\n";
+
+		for(size_t sourceIndex = 0; sourceIndex!=model.SourceCount(); ++sourceIndex)
+		{
+			std::ostringstream dataStreamName;
+			dataStreamName << "spectrum" << sourceIndex << ".txt";
+			std::ofstream dataStream(dataStreamName.str().c_str());
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 2.0,\\\n";
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with lines lw 2.0,\\\n";
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with lines lw 2.0,\\\n";
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with lines lw 2.0";
+			if(sourceIndex != model.SourceCount()-1)
+				plotStream << ",\\";
+			plotStream << "\n";
+			std::map<double, long double> spectrum[4];
+			for(size_t p=0; p!=4; ++p)
+				spectrumMaker.FluxPerFrequency(spectrum[p], sourceIndex, p);
+			std::map<double, long double>::const_iterator
+				chIter1 = spectrum[1].begin(), chIter2 = spectrum[2].begin(), chIter3 = spectrum[3].begin();
+				
+			for(std::map<double, long double>::const_iterator chIter0=spectrum[0].begin(); chIter0!=spectrum[0].end(); ++chIter0)
 			{
-				std::cout << '\t' << (sums[i] / counts[i]);
+				dataStream
+					<< chIter0->first/1000000.0 << '\t'
+					<< chIter0->second << '\t'
+					<< chIter1->second << '\t'
+					<< chIter2->second << '\t'
+					<< chIter3->second << '\n';
+				++chIter1; ++chIter2; ++chIter3;
 			}
-			std::cout << '\n';
 		}
 	}
 }

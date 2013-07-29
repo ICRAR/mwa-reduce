@@ -6,6 +6,7 @@
 #include "predicter.h"
 #include "model.h"
 #include "banddata.h"
+#include "beamevaluator.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -15,10 +16,12 @@
 #include <vector>
 #include <memory>
 
+
+
 class SpectrumMaker
 {
 public:
-	SpectrumMaker();
+	SpectrumMaker() { }
 	
 	void AddSource(const ModelSource &source)
 	{
@@ -33,13 +36,11 @@ public:
 	void Measure()
 	{
 		// Set all sources to flux 1 Jy
-		_measuredFlux.resize(_sources.size());
-		_measureCount.resize(_sources.size());
+		_spectrumPerSource.resize(_sources.size());
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
 			_sources[s].SetSED(SpectralEnergyDistribution(1.0, 1.0));
-			_measuredFlux[s].clear();
-			_measureCount[s].clear();
+			_spectrumPerSource[s].Clear();
 		}
 		
 		for(std::vector<std::string>::const_iterator i=_filenames.begin(); i!=_filenames.end(); ++i)
@@ -47,18 +48,12 @@ public:
 		
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
-			std::map<double, long unsigned>::const_iterator countPtr = _measureCount[s].begin();
-			for(std::map<double, long double>::iterator fluxPtr = _measuredFlux[s].begin(); fluxPtr != _measuredFlux[s].end(); ++fluxPtr)
-			{
-				if(*countPtr != 0)
-					fluxPtr->second /= countPtr->second;
-				++countPtr;
-			}
-			_measureCount[s].clear();
+			_spectrumPerSource[s].Normalize();
 		}
 	}
 	
-	const std::map<double, long double>& FluxPerFrequency() const { return _measuredFlux; }
+	void FluxPerFrequency(std::map<double, long double>& dest, size_t sourceIndex, size_t polIndex) const
+	{ _spectrumPerSource[sourceIndex].ToMap(dest, polIndex); }
 private:
 	void measure(const std::string &filename)
 	{
@@ -136,43 +131,124 @@ private:
 						for(size_t p=0; p!=polarizationCount; ++p)
 						{
 							float real = dataPtr->real(), imag = dataPtr->imag();
+							Predicter::CNumType predicted = predicters[s]->Predict(_sources[s], u/lambda, v/lambda, w/lambda, ch, 0);
 							if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
 							{
-								Predicter::CNumType predicted = predicters[s]->Predict(_sources[s], u/lambda, v/lambda, w/lambda, ch, p);
 								// add real(data * conj(predicted))
 								(*measFluxIter) += real * predicted.real() + imag * predicted.imag();
 								(*measCountIter) ++;
-								++measFluxIter;
-								++measCountIter;
 							}
+							++measFluxIter;
+							++measCountIter;
+							++dataPtr;
+							++flagPtr;
 						}
-						++dataPtr;
-						++flagPtr;
 					}
 				}
 			}
 		}
 		
-		for(size_t ch=0; ch!=channelCount; ++ch)
+		// Apply beam
+		BeamEvaluator beamEval(ms);
+		for(size_t s=0; s!=_sources.size(); ++s)
 		{
-			double freq = bandData.ChannelFrequency(ch);
-			std::map<double, long double>::iterator i = _measuredFlux.find(freq);
-			if(i == _measuredFlux.end())
+			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
-				_measuredFlux.insert(std::pair<double, long double>(freq, measFlux[ch]));
-				_measureCount.insert(std::pair<double, long unsigned>(freq, measCount[ch]));
+				const ModelSource& src = _sources[s];
+				beamEval.ApparentToAbs(src.PosRA(), src.PosDec(), bandData.ChannelFrequency(ch), &measCount[(s * channelCount + ch) * 4]);
 			}
-			else {
-				i->second += measFlux[ch];
-				_measureCount.find(freq)->second += measCount[ch];
+		}
+		
+		// Add to the total values
+		for(size_t s=0; s!=_sources.size(); ++s)
+		{
+			Spectrum &spectrum = _spectrumPerSource[s];
+			for(size_t ch=0; ch!=channelCount; ++ch)
+			{
+				double freq = bandData.ChannelFrequency(ch);
+				spectrum.AddMeasurement(freq, &measFlux[(s * channelCount + ch) * 4], &measCount[(s * channelCount + ch) * 4]);
 			}
 		}
 	}
 	
+	struct Measurement
+	{
+		long double flux[4];
+		long unsigned count[4];
+		
+		Measurement() {
+			for(size_t p=0; p!=4; ++p)
+			{
+				flux[p] = 0.0;
+				count[p] = 0;
+			}
+		}
+		
+		void Normalize()
+		{
+			for(size_t p=0; p!=4; ++p)
+			{
+				if(count[p] != 0)
+				{
+					flux[p] /= count[p];
+					count[p] = 0;
+				}
+			}
+		}
+	};
+	
+	class Spectrum
+	{
+		public:
+			typedef std::map<double, Measurement>::iterator iterator;
+			typedef std::map<double, Measurement>::const_iterator const_iterator;
+			iterator begin() { return _measurements.begin(); }
+			iterator end() { return _measurements.end(); }
+			const_iterator begin() const { return _measurements.begin(); }
+			const_iterator end() const { return _measurements.end(); }
+			
+			void Normalize() {
+				for(iterator i=begin(); i!=end(); ++i)
+					i->second.Normalize();
+			}
+			void Clear() { _measurements.clear(); }
+			
+			void AddMeasurement(double frequency, const long double *values, const long unsigned *counts)
+			{
+				iterator i = _measurements.find(frequency);
+				if(i == end())
+				{
+					Measurement m;
+					for(size_t p=0; p!=4; ++p)
+					{
+						m.flux[p] = values[p];
+						m.count[p] = counts[p];
+					}
+					_measurements.insert(std::pair<double, Measurement>(frequency, m));
+				}
+				else {
+					for(size_t p=0; p!=4; ++p)
+					{
+						i->second.flux[p] += values[p];
+						i->second.count[p] += counts[p];
+					}
+				}
+			}
+			
+			void ToMap(std::map<double, long double>& dest, size_t polIndex) const
+			{
+				for(const_iterator i=begin(); i!=end(); ++i)
+				{
+					dest.insert(std::pair<double, long double>(i->first, i->second.flux[polIndex]));
+				}
+			}
+		private:
+			std::map<double, Measurement> _measurements;
+	};
+
 	std::vector<ModelSource> _sources;
 	std::vector<std::string> _filenames;
-	std::vector<std::map<double, long double>> _measuredFlux;
-	std::vector<std::map<double, long unsigned>> _measureCount;
+	std::vector<Spectrum> _spectrumPerSource;
 };
 
 #endif
