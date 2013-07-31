@@ -16,6 +16,23 @@
 
 using namespace casa;
 
+template<typename T>
+void addGausNoise(std::complex<T> &value, double sigma)
+{
+	long double x1, x2, w;
+
+	do {
+		long double r1 = (long double) rand() / (long double) RAND_MAX; 
+		long double r2 = (long double) rand() / (long double) RAND_MAX; 
+		x1 = 2.0 * r1 - 1.0;
+		x2 = 2.0 * r2 - 1.0;
+		w = x1 * x1 + x2 * x2;
+	} while ( w >= 1.0 );
+
+	w = std::sqrt( (-2.0 * std::log( w ) ) / w ) * sigma;
+	value += std::complex<T>(x1 * w, x2 * w);
+}
+
 int main(int argc, char **argv)
 {
 	if(argc < 3)
@@ -24,10 +41,17 @@ int main(int argc, char **argv)
 			"Subtracts the model from the visibilities. This 'peels' the\n"
 			"sources out. Only affects cross-correlations. -r to revert or -s to set.\n";
 	} else {
-		bool revert = false , setvis = false;
+		bool revert = false , setvis = false, addNoise = false;
+		double noiseSigma = 1.0;
 		size_t argi = 1;
-		if(strcmp(argv[1], "-r") == 0) { revert=true; ++argi; }
-		else if(strcmp(argv[1], "-s") == 0) { setvis=true; ++argi; }
+		while(argv[argi][0] == '-')
+		{
+			if(strcmp(argv[argi], "-r") == 0) { revert=true; }
+			else if(strcmp(argv[argi], "-s") == 0) { setvis=true; }
+			else if(strcmp(argv[argi], "-n") == 0) { addNoise=true; ++argi; noiseSigma = atof(argv[argi]); }
+			else throw std::runtime_error("Invalid param");
+			++argi;
+		}
 		std::cout << "Reading model... " << std::flush;
 		Model model(argv[argi]);
 		std::cout << "DONE\n";
@@ -98,23 +122,20 @@ int main(int argc, char **argv)
 				for(size_t ch=0; ch!=channelCount; ++ch)
 				{
 					double lambda = bandData.ChannelWavelength(ch);
-					if(setvis)
+					for(size_t p=0;p!=polarizationCount;++p)
 					{
-						for(size_t p=0;p!=polarizationCount;++p) {
-							*dataPtr = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
-							++dataPtr;
-						}
-					} else {
-						for(size_t p=0;p!=polarizationCount;++p)
-						{
-							std::complex<float> predicted;
-							if(revert)
-								predicted = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
-							else
-								predicted = -predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
+						std::complex<float> predicted;
+						if(revert || setvis)
+							predicted = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
+						else
+							predicted = -predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
+						if(addNoise)
+							addGausNoise(predicted, noiseSigma);
+						if(setvis)
+							*dataPtr = predicted;
+						else
 							*dataPtr += predicted;
-							++dataPtr;
-						}
+						++dataPtr;
 					}
 				}
 				dataColumn.put(rowIndex, data);
