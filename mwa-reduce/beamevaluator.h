@@ -22,56 +22,67 @@ class BeamEvaluator
 		void EvaluateGain(double ra, double dec, double frequency, std::complex<double> *gains);
 		
 		template<typename NumType>
-		void AbsToApparent(double ra, double dec, double frequency, NumType* pixelValues)
+		void EvaluateAbsGain(double ra, double dec, double frequency, NumType* absGain)
 		{
-			// TODO this should probably be done as "|G| d |G^H|" instead of d |GG&^H|
-			// Doesn't matter for unpolarized sources (d is diagonal and commutative)
 			std::complex<double> gains[4];
 			EvaluateGain(ra, dec, frequency, gains);
+			for(size_t p=0; p!=4; ++p)
+				absGain[p] = std::fabs(gains[p]);
+		}
+		
+		template<typename NumType>
+		void AbsToApparent(double ra, double dec, double frequency, NumType* pixelValues)
+		{
+			double gains[4];
+			EvaluateAbsGain(ra, dec, frequency, gains);
 			
-			double gainSq[4];
-			gainSq[0] = std::fabs(gains[0] * gains[0] + gains[1] * gains[1]);
-			gainSq[1] = std::fabs(gains[0] * gains[2] + gains[1] * gains[3]);
-			gainSq[2] = std::fabs(gains[2] * gains[0] + gains[3] * gains[1]);
-			gainSq[3] = std::fabs(gains[2] * gains[2] + gains[3] * gains[3]);
+			// Calculate A D A^H
+			
+			NumType part[4];
+			part[0] = gains[0] * pixelValues[0] + gains[1] * pixelValues[2];
+			part[1] = gains[0] * pixelValues[1] + gains[1] * pixelValues[3];
+			part[2] = gains[2] * pixelValues[0] + gains[3] * pixelValues[2];
+			part[3] = gains[2] * pixelValues[1] + gains[3] * pixelValues[3];
 
-			double temp[4];
-			temp[0] = pixelValues[0] * gainSq[0] + pixelValues[1] * gainSq[2];
-			temp[1] = pixelValues[0] * gainSq[1] + pixelValues[1] * gainSq[3];
-			temp[2] = pixelValues[2] * gainSq[0] + pixelValues[3] * gainSq[2];
-			temp[3] = pixelValues[2] * gainSq[1] + pixelValues[3] * gainSq[3];
+			NumType temp[4];
+			temp[0] = part[0] * gains[0] + part[1] * gains[1];
+			temp[1] = part[0] * gains[2] + part[1] * gains[3];
+			temp[2] = part[2] * gains[0] + part[3] * gains[1];
+			temp[3] = part[2] * gains[2] + part[3] * gains[3];
 			
 			for(size_t p=0; p!=4; ++p)
 				pixelValues[p] = temp[p];
 		}
 		
 		template<typename NumType>
-		void ApparentToAbs(double ra, double dec, double frequency, NumType* pixelValues)
+		void ApparentToAbs(double ra, double dec, double frequency, NumType* data)
 		{
-			std::complex<double> gains[4];
-			EvaluateGain(ra, dec, frequency, gains);
+			double gains[4];
+			EvaluateAbsGain(ra, dec, frequency, gains);
 			
-			std::complex<double> overDeterminant = 1.0 / (gains[0]*gains[3] - gains[1]*gains[2]);
-			std::complex<double> invGain[4];
+			// Calculate A^H^1 D A^1
+			
+			double overDeterminant = 1.0 / (gains[0]*gains[3] - gains[1]*gains[2]);
+			double invGain[4];
 			invGain[0] = overDeterminant * gains[3];
 			invGain[1] = -overDeterminant * gains[1];
 			invGain[2] = -overDeterminant * gains[2];
 			invGain[3] = overDeterminant * gains[0];
 			
-			double gainSq[4];
-			gainSq[0] = std::fabs(invGain[0] * invGain[0] + invGain[1] * invGain[1]);
-			gainSq[1] = std::fabs(invGain[0] * invGain[2] + invGain[1] * invGain[3]);
-			gainSq[2] = std::fabs(invGain[2] * invGain[0] + invGain[3] * invGain[1]);
-			gainSq[3] = std::fabs(invGain[2] * invGain[2] + invGain[3] * invGain[3]);
+			double part[4];
+			part[0] = invGain[0] * data[0] + invGain[1] * data[2];
+			part[1] = invGain[0] * data[1] + invGain[1] * data[3];
+			part[2] = invGain[2] * data[0] + invGain[3] * data[2];
+			part[3] = invGain[2] * data[1] + invGain[3] * data[3];
 
 			double temp[4];
-			temp[0] = pixelValues[0] * gainSq[0] + pixelValues[1] * gainSq[2];
-			temp[1] = pixelValues[0] * gainSq[1] + pixelValues[1] * gainSq[3];
-			temp[2] = pixelValues[2] * gainSq[0] + pixelValues[3] * gainSq[2];
-			temp[3] = pixelValues[2] * gainSq[1] + pixelValues[3] * gainSq[3];
+			temp[0] = part[0] * invGain[0] + part[1] * invGain[1];
+			temp[1] = part[0] * invGain[2] + part[1] * invGain[3];
+			temp[2] = part[2] * invGain[0] + part[3] * invGain[1];
+			temp[3] = part[2] * invGain[2] + part[3] * invGain[3];
 			
 			for(size_t p=0; p!=4; ++p)
-				pixelValues[p] = temp[p];
+				data[p] = temp[p];
 		}
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
