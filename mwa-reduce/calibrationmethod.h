@@ -84,6 +84,45 @@ class CalibrationMethod
 		std::vector<std::complex<double> > _jonesSolutions;
 		size_t _nChannels, _nAntenna, _nTimesteps;
 		
+		static void aTimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+		{
+			dest[0] = lhs[0] * rhs[0] + lhs[1] * rhs[2];
+			dest[1] = lhs[0] * rhs[1] + lhs[1] * rhs[3];
+			dest[2] = lhs[2] * rhs[0] + lhs[3] * rhs[2];
+			dest[3] = lhs[2] * rhs[1] + lhs[3] * rhs[3];
+		}
+		
+		static void plusATimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+		{
+			dest[0] += lhs[0] * rhs[0] + lhs[1] * rhs[2];
+			dest[1] += lhs[0] * rhs[1] + lhs[1] * rhs[3];
+			dest[2] += lhs[2] * rhs[0] + lhs[3] * rhs[2];
+			dest[3] += lhs[2] * rhs[1] + lhs[3] * rhs[3];
+		}
+		
+		static void aTimesHermB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+		{
+			dest[0] = lhs[0] * std::conj(rhs[0]) + lhs[1] * std::conj(rhs[1]);
+			dest[1] = lhs[0] * std::conj(rhs[2]) + lhs[1] * std::conj(rhs[3]);
+			dest[2] = lhs[2] * std::conj(rhs[0]) + lhs[3] * std::conj(rhs[1]);
+			dest[3] = lhs[2] * std::conj(rhs[2]) + lhs[3] * std::conj(rhs[3]);
+		}
+
+		static void hermATimesHermB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+		{
+			dest[0] = std::conj(rhs[0]) * std::conj(lhs[0]) + std::conj(rhs[2]) * std::conj(lhs[1]);
+			dest[1] = std::conj(rhs[0]) * std::conj(lhs[2]) + std::conj(rhs[2]) * std::conj(lhs[3]);
+			dest[2] = std::conj(rhs[1]) * std::conj(lhs[0]) + std::conj(rhs[3]) * std::conj(lhs[1]);
+			dest[3] = std::conj(rhs[1]) * std::conj(lhs[2]) + std::conj(rhs[3]) * std::conj(lhs[3]);
+		}
+		
+		static void plusHermATimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+		{
+			dest[0] += std::conj(lhs[0]) * rhs[0] + std::conj(lhs[2]) * rhs[2];
+			dest[1] += std::conj(lhs[0]) * rhs[1] + std::conj(lhs[2]) * rhs[3];
+			dest[2] += std::conj(lhs[1]) * rhs[0] + std::conj(lhs[3]) * rhs[2];
+			dest[3] += std::conj(lhs[1]) * rhs[1] + std::conj(lhs[3]) * rhs[3];
+		}
 };
 
 #endif
