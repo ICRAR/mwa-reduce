@@ -1,4 +1,5 @@
 #include "calibrationmethod.h"
+#include "matrix2x2.h"
 
 #include <iostream>
 #include <cmath>
@@ -46,7 +47,7 @@ void CalibrationMethod::AddData(const std::complex<float>* data, const float* we
 			}
 			else {
 				*destDataPtr = std::complex<double>(0.0, 0.0);
-				*destModelPtr = *predictedValues;
+				*destModelPtr = std::complex<double>(0.0, 0.0);
 				minWeight = 0.0;
 			}
 			
@@ -202,7 +203,7 @@ size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 	//reportDistances();
 	
 	//std::cout << "Weighting data.\n";
-	//applyWeightsToData();
+	applyWeightsToData();
 	
 	do
 	{
@@ -276,7 +277,7 @@ std::string CalibrationMethod::MatrixToString(const std::complex<double> *matrix
 {
 	std::stringstream s;
 	double s1, s2;
-	singularValues2x2(matrix, s1, s2);
+	Matrix2x2::SingularValues(matrix, s1, s2);
 	s <<
 		" (" << matrix[0] << " " << matrix[1] << ")\tamplitudes=(" << abs(matrix[0]) << ' ' << abs(matrix[1]) << ") SV=\t" << s1 << "\n"
 		" (" << matrix[2] << " " << matrix[3] << ")\t           (" << abs(matrix[2]) << ' ' << abs(matrix[3]) << ")    \t" << s2 << '\n';
@@ -314,28 +315,28 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 					if(isConjTranspose)
 					{
 						// sum(M^H J D) sum(D^H J^H J D)
-						std::complex<double> jTimesHermD[4];
+						std::complex<double> jTimesHermM[4];
 						
-						aTimesB(jTimesHermD, jonesPtr, dataPtr);
+						Matrix2x2::ATimesB(jTimesHermM, jonesPtr, modelPtr);
 						
-						plusHermATimesB(nextJonesPtr, modelPtr, jTimesHermD);
+						Matrix2x2::PlusHermATimesB(nextJonesPtr, dataPtr, jTimesHermM);
 						
-						std::complex<double> dTimesHermJ[4];
-						hermATimesHermB(dTimesHermJ, dataPtr, jonesPtr);
+						std::complex<double> mTimesHermJ[4];
+						Matrix2x2::HermATimesHermB(mTimesHermJ, modelPtr, jonesPtr);
 						
-						plusATimesB(rTermPtr, dTimesHermJ, jTimesHermD);
+						Matrix2x2::PlusATimesB(rTermPtr, mTimesHermJ, jTimesHermM);
 						
 					} else { // non-herm conjugate case
-						std::complex<double> jTimesHermD[4];
+						std::complex<double> jTimesHermM[4];
 						
-						aTimesHermB(jTimesHermD, jonesPtr, dataPtr);
+						Matrix2x2::ATimesHermB(jTimesHermM, jonesPtr, modelPtr);
 						
-						plusATimesB(nextJonesPtr, modelPtr, jTimesHermD);
+						Matrix2x2::PlusATimesB(nextJonesPtr, dataPtr, jTimesHermM);
 						
-						std::complex<double> dTimesHermJ[4];
-						aTimesHermB(dTimesHermJ, dataPtr, jonesPtr);
+						std::complex<double> mTimesHermJ[4];
+						Matrix2x2::ATimesHermB(mTimesHermJ, modelPtr, jonesPtr);
 						
-						plusATimesB(rTermPtr, dTimesHermJ, jTimesHermD);
+						Matrix2x2::PlusATimesB(rTermPtr, mTimesHermJ, jTimesHermM);
 					}
 					
 					// Move to next channel
@@ -351,7 +352,7 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	
 	for(size_t ch=0; ch!=_nChannels; ++ch)
 	{
-		if(multiplyWithInverse2x2(&solutions[ch * 4], &rTerm[ch * 4]))
+		if(Matrix2x2::MultiplyWithInverse(&solutions[ch * 4], &rTerm[ch * 4]))
 		{
 			for(size_t i=0; i!=4; ++i)
 				nextJones[ch * 4 + i] = solutions[ch * 4 + i];
@@ -360,46 +361,7 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	}
 }
 
-bool CalibrationMethod::multiplyWithInverse2x2(std::complex<double>* lhs, const std::complex<double>* rhs)
+void CalibrationMethod::SolutionSingularValue(size_t antenna, size_t channel, double &s1, double &s2) const
 {
-	std::complex<double> d = ((rhs[0]*rhs[3]) - (rhs[1]*rhs[2]));
-	if(d == 0.0) return false;
-	std::complex<double> oneOverDeterminant = 1.0 / d;
-	std::complex<double> temp[4];
-	temp[0] = rhs[3] * oneOverDeterminant;
-	temp[1] = -rhs[1] * oneOverDeterminant;
-	temp[2] = -rhs[2] * oneOverDeterminant;
-	temp[3] = rhs[0] * oneOverDeterminant;
-	
-	std::complex<double> temp2 = lhs[0];
-	lhs[0] = lhs[0] * temp[0] + lhs[1] * temp[2];
-	lhs[1] =  temp2 * temp[1] + lhs[1] * temp[3];
-	
-	temp2 = lhs[2];
-	lhs[2] = lhs[2] * temp[0] + lhs[3] * temp[2];
-	lhs[3] = temp2 * temp[1] + lhs[3] * temp[3];
-	return true;
-}
-
-void CalibrationMethod::singularValues2x2(const std::complex<double>* matrix, double &e1, double &e2)
-{
-	// This is not the ultimate fastest method, since we
-	// don't need to calculate the imaginary values of b,c at all.
-  // Calculate M M^H
-	std::complex<double> temp[4] = {
-		matrix[0] * std::conj(matrix[0]) + matrix[1] * std::conj(matrix[1]),
-		matrix[0] * std::conj(matrix[2]) + matrix[1] * std::conj(matrix[3]),
-		matrix[2] * std::conj(matrix[0]) + matrix[3] * std::conj(matrix[1]),
-		matrix[2] * std::conj(matrix[2]) + matrix[3] * std::conj(matrix[3])
-	};
-	// Use quadratic formula, with a=1.
-       double
-	 b = -temp[0].real() - temp[3].real(),
-	 c = temp[0].real()*temp[3].real() - (temp[1]*temp[2]).real(),
-	 d = b*b - (4.0*1.0)*c;
-	double
-	  sqrtd = sqrt(d);
-
-	e1 = sqrt((-b + sqrtd) * 0.5);
-	e2 = sqrt((-b - sqrtd) * 0.5);
+	Matrix2x2::SingularValues(&_jonesSolutions[(antenna * _nChannels + channel) * 4], s1, s2);
 }

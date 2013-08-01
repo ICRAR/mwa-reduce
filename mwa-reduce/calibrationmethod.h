@@ -62,12 +62,15 @@ class CalibrationMethod
 		{
 			return _jonesSolutions[(antenna * _nChannels + channel) * 4 + polarization];
 		}
-		void SolutionSingularValue(size_t antenna, size_t channel, double &s1, double &s2) const
-		{
-			singularValues2x2(&_jonesSolutions[(antenna * _nChannels + channel) * 4], s1, s2);
-		}
+		
+		void SolutionSingularValue(size_t antenna, size_t channel, double &s1, double &s2) const;
 
 		static std::string MatrixToString(const std::complex<double> *matrix);
+		
+		void InitSolutions(const CalibrationMethod &source)
+		{
+			_jonesSolutions = source._jonesSolutions;
+		}
 	private:
 		void calculateNextIter(size_t ant, std::complex<double> *nextJones);
 		
@@ -76,53 +79,11 @@ class CalibrationMethod
 		double totalDistance();
 		void reportDistances();
 		
-		static bool multiplyWithInverse2x2(std::complex<double>* lhs, const std::complex<double>* rhs);
-		static void singularValues2x2(const std::complex<double>* matrix, double &e1, double &e2);
-		
 		DataArray _data, _model;
 		WeightArray _weights, _weightSums;
 		std::vector<std::complex<double> > _jonesSolutions;
 		size_t _nChannels, _nAntenna, _nTimesteps;
 		
-		static void aTimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
-		{
-			dest[0] = lhs[0] * rhs[0] + lhs[1] * rhs[2];
-			dest[1] = lhs[0] * rhs[1] + lhs[1] * rhs[3];
-			dest[2] = lhs[2] * rhs[0] + lhs[3] * rhs[2];
-			dest[3] = lhs[2] * rhs[1] + lhs[3] * rhs[3];
-		}
-		
-		static void plusATimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
-		{
-			dest[0] += lhs[0] * rhs[0] + lhs[1] * rhs[2];
-			dest[1] += lhs[0] * rhs[1] + lhs[1] * rhs[3];
-			dest[2] += lhs[2] * rhs[0] + lhs[3] * rhs[2];
-			dest[3] += lhs[2] * rhs[1] + lhs[3] * rhs[3];
-		}
-		
-		static void aTimesHermB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
-		{
-			dest[0] = lhs[0] * std::conj(rhs[0]) + lhs[1] * std::conj(rhs[1]);
-			dest[1] = lhs[0] * std::conj(rhs[2]) + lhs[1] * std::conj(rhs[3]);
-			dest[2] = lhs[2] * std::conj(rhs[0]) + lhs[3] * std::conj(rhs[1]);
-			dest[3] = lhs[2] * std::conj(rhs[2]) + lhs[3] * std::conj(rhs[3]);
-		}
-
-		static void hermATimesHermB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
-		{
-			dest[0] = std::conj(rhs[0]) * std::conj(lhs[0]) + std::conj(rhs[2]) * std::conj(lhs[1]);
-			dest[1] = std::conj(rhs[0]) * std::conj(lhs[2]) + std::conj(rhs[2]) * std::conj(lhs[3]);
-			dest[2] = std::conj(rhs[1]) * std::conj(lhs[0]) + std::conj(rhs[3]) * std::conj(lhs[1]);
-			dest[3] = std::conj(rhs[1]) * std::conj(lhs[2]) + std::conj(rhs[3]) * std::conj(lhs[3]);
-		}
-		
-		static void plusHermATimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
-		{
-			dest[0] += std::conj(lhs[0]) * rhs[0] + std::conj(lhs[2]) * rhs[2];
-			dest[1] += std::conj(lhs[0]) * rhs[1] + std::conj(lhs[2]) * rhs[3];
-			dest[2] += std::conj(lhs[1]) * rhs[0] + std::conj(lhs[3]) * rhs[2];
-			dest[3] += std::conj(lhs[1]) * rhs[1] + std::conj(lhs[3]) * rhs[3];
-		}
 };
 
 #endif

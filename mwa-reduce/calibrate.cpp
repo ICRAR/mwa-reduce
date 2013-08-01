@@ -3,6 +3,7 @@
 #include "banddata.h"
 #include "solutionfile.h"
 #include "beamevaluator.h"
+#include "matrix2x2.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -32,11 +33,15 @@ void ThreadFunction(ThreadData data)
 {
 	std::cout << "Thread signing up for duty!\n";
 	boost::mutex::scoped_lock lock(*data.mutex);
+	size_t lastTaskIndex = data.tasks->front();
 	while(!data.tasks->empty()) {
 		size_t taskIndex = data.tasks->front();
 		data.tasks->pop();
 		lock.unlock();
+		if(lastTaskIndex != taskIndex)
+			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastTaskIndex]);
 		size_t iters = (*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+		lastTaskIndex = taskIndex;
 		lock.lock();
 		if(taskIndex<=16)
 		{
@@ -280,14 +285,14 @@ int main(int argc, char *argv[])
 								modelValues[chIndex+p] = pVal;
 						  }
 						  
-						  //modelValues[chIndex+0] = 1.0;
-						  //modelValues[chIndex+1] = 0.0;
-							//modelValues[chIndex+2] = 0.0;
-							//modelValues[chIndex+3] = 1.0;
-						  //dataPtr[chIndex+0] = 0.1;
-							//dataPtr[chIndex+1] = 0.0;
-							//dataPtr[chIndex+2] = 0.0;
-							//dataPtr[chIndex+3] = 0.1;
+						  /*modelValues[chIndex+0] = 1.0;
+						  modelValues[chIndex+1] = 0.0;
+							modelValues[chIndex+2] = 0.0;
+							modelValues[chIndex+3] = 1.0;
+						  dataPtr[chIndex+0] = 0.1;
+							dataPtr[chIndex+1] = 0.0;
+							dataPtr[chIndex+2] = 0.0;
+							dataPtr[chIndex+3] = 0.1;*/
 						  
 							calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
 						}
@@ -318,10 +323,14 @@ int main(int argc, char *argv[])
 		  {
 				for(size_t ch=0; ch!=partChannelCount; ++ch)
 			  {
+					std::complex<double> val[4];
+					for(size_t p=0; p!=4; ++p)
+						val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+					Matrix2x2::Invert(val);
+					
 					for(size_t p=0; p!=4; ++p)
 				  {
-						const std::complex<double> val = calMethods[ch]->JonesSolution(ant, 0, p);
-						solutionFile.WriteSolution(val, ant, ch+startChannel, p);
+						solutionFile.WriteSolution(val[p], ant, ch+startChannel, p);
 					}
 				}
 			}
@@ -336,20 +345,25 @@ int main(int argc, char *argv[])
 			  {
 					phasePlotStream << (ch+startChannel) << '\t';
 					gainPlotStream << (ch+startChannel) << '\t';
+					
 					for(size_t p=0; p!=4; ++p)
 				  {
 						for(size_t ant=0; ant!=antennaCount; ++ant)
 					  {
-							const std::complex<double> val = calMethods[ch]->JonesSolution(ant, 0, p);
+							std::complex<double> val[4];
+							for(size_t p2=0; p2!=4; ++p2)
+								val[p2] = calMethods[ch]->JonesSolution(ant, 0, p2);
+							Matrix2x2::Invert(val);
+					
 							double s1, s2;
-							calMethods[ch]->SolutionSingularValue(ant, 0, s1, s2);
+							Matrix2x2::SingularValues(val, s1, s2);
 							switch(p)
 							{
 							case 0: gainPlotStream << '\t' << s1; break;
 							case 1: case 2: gainPlotStream << '\t' << 0.0; break;
 							case 3: gainPlotStream << '\t' << s2;
 							}
-							phasePlotStream << '\t' << std::arg(val);
+							phasePlotStream << '\t' << std::arg(val[p]);
 						}
 					}
 					phasePlotStream << '\n';
