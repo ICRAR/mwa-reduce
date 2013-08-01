@@ -97,6 +97,8 @@ void CalibrationMethod::applyWeightsToData()
 double CalibrationMethod::totalDistance(size_t antenna)
 {
 	double distance = 0.0, weightSum = 0.0;
+	std::complex<double> xxFlux = 0.0, modelXX = 0.0;
+	size_t xxFluxCount = 0;
 	for(size_t timestep=0; timestep!=_nTimesteps; ++timestep)
 	{
 		for(size_t antenna1 = 0; antenna1!=_nAntenna; ++antenna1)
@@ -124,6 +126,7 @@ double CalibrationMethod::totalDistance(size_t antenna)
 						j1DJ2[2] = j1TimesD[2] * std::conj(jones2[0/* (0^H) */]) + j1TimesD[3] * std::conj(jones2[1/* (2^H) */]);
 						j1DJ2[3] = j1TimesD[2] * std::conj(jones2[2/* (1^H) */]) + j1TimesD[3] * std::conj(jones2[3/* (3^H) */]);
 						
+						xxFlux += j1DJ2[0]; xxFluxCount++; modelXX += model[0];
 						distances[0] = std::conj(model[0]) - j1DJ2[0];
 						distances[1] = std::conj(model[2]) - j1DJ2[1],
 						distances[2] = std::conj(model[1]) - j1DJ2[2];
@@ -139,6 +142,7 @@ double CalibrationMethod::totalDistance(size_t antenna)
 						j1DJ2[2] = j1TimesD[2] * std::conj(jones2[0/* (0^H) */]) + j1TimesD[3] * std::conj(jones2[1/* (2^H) */]);
 						j1DJ2[3] = j1TimesD[2] * std::conj(jones2[2/* (1^H) */]) + j1TimesD[3] * std::conj(jones2[3/* (3^H) */]);
 						
+						xxFlux += j1DJ2[0]; xxFluxCount++; modelXX += model[0];
 						distances[0] = model[0] - j1DJ2[0];
 						distances[1] = model[1] - j1DJ2[1],
 						distances[2] = model[2] - j1DJ2[2];
@@ -159,6 +163,7 @@ double CalibrationMethod::totalDistance(size_t antenna)
 			}
 		}
 	}
+	std::cout << "XX flux for ant " << antenna << ": " << (xxFlux / double(xxFluxCount)) << " model=" << (modelXX / double(xxFluxCount)) << '\n';
 	if(weightSum == 0.0)
 		return 0.0;
 	else
@@ -197,7 +202,7 @@ size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 	//reportDistances();
 	
 	//std::cout << "Weighting data.\n";
-	applyWeightsToData();
+	//applyWeightsToData();
 	
 	do
 	{
@@ -263,6 +268,7 @@ size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 		
 	} while(continueIterating && iterationNumber<nIter);
 
+	//reportDistances();
 	return iterationNumber;
 }
 
@@ -307,54 +313,29 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 				{
 					if(isConjTranspose)
 					{
-						std::complex<double> jTimesHermD[4] = {
-							(jonesPtr[0] * dataPtr[0] + jonesPtr[1] * dataPtr[2]),
-							(jonesPtr[0] * dataPtr[1] + jonesPtr[1] * dataPtr[3]),
-							(jonesPtr[2] * dataPtr[0] + jonesPtr[3] * dataPtr[2]),
-							(jonesPtr[2] * dataPtr[1] + jonesPtr[3] * dataPtr[3])
-						};
+						// sum(M^H J D) sum(D^H J^H J D)
+						std::complex<double> jTimesHermD[4];
 						
-						nextJonesPtr[0] += std::conj(modelPtr[0]) * jTimesHermD[0] + std::conj(modelPtr[2]) * jTimesHermD[2];
-						nextJonesPtr[1] += std::conj(modelPtr[0]) * jTimesHermD[1] + std::conj(modelPtr[2]) * jTimesHermD[3];
-						nextJonesPtr[2] += std::conj(modelPtr[1]) * jTimesHermD[0] + std::conj(modelPtr[3]) * jTimesHermD[2];
-						nextJonesPtr[3] += std::conj(modelPtr[1]) * jTimesHermD[1] + std::conj(modelPtr[3]) * jTimesHermD[3];
+						aTimesB(jTimesHermD, jonesPtr, dataPtr);
 						
-						std::complex<double> dTimesHermJ[4] = {
-							(std::conj(dataPtr[0]) * std::conj(jonesPtr[0/* (0^H) */]) + std::conj(dataPtr[2]) * std::conj(jonesPtr[1/* (2^H) */])),
-							(std::conj(dataPtr[0]) * std::conj(jonesPtr[2/* (1^H) */]) + std::conj(dataPtr[2]) * std::conj(jonesPtr[3/* (3^H) */])),
-							(std::conj(dataPtr[1]) * std::conj(jonesPtr[0/* (0^H) */]) + std::conj(dataPtr[3]) * std::conj(jonesPtr[1/* (2^H) */])),
-							(std::conj(dataPtr[1]) * std::conj(jonesPtr[2/* (1^H) */]) + std::conj(dataPtr[3]) * std::conj(jonesPtr[3/* (3^H) */]))
-						};
+						plusHermATimesB(nextJonesPtr, modelPtr, jTimesHermD);
 						
-						rTermPtr[0] += dTimesHermJ[0] * jTimesHermD[0] + dTimesHermJ[1] * jTimesHermD[2];
-						rTermPtr[1] += dTimesHermJ[0] * jTimesHermD[1] + dTimesHermJ[1] * jTimesHermD[3];
-						rTermPtr[2] += dTimesHermJ[2] * jTimesHermD[0] + dTimesHermJ[3] * jTimesHermD[2];
-						rTermPtr[3] += dTimesHermJ[2] * jTimesHermD[1] + dTimesHermJ[3] * jTimesHermD[3];
+						std::complex<double> dTimesHermJ[4];
+						hermATimesHermB(dTimesHermJ, dataPtr, jonesPtr);
+						
+						plusATimesB(rTermPtr, dTimesHermJ, jTimesHermD);
 						
 					} else { // non-herm conjugate case
-						std::complex<double> jTimesHermD[4] = {
-							(jonesPtr[0] * std::conj(dataPtr[0/* (0^H) */]) + jonesPtr[1] * std::conj(dataPtr[1/* (2^H) */])),
-							(jonesPtr[0] * std::conj(dataPtr[2/* (1^H) */]) + jonesPtr[1] * std::conj(dataPtr[3/* (3^H) */])),
-							(jonesPtr[2] * std::conj(dataPtr[0/* (0^H) */]) + jonesPtr[3] * std::conj(dataPtr[1/* (2^H) */])),
-							(jonesPtr[2] * std::conj(dataPtr[2/* (1^H) */]) + jonesPtr[3] * std::conj(dataPtr[3/* (3^H) */]))
-						};
+						std::complex<double> jTimesHermD[4];
 						
-						nextJonesPtr[0] += modelPtr[0] * jTimesHermD[0] + modelPtr[1] * jTimesHermD[2];
-						nextJonesPtr[1] += modelPtr[0] * jTimesHermD[1] + modelPtr[1] * jTimesHermD[3];
-						nextJonesPtr[2] += modelPtr[2] * jTimesHermD[0] + modelPtr[3] * jTimesHermD[2];
-						nextJonesPtr[3] += modelPtr[2] * jTimesHermD[1] + modelPtr[3] * jTimesHermD[3];
+						aTimesHermB(jTimesHermD, jonesPtr, dataPtr);
 						
-						std::complex<double> dTimesHermJ[4] = {
-							(dataPtr[0] * std::conj(jonesPtr[0/* (0^H) */]) + dataPtr[1] * std::conj(jonesPtr[1/* (2^H) */])),
-							(dataPtr[0] * std::conj(jonesPtr[2/* (1^H) */]) + dataPtr[1] * std::conj(jonesPtr[3/* (3^H) */])),
-							(dataPtr[2] * std::conj(jonesPtr[0/* (0^H) */]) + dataPtr[3] * std::conj(jonesPtr[1/* (2^H) */])),
-							(dataPtr[2] * std::conj(jonesPtr[2/* (1^H) */]) + dataPtr[3] * std::conj(jonesPtr[3/* (3^H) */]))
-						};
+						plusATimesB(nextJonesPtr, modelPtr, jTimesHermD);
 						
-						rTermPtr[0] += dTimesHermJ[0] * jTimesHermD[0] + dTimesHermJ[1] * jTimesHermD[2];
-						rTermPtr[1] += dTimesHermJ[0] * jTimesHermD[1] + dTimesHermJ[1] * jTimesHermD[3];
-						rTermPtr[2] += dTimesHermJ[2] * jTimesHermD[0] + dTimesHermJ[3] * jTimesHermD[2];
-						rTermPtr[3] += dTimesHermJ[2] * jTimesHermD[1] + dTimesHermJ[3] * jTimesHermD[3];
+						std::complex<double> dTimesHermJ[4];
+						aTimesHermB(dTimesHermJ, dataPtr, jonesPtr);
+						
+						plusATimesB(rTermPtr, dTimesHermJ, jTimesHermD);
 					}
 					
 					// Move to next channel
@@ -375,6 +356,7 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 			for(size_t i=0; i!=4; ++i)
 				nextJones[ch * 4 + i] = solutions[ch * 4 + i];
 		}
+		//else std::cout << "Failed cal for ant " << ant << ", ch " << ch << ".\n";
 	}
 }
 

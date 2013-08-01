@@ -24,7 +24,7 @@ class BeamEvaluator
 		template<typename NumType>
 		void AbsToApparent(double ra, double dec, double frequency, NumType* pixelValues)
 		{
-			// TODO this should probably be done as "|G| d |G^H|" instead of d |GG&^H|
+			// TODO this should probably be done as "|G| d |G^H|" instead of d |GG^H|
 			// Doesn't matter for unpolarized sources (d is diagonal and commutative)
 			std::complex<double> gains[4];
 			EvaluateGain(ra, dec, frequency, gains);

@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-p <phases.txt> <gains.txt>] [-l <limit>] [-i <niter>] [-m <model>] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 		bool savePlotFiles = false;
 		std::string plotPhaseFile, plotGainFile, modelFile;
 		size_t niter = 25;
-		double limit = 0.0001;
+		double limit = 0.0001, minUVW = 0.0;
 		
 		while(argv[argi][0] == '-')
 		{
@@ -87,6 +87,11 @@ int main(int argc, char *argv[])
 			else if(strcmp(argv[argi], "-m") == 0)
 			{
 				modelFile = argv[argi+1];
+				argi += 2;
+			}
+			else if(strcmp(argv[argi], "-minuv") == 0)
+			{
+				minUVW = atof(argv[argi+1]);
 				argi += 2;
 			}
 			else throw std::runtime_error("Invalid parameter");
@@ -216,6 +221,7 @@ int main(int argc, char *argv[])
 			casa::Array<bool> flags(dataShape);
 			size_t timeIndex = 0;
 			time = timeColumn(0);
+			size_t selectedCount = 0, notSelected = 0;
 			for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
 			{
 				if(timeColumn(rowIndex) != time)
@@ -240,6 +246,14 @@ int main(int argc, char *argv[])
 					double u = *i; ++i;
 					double v = *i; ++i;
 					double w = *i;
+					
+					bool selected = true;
+					if(u*u + v*v + w*w < minUVW*minUVW)
+						selected = false;
+					if(selected)
+						selectedCount++;
+					else
+						notSelected++;
 				
 					if(modelFile.empty())
 				  {
@@ -261,16 +275,26 @@ int main(int argc, char *argv[])
 							size_t chIndex = (ch + startChannel) * 4;
 							for(size_t p=0; p!=4; ++p)
 						  {
-								if(flagPtr[chIndex+p]) weightsPtr[chIndex+p] = 0.0;
+								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
 								std::complex<double> pVal = predicter->Predict(*model, u/lambda,  v/lambda, w/lambda, ch, p);
 								modelValues[chIndex+p] = pVal;
 						  }
+						  
+						  //modelValues[chIndex+0] = 1.0;
+						  //modelValues[chIndex+1] = 0.0;
+							//modelValues[chIndex+2] = 0.0;
+							//modelValues[chIndex+3] = 1.0;
+						  //dataPtr[chIndex+0] = 0.1;
+							//dataPtr[chIndex+1] = 0.0;
+							//dataPtr[chIndex+2] = 0.0;
+							//dataPtr[chIndex+3] = 0.1;
+						  
 							calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
 						}
 					}					
 				}
 			}
-			std::cout << "DONE\nCalibrating...\n";
+			std::cout << "DONE (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected)\nCalibrating...\n";
 		
 			std::queue<size_t> tasks;
 			for(size_t ch=0; ch!=partChannelCount; ++ch)
