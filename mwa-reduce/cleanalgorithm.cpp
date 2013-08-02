@@ -156,13 +156,13 @@ void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage
 	size_t iterationNumber = 0;
 
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-	std::vector<std::unique_ptr<lane<CleanTask>>> taskLanes(cpuCount);
-	std::vector<std::unique_ptr<lane<CleanResult>>> resultLanes(cpuCount);
+	std::vector<lane<CleanTask>*> taskLanes(cpuCount);
+	std::vector<lane<CleanResult>*> resultLanes(cpuCount);
 	boost::thread_group threadGroup;
 	for(size_t i=0; i!=cpuCount; ++i)
 	{
-		taskLanes[i].reset(new lane<CleanTask>(1));
-		resultLanes[i].reset(new lane<CleanResult>(1));
+		taskLanes[i] = new lane<CleanTask>(1);
+		resultLanes[i] = new lane<CleanResult>(1);
 		CleanThreadData cleanThreadData;
 		cleanThreadData.width = width;
 		cleanThreadData.height = height;
@@ -204,6 +204,11 @@ void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage
 	for(size_t i=0; i!=cpuCount; ++i)
 		taskLanes[i]->write_end();
 	threadGroup.join_all();
+	for(size_t i=0; i!=cpuCount; ++i)
+	{
+		delete taskLanes[i];
+		delete resultLanes[i];
+	}
 	std::cout << "Stopped on peak " << peak << '\n';
 }
 

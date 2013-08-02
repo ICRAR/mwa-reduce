@@ -24,7 +24,7 @@ struct ThreadData
 	
 	boost::mutex *mutex;
 	std::queue<size_t> *tasks;
-	std::vector<std::unique_ptr<CalibrationMethod>> *calMethods;
+	std::vector<CalibrationMethod*> *calMethods;
 	double limit;
 	size_t nIter;
 };
@@ -203,9 +203,9 @@ int main(int argc, char *argv[])
 
 			BandData partBandData(bandData, startChannel, endChannel);
 
-			std::vector<std::unique_ptr<CalibrationMethod>> calMethods(partChannelCount);
+			std::vector<CalibrationMethod*> calMethods(partChannelCount);
 			for(size_t ch=0; ch!=partChannelCount; ++ch)
-				calMethods[ch].reset(new CalibrationMethod(1, antennaCount, timestepCount));
+				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepCount);
 			std::unique_ptr<Predicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
 			if(modelFile.empty()) {
@@ -370,6 +370,9 @@ int main(int argc, char *argv[])
 					gainPlotStream << '\n';
 				}
 			}
+			
+			for(size_t ch=0; ch!=partChannelCount; ++ch)
+				delete calMethods[ch];
 		}
 	}
 }
