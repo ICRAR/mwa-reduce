@@ -94,14 +94,25 @@ void testSourceSDFWithSamples()
 	std::cout << "SDF5 int[0,4] : expecting 2, is " << sdf5.IntegratedFlux(0.0, 4.0) << '\n';
 }
 
+std::string raStr(const std::string &str)
+{
+	std::ostringstream out;
+	out << RaDecCoord::ParseRA(str) << " = " << RaDecCoord::RAToString(RaDecCoord::ParseRA(str));
+	return out.str();
+}
+
 void testRaDecCoord()
 {
 	std::cout.precision(12);
-	std::cout << "ParseRA(\"00h00m00.0s\")=" << RaDecCoord::ParseRA("00h00m00.0s") << '\n';
-	std::cout << "ParseRA(\"12h00m00.0s\")=" << RaDecCoord::ParseRA("12h00m00.0s") << '\n';
-	std::cout << "ParseRA(\"00:00:00.0\")=" << RaDecCoord::ParseRA("00:00:00.0") << '\n';
-	std::cout << "ParseRA(\"11:59:59.9\")=" << RaDecCoord::ParseRA("11:59:59.9") << '\n';
-	std::cout << "ParseRA(\"-11:59:59.9\")=" << RaDecCoord::ParseRA("-11:59:59.9") << '\n';
+	std::cout << "ParseRA(\"00h00m00.0s\") = " << raStr("00h00m00.0s") << '\n';
+	std::cout << "ParseRA(\"12h00m00.0s\") = " << raStr("12h00m00.0s") << '\n';
+	std::cout << "ParseRA(\"00:00:00.0\") = " << raStr("00:00:00.0") << '\n';
+	std::cout << "ParseRA(\"-00:00:00.0\") = " << raStr("-00:00:00.0") << '\n';
+	std::cout << "ParseRA(\"-00:01:00.0\") = " << raStr("-00:01:00.0") << '\n';
+	std::cout << "ParseRA(\"-23:59:59.9\") = " << raStr("-23:59:59.9") << '\n';
+	std::cout << "ParseRA(\"11:59:59.9\") = " << raStr("11:59:59.9") << '\n';
+	std::cout << "ParseRA(\"-11:59:59.9\") = " << raStr("-11:59:59.9") << '\n';
+	std::cout << "ParseRA(\"23:59:59.9\") = " << raStr("23:59:59.9") << '\n';
 	std::cout << "ParseDec(\"00d00m00.0s\")=" << RaDecCoord::ParseDec("00d00m00.0s") << '\n';
 	std::cout << "ParseDec(\"90d00m00.0s\")=" << RaDecCoord::ParseDec("90d00m00.0s") << '\n';
 	std::cout << "ParseDec(\"00.00.00.0\")=" << RaDecCoord::ParseDec("00.00.00.0") << '\n';
