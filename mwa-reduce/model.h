@@ -44,6 +44,8 @@ class Model
 		
 		void AddSource(const ModelSource &source) { _sources.push_back(source); }
 		
+		void RemoveSource(size_t index) { _sources.erase(_sources.begin() + index); }
+		
 		void Save(const char *filename);
 		
 		enum PolarizationType { FullXY };
@@ -56,6 +58,8 @@ class Model
 			
 			return flux;
 		}
+		
+		void SortOnBrightness();
 		
 	private:
 		enum PolarizationType _polarizationType;

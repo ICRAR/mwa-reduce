@@ -17,6 +17,12 @@ class Measurement
 			_frequencyHz(0.0),
 			_bandWidthHz(0.0)
 		{
+			for(size_t p=0; p!=4; ++p)
+			{
+				_fluxDensities[p] = 0;
+				_fluxDensityStddevs[p] = 0;
+				_beamValue[p] = 0;
+			}
 		}
 		
 		Measurement(const Measurement &source) :
@@ -374,6 +380,21 @@ class SpectralEnergyDistribution
 			}
 		}
 		
+		long double FluxAtLowestFrequency() const
+		{
+			const Measurement &m = _measurements.begin()->second;
+			return (m.FluxDensity(0) + m.FluxDensity(3)) * 0.5;
+		}
+		
+		bool operator<(const SpectralEnergyDistribution &other) const
+		{
+			double thisFrequency = _measurements.begin()->first;
+			double otherFrequency = other._measurements.begin()->first;
+			double minFreq = std::min(thisFrequency, otherFrequency);
+			return
+				FluxAtFrequency(minFreq, 0) + FluxAtFrequency(minFreq, 3)
+				< other.FluxAtFrequency(minFreq, 0) + other.FluxAtFrequency(minFreq, 3);
+		}
 	private:
 		FluxMap _measurements;
 };

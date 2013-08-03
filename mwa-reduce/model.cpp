@@ -3,6 +3,7 @@
 
 #include "parser/modelparser.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <string>
 #include <fstream>
@@ -46,4 +47,9 @@ void Model::Save(const char* filename)
 	{
 		file << i->ToString();
 	}
+}
+
+void Model::SortOnBrightness()
+{
+	std::sort(_sources.rbegin(), _sources.rend());
 }

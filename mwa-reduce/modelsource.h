@@ -69,6 +69,11 @@ class ModelSource
 				_sed.ToString() << "  }\n}\n";
 			return s.str();
 		}
+		
+		bool operator<(const ModelSource &rhs) const
+		{
+			return _sed < rhs._sed;
+		}
 	private:
 		std::string _name;
 		enum Type _type;

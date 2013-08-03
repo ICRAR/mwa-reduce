@@ -5,6 +5,7 @@
 #include <string>
 
 #include "imagecoordinates.h"
+#include "radeccoord.h"
 
 class SkyAreaElement
 {
@@ -71,6 +72,29 @@ class SkyAreaElement
 					return false;
 			}
 		}
+		
+		void Save(std::ostream &stream) const
+		{
+			stream << "  element {\n    shape ";
+			switch(_type)
+			{
+				case Circle:
+					stream << "circle deg " << (_circleRadius * 180.0 / M_PI) << ' ' <<
+						RaDecCoord::RAToString(_circleCentreRA) << ' ' <<
+						RaDecCoord::DecToString(_circleCentreDec);
+						break;
+				case Box:
+					stream << "box " <<
+						RaDecCoord::RAToString(_boxUpperRA) << ' ' <<
+						RaDecCoord::DecToString(_boxUpperDec) << ' ' <<
+						RaDecCoord::RAToString(_boxLowerRA) << ' ' <<
+						RaDecCoord::DecToString(_boxLowerDec);
+						break;
+				default:
+					stream << "?";
+			}
+			stream << "\n  }\n";
+		}
 
 	private:
 		TypeEnum _type;
@@ -118,6 +142,19 @@ class SkyArea
 		void SetAllowCleaning(bool allowCleaning) { _allowCleaning = allowCleaning; }
 		
 		bool AllowCleaning() const { return _allowCleaning; }
+		
+		void Save(std::ostream &stream) const
+		{
+			stream << "area {\n  name \"" << _name << "\"\n  allow-cleaning " << (_allowCleaning ? "True" : "False") <<
+			'\n';
+			if(_weight != 0.0)
+				stream << "weight " << _weight << '\n';
+			for(std::vector<SkyAreaElement>::const_iterator i=_elements.begin(); i!=_elements.end(); ++i)
+			{
+				i->Save(stream);
+			}
+			stream << "}\n";
+		}
 	private:
 		std::vector<SkyAreaElement> _elements;
 		std::string _name;
@@ -180,6 +217,13 @@ class AreaSet
 			_imageDec = dec;
 			_imageWidth = width;
 			_imageHeight = height;
+		}
+		
+		void Save(std::ostream &stream) const
+		{
+			stream << "skyareas fileformat 1.0\n";
+			for(std::vector<SkyArea>::const_iterator i=_areas.begin(); i!=_areas.end(); ++i)
+				i->Save(stream);
 		}
 	private:
 		std::vector<SkyArea> _areas;
