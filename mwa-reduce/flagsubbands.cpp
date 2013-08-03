@@ -50,7 +50,7 @@ int main(int argc, char **argv)
 		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
 		{
 			flagColumn.get(rowIndex, flags);
-			Array<bool>::iterator flagPtr = flags.begin();
+			Array<bool>::contiter flagPtr = flags.cbegin();
 			for(size_t sb=0; sb!=subbandCount; ++sb)
 			{
 				bool isSubbandFlagged = (subbands.find(sb) != subbands.end());
