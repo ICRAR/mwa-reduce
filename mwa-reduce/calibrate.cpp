@@ -42,12 +42,14 @@ void ThreadFunction(ThreadData data)
 			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastTaskIndex]);
 		size_t iters = data.nIter;
 		double limit = data.limit;
-		(*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+		(*(data.calMethods))[taskIndex]->Execute(limit, iters);
 		if(iters >= data.nIter)
 		{
 			std::cout << "Recalculating channel " << taskIndex << " (precision=" << limit << ").\n";
 			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
-			(*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+			iters = data.nIter;
+			limit = data.limit;
+			(*(data.calMethods))[taskIndex]->Execute(data.limit, iters);
 		}
 		lastTaskIndex = taskIndex;
 		lock.lock();
