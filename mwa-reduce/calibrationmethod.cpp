@@ -15,8 +15,13 @@ CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t n
 	_nAntenna(nAntenna),
 	_nTimesteps(nTimesteps)
 {
+	InitSolutionsToUnity();
+}
+
+void CalibrationMethod::InitSolutionsToUnity()
+{
 	std::complex<double> *_jonesPtr = &_jonesSolutions[0];
-	for(size_t i=0; i!=nAntenna * nChannels; ++i)
+	for(size_t i=0; i!=_nAntenna * _nChannels; ++i)
 	{
 		*_jonesPtr = std::complex<double>(1.0, 0.0); ++_jonesPtr;
 		*_jonesPtr = std::complex<double>(0.0, 0.0); ++_jonesPtr;
@@ -194,7 +199,7 @@ void CalibrationMethod::reportDistances()
 	std::cout << "\nTotal average: " << (sumDistance / _nAntenna) << '\n';
 }
 
-size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
+void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 {
 	bool continueIterating;
 	size_t iterationNumber = 0;
@@ -205,6 +210,7 @@ size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 	//std::cout << "Weighting data.\n";
 	applyWeightsToData();
 	
+	double globalChangeSizes[4] = {0.0,0.0,0.0,0.0};
 	do
 	{
 		++iterationNumber;
@@ -247,7 +253,8 @@ size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 		}
 		
 		continueIterating = false;
-		double globalChangeSizes[4] = { 0.0, 0.0, 0.0, 0.0 };
+		for(size_t p=0; p!=4; ++p)
+			globalChangeSizes[p] = 0.0;
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
 			for(size_t p=0; p!=4; ++p)
@@ -270,7 +277,10 @@ size_t CalibrationMethod::Execute(double precisionLimit, size_t nIter)
 	} while(continueIterating && iterationNumber<nIter);
 
 	//reportDistances();
-	return iterationNumber;
+	nIter = iterationNumber;
+	precisionLimit = std::max(
+		std::max(globalChangeSizes[0], globalChangeSizes[1]),
+		std::max(globalChangeSizes[2], globalChangeSizes[3]));
 }
 
 std::string CalibrationMethod::MatrixToString(const std::complex<double> *matrix)

@@ -40,7 +40,15 @@ void ThreadFunction(ThreadData data)
 		lock.unlock();
 		if(lastTaskIndex != taskIndex)
 			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastTaskIndex]);
-		size_t iters = (*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+		size_t iters = data.nIter;
+		double limit = data.limit;
+		(*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+		if(iters >= data.nIter)
+		{
+			std::cout << "Recalculating channel " << taskIndex << " (precision=" << limit << ").\n";
+			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
+			(*(data.calMethods))[taskIndex]->Execute(data.limit, data.nIter);
+		}
 		lastTaskIndex = taskIndex;
 		lock.lock();
 		if(taskIndex<=16)
@@ -49,7 +57,7 @@ void ThreadFunction(ThreadData data)
 			<< CalibrationMethod::MatrixToString(& (*(data.calMethods))[taskIndex]->JonesSolution(1, 0, 0));
 		}
 	
-		std::cout << "Finished calibrating channel " << taskIndex << " in " << iters << " iterations \n";
+		std::cout << "Finished calibrating channel " << taskIndex << " in " << iters << " iterations, precision=" << limit << ".\n";
 	}
 	std::cout << "Thread done.\n";
 }
