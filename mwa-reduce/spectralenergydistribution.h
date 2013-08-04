@@ -200,7 +200,7 @@ class SpectralEnergyDistribution
 			
 			// 'right' will be first item which frequency >= frequencyHz
 			FluxMap::const_iterator right = _measurements.lower_bound(frequencyHz);
-			if(right->first == frequencyHz)
+			if(right != _measurements.end() && right->first == frequencyHz)
 				return right->second.FluxDensity(polarizationIndex);
 			
 			FluxMap::const_iterator left;
