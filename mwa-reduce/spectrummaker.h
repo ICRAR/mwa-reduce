@@ -7,6 +7,7 @@
 #include "model.h"
 #include "banddata.h"
 #include "beamevaluator.h"
+#include "progressbar.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -15,8 +16,6 @@
 
 #include <vector>
 #include <memory>
-
-
 
 class SpectrumMaker
 {
@@ -57,6 +56,7 @@ public:
 private:
 	void measure(const std::string &filename)
 	{
+		ProgressBar progress(std::string("Measure spectra in ") + filename);
 		casa::MeasurementSet ms(filename);
 		
 		/**
@@ -107,6 +107,7 @@ private:
 		
 		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
 		{
+			progress.SetProgress(rowIndex, ms.nrow());
 			// Cross correlation?
 			size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
 			if(a1 != a2)
