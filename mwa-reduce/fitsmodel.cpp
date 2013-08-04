@@ -15,30 +15,36 @@ int main(int argc, char **argv)
 {
 	if(argc < 2)
 	{
-		std::cout << "Usage: fitsmodel [-m <merge distance>] [-l <lower limit>] <fitsfile> [spectral index] [ref freq]\n"
-			"Prints components in fitsfile to stdout as model.\n";
+		std::cout << "Usage: fitsmodel [options] <output model> <fitsfile> [spectral index] [ref freq]\n"
+			"Turns components in fitsfile into a model.\nOptions:\n"
+			"\t-a <output areafile>\n\t-d <merge distance>\n\t-l <lower limit>\n";
 	} else {
 		size_t argi = 1;
 		bool merge = false;
 		double mergeDistance = 0.0;
 		double limit = 0.0;
+		std::string areaFilename;
 		while(argv[argi][0] == '-')
 		{
 			std::string option(&argv[argi][1]);
-			if(option == "m")
-			{
+			if(option == "a") {
+				++argi;
+				areaFilename = argv[argi];
+			}
+			else if(option == "d") {
 				++argi;
 				merge = true;
 				mergeDistance = atof(argv[argi]) * (M_PI / 180.0);
 			}
-			else if(option == "l")
-			{
+			else if(option == "l") {
 				++argi;
 				limit = atof(argv[argi]);
 			}
 			else throw std::runtime_error("Invalid param");
 			++argi;
 		}
+		const char *modelFilename = argv[argi];
+		++argi;
 		const char *fitsFilename = argv[argi];
 		long double spectralIndex, refFreq;
 		if(argc - argi > 1)
@@ -50,11 +56,11 @@ int main(int argc, char **argv)
 		else
 			refFreq = 100000000.0;
 		FitsReader fitsReader(fitsFilename);
-		double *image = new double[fitsReader.ImageWidth() * fitsReader.ImageHeight()];
-		fitsReader.Read(image);
+		std::vector<double> image(fitsReader.ImageWidth() * fitsReader.ImageHeight());
+		fitsReader.Read(&image[0]);
 		
 		Model model;
-		CleanAlgorithm::GetModelFromImage(model, image, fitsReader.ImageWidth(), fitsReader.ImageHeight(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), spectralIndex, refFreq);
+		CleanAlgorithm::GetModelFromImage(model, &image[0], fitsReader.ImageWidth(), fitsReader.ImageHeight(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), spectralIndex, refFreq);
 		
 		model.SortOnBrightness();
 		
@@ -99,7 +105,6 @@ int main(int argc, char **argv)
 			std::ostringstream str;
 			str << "component" << (i+1);
 			source.SetName(str.str());
-			std::cout << source.ToString() << '\n';
 			
 			SkyArea area;
 			SkyAreaElement element;
@@ -108,9 +113,11 @@ int main(int argc, char **argv)
 			area.SetName(source.Name());
 			areaSet.AddArea(area);
 		}
-		std::ofstream areaFile("model-areas.txt");
-		areaSet.Save(areaFile);
-		
-		delete[] image;
+		if(!areaFilename.empty())
+		{
+			std::ofstream areaFile(areaFilename.c_str());
+			areaSet.Save(areaFile);
+		}
+		model.Save(modelFilename);
 	}
 }
