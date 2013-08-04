@@ -119,7 +119,7 @@ target_link_libraries(sdf ${CASA_LIBS})
 target_link_libraries(simcompress ${CASA_LIBS} gsl)
 target_link_libraries(subtract ${CASA_LIBS})
 target_link_libraries(subtrmodel ${CASA_LIBS})
-target_link_libraries(spectrum ${CASA_LIBS})
+target_link_libraries(spectrum ${CASA_LIBS} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(testbugcasams ${CASA_LIBS})
 target_link_libraries(wsimager ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
 

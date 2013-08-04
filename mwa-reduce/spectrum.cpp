@@ -74,6 +74,18 @@ int main(int argc, char **argv)
 			"set ylabel \"Flux (Jy)\"\n"
 			"plot \\\n";
 
+		std::ofstream plotIStream("spectrum-I.plt");
+		plotIStream <<
+			"set terminal postscript enhanced color\n"
+			"#set logscale y\n"
+			"#set xrange [0.001:]\n"
+			"#set yrange [-8:2]\n"
+			"set output \"spectrum.ps\"\n"
+			"set key bottom left\n"
+			"set xlabel \"Frequency (MHz)\"\n"
+			"set ylabel \"Flux (Jy)\"\n"
+			"plot \\\n";
+
 		for(size_t sourceIndex = 0; sourceIndex!=model.SourceCount(); ++sourceIndex)
 		{
 			std::ostringstream dataStreamName;
@@ -83,9 +95,14 @@ int main(int argc, char **argv)
 			plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with lines lw 2.0,\\\n";
 			plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with lines lw 2.0,\\\n";
 			plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with lines lw 2.0";
+			plotIStream << "\"" << dataStreamName.str() << "\" using 1:((column(2)+column(4))*0.5) with lines lw 2.0";
 			if(sourceIndex != model.SourceCount()-1)
+			{
 				plotStream << ",\\";
+				plotIStream << ",\\";
+			}
 			plotStream << "\n";
+			plotIStream << "\n";
 			std::map<double, long double> spectrum[4];
 			for(size_t p=0; p!=4; ++p)
 				spectrumMaker.FluxPerFrequency(spectrum[p], sourceIndex, p);

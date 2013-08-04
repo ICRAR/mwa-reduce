@@ -8,17 +8,32 @@
 #include "banddata.h"
 #include "beamevaluator.h"
 #include "progressbar.h"
+#include "lane.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
 #include <tables/Tables/ArrayColumn.h>
 #include <tables/Tables/ScalarColumn.h>
 
+#include <boost/thread/thread.hpp>
+
 #include <vector>
 #include <memory>
 
 class SpectrumMaker
 {
+private:
+	struct ThreadTaskInfo
+	{
+		size_t sourceIndex;
+		long double *flux;
+		unsigned long *count;
+		double u, v, w;
+		Predicter *predicter;
+		casa::Complex* data;
+		bool* flags;
+	};
+
 public:
 	SpectrumMaker() { }
 	
@@ -76,11 +91,9 @@ private:
 		
 		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 		
-		typedef float num_t;
-		typedef std::complex<num_t> complex_t;
 		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-		casa::ROArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+		casa::ROArrayColumn<casa::Complex> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 		casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 		casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 		
@@ -99,12 +112,33 @@ private:
 			(*predicters.rbegin())->Initialize(*sourceIter);
 		}
 		
+		const size_t BUFFER_COUNT = 16;
+		
+		size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+		boost::thread_group threadGroup;
+		std::vector<lane<ThreadTaskInfo>*> taskLanes(cpuCount);
+		for(size_t i=0; i!=cpuCount; ++i)
+		{
+			// The task lane must issue an "wait" when its size is
+			// BUFFER_COUNT-2, because the pushing thread can start
+			// overwritting the n-1 th buffer while the popping thread
+			// can just get the n-1 th buffer out.
+			taskLanes[i] = new lane<ThreadTaskInfo>(BUFFER_COUNT-2);
+			threadGroup.add_thread(new boost::thread(&SpectrumMaker::measureThreadFunc, this, &bandData, &*taskLanes[i], channelCount, polarizationCount));
+		}
+		
 		/**
 		 * Calculate spectra
 		 */
-		casa::Array<complex_t> data(dataShape);
-		casa::Array<bool> flags(dataShape);
+		std::vector<casa::Array<casa::Complex>*> dataBuffers(BUFFER_COUNT);
+		std::vector<casa::Array<bool>*> flagBuffers(BUFFER_COUNT);
+		for(size_t i=0; i!=BUFFER_COUNT; ++i)
+		{
+			dataBuffers[i] = new casa::Array<casa::Complex>(dataShape);
+			flagBuffers[i] = new casa::Array<bool>(dataShape);
+		}
 		
+		size_t bufferIndex = 0;
 		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
 		{
 			progress.SetProgress(rowIndex, ms.nrow());
@@ -112,6 +146,9 @@ private:
 			size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
 			if(a1 != a2)
 			{
+				casa::Array<casa::Complex> &data = *dataBuffers[bufferIndex];
+				casa::Array<bool> &flags = *flagBuffers[bufferIndex];
+				
 				dataColumn.get(rowIndex, data);
 				flagColumn.get(rowIndex, flags);
 				casa::Array<double> uvwArray = uvwColumn(rowIndex);
@@ -120,34 +157,39 @@ private:
 				double v = *i; ++i;
 				double w = *i;
 				
-				std::vector<long double>::iterator measFluxIter = measFlux.begin();
-				std::vector<unsigned long>::iterator measCountIter = measCount.begin();
 				for(size_t s=0; s!=_sources.size(); ++s)
 				{
-					casa::Array<complex_t>::contiter dataPtr = data.cbegin();
-					casa::Array<bool>::contiter flagPtr = flags.cbegin();
-					for(size_t ch=0; ch!=channelCount; ++ch)
-					{
-						double lambda = bandData.ChannelWavelength(ch);
-						for(size_t p=0; p!=polarizationCount; ++p)
-						{
-							float real = dataPtr->real(), imag = dataPtr->imag();
-							Predicter::CNumType predicted = predicters[s]->Predict(_sources[s], u/lambda, v/lambda, w/lambda, ch, 0);
-							if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
-							{
-								// add real(data * conj(predicted))
-								(*measFluxIter) += real * predicted.real() + imag * predicted.imag();
-								(*measCountIter) ++;
-							}
-							++measFluxIter;
-							++measCountIter;
-							++dataPtr;
-							++flagPtr;
-						}
-					}
+					size_t thread = s % cpuCount;
+					ThreadTaskInfo task;
+					task.flux = &measFlux[s * channelCount * polarizationCount];
+					task.count = &measCount[s * channelCount * polarizationCount];
+					task.data = data.cbegin();
+					task.flags = flags.cbegin();
+					task.u = u;
+					task.v = v;
+					task.w = w;
+					task.sourceIndex = s;
+					task.predicter = &*predicters[s];
+					taskLanes[thread]->write(task);
 				}
+				
+				bufferIndex = (bufferIndex + 1) % BUFFER_COUNT;
 			}
 		}
+		for(size_t i=0; i!=cpuCount; ++i)
+			taskLanes[i]->write_end();
+		threadGroup.join_all();
+		
+		for(size_t i=0; i!=cpuCount; ++i)
+			delete taskLanes[i];
+		
+		for(size_t i=0; i!=BUFFER_COUNT; ++i)
+		{
+			delete dataBuffers[i];
+			delete flagBuffers[i];
+		}
+		
+		progress.SetProgress(ms.nrow(), ms.nrow());
 		
 		// Apply beam
 		BeamEvaluator beamEval(ms);
@@ -168,6 +210,44 @@ private:
 			{
 				double freq = bandData.ChannelFrequency(ch);
 				spectrum.AddMeasurement(freq, &measFlux[(s * channelCount + ch) * 4], &measCount[(s * channelCount + ch) * 4]);
+			}
+		}
+	}
+	
+	void measureThreadFunc(const BandData *bandData, lane<ThreadTaskInfo> *taskLane, size_t channelCount, size_t polarizationCount)
+	{
+		ThreadTaskInfo taskInfo;
+		while(taskLane->read(taskInfo))
+		{
+			casa::Complex* dataPtr = taskInfo.data;
+			bool* flagPtr = taskInfo.flags;
+			long double* measFluxIter = taskInfo.flux;
+			long unsigned* measCountIter = taskInfo.count;
+			Predicter& predicter = *taskInfo.predicter;
+			double
+				u = taskInfo.u,
+				v = taskInfo.v,
+				w = taskInfo.w;
+			size_t s = taskInfo.sourceIndex;
+			
+			for(size_t ch=0; ch!=channelCount; ++ch)
+			{
+				double lambda = bandData->ChannelWavelength(ch);
+				Predicter::CNumType predicted = predicter.Predict(_sources[s], u/lambda, v/lambda, w/lambda, ch, 0);
+				for(size_t p=0; p!=polarizationCount; ++p)
+				{
+					float real = dataPtr->real(), imag = dataPtr->imag();
+					if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
+					{
+						// add real(data * conj(predicted))
+						(*measFluxIter) += real * predicted.real() + imag * predicted.imag();
+						(*measCountIter) ++;
+					}
+					++measFluxIter;
+					++measCountIter;
+					++dataPtr;
+					++flagPtr;
+				}
 			}
 		}
 	}
@@ -246,7 +326,7 @@ private:
 		private:
 			std::map<double, Measurement> _measurements;
 	};
-
+	
 	std::vector<ModelSource> _sources;
 	std::vector<std::string> _filenames;
 	std::vector<Spectrum> _spectrumPerSource;
