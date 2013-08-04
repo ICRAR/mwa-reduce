@@ -237,7 +237,7 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	rot[1] = -sin(decZenith)*sin(ha - haZenith);
 	rot[2] =  sin(dec)*sin(ha - haZenith);
 	rot[3] =  cos(ha - haZenith);
-	std::cout << "rot[0]=" << rot[0] << " groundPlane=" << groundPlane << " arrayFactor=" << arrayFactor << '\n';
+	//std::cout << "rot[0]=" << rot[0] << " groundPlane=" << groundPlane << " arrayFactor=" << arrayFactor << '\n';
 	
 	arrayFactor *= groundPlane;
 	gain[0] = rot[0] * arrayFactor;
