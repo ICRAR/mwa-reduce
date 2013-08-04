@@ -20,14 +20,18 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum <model> <output-model> <ms>\n"
+		std::cout << "Usage: spectrum <model> <output-model> <ms> [<ms2>...]\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
 		Model model(argv[argi]);
+		const char *modelFilename = argv[argi+1];
 		
 		SpectrumMaker spectrumMaker;
-		spectrumMaker.AddMeasurementSet(argv[argi+2]);
+		for(int i=argi+2; i!=argc; ++i)
+		{
+			spectrumMaker.AddMeasurementSet(argv[i]);
+		}
 		
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			spectrumMaker.AddSource(*s);
@@ -60,7 +64,7 @@ int main(int argc, char **argv)
 			source.SetSED(sed);
 			outputModel.AddSource(source);
 		}
-		outputModel.Save(argv[argi+1]);
+		outputModel.Save(modelFilename);
 		
 		std::ofstream plotStream("spectrum.plt");
 		plotStream <<
