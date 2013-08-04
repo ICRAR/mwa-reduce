@@ -49,7 +49,7 @@ void ThreadFunction(ThreadData data)
 			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
 			iters = data.nIter;
 			limit = data.limit;
-			(*(data.calMethods))[taskIndex]->Execute(data.limit, iters);
+			(*(data.calMethods))[taskIndex]->Execute(limit, iters);
 		}
 		lastTaskIndex = taskIndex;
 		lock.lock();
