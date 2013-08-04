@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 	if(argc < 5)
 	{
 		std::cerr << "Syntax: addimg <outimage> <outweights> <inpimage1> <inpweights1> [<inpimage2> <inpweights2> ...]\n"
-			"All images should be fits files.\n";
+			"All images should be fits files. Use -1 as inpweight for unity weight.\n";
 	}
 	const char *outImageName = argv[1];
 	const char *outWeightName = argv[2];
@@ -50,15 +50,21 @@ int main(int argc, char *argv[])
 				throw std::runtime_error("Not all images have same size");
 		}
 		
-		FitsReader weightsReader(inpWeightName);
-		if(weightsReader.ImageWidth() != width || weightsReader.ImageHeight() != height)
-			throw std::runtime_error("Weights and image do not have same size");
-		
 		std::vector<double> inpImage(width*height), weightImage(width*height);
 		
 		inpReader.Read<double>(&inpImage[0]);
-		weightsReader.Read<double>(&weightImage[0]);
 		
+		if(std::string(inpWeightName) == "-1")
+		{
+			weightImage.assign(width*height, 1.0);
+		}
+		else {
+			FitsReader weightsReader(inpWeightName);
+			if(weightsReader.ImageWidth() != width || weightsReader.ImageHeight() != height)
+				throw std::runtime_error("Weights and image do not have same size");
+			weightsReader.Read<double>(&weightImage[0]);
+		}
+			
 		// Add the images in
 		double *outImagePtr = outImage, *outWeightPtr = outWeights;
 		std::vector<double>::iterator inpWeightsIter = weightImage.begin();
