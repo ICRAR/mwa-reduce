@@ -198,7 +198,7 @@ private:
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
 				const ModelSource& src = _sources[s];
-				beamEval.ApparentToAbs(src.PosRA(), src.PosDec(), bandData.ChannelFrequency(ch), &measCount[(s * channelCount + ch) * 4]);
+				beamEval.ApparentToAbs(src.PosRA(), src.PosDec(), bandData.ChannelFrequency(ch), &measFlux[(s * channelCount + ch) * 4]);
 			}
 		}
 		
