@@ -17,6 +17,7 @@
 
 #include <boost/thread/thread.hpp>
 
+#include <limits>
 #include <vector>
 #include <memory>
 
@@ -270,10 +271,11 @@ private:
 			for(size_t p=0; p!=4; ++p)
 			{
 				if(count[p] != 0)
-				{
 					flux[p] /= count[p];
-					count[p] = 0;
-				}
+				else
+					flux[p] = std::numeric_limits<double>::quiet_NaN();
+				
+				count[p] = 0;
 			}
 		}
 	};
