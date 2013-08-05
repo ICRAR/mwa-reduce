@@ -68,6 +68,7 @@ class CalibrationMethod
 		static std::string MatrixToString(const std::complex<double> *matrix);
 		
 		void InitSolutionsToUnity();
+		void InitSolutionsToNaN();
 		void InitSolutions(const CalibrationMethod &source)
 		{
 			_jonesSolutions = source._jonesSolutions;

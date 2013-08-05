@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <sstream>
+#include <limits>
 
 CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t nTimesteps) :
 	_data(nChannels, nAntenna, nTimesteps),
@@ -27,6 +28,19 @@ void CalibrationMethod::InitSolutionsToUnity()
 		*_jonesPtr = std::complex<double>(0.0, 0.0); ++_jonesPtr;
 		*_jonesPtr = std::complex<double>(0.0, 0.0); ++_jonesPtr;
 		*_jonesPtr = std::complex<double>(1.0, 0.0); ++_jonesPtr;
+	}
+}
+
+void CalibrationMethod::InitSolutionsToNaN()
+{
+	std::complex<double> *_jonesPtr = &_jonesSolutions[0];
+	const std::complex<double> nan(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
+	for(size_t i=0; i!=_nAntenna * _nChannels; ++i)
+	{
+		*_jonesPtr = nan; ++_jonesPtr;
+		*_jonesPtr = nan; ++_jonesPtr;
+		*_jonesPtr = nan; ++_jonesPtr;
+		*_jonesPtr = nan; ++_jonesPtr;
 	}
 }
 
