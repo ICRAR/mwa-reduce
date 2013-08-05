@@ -63,7 +63,7 @@ void Predicter::ReportSources(Model& model)
 	std::cout << model.TotalFlux(_startFrequency, _endFrequency, 0);
 	for(size_t p=1; p!=4; ++p)
 		std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, p);
-	std::cout << "])\n";
+	std::cout << "], app at low freq: " << model.TotalFlux(_startFrequency, 0) << ", app at high freq: " << model.TotalFlux(_endFrequency, 0) << ")\n";
 }
 
 Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex)

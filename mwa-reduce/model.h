@@ -59,6 +59,15 @@ class Model
 			return flux;
 		}
 		
+		double TotalFlux(double frequency, size_t polarizationIndex) const
+		{
+			double flux = 0.0;
+			for(const_iterator i=begin(); i!=end(); ++i)
+				flux += i->SED().FluxAtFrequency(frequency, polarizationIndex);
+			
+			return flux;
+		}
+		
 		void SortOnBrightness();
 		
 	private:

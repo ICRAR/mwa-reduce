@@ -43,15 +43,25 @@ void ThreadFunction(ThreadData data)
 		size_t iters = data.nIter;
 		double limit = data.limit;
 		(*(data.calMethods))[taskIndex]->Execute(limit, iters);
-		if(iters >= data.nIter)
+		if(iters >= data.nIter || !std::isfinite(limit))
 		{
 			std::cout << "Recalculating channel " << taskIndex << " (precision=" << limit << ").\n";
 			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
 			iters = data.nIter;
 			limit = data.limit;
 			(*(data.calMethods))[taskIndex]->Execute(limit, iters);
+			if(iters >= data.nIter || !std::isfinite(limit))
+			{
+				std::cout << "Channel " << taskIndex << " did not converge, setting gains to NaN.\n";
+				(*(data.calMethods))[taskIndex]->InitSolutionsToNaN();
+			}
+			else {
+				lastTaskIndex = taskIndex;
+			}
 		}
-		lastTaskIndex = taskIndex;
+		else {
+			lastTaskIndex = taskIndex;
+		}
 		lock.lock();
 		if(taskIndex<=16)
 		{
