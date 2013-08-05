@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <sstream>
+#include <limits>
 
 class Measurement
 {
@@ -95,6 +96,7 @@ class SpectralEnergyDistribution
 {
 	private:
 		typedef std::map<long double, Measurement> FluxMap;
+		
 	public:
 		SpectralEnergyDistribution()
 		{
@@ -380,6 +382,37 @@ class SpectralEnergyDistribution
 			}
 		}
 		
+		void FitPowerlaw(long double& factor, long double& exponent, size_t polarization) const
+		{
+			long double sumxy = 0.0, sumx = 0.0, sumy = 0.0, sumxx = 0.0;
+			size_t n = 0;
+			for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
+			{
+				const Measurement &m = i->second;
+				long double flux = m.FluxDensity(polarization);
+				if(m.FrequencyHz() > 0 && flux > 0 && std::isfinite(flux))
+				{
+					long double
+						logx = std::log(m.FrequencyHz()),
+						logy = std::log(flux);
+					sumxy += logx * logy;
+					sumx += logx;
+					sumy += logy;
+					sumxx += logx * logx;
+					++n;
+				}
+			}
+			if(n == 0)
+			{
+				exponent = std::numeric_limits<double>::quiet_NaN();
+				factor = std::numeric_limits<double>::quiet_NaN();
+			}
+			else {
+				exponent = (n * sumxy - sumx * sumy) / (n * sumxx - sumx * sumx);
+				factor = std::exp((sumy - exponent * sumx) / n);
+			}
+		}
+		
 		long double FluxAtLowestFrequency() const
 		{
 			const Measurement &m = _measurements.begin()->second;
@@ -394,6 +427,18 @@ class SpectralEnergyDistribution
 			return
 				FluxAtFrequency(minFreq, 0) + FluxAtFrequency(minFreq, 3)
 				< other.FluxAtFrequency(minFreq, 0) + other.FluxAtFrequency(minFreq, 3);
+		}
+		
+		size_t MeasurementCount() const { return _measurements.size(); }
+		long double LowestFrequency() const { return _measurements.begin()->first; }
+		long double HighestFrequency() const { return _measurements.rbegin()->first; }
+		
+		void GetMeasurements(std::vector<Measurement> &measurements) const
+		{
+			for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
+			{
+				measurements.push_back(i->second);
+			}
 		}
 	private:
 		FluxMap _measurements;

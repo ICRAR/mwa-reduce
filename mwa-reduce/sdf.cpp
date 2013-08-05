@@ -1,9 +1,10 @@
-#include <iostream>
-
 #include "banddata.h"
 #include "model.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
+
+#include <iostream>
+#include <fstream>
 
 int main(int argc, char *argv[])
 {
@@ -11,12 +12,13 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-o] [-s <scale>] [-t <threshold>] <new-nr-channels> <model> <ms>\n";
+		"\tsdf [-p] [-o] [-s <scale>] [-pl] [-t <threshold>] [-r <new-nr-channels>] <model>\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, outputSIs = false, optimize = false, applyThreshold = false;
+	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, resample = false;
 	long double scale = 1.0, threshold = 0.0;
+	size_t newChannelCount = 0;
 	while(argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
@@ -26,14 +28,19 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			scale = atof(argv[argi]);
-		} else if(strcmp(argv[argi], "-si") == 0)
+		} else if(strcmp(argv[argi], "-pl") == 0)
 		{
-			outputSIs = true;
+			powerlaw = true;
 		} else if(strcmp(argv[argi], "-t") == 0)
 		{
 			++argi;
 			threshold = atof(argv[argi]);
 			applyThreshold = true;
+		} else if(strcmp(argv[argi], "-r") == 0)
+		{
+			++argi;
+			newChannelCount = atoi(argv[argi]);
+			resample = true;
 		} else if(strcmp(argv[argi], "-o") == 0)
 		{
 			optimize = true;
@@ -42,75 +49,131 @@ int main(int argc, char *argv[])
 		}
 		++argi;
 	}
-	size_t newChannelCount = atoi(argv[argi]);
-	Model model(argv[argi+1]);
-	casa::MeasurementSet ms(argv[argi+2]);
-	BandData band(ms.spectralWindow());
+	Model model(argv[argi]);
 	
 	if(optimize)
 		model.Optimize();
+	
 	if(applyThreshold)
 	{
 		Model temp;
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			if(sourcePtr->SED().IntegratedFlux(band.BandStart(), band.BandEnd(), 0) >= threshold)
+			const SpectralEnergyDistribution &sed = sourcePtr->SED();
+			if(sed.IntegratedFlux(sed.LowestFrequency(), sed.HighestFrequency(), 0) >= threshold)
 				temp.AddSource(*sourcePtr);
 		}
 		model = temp;
 	}
 	
-	const long double newBandSize = (band.BandEnd() - band.BandStart()) / newChannelCount;
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 	{
 		const SpectralEnergyDistribution &sed = sourcePtr->SED();
-		if(outputSIs)
+		const long double startFreq = sed.LowestFrequency();
+		const long double endFreq = sed.HighestFrequency();
+		if(powerlaw)
 		{
-			long double startFreq = band.BandStart();
-			long double endFreq = band.BandEnd();
-			SpectralEnergyDistribution newSED(
-				sed.FluxAtFrequency(startFreq, 0), startFreq,
-				sed.FluxAtFrequency(endFreq, 0), endFreq);
-			if(!outputPlot) {
-				sourcePtr->SetSED(newSED);
-				std::cout << sourcePtr->ToString() << '\n';
-			}
-		}
-		else {
+			long double e, f;
 			SpectralEnergyDistribution newSED;
+			Measurement m1, m2;
+			m1.SetFrequencyHz(startFreq);
+			m2.SetFrequencyHz(endFreq);
+			
+			for(size_t p=0; p!=4; ++p)
+			{
+				sed.FitPowerlaw(f, e, p);
+				m1.SetFluxDensity(p, f * std::pow(startFreq, e));
+				m2.SetFluxDensity(p, f * std::pow(endFreq, e));
+			}
+			newSED.AddMeasurement(m1);
+			newSED.AddMeasurement(m2);
+			sourcePtr->SetSED(newSED);
+		}
+		else if(resample)
+		{
+			SpectralEnergyDistribution newSED;
+			const long double newBandSize = (endFreq - startFreq) / newChannelCount;
 			for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
 			{
-				long double startFreq = band.BandStart() + newBandSize*newChIndex;
-				long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
+				long double chStartFreq = startFreq + newBandSize*newChIndex;
+				long double chEndFreq = endFreq + newBandSize*(newChIndex+1.0);
 				long double flux;
-				if(newChannelCount < band.ChannelCount())
-					flux = sed.IntegratedFlux(startFreq, endFreq, 0);
+				if(newChannelCount < sed.MeasurementCount())
+					flux = sed.IntegratedFlux(chStartFreq, chEndFreq, 0);
 				else
-					flux = sed.FluxAtFrequency((startFreq+endFreq)*0.5, 0);
+					flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, 0);
 				
-				newSED.AddMeasurement(flux*scale, (startFreq+endFreq)*0.5);
+				newSED.AddMeasurement(flux*scale, (chStartFreq+chEndFreq)*0.5);
 			}
-			if(!outputPlot) {
-				sourcePtr->SetSED(newSED);
-				std::cout << sourcePtr->ToString() << '\n';
-			}
+			
+			sourcePtr->SetSED(newSED);
 		}
 	}
 	
 	if(outputPlot)
 	{
-		for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
+		std::ofstream plotStream("spectrum.plt");
+		plotStream <<
+			"set terminal postscript enhanced color\n"
+			"#set logscale xy\n"
+			"#set xrange [0.001:]\n"
+			"#set yrange [-8:2]\n"
+			"set output \"spectrum.ps\"\n"
+			"set key bottom left\n"
+			"set xlabel \"Frequency (MHz)\"\n"
+			"set ylabel \"Flux (Jy)\"\n"
+			"plot \\\n";
+
+		std::ofstream plotIStream("spectrum-I.plt");
+		plotIStream <<
+			"set terminal postscript enhanced color\n"
+			"#set logscale xy\n"
+			"#set xrange [0.001:]\n"
+			"#set yrange [-8:2]\n"
+			"set output \"spectrum-I.ps\"\n"
+			"set key bottom left\n"
+			"set xlabel \"Frequency (MHz)\"\n"
+			"set ylabel \"Flux (Jy)\"\n"
+			"plot \\\n";
+
+		for(size_t sourceIndex = 0; sourceIndex!=model.SourceCount(); ++sourceIndex)
 		{
-			long double startFreq = band.BandStart() + newBandSize*newChIndex;
-			long double endFreq = band.BandStart() + newBandSize*(newChIndex+1.0);
-			std::cout << (endFreq+startFreq)*0.5;
-			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+			std::ostringstream dataStreamName;
+			dataStreamName << "spectrum" << sourceIndex << ".txt";
+			std::ofstream dataStream(dataStreamName.str().c_str());
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 2.0 title \"\",\\\n";
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with lines lw 2.0 title \"\",\\\n";
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with lines lw 2.0 title \"\",\\\n";
+			plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with lines lw 2.0 title \"\"";
+			
+			plotIStream << "\"" << dataStreamName.str() << "\" using 1:((column(2)+column(5))*0.5) with lines lw 2.0 title \"\",\\\n";
+			
+			const SpectralEnergyDistribution sed = model.Source(sourceIndex).SED();
+			long double e1, e2, f1, f2;
+			sed.FitPowerlaw(f1, e1, 0);
+			sed.FitPowerlaw(f2, e2, 3);
+			plotIStream << (f1/2.0) << " * (x*1000000)**" << e1 << " + " << (f2/2.0) << " * (x*1000000)**" << e2 << " with lines lw 1.0 title \"\"";
+			
+			if(sourceIndex != model.SourceCount()-1)
 			{
-				const SpectralEnergyDistribution &sed = sourcePtr->SED();
-				long double flux = sed.IntegratedFlux(startFreq, endFreq, 0);
-				std::cout << '\t' << flux;
+				plotStream << ",\\";
+				plotIStream << ",\\";
 			}
-			std::cout << '\n';
+			plotStream << "\n";
+			plotIStream << "\n";
+			
+			std::vector<Measurement> measurements;
+			sed.GetMeasurements(measurements);
+			
+			for(std::vector<Measurement>::const_iterator i=measurements.begin(); i!=measurements.end(); ++i)
+			{
+				dataStream
+					<< i->FrequencyHz()/1000000.0 << '\t'
+					<< i->FluxDensity(0) << '\t'
+					<< i->FluxDensity(1) << '\t'
+					<< i->FluxDensity(2) << '\t'
+					<< i->FluxDensity(3) << '\n';
+			}
 		}
 	}
 	
