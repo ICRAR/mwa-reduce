@@ -225,6 +225,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 	applyWeightsToData();
 	
 	double globalChangeSizes[4] = {0.0,0.0,0.0,0.0};
+	double stepsize = 0.25;
 	do
 	{
 		++iterationNumber;
@@ -242,6 +243,8 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		std::complex<double> *jonesPtr = &_jonesSolutions[0];
 		std::complex<double> *nextJonesPtr = &nextJones[0];
 		std::vector<double> changeSizes(_nAntenna*4);
+		// TODO stepsize based on something
+		//stepsize *= 0.99;
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
 			for(size_t ch=0; ch!=_nChannels; ++ch)
@@ -250,9 +253,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 				{
 					changeSizes[p+ant*4] += std::norm(*jonesPtr - *nextJonesPtr);
 					
-					// TODO stepsize based on something
-					const double STEPSIZE = 0.25;
-					*jonesPtr = *jonesPtr * (1.0-STEPSIZE) + *nextJonesPtr * STEPSIZE;
+					*jonesPtr = *jonesPtr * (1.0-stepsize) + *nextJonesPtr * stepsize;
 					
 					++jonesPtr;
 					++nextJonesPtr;
@@ -338,7 +339,7 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 				{
 					if(isConjTranspose)
 					{
-						// sum(M^H J D) sum(D^H J^H J D)
+						// sum(D^H J M) sum(M^H J^H J M)
 						std::complex<double> jTimesHermM[4];
 						
 						Matrix2x2::ATimesB(jTimesHermM, jonesPtr, modelPtr);
@@ -351,6 +352,7 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 						Matrix2x2::PlusATimesB(rTermPtr, mTimesHermJ, jTimesHermM);
 						
 					} else { // non-herm conjugate case
+						// sum(D J M^H) sum(M J^H J M^H)
 						std::complex<double> jTimesHermM[4];
 						
 						Matrix2x2::ATimesHermB(jTimesHermM, jonesPtr, modelPtr);
