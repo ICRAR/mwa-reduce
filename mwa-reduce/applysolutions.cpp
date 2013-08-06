@@ -32,12 +32,22 @@ int main(int argc, char **argv)
 {
   if(argc < 3)
     {
-      std::cout << "Usage: applysolutions <ms> <gains-bin-file>\n"
-	"Will apply the found solution matrices.\n";
+      std::cout << "Usage: applysolutions [s xx xy yx yy] <ms> <gains-bin-file>\n"
+				"Will apply the found solution matrices.\n";
     } else {
-		MeasurementSet ms(argv[1], Table::Update);
-		SolutionFile solutionFile;
-		solutionFile.OpenForReading(argv[2]);
+		size_t argi = 1;
+		double xx=0.0, xy=0.0, yx=0.0, yy=0.0;
+		bool preset = false;
+		if(strcmp(argv[argi], "-s") == 0)
+		{
+			xx = atof(argv[argi+1]);
+			xy = atof(argv[argi+2]);
+			yx = atof(argv[argi+3]);
+			yy = atof(argv[argi+4]);
+			argi += 5;
+			preset = true;
+		}
+		MeasurementSet ms(argv[argi], Table::Update);
 		/**
 		 * Read some meta data from the measurement set
 		 */
@@ -70,51 +80,68 @@ int main(int argc, char **argv)
 		/**
 		 * Read the solutions file
 		 */
-		std::cout << "Reading solutions file..." << std::flush;
-		if(solutionFile.AntennaCount() != antennaCount) throw std::runtime_error("Antenna counts do not match");
-		if(solutionFile.PolarizationCount() != polarizationCount) throw std::runtime_error("Polarization counts do not match");
-		if(channelCount%solutionFile.ChannelCount()!=0) throw std::runtime_error("Channel counts do not match");
-		
 		std::vector<std::complex<double>*> values(antennaCount);
 		for(size_t a = 0; a!=antennaCount; ++a) {
-		  values[a] = new std::complex<double>[channelCount*4];
+			values[a] = new std::complex<double>[channelCount*4];
 		}
-		for(size_t a = 0; a!=antennaCount; ++a) {
-		  for(size_t ch = 0; ch!=channelCount; ++ch) {
-		    for(size_t p = 0; p!=4; ++p) {
-		      values[a][ch*4+p] = solutionFile.ReadNextSolution();
-		    }
-		  }		  
+		if(preset)
+		{
+			for(size_t a = 0; a!=antennaCount; ++a) {
+				for(size_t ch = 0; ch!=channelCount; ++ch) {
+					values[a][ch*4+0] = xx;
+					values[a][ch*4+1] = xy;
+					values[a][ch*4+2] = yx;
+					values[a][ch*4+3] = yy;
+				}		  
+			}
 		}
-		std::cout << " DONE\n";
+		else {
+			std::cout << "Reading solutions file..." << std::flush;
+			SolutionFile solutionFile;
+			solutionFile.OpenForReading(argv[2]);
+			if(solutionFile.AntennaCount() != antennaCount) throw std::runtime_error("Antenna counts do not match");
+			if(solutionFile.PolarizationCount() != polarizationCount) throw std::runtime_error("Polarization counts do not match");
+			if(channelCount%solutionFile.ChannelCount()!=0) throw std::runtime_error("Channel counts do not match");
+			
+			for(size_t a = 0; a!=antennaCount; ++a) {
+				for(size_t ch = 0; ch!=channelCount; ++ch) {
+					for(size_t p = 0; p!=4; ++p) {
+						values[a][ch*4+p] = solutionFile.ReadNextSolution();
+					}
+				}		  
+			}
+			std::cout << " DONE\n";
+		}
 		
 		/**
 		 * Apply corrections
 		 */
 		std::cout << "Applying solutions..." << std::flush;
 		Array<complex_t> data(dataShape);
-		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex) {
-		  // Cross correlation?
-		  size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
-		  if(a1 != a2) {
-		    dataColumn.get(rowIndex, data);
-		    Array<complex_t>::contiter dataPtr = data.cbegin();
-		    for(size_t ch=0; ch!=channelCount; ++ch) {
-		      size_t chFileIndex = ch * 4;
-		      std::complex<double>
-			*solA = &values[a1][chFileIndex],
-		        *solB = &values[a2][chFileIndex];
-		      std::complex<double> dataVals[4] = {
-			dataPtr[0], dataPtr[1], dataPtr[2], dataPtr[3]
-		      };
-		      ApplySolution(dataVals, solA, solB);
-		      dataPtr[0] = dataVals[0];
-		      dataPtr[1] = dataVals[1];
-		      dataPtr[2] = dataVals[2];
-		      dataPtr[3] = dataVals[3];
-		      dataPtr += 4;
-		    }
-		  }
+		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
+		{
+			// Cross correlation?
+			size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
+			if(a1 != a2) {
+				dataColumn.get(rowIndex, data);
+				Array<complex_t>::contiter dataPtr = data.cbegin();
+				for(size_t ch=0; ch!=channelCount; ++ch)
+				{
+					size_t chFileIndex = ch * 4;
+					std::complex<double>
+					*solA = &values[a1][chFileIndex],
+					*solB = &values[a2][chFileIndex];
+					std::complex<double> dataVals[4] = {
+						dataPtr[0], dataPtr[1], dataPtr[2], dataPtr[3]
+					};
+					ApplySolution(dataVals, solA, solB);
+					dataPtr[0] = dataVals[0];
+					dataPtr[1] = dataVals[1];
+					dataPtr[2] = dataVals[2];
+					dataPtr[3] = dataVals[3];
+					dataPtr += 4;
+				}
+			}
 		  dataColumn.put(rowIndex, data);
 		}
 		
