@@ -182,12 +182,12 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 						break;
 				}
 				
+				dataColumn.get(row, data);
 				if(DoImagePSF())
 				{
-					copyWeights(newItem.data, msData.channelCount, weights, flags, rowWeight);
+					copyWeights(newItem.data, msData.channelCount, data, weights, flags, rowWeight);
 				}
 				else {
-					dataColumn.get(row, data);
 					if(DoSubtractModel())
 					{
 						modelColumn->get(row, modelData);
@@ -460,16 +460,17 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCoun
 	{
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			if(*flagPtr)
-				dest[ch] = 0;
-			else {
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
 				dest[ch] = *inPtr * (*weightPtr) * rowWeight;
 				_totalWeight += (*weightPtr) * rowWeight;
+			} else {
+				dest[ch] = 0;
 			}
 			weightPtr += 3;
 			inPtr += 3;
 			flagPtr += 3;
-			if(!*flagPtr)
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
 				dest[ch] += *inPtr * (*weightPtr) * rowWeight;
 				_totalWeight += (*weightPtr) * rowWeight;
@@ -486,11 +487,13 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCoun
 		flagPtr += polIndex;
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			if(*flagPtr)
-				dest[ch] = 0;
-			else {
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
 				dest[ch] = *inPtr * (*weightPtr) * rowWeight;
 				_totalWeight += (*weightPtr) * rowWeight;
+			}
+			else {
+				dest[ch] = 0;
 			}
 			weightPtr += 4;
 			inPtr += 4;
@@ -499,8 +502,9 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCoun
 	}
 }
 
-void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight)
+void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight)
 {
+	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin();
 	casa::Array<float>::const_contiter weightPtr = weights.cbegin();
 	casa::Array<bool>::const_contiter flagPtr = flags.cbegin();
 		
@@ -508,35 +512,42 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, co
 	{
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			if(*flagPtr)
-				dest[ch] = 0;
-			else {
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
 				dest[ch] = (*weightPtr) * rowWeight;
 				_totalWeight += (*weightPtr) * rowWeight;
 			}
+			else {
+				dest[ch] = 0;
+			}
+			inPtr += 3;
 			weightPtr += 3;
 			flagPtr += 3;
-			if(!*flagPtr)
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
 				dest[ch] += (*weightPtr) * rowWeight;
 				_totalWeight += (*weightPtr) * rowWeight;
 			}
+			++inPtr;
 			++weightPtr;
 			++flagPtr;
 		}
 	} else {
 		int polIndex = polarizationIndex();
 		
+		inPtr += polIndex;
 		weightPtr += polIndex;
 		flagPtr += polIndex;
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			if(*flagPtr)
-				dest[ch] = 0;
-			else {
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
 				dest[ch] = (*weightPtr) * rowWeight;
 				_totalWeight += (*weightPtr) * rowWeight;
+			} else {
+				dest[ch] = 0;
 			}
+			inPtr += 4;
 			weightPtr += 4;
 			flagPtr += 4;
 		}

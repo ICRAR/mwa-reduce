@@ -91,7 +91,7 @@ class WSInversion : public InversionAlgorithm
 		}
 		void visSampleThread();
 		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
-		void copyWeights(std::complex<float> *dest, size_t channelCount, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
+		void copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
 		int polarizationIndex() const
 		{
 			switch(Polarization())
