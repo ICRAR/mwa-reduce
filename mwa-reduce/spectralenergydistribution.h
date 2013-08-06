@@ -1,6 +1,8 @@
 #ifndef SPECTRAL_ENERGY_DISTRIBUTION_H
 #define SPECTRAL_ENERGY_DISTRIBUTION_H
 
+#include <boost/range/adaptor/map.hpp>
+
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -65,13 +67,10 @@ class Measurement
 		void ToStream(std::ostream &s) const
 		{
 			s <<
-				"    measurement {\n"
-				"      type ";
+				"    measurement {\n";
 			if(_isApparent)
-				s << "apparent";
-			else
-				s << "absolute";
-			s << "\n"
+				s << "      type apparent\n";
+			s <<
 				"      frequency " << (_frequencyHz/1000000.0) << " MHz\n"
 				"      fluxdensity Jy " << _fluxDensities[0] << ' ' << _fluxDensities[1] << ' '
 				<< _fluxDensities[2] << ' ' << _fluxDensities[3] << '\n';
@@ -98,6 +97,9 @@ class SpectralEnergyDistribution
 		typedef std::map<long double, Measurement> FluxMap;
 		
 	public:
+		typedef boost::select_second_mutable_range<FluxMap>::iterator iterator;
+		typedef boost::select_second_const_range<FluxMap>::const_iterator const_iterator;
+		
 		SpectralEnergyDistribution()
 		{
 		}
@@ -440,6 +442,11 @@ class SpectralEnergyDistribution
 				measurements.push_back(i->second);
 			}
 		}
+		
+		iterator begin() { return boost::adaptors::values(_measurements).begin(); }
+		const_iterator begin() const { return boost::adaptors::values(_measurements).begin(); }
+		iterator end() { return boost::adaptors::values(_measurements).end(); }
+		const_iterator end() const { return boost::adaptors::values(_measurements).end(); }
 	private:
 		FluxMap _measurements;
 };

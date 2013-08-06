@@ -120,8 +120,26 @@ void testRaDecCoord()
 	std::cout << "ParseDec(\"-89.59.59.9\")=" << RaDecCoord::ParseDec("-89.59.59.9") << '\n';
 }
 
+int baselineindex(size_t a1, size_t a2, size_t n)
+{
+	return (a1*(2*n - a1 - 3) + 2*a2 - 2)/2;
+}
+
+void testBaselineindex()
+{
+	size_t n = 5;
+	for(size_t a1=0; a1!=n; ++a1)
+	{
+		for(size_t a2=a1+1; a2!=n; ++a2)
+		{
+			std::cout << a1 << '\t' << a2 << '\t' << baselineindex(a1, a2, n) << '/' << (n * (n-1) / 2) << '\n';
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
+	testBaselineindex();
 	testRaDecCoord();
 	testSourceSDFWithSamples();
 }

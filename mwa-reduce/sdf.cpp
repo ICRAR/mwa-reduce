@@ -12,22 +12,49 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-o] [-s <scale>] [-pl] [-t <threshold>] [-r <new-nr-channels>] <model>\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] <model>\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, resample = false;
+	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, resample = false, unpolarized = false;
+	bool setPolarization[4] = {false, false, false, false};
+	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
 	long double scale = 1.0, threshold = 0.0;
 	size_t newChannelCount = 0;
+	std::string outputModel;
 	while(argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
 		{
 			outputPlot = true;
+		} else if(strcmp(argv[argi], "-m") == 0)
+		{
+			++argi;
+			outputModel = argv[argi];
 		} else if(strcmp(argv[argi], "-s") == 0)
 		{
 			++argi;
 			scale = atof(argv[argi]);
+		} else if(strcmp(argv[argi], "-set0") == 0)
+		{
+			++argi;
+			setPolarization[0] = true;
+			setPolFlux[0] = atof(argv[argi]);
+		} else if(strcmp(argv[argi], "-set1") == 0)
+		{
+			++argi;
+			setPolarization[1] = true;
+			setPolFlux[1] = atof(argv[argi]);
+		} else if(strcmp(argv[argi], "-set2") == 0)
+		{
+			++argi;
+			setPolarization[2] = true;
+			setPolFlux[2] = atof(argv[argi]);
+		} else if(strcmp(argv[argi], "-set3") == 0)
+		{
+			++argi;
+			setPolarization[3] = true;
+			setPolFlux[3] = atof(argv[argi]);
 		} else if(strcmp(argv[argi], "-pl") == 0)
 		{
 			powerlaw = true;
@@ -41,6 +68,9 @@ int main(int argc, char *argv[])
 			++argi;
 			newChannelCount = atoi(argv[argi]);
 			resample = true;
+		} else if(strcmp(argv[argi], "-unpolarized") == 0)
+		{
+			unpolarized = true;
 		} else if(strcmp(argv[argi], "-o") == 0)
 		{
 			optimize = true;
@@ -110,6 +140,26 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+	for(size_t p=0; p!=4; ++p)
+	{
+		if(setPolarization[p])
+		{
+			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+			{
+				SpectralEnergyDistribution &sed = sourcePtr->SED();
+				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				{
+					m->SetFluxDensity(p, setPolFlux[p]);
+				}
+			}
+		}
+	}
+	
+	if(unpolarized)
+	{
+		model.SetUnpolarized();
+	}
+	
 	if(outputPlot)
 	{
 		std::ofstream plotStream("spectrum.plt");
@@ -148,7 +198,7 @@ int main(int argc, char *argv[])
 			
 			plotIStream << "\"" << dataStreamName.str() << "\" using 1:((column(2)+column(5))*0.5) with lines lw 2.0 title \"\",\\\n";
 			
-			const SpectralEnergyDistribution sed = model.Source(sourceIndex).SED();
+			const SpectralEnergyDistribution &sed = model.Source(sourceIndex).SED();
 			long double e1, e2, f1, f2;
 			sed.FitPowerlaw(f1, e1, 0);
 			sed.FitPowerlaw(f2, e2, 3);
@@ -176,6 +226,9 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+	
+	if(!outputModel.empty())
+		model.Save(outputModel.c_str());
 	
 	return 0;
 }
