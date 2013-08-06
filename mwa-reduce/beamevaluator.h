@@ -44,14 +44,10 @@ class BeamEvaluator
 			part[2] = gains[2] * pixelValues[0] + gains[3] * pixelValues[2];
 			part[3] = gains[2] * pixelValues[1] + gains[3] * pixelValues[3];
 
-			NumType temp[4];
-			temp[0] = part[0] * gains[0] + part[1] * gains[1];
-			temp[1] = part[0] * gains[2] + part[1] * gains[3];
-			temp[2] = part[2] * gains[0] + part[3] * gains[1];
-			temp[3] = part[2] * gains[2] + part[3] * gains[3];
-			
-			for(size_t p=0; p!=4; ++p)
-				pixelValues[p] = temp[p];
+			pixelValues[0] = part[0] * gains[0] + part[1] * gains[1];
+			pixelValues[1] = part[0] * gains[2] + part[1] * gains[3];
+			pixelValues[2] = part[2] * gains[0] + part[3] * gains[1];
+			pixelValues[3] = part[2] * gains[2] + part[3] * gains[3];
 		}
 		
 		template<typename NumType>
@@ -60,7 +56,7 @@ class BeamEvaluator
 			double gains[4];
 			EvaluateAbsGain(ra, dec, frequency, gains);
 			
-			// Calculate A^H^1 D A^1
+			// Calculate A^1 D A^1^H
 			
 			double overDeterminant = 1.0 / (gains[0]*gains[3] - gains[1]*gains[2]);
 			double invGain[4];
@@ -69,20 +65,16 @@ class BeamEvaluator
 			invGain[2] = -overDeterminant * gains[2];
 			invGain[3] = overDeterminant * gains[0];
 			
-			double part[4];
+			NumType part[4];
 			part[0] = invGain[0] * data[0] + invGain[1] * data[2];
 			part[1] = invGain[0] * data[1] + invGain[1] * data[3];
 			part[2] = invGain[2] * data[0] + invGain[3] * data[2];
 			part[3] = invGain[2] * data[1] + invGain[3] * data[3];
 
-			double temp[4];
-			temp[0] = part[0] * invGain[0] + part[1] * invGain[1];
-			temp[1] = part[0] * invGain[2] + part[1] * invGain[3];
-			temp[2] = part[2] * invGain[0] + part[3] * invGain[1];
-			temp[3] = part[2] * invGain[2] + part[3] * invGain[3];
-			
-			for(size_t p=0; p!=4; ++p)
-				data[p] = temp[p];
+			data[0] = part[0] * invGain[0] + part[1] * invGain[1];
+			data[1] = part[0] * invGain[2] + part[1] * invGain[3];
+			data[2] = part[2] * invGain[0] + part[3] * invGain[1];
+			data[3] = part[2] * invGain[2] + part[3] * invGain[3];
 		}
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
