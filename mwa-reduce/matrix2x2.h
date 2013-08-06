@@ -32,10 +32,10 @@ public:
 
 	static void HermATimesHermB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
 	{
-		dest[0] = std::conj(rhs[0]) * std::conj(lhs[0]) + std::conj(rhs[2]) * std::conj(lhs[1]);
-		dest[1] = std::conj(rhs[0]) * std::conj(lhs[2]) + std::conj(rhs[2]) * std::conj(lhs[3]);
-		dest[2] = std::conj(rhs[1]) * std::conj(lhs[0]) + std::conj(rhs[3]) * std::conj(lhs[1]);
-		dest[3] = std::conj(rhs[1]) * std::conj(lhs[2]) + std::conj(rhs[3]) * std::conj(lhs[3]);
+		dest[0] = std::conj(lhs[0]) * std::conj(rhs[0]) + std::conj(lhs[2]) * std::conj(rhs[1]);
+		dest[1] = std::conj(lhs[0]) * std::conj(rhs[2]) + std::conj(lhs[2]) * std::conj(rhs[3]);
+		dest[2] = std::conj(lhs[1]) * std::conj(rhs[0]) + std::conj(lhs[3]) * std::conj(rhs[1]);
+		dest[3] = std::conj(lhs[1]) * std::conj(rhs[2]) + std::conj(lhs[3]) * std::conj(rhs[3]);
 	}
 	
 	static void PlusHermATimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
