@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 				SpectralEnergyDistribution &sed = sourcePtr->SED();
 				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 				{
-					m->SetFluxDensity(p, setPolFlux[p]);
+					m->second.SetFluxDensity(p, setPolFlux[p]);
 				}
 			}
 		}

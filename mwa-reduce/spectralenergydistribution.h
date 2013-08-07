@@ -1,8 +1,6 @@
 #ifndef SPECTRAL_ENERGY_DISTRIBUTION_H
 #define SPECTRAL_ENERGY_DISTRIBUTION_H
 
-#include <boost/range/adaptor/map.hpp>
-
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -97,8 +95,10 @@ class SpectralEnergyDistribution
 		typedef std::map<long double, Measurement> FluxMap;
 		
 	public:
-		typedef boost::select_second_mutable_range<FluxMap>::iterator iterator;
-		typedef boost::select_second_const_range<FluxMap>::const_iterator const_iterator;
+		//typedef boost::select_second_mutable_range<FluxMap>::iterator iterator;
+		//typedef boost::select_second_const_range<FluxMap>::const_iterator const_iterator;
+		typedef FluxMap::iterator iterator;
+		typedef FluxMap::const_iterator const_iterator;
 		
 		SpectralEnergyDistribution()
 		{
@@ -443,10 +443,11 @@ class SpectralEnergyDistribution
 			}
 		}
 		
-		iterator begin() { return boost::adaptors::values(_measurements).begin(); }
-		const_iterator begin() const { return boost::adaptors::values(_measurements).begin(); }
-		iterator end() { return boost::adaptors::values(_measurements).end(); }
-		const_iterator end() const { return boost::adaptors::values(_measurements).end(); }
+		//iterator begin() { return boost::adaptors::values(_measurements).begin(); }
+		iterator begin() { return _measurements.begin(); }
+		const_iterator begin() const { return _measurements.begin(); }
+		iterator end() { return _measurements.end(); }
+		const_iterator end() const { return _measurements.end(); }
 	private:
 		FluxMap _measurements;
 };

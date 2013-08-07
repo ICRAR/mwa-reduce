@@ -80,15 +80,15 @@ class Model
 					long double totalFlux = 0.0;
 					for(size_t p=0; p!=4; ++p)
 					{
-						long double f = m->FluxDensity(p);
+						long double f = m->second.FluxDensity(p);
 						if(std::isfinite(f))
 							totalFlux += f;
 					}
 					totalFlux /= 2.0;
-					m->SetFluxDensity(0, totalFlux);
-					m->SetFluxDensity(1, 0.0);
-					m->SetFluxDensity(2, 0.0);
-					m->SetFluxDensity(3, totalFlux);
+					m->second.SetFluxDensity(0, totalFlux);
+					m->second.SetFluxDensity(1, 0.0);
+					m->second.SetFluxDensity(2, 0.0);
+					m->second.SetFluxDensity(3, totalFlux);
 				}
 			}
 		}
