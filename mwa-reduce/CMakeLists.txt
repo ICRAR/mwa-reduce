@@ -13,6 +13,7 @@ find_package(Boost COMPONENTS thread system REQUIRED)
 find_library(FITSIO_LIB cfitsio REQUIRED)
 find_library(DL_LIB dl REQUIRED)
 find_path(FITSIO_INCLUDE_DIR NAMES fitsio.h)
+find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
 
 set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_MEASURES_LIB} ${CASA_CASA_LIB} ${DL_LIB})
 
@@ -21,6 +22,7 @@ find_path(CASA_INCLUDE_DIR NAMES ms/MeasurementSets/MeasurementSet.h PATHS /usr/
 include_directories(${CASA_INCLUDE_DIR})
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${FITSIO_INCLUDE_DIR})
+include_directories(${FFTW3_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
 
