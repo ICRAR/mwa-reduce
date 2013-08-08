@@ -92,3 +92,37 @@ Predicter::CNumType Predicter::Predict(const Model& model, NumType u, NumType v,
 		sum += Predict(*i, u, v, w, channelIndex, polarizationIndex);
 	return sum;
 }
+
+void Predicter::Predict4(CNumType *dest, const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex)
+{
+	switch(source.Type())
+	{
+		case ModelSource::PointSource:
+		{
+			SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
+			NumType l = parameters->l, m = parameters->m;
+			NumType lmsqrt = parameters->lmsqrt;
+			NumType angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
+			double sinangle, cosangle;
+			sincos(angle, &sinangle, &cosangle);
+			for(size_t p=0; p!=4; ++p)
+			{
+				NumType fact = parameters->brightness[channelIndex*4+p] / lmsqrt;
+				dest[p] = CNumType(fact * cosangle, fact * sinangle);
+			}
+		}
+	}
+}
+
+void Predicter::Predict4(CNumType *dest, const Model& model, NumType u, NumType v, NumType w, size_t channelIndex)
+{
+	for(size_t p=0; p!=4; ++p)
+		dest[p] = 0.0;
+	for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
+	{
+		CNumType temp[4];
+		Predict4(temp, *i, u, v, w, channelIndex);
+		for(size_t p=0; p!=4; ++p)
+			dest[p] += temp[p];
+	}
+}

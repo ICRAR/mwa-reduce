@@ -5,6 +5,7 @@
 #include "spectralenergydistribution.h"
 #include "predicter.h"
 #include "model.h"
+#include "mspredicter.h"
 #include "banddata.h"
 #include "beamevaluator.h"
 #include "progressbar.h"
@@ -31,7 +32,7 @@ private:
 		unsigned long *count;
 		double u, v, w;
 		Predicter *predicter;
-		casa::Complex* data;
+		std::complex<double>* data;
 		bool* flags;
 	};
 
@@ -46,6 +47,11 @@ public:
 	void AddMeasurementSet(const std::string &filename)
 	{
 		_filenames.push_back(filename);
+	}
+	
+	void SetSubtractedModel(const Model &model)
+	{
+		_subtractedModel = model;
 	}
 	
 	void Measure()
@@ -72,7 +78,6 @@ public:
 private:
 	void measure(const std::string &filename)
 	{
-		ProgressBar progress(std::string("Measure spectra in ") + filename);
 		casa::MeasurementSet ms(filename);
 		
 		/**
@@ -96,13 +101,14 @@ private:
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 		casa::ROArrayColumn<casa::Complex> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 		casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-		casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 		
 		casa::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		
 		std::vector<long double> measFlux(channelCount * _sources.size() * 4);
 		std::vector<unsigned long> measCount(channelCount * _sources.size() * 4);
+		
+		MSPredicter modelPredicter(ms, _subtractedModel);
 		
 		std::vector<std::unique_ptr<Predicter>> predicters;
 		for(std::vector<ModelSource>::iterator sourceIter=_sources.begin();
@@ -128,35 +134,46 @@ private:
 			threadGroup.add_thread(new boost::thread(&SpectrumMaker::measureThreadFunc, this, &bandData, &*taskLanes[i], channelCount, polarizationCount));
 		}
 		
-		/**
-		 * Calculate spectra
-		 */
-		std::vector<casa::Array<casa::Complex>*> dataBuffers(BUFFER_COUNT);
+		std::vector<std::complex<double>*> dataBuffers(BUFFER_COUNT);
 		std::vector<casa::Array<bool>*> flagBuffers(BUFFER_COUNT);
 		for(size_t i=0; i!=BUFFER_COUNT; ++i)
 		{
-			dataBuffers[i] = new casa::Array<casa::Complex>(dataShape);
+			dataBuffers[i] = new std::complex<double>[channelCount * polarizationCount];
 			flagBuffers[i] = new casa::Array<bool>(dataShape);
 		}
+		casa::Array<casa::Complex> dataArray(dataShape);
 		
+		modelPredicter.Start();
+		
+		/**
+		 * Calculate spectra
+		 */
 		size_t bufferIndex = 0;
-		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
+		MSPredicter::RowData rowData;
+		ProgressBar progress(std::string("Measure spectra in ") + filename);
+		while(modelPredicter.GetNextRow(rowData))
 		{
+			size_t rowIndex = rowData.rowIndex;
 			progress.SetProgress(rowIndex, ms.nrow());
+			
+			boost::mutex::scoped_lock lock(modelPredicter.IOMutex());
+			
 			// Cross correlation?
-			size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
-			if(a1 != a2)
+			if(ant1Column.get(rowIndex) != ant2Column.get(rowIndex))
 			{
-				casa::Array<casa::Complex> &data = *dataBuffers[bufferIndex];
+				std::complex<double> *data = dataBuffers[bufferIndex];
 				casa::Array<bool> &flags = *flagBuffers[bufferIndex];
 				
-				dataColumn.get(rowIndex, data);
+				dataColumn.get(rowIndex, dataArray);
 				flagColumn.get(rowIndex, flags);
-				casa::Array<double> uvwArray = uvwColumn(rowIndex);
-				casa::Array<double>::const_iterator i = uvwArray.begin();
-				double u = *i; ++i;
-				double v = *i; ++i;
-				double w = *i;
+				lock.unlock();
+				
+				casa::Array<casa::Complex>::const_contiter dataArrayIter = dataArray.cbegin();
+				for(size_t i=0; i!=polarizationCount*channelCount; ++i)
+				{
+					data[i] = std::complex<double>(dataArrayIter->real(), dataArrayIter->imag()) - rowData.modelData[i];
+					++dataArrayIter;
+				}
 				
 				for(size_t s=0; s!=_sources.size(); ++s)
 				{
@@ -164,19 +181,22 @@ private:
 					ThreadTaskInfo task;
 					task.flux = &measFlux[s * channelCount * polarizationCount];
 					task.count = &measCount[s * channelCount * polarizationCount];
-					task.data = data.cbegin();
+					task.data = data;
 					task.flags = flags.cbegin();
-					task.u = u;
-					task.v = v;
-					task.w = w;
+					task.u = rowData.u;
+					task.v = rowData.v;
+					task.w = rowData.w;
 					task.sourceIndex = s;
 					task.predicter = &*predicters[s];
 					taskLanes[thread]->write(task);
 				}
 				
+				modelPredicter.FinishRow(rowData);
+				
 				bufferIndex = (bufferIndex + 1) % BUFFER_COUNT;
 			}
 		}
+		
 		for(size_t i=0; i!=cpuCount; ++i)
 			taskLanes[i]->write_end();
 		threadGroup.join_all();
@@ -186,7 +206,7 @@ private:
 		
 		for(size_t i=0; i!=BUFFER_COUNT; ++i)
 		{
-			delete dataBuffers[i];
+			delete[] dataBuffers[i];
 			delete flagBuffers[i];
 		}
 		
@@ -220,7 +240,7 @@ private:
 		ThreadTaskInfo taskInfo;
 		while(taskLane->read(taskInfo))
 		{
-			casa::Complex* dataPtr = taskInfo.data;
+			std::complex<double>* dataPtr = taskInfo.data;
 			bool* flagPtr = taskInfo.flags;
 			long double* measFluxIter = taskInfo.flux;
 			long unsigned* measCountIter = taskInfo.count;
@@ -237,7 +257,9 @@ private:
 				Predicter::CNumType predicted = predicter.Predict(_sources[s], u/lambda, v/lambda, w/lambda, ch, 0);
 				for(size_t p=0; p!=polarizationCount; ++p)
 				{
-					float real = dataPtr->real(), imag = dataPtr->imag();
+					double 
+						real = dataPtr->real(),
+						imag = dataPtr->imag();
 					if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
 					{
 						// add real(data * conj(predicted))
@@ -332,6 +354,7 @@ private:
 	std::vector<ModelSource> _sources;
 	std::vector<std::string> _filenames;
 	std::vector<Spectrum> _spectrumPerSource;
+	Model _subtractedModel;
 };
 
 #endif

@@ -27,6 +27,10 @@ class Predicter
 		
 		CNumType Predict(const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
 		CNumType Predict(const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
+		
+		void Predict4(CNumType *dest, const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex);
+		void Predict4(CNumType *dest, const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex);
+		
 		double TotalFlux(size_t p) { return _totalFlux[p]; }
 	private:
 		struct SourceParameters

@@ -18,12 +18,35 @@ Model::Model(const char *filename)
 	parser.Parse(*this, stream);
 }
 
+void Model::operator+=(const Model& rhs)
+{
+	if(Empty())
+		(*this) = rhs;
+	else {
+		for(const_iterator i = rhs.begin(); i!=rhs.end(); ++i)
+			add(*i);
+	}
+}
+
 void Model::Optimize()
 {
 	Model copy(*this);
 	_sources.clear();
 	for(const_iterator i = copy.begin(); i!=copy.end(); ++i)
 		addOptimized(*i);
+}
+
+void Model::add(const ModelSource& source)
+{
+	for(iterator i = begin(); i!=end(); ++i)
+	{
+		if(source.PosDec() == i->PosDec() && source.PosRA() == i->PosRA())
+		{
+			i->SED() += source.SED();
+			return;
+		}
+	}
+	_sources.push_back(source);
 }
 
 void Model::addOptimized(const ModelSource& source)

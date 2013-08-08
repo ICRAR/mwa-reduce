@@ -30,7 +30,11 @@ class Model
 			_sources = source._sources;
 		}
 		
-		size_t SourceCount() { return _sources.size(); }
+		void operator+=(const Model &rhs);
+		
+		size_t SourceCount() const { return _sources.size(); }
+		bool Empty() const { return _sources.size() == 0; }
+		
 		ModelSource &Source(size_t index) { return _sources[index]; }
 		const ModelSource &Source(size_t index) const { return _sources[index]; }
 		
@@ -98,6 +102,7 @@ class Model
 		
 		static bool isCommentSymbol(char c) { return c=='#'; }
 		static bool isDelimiter(char c) { return c==' ' || c=='\t' || c=='\r' || c=='\n';	}
+		void add(const ModelSource& source);
 		void addOptimized(const ModelSource &source);
 };
 

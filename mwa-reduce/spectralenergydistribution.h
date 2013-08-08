@@ -46,6 +46,14 @@ class Measurement
 			memcpy(_beamValue, source._beamValue, sizeof(long double)*4);
 		}
 		
+		void operator+=(const Measurement &rhs)
+		{
+			for(size_t p=0; p!=4; ++p)
+			{
+				_fluxDensities[p] += rhs._fluxDensities[p];
+			}
+		}
+		
 		long double FrequencyHz() const { return _frequencyHz; }
 		
 		void SetFrequencyHz(long double frequencyHz) { _frequencyHz = frequencyHz; }
@@ -128,6 +136,19 @@ class SpectralEnergyDistribution
 		void operator=(const SpectralEnergyDistribution &source)
 		{
 			_measurements = source._measurements;
+		}
+		
+		void operator+=(const SpectralEnergyDistribution &rhs)
+		{
+			for(iterator i=begin(); i!=end(); ++i)
+			{
+				double freq = i->first;
+				Measurement &m = i->second;
+				for(size_t p=0; p!=4; ++p)
+				{
+					m.SetFluxDensity(p, m.FluxDensity(p) + rhs.FluxAtFrequency(freq, p));
+				}
+			}
 		}
 		
 		void AddMeasurement(const Measurement &measurement)

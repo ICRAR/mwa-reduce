@@ -20,10 +20,18 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum <model> <output-model> <ms> [<ms2>...]\n"
+		std::cout << "Usage: spectrum [-s <model to subtract>] <model for positions> <output-model> <ms> [<ms2>...]\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
+		const char *subtractionModelFile = 0;
+		if(strcmp(argv[argi], "-s") == 0)
+		{
+			++argi;
+			subtractionModelFile = argv[argi];
+			++argi;
+		}
+		
 		Model model(argv[argi]);
 		const char *modelFilename = argv[argi+1];
 		
@@ -32,9 +40,10 @@ int main(int argc, char **argv)
 		{
 			spectrumMaker.AddMeasurementSet(argv[i]);
 		}
-		
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			spectrumMaker.AddSource(*s);
+		
+		if(subtractionModelFile != 0) spectrumMaker.SetSubtractedModel(Model(subtractionModelFile));
 		
 		spectrumMaker.Measure();
 		

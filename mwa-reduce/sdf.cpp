@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] <model>\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] <model> [<more models>..]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -79,7 +79,11 @@ int main(int argc, char *argv[])
 		}
 		++argi;
 	}
-	Model model(argv[argi]);
+	Model model;
+	for(int modelIndex=argi; modelIndex!=argc; ++modelIndex)
+	{
+		model += Model(argv[modelIndex]);
+	}
 	
 	if(optimize)
 		model.Optimize();
