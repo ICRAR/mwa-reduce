@@ -12,7 +12,7 @@ void MSPredicter::clearBuffers()
 		delete[] *i;
 }
 
-void MSPredicter::Start()
+void MSPredicter::Start(bool reportSources)
 {
 	boost::mutex::scoped_lock lock(_mutex);
 	if(_ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
@@ -37,6 +37,8 @@ void MSPredicter::Start()
 	
 	_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
 	_predicter->Initialize(_model, &_beamEvaluator);
+	if(reportSources)
+		_predicter->ReportSources(_model);
 	
 	// Create buffers
 	if(_buffers.empty())

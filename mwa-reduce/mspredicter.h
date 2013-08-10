@@ -49,7 +49,7 @@ public:
 	
 	~MSPredicter();
 	
-	void Start();
+	void Start(bool reportSources = false);
 	
 	bool GetNextRow(RowData &data)
 	{

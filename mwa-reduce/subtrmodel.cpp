@@ -13,6 +13,7 @@
 #include "sourcesdf.h"
 #include "model.h"
 #include "predicter.h"
+#include "mspredicter.h"
 
 using namespace casa;
 
@@ -90,9 +91,8 @@ int main(int argc, char **argv)
 		std::cout << "RA=" << phaseCentreRA << " Dec=" << phaseCentreDec << '\n';
 		
 		BeamEvaluator beamEvaluator(ms);
-		Predicter predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount);
-		predicter.Initialize(model, &beamEvaluator);
-		predicter.ReportSources(model);
+		
+		MSPredicter predicter(ms, model);
 		
 		/**
 		 * Subtract
@@ -105,42 +105,41 @@ int main(int argc, char **argv)
 			std::cout << "Subtracting ";
 		std::cout << model.SourceCount() << " sources... " << std::flush;
 		Array<complex_t> data(dataShape);
-		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
+
+		MSPredicter::RowData rowData;
+		while(predicter.GetNextRow(rowData))
 		{
-			// Cross correlation?
-			size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
-			if(a1 != a2)
+			size_t rowIndex = rowData.rowIndex;
+			
+			boost::mutex::scoped_lock lock(predicter.IOMutex());
+			dataColumn.get(rowIndex, data);
+			lock.unlock();
+			
+			Array<complex_t>::iterator dataPtr = data.begin();
+			std::complex<double> *modelDataPtr = rowData.modelData;
+			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
-				dataColumn.get(rowIndex, data);
-				casa::Array<double> uvwArray = uvwColumn(rowIndex);
-				casa::Array<double>::const_iterator i = uvwArray.begin();
-				double u = *i; ++i;
-				double v = *i; ++i;
-				double w = *i;
-				
-				Array<complex_t>::iterator dataPtr = data.begin();
-				for(size_t ch=0; ch!=channelCount; ++ch)
+				for(size_t p=0; p!=polarizationCount; ++p)
 				{
-					double lambda = bandData.ChannelWavelength(ch);
-					for(size_t p=0;p!=polarizationCount;++p)
-					{
-						std::complex<float> predicted;
-						if(revert || setvis)
-							predicted = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
-						else
-							predicted = -predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, p);
-						if(addNoise)
-							addGausNoise(predicted, noiseSigma);
-						if(setvis)
-							*dataPtr = predicted;
-						else
-							*dataPtr += predicted;
-						++dataPtr;
-					}
+					std::complex<double> predicted;
+					if(revert || setvis)
+						predicted = *modelDataPtr;
+					else
+						predicted = -*modelDataPtr;
+					if(addNoise)
+						addGausNoise(predicted, noiseSigma);
+					if(setvis)
+						*dataPtr = predicted;
+					else
+						*dataPtr += predicted;
+					++dataPtr;
+					++modelDataPtr;
 				}
-				dataColumn.put(rowIndex, data);
-				//std::cout << '.' << std::flush;
 			}
+			
+			lock.lock();
+			dataColumn.put(rowIndex, data);
+			lock.unlock();
 		}
 		
 		std::cout << "DONE\n";		
