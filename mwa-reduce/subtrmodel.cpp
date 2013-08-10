@@ -14,6 +14,7 @@
 #include "model.h"
 #include "predicter.h"
 #include "mspredicter.h"
+#include "progressbar.h"
 
 using namespace casa;
 
@@ -77,26 +78,30 @@ int main(int argc, char **argv)
 		
 		BeamEvaluator beamEvaluator(ms);
 		
+		MSPredicter predicter(ms, model);
+		predicter.Start(true);
+		
 		/**
 		 * Subtract
 		 */
+		std::ostringstream taskDesc;
 		if(revert)
-			std::cout << "Adding back ";
+			taskDesc << "Adding back ";
 		else if(setvis)
-			std::cout << "Setting visibilities from ";
+			taskDesc << "Setting visibilities from ";
 		else
-			std::cout << "Subtracting ";
-		std::cout << model.SourceCount() << " sources... " << std::flush;
+			taskDesc << "Subtracting ";
+		taskDesc << model.SourceCount() << " sources... " << std::flush;
+		ProgressBar progress(taskDesc.str());
+		
 		Array<complex_t> data(dataShape);
-
-		MSPredicter predicter(ms, model);
-		predicter.Start(true);
 		MSPredicter::RowData rowData;
 		while(predicter.GetNextRow(rowData))
 		{
 			size_t rowIndex = rowData.rowIndex;
 			
 			boost::mutex::scoped_lock lock(predicter.IOMutex());
+			progress.SetProgress(rowIndex, ms.nrow());
 			dataColumn.get(rowIndex, data);
 			lock.unlock();
 			
