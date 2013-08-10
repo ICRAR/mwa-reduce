@@ -66,33 +66,16 @@ int main(int argc, char **argv)
 		BandData bandData(ms.spectralWindow());
 		size_t channelCount = bandData.ChannelCount();
 		
-		MSField fieldTable = ms.field();
-		ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(MSFieldEnums::REFERENCE_DIR));
-		if(refDirColumn.nrow() != 1)
-			throw std::runtime_error("Field table nrow != 1");
-		Array<double> refDir = refDirColumn(0);
-		casa::Array<double>::const_iterator refDirIter = refDir.begin();
-		long double phaseCentreRA = *refDirIter; ++refDirIter;
-		long double phaseCentreDec = *refDirIter;
-		
-		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
-		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
-		ROScalarColumn<int> ant1Column(ms, ms.columnName(MSMainEnums::ANTENNA1));
-		ROScalarColumn<int> ant2Column(ms, ms.columnName(MSMainEnums::ANTENNA2));
 		ArrayColumn<complex_t> dataColumn(ms, ms.columnName(MSMainEnums::DATA));
-		ROArrayColumn<double> uvwColumn(ms, ms.columnName(MSMainEnums::UVW));
 		
 		IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		
 		std::cout << "DONE\n";
-		std::cout << "RA=" << phaseCentreRA << " Dec=" << phaseCentreDec << '\n';
 		
 		BeamEvaluator beamEvaluator(ms);
-		
-		MSPredicter predicter(ms, model);
 		
 		/**
 		 * Subtract
@@ -106,6 +89,8 @@ int main(int argc, char **argv)
 		std::cout << model.SourceCount() << " sources... " << std::flush;
 		Array<complex_t> data(dataShape);
 
+		MSPredicter predicter(ms, model);
+		predicter.Start(true);
 		MSPredicter::RowData rowData;
 		while(predicter.GetNextRow(rowData))
 		{
@@ -140,8 +125,10 @@ int main(int argc, char **argv)
 			lock.lock();
 			dataColumn.put(rowIndex, data);
 			lock.unlock();
+			
+			predicter.FinishRow(rowData);
 		}
 		
-		std::cout << "DONE\n";		
+		std::cout << "DONE\n";
 	}
 }
