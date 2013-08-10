@@ -2,6 +2,7 @@
 
 #include "sourcesdfwithsamples.h"
 #include "radeccoord.h"
+#include "nlplfitter.h"
 
 void testSourceSDFWithSamples()
 {
@@ -137,9 +138,38 @@ void testBaselineindex()
 	}
 }
 
+void testNLPLFitter()
+{
+	double e, f;
+	NonLinearPowerLawFitter fitter1;
+	fitter1.AddDataPoint(1.0, 1.0);
+	fitter1.AddDataPoint(4.0, 1.0);
+	fitter1.Fit(e, f);
+	std::cout << "1 = " << f << " * x^" << e << '\n';
+	
+	NonLinearPowerLawFitter fitter2;
+	fitter2.AddDataPoint(0.5, -1.0);
+	fitter2.AddDataPoint(0.5, 3.0);
+	fitter2.AddDataPoint(2.0, 0.0);
+	fitter2.AddDataPoint(2.0, 8.0);
+	
+	fitter2.Fit(e, f);
+	std::cout << "2x = " << f << " * x^" << e << '\n';
+	
+	NonLinearPowerLawFitter fitter3;
+	fitter3.AddDataPoint(1.0, -1.0);
+	fitter3.AddDataPoint(1.0, 3.0);
+	fitter3.AddDataPoint(4.0, 0.0);
+	fitter3.AddDataPoint(4.0, 1.0);
+	
+	fitter3.Fit(e, f);
+	std::cout << "x^-0.5 = " << f << " * x^" << e << '\n';
+}
+
 int main(int argc, char *argv[])
 {
 	testBaselineindex();
 	testRaDecCoord();
 	testSourceSDFWithSamples();
+	testNLPLFitter();
 }

@@ -2,7 +2,8 @@
 
 MSPredicter::~MSPredicter()
 {
-	_readThread->join();
+	if(_readThread != 0)
+		_readThread->join();
 	clearBuffers();
 }
 

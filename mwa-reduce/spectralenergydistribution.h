@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <limits>
+#include "nlplfitter.h"
 
 class Measurement
 {
@@ -409,10 +410,16 @@ class SpectralEnergyDistribution
 		{
 			long double sumxy = 0.0, sumx = 0.0, sumy = 0.0, sumxx = 0.0;
 			size_t n = 0;
+			bool requireNonLinear = false;
 			for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
 			{
 				const Measurement &m = i->second;
 				long double flux = m.FluxDensity(polarization);
+				if(flux <= 0)
+				{
+					requireNonLinear = true;
+					break;
+				}
 				if(m.FrequencyHz() > 0 && flux > 0 && std::isfinite(flux))
 				{
 					long double
@@ -425,14 +432,29 @@ class SpectralEnergyDistribution
 					++n;
 				}
 			}
-			if(n == 0)
+			if(requireNonLinear)
 			{
-				exponent = std::numeric_limits<double>::quiet_NaN();
-				factor = std::numeric_limits<double>::quiet_NaN();
+				NonLinearPowerLawFitter fitter;
+				for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
+				{
+					const Measurement &m = i->second;
+					fitter.AddDataPoint(m.FrequencyHz(), m.FluxDensity(polarization));
+				}
+				double eTemp, fTemp;
+				fitter.Fit(eTemp, fTemp);
+				exponent = eTemp;
+				factor = fTemp;
 			}
 			else {
-				exponent = (n * sumxy - sumx * sumy) / (n * sumxx - sumx * sumx);
-				factor = std::exp((sumy - exponent * sumx) / n);
+				if(n == 0)
+				{
+					exponent = std::numeric_limits<double>::quiet_NaN();
+					factor = std::numeric_limits<double>::quiet_NaN();
+				}
+				else {
+					exponent = (n * sumxy - sumx * sumy) / (n * sumxx - sumx * sumx);
+					factor = std::exp((sumy - exponent * sumx) / n);
+				}
 			}
 		}
 		

@@ -126,7 +126,7 @@ private:
 		std::vector<lane<ThreadTaskInfo>*> taskLanes(cpuCount);
 		for(size_t i=0; i!=cpuCount; ++i)
 		{
-			// The task lane must issue an "wait" when its size is
+			// The task lane must issue a "wait" when its size is
 			// BUFFER_COUNT-2, because the pushing thread can start
 			// overwritting the n-1 th buffer while the popping thread
 			// can just get the n-1 th buffer out.
@@ -154,9 +154,9 @@ private:
 		while(modelPredicter.GetNextRow(rowData))
 		{
 			size_t rowIndex = rowData.rowIndex;
-			progress.SetProgress(rowIndex, ms.nrow());
 			
 			boost::mutex::scoped_lock lock(modelPredicter.IOMutex());
+			progress.SetProgress(rowIndex, ms.nrow());
 			
 			// Cross correlation?
 			if(ant1Column.get(rowIndex) != ant2Column.get(rowIndex))
@@ -191,10 +191,10 @@ private:
 					taskLanes[thread]->write(task);
 				}
 				
-				modelPredicter.FinishRow(rowData);
-				
 				bufferIndex = (bufferIndex + 1) % BUFFER_COUNT;
 			}
+			
+			modelPredicter.FinishRow(rowData);
 		}
 		
 		for(size_t i=0; i!=cpuCount; ++i)
