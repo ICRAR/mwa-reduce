@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <set>
 
 int main(int argc, char *argv[])
 {
@@ -12,14 +13,14 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] <model> [<more models>..]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] <model> [<more models>..]\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, resample = false, unpolarized = false;
+	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, resample = false, unpolarized = false, delNoisySources = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
-	long double scale = 1.0, threshold = 0.0;
+	long double scale = 1.0, threshold = 0.0, delNoisySourceLimit = 0.0;
 	size_t newChannelCount = 0;
 	std::string outputModel;
 	while(argv[argi][0]=='-')
@@ -31,6 +32,11 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			outputModel = argv[argi];
+		} else if(strcmp(argv[argi], "-delnoisysources") == 0)
+		{
+			++argi;
+			delNoisySources = true;
+			delNoisySourceLimit = atof(argv[argi]);
 		} else if(strcmp(argv[argi], "-s") == 0)
 		{
 			++argi;
@@ -98,6 +104,26 @@ int main(int argc, char *argv[])
 				temp.AddSource(*sourcePtr);
 		}
 		model = temp;
+	}
+	
+	if(delNoisySources)
+	{
+		std::set<size_t> sourcesToDelete;
+		for(size_t p=0; p!=4; ++p)
+		{
+			for(size_t i = 0; i!=model.SourceCount(); ++i)
+			{
+				SpectralEnergyDistribution &sed = model.Source(i).SED();
+				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				{
+					long double flux = m->second.FluxDensity(p);
+					if(flux > delNoisySourceLimit || flux < -delNoisySourceLimit)
+						sourcesToDelete.insert(i);
+				}
+			}
+		}
+		for(std::set<size_t>::reverse_iterator i=sourcesToDelete.rbegin(); i!=sourcesToDelete.rend(); ++i)
+			model.RemoveSource(*i);
 	}
 	
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)

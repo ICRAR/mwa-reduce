@@ -435,13 +435,22 @@ class SpectralEnergyDistribution
 			if(requireNonLinear)
 			{
 				NonLinearPowerLawFitter fitter;
+				n = 0;
 				for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
 				{
 					const Measurement &m = i->second;
-					fitter.AddDataPoint(m.FrequencyHz(), m.FluxDensity(polarization));
+					long double flux = m.FluxDensity(polarization);
+					if(std::isfinite(m.FrequencyHz()) && std::isfinite(flux)) {
+						fitter.AddDataPoint(m.FrequencyHz(), flux);
+						++n;
+					}
 				}
 				double eTemp, fTemp;
 				fitter.Fit(eTemp, fTemp);
+				if(n == 0)
+					std::cout << "No valid data in power law fit\n";
+				else
+					std::cout << "Non-linear fit yielded: " << fTemp << " * x^" << eTemp << "\n";
 				exponent = eTemp;
 				factor = fTemp;
 			}
