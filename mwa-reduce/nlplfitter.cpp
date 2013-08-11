@@ -102,6 +102,8 @@ void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 	
 	exponent = gsl_vector_get (_data->solver->x, 0);
 	factor = gsl_vector_get (_data->solver->x, 1);
+	
+	gsl_multifit_fdfsolver_free(_data->solver);
 }
 
 void NonLinearPowerLawFitter::AddDataPoint(double x, double y)

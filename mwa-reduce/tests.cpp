@@ -164,6 +164,24 @@ void testNLPLFitter()
 	
 	fitter3.Fit(e, f);
 	std::cout << "x^-0.5 = " << f << " * x^" << e << '\n';
+
+	NonLinearPowerLawFitter fitter4;
+	fitter4.AddDataPoint(1000000.0, -1.0);
+	fitter4.AddDataPoint(1000000.0, 3.0);
+	fitter4.AddDataPoint(4000000.0, 0.0);
+	fitter4.AddDataPoint(4000000.0, 1.0);
+	
+	fitter4.Fit(e, f);
+	std::cout << "1000 x^-0.5 = " << f << " * x^" << e << '\n';
+	
+	NonLinearPowerLawFitter fitter5;
+	fitter5.AddDataPoint(1000000.0, -3.0);
+	fitter5.AddDataPoint(1000000.0, 1.0);
+	fitter5.AddDataPoint(4000000.0, 0.0);
+	fitter5.AddDataPoint(4000000.0, -1.0);
+	
+	fitter5.Fit(e, f);
+	std::cout << "-1000 x^-0.5 = " << f << " * x^" << e << '\n';
 }
 
 int main(int argc, char *argv[])
