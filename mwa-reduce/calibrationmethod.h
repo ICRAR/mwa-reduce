@@ -54,7 +54,8 @@ class CalibrationMethod
 	public:
 		CalibrationMethod(size_t nChannels, size_t nAntenna, size_t nTimesteps);
 		
-		void AddData(const std::complex<float> *data, const float* weights, const std::complex<double> *predictedValues, size_t antenna1, size_t antenna2, size_t timestep);
+		template<typename DataFloatType>
+		void AddData(const std::complex<DataFloatType> *data, const float* weights, const std::complex<double> *predictedValues, size_t antenna1, size_t antenna2, size_t timestep);
 		
 		void Execute(double& precisionLimit, size_t& nIter);
 		

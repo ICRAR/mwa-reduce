@@ -6,7 +6,8 @@
 class Matrix2x2
 {
 public:
-	static void ATimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+	template<typename ComplType, typename LHS_T, typename RHS_T>
+	static void ATimesB(std::complex<ComplType>* dest, const LHS_T* lhs, const RHS_T* rhs)
 	{
 		dest[0] = lhs[0] * rhs[0] + lhs[1] * rhs[2];
 		dest[1] = lhs[0] * rhs[1] + lhs[1] * rhs[3];
@@ -22,7 +23,8 @@ public:
 		dest[3] += lhs[2] * rhs[1] + lhs[3] * rhs[3];
 	}
 	
-	static void ATimesHermB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+	template<typename ComplType, typename LHS_T, typename RHS_T>
+	static void ATimesHermB(std::complex<ComplType> *dest, const LHS_T* lhs, const RHS_T* rhs)
 	{
 		dest[0] = lhs[0] * std::conj(rhs[0]) + lhs[1] * std::conj(rhs[1]);
 		dest[1] = lhs[0] * std::conj(rhs[2]) + lhs[1] * std::conj(rhs[3]);
@@ -46,13 +48,14 @@ public:
 		dest[3] += std::conj(lhs[1]) * rhs[1] + std::conj(lhs[3]) * rhs[3];
 	}
 
-	static bool Invert(std::complex<double>* matrix)
+	template<typename T>
+	static bool Invert(T* matrix)
 	{
-		std::complex<double> d = ((matrix[0]*matrix[3]) - (matrix[1]*matrix[2]));
+		T d = ((matrix[0]*matrix[3]) - (matrix[1]*matrix[2]));
 		if(d == 0.0)
 			return false;
-		std::complex<double> oneOverDeterminant = 1.0 / d;
-		std::complex<double> temp;
+		T oneOverDeterminant = 1.0 / d;
+		T temp;
 		temp      = matrix[3] * oneOverDeterminant;
 		matrix[1] = -matrix[1] * oneOverDeterminant;
 		matrix[2] = -matrix[2] * oneOverDeterminant;

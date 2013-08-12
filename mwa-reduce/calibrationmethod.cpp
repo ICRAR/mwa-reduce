@@ -44,13 +44,14 @@ void CalibrationMethod::InitSolutionsToNaN()
 	}
 }
 
-void CalibrationMethod::AddData(const std::complex<float>* data, const float* weights, const std::complex<double>* predictedValues, size_t antenna1, size_t antenna2, size_t timestep)
+template<typename DataFloatType>
+void CalibrationMethod::AddData(const std::complex<DataFloatType>* data, const float* weights, const std::complex<double>* predictedValues, size_t antenna1, size_t antenna2, size_t timestep)
 {
 	std::complex<double> *destDataPtr = _data.ValuePtr(antenna1, antenna2, timestep);
 	std::complex<double> *destModelPtr = _model.ValuePtr(antenna1, antenna2, timestep);
 	double *destWeightPtr = _weights.ValuePtr(antenna1, antenna2, timestep);
 	
-	const std::complex<float>* dataEndPtr = data + _nChannels * 4;
+	const std::complex<DataFloatType>* dataEndPtr = data + _nChannels * 4;
 	
 	while(data != dataEndPtr)
 	{
@@ -81,6 +82,13 @@ void CalibrationMethod::AddData(const std::complex<float>* data, const float* we
 		++destWeightPtr;
 	}
 }
+
+template
+void CalibrationMethod::AddData(const std::complex<float> *data, const float* weights, const std::complex<double> *predictedValues, size_t antenna1, size_t antenna2, size_t timestep);
+
+template
+void CalibrationMethod::AddData(const std::complex<double> *data, const float* weights, const std::complex<double> *predictedValues, size_t antenna1, size_t antenna2, size_t timestep);
+
 
 void CalibrationMethod::applyWeightsToData()
 {

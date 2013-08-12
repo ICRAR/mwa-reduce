@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "tilebeam.h"
+#include "matrix2x2.h"
 
 class BeamEvaluator
 {
@@ -28,6 +29,16 @@ class BeamEvaluator
 			EvaluateGain(ra, dec, frequency, gains);
 			for(size_t p=0; p!=4; ++p)
 				absGain[p] = std::fabs(gains[p]);
+		}
+		
+		template<typename NumType>
+		void EvaluateInvertAbsGain(double ra, double dec, double frequency, NumType* absGain)
+		{
+			std::complex<double> gains[4];
+			EvaluateGain(ra, dec, frequency, gains);
+			for(size_t p=0; p!=4; ++p)
+				absGain[p] = std::fabs(gains[p]);
+			Matrix2x2::Invert(absGain);
 		}
 		
 		template<typename NumType>
