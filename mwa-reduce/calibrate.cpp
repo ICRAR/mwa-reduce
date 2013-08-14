@@ -79,13 +79,13 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-only-diagonal] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
 	} else {
 		int argi = 1;
-		bool savePlotFiles = false, beamOnSource = false;
+		bool savePlotFiles = false, beamOnSource = false, onlyDiagonal = false;
 		std::string plotPhaseFile, plotGainFile, modelFile;
 		size_t niter = 25;
 		double limit = 0.0001, minUVW = 0.0;
@@ -122,6 +122,11 @@ int main(int argc, char *argv[])
 			else if(strcmp(argv[argi], "-beam-on-source") == 0)
 			{
 				beamOnSource = true;
+				++argi;
+			}
+			else if(strcmp(argv[argi], "-only-diagonal") == 0)
+			{
+				onlyDiagonal = true;
 				++argi;
 			}
 			else throw std::runtime_error("Invalid parameter");
@@ -230,7 +235,10 @@ int main(int argc, char *argv[])
 
 			std::vector<CalibrationMethod*> calMethods(partChannelCount);
 			for(size_t ch=0; ch!=partChannelCount; ++ch)
+			{
 				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepCount);
+				calMethods[ch]->SetOnlySolveDiagonal(onlyDiagonal);
+			}
 			std::unique_ptr<Predicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
 			std::vector<double> beamValues;

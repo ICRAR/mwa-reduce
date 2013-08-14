@@ -246,6 +246,14 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
 			calculateNextIter(ant, &nextJones[ant*4*_nChannels]);
+			if(_onlySolveDiagonal)
+			{
+				for(size_t ch=0; ch!=_nChannels; ++ch)
+				{
+					nextJones[(ant*_nChannels+ch)*4 + 1] = 0;
+					nextJones[(ant*_nChannels+ch)*4 + 2] = 0;
+				}
+			}
 		}
 		
 		std::complex<double> *jonesPtr = &_jonesSolutions[0];
