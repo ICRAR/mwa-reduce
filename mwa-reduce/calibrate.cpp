@@ -204,8 +204,8 @@ int main(int argc, char *argv[])
 			std::cout << "WARNING: NOT ENOUGH MEMORY FOR EVEN ONE CHANNEL, expect very bad performance.\n";
 			channelsPerPass = 1;
 		}
-		size_t passCount = channelCount / channelsPerPass;
-		std::cout << "Number of channels that fit in memory: " << channelsPerPass << '\n';
+		size_t passCount = (channelCount + channelsPerPass - 1) / channelsPerPass;
+		std::cout << "Number of channels that fit in memory: " << channelsPerPass << " (" << passCount << " passes)\n";
 		
 		std::unique_ptr<Model> model;
 		if(!modelFile.empty()) {
