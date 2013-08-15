@@ -46,7 +46,12 @@ public:
 	
 	void AddMeasurementSet(const std::string &filename)
 	{
-		_filenames.push_back(filename);
+		_files.push_back(std::make_pair(filename, std::string()));
+	}
+	
+	void AddMeasurementSet(const std::string &filename, const std::string &solutionsFile)
+	{
+		_files.push_back(std::make_pair(filename, solutionsFile));
 	}
 	
 	void SetSubtractedModel(const Model &model)
@@ -64,8 +69,8 @@ public:
 			_spectrumPerSource[s].Clear();
 		}
 		
-		for(std::vector<std::string>::const_iterator i=_filenames.begin(); i!=_filenames.end(); ++i)
-			measure(*i);
+		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
+			measure(i->first, i->second);
 		
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
@@ -76,7 +81,7 @@ public:
 	void FluxPerFrequency(std::map<double, long double>& dest, size_t sourceIndex, size_t polIndex) const
 	{ _spectrumPerSource[sourceIndex].ToMap(dest, polIndex); }
 private:
-	void measure(const std::string &filename)
+	void measure(const std::string &filename, const std::string &solutionsFile)
 	{
 		casa::MeasurementSet ms(filename);
 		
@@ -108,7 +113,7 @@ private:
 		std::vector<long double> measFlux(channelCount * _sources.size() * 4);
 		std::vector<unsigned long> measCount(channelCount * _sources.size() * 4);
 		
-		MSPredicter modelPredicter(ms, _subtractedModel);
+		MSPredicter modelPredicter(ms, _subtractedModel, solutionsFile);
 		
 		std::vector<std::unique_ptr<Predicter>> predicters;
 		for(std::vector<ModelSource>::iterator sourceIter=_sources.begin();
@@ -352,7 +357,7 @@ private:
 	};
 	
 	std::vector<ModelSource> _sources;
-	std::vector<std::string> _filenames;
+	std::vector<std::pair<std::string,std::string>> _files;
 	std::vector<Spectrum> _spectrumPerSource;
 	Model _subtractedModel;
 };

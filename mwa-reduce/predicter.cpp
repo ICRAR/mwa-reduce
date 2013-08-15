@@ -2,6 +2,7 @@
 #include "model.h"
 #include "imagecoordinates.h"
 #include "beamevaluator.h"
+#include "solutionfile.h"
 
 void Predicter::applyGain(double *dataVal, const std::complex<double> *gain)
 {
@@ -25,6 +26,7 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 	parameters->l = l;
 	parameters->m = m;
 	parameters->brightness = new NumType[_channelCount*4];
+	parameters->beamValues = new CNumType[_channelCount*4];
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
 		for(size_t p=0; p!=4; ++p)
@@ -35,7 +37,11 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 		if(beamEvaluator != 0)
 		{
 			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
-			beamEvaluator->AbsToApparent(source.PosRA(), source.PosDec(), centreFreq, &parameters->brightness[ch*4]);
+			beamEvaluator->EvaluateGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
+		}
+		else {
+			for(size_t p=0; p!=4; ++p)
+				parameters->beamValues[ch*4+p] = 0.0;
 		}
 		for(size_t p=0; p!=4; ++p)
 			_totalFlux[p] += parameters->brightness[ch*4+p];
@@ -45,10 +51,12 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 	source.SetUserData(parameters);
 }
 
-void Predicter::Initialize(Model& model, BeamEvaluator *beamEvaluator)
+void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEvaluator *beamEvaluator)
 {
 	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
 		Initialize(*i, beamEvaluator);
+	if(!solutionFile.empty())
+		readSolutions(solutionFile);
 }
 
 void Predicter::ReportSources(Model& model)
@@ -93,7 +101,7 @@ Predicter::CNumType Predicter::Predict(const Model& model, NumType u, NumType v,
 	return sum;
 }
 
-void Predicter::Predict4(CNumType *dest, const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex)
+void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex)
 {
 	switch(source.Type())
 	{
@@ -114,15 +122,51 @@ void Predicter::Predict4(CNumType *dest, const ModelSource& source, NumType u, N
 	}
 }
 
-void Predicter::Predict4(CNumType *dest, const Model& model, NumType u, NumType v, NumType w, size_t channelIndex)
+void Predicter::Predict4(Predicter::CNumType* dest, const ModelSource& source, Predicter::NumType u, Predicter::NumType v, Predicter::NumType w, size_t channelIndex, size_t a1, size_t a2)
+{
+	predict4(dest, source, u, v, w, channelIndex);
+	std::complex<double>
+		temp[4],
+		*antenna1Sol = &_solutions[a1*_channelCount*4],
+		*antenna2Sol = &_solutions[a2*_channelCount*4];
+	Matrix2x2::ATimesB(temp, antenna1Sol, dest);
+	Matrix2x2::ATimesHermB(dest, temp, antenna2Sol);
+}
+
+void Predicter::Predict4(CNumType *dest, const Model& model, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
 {
 	for(size_t p=0; p!=4; ++p)
 		dest[p] = 0.0;
 	for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
 	{
 		CNumType temp[4];
-		Predict4(temp, *i, u, v, w, channelIndex);
+		predict4(temp, *i, u, v, w, channelIndex);
 		for(size_t p=0; p!=4; ++p)
 			dest[p] += temp[p];
+	}
+	std::complex<double>
+		temp[4],
+		*antenna1Sol = &_solutions[a1*_channelCount*4],
+		*antenna2Sol = &_solutions[a2*_channelCount*4];
+	Matrix2x2::ATimesB(temp, antenna1Sol, dest);
+	Matrix2x2::ATimesHermB(dest, temp, antenna2Sol);
+}
+
+void Predicter::readSolutions(const std::string& solutionFile)
+{
+	SolutionFile file;
+	file.OpenForReading(solutionFile.c_str());
+	if(file.PolarizationCount() != 4) throw std::runtime_error("Polarization counts in solution file do not match");
+	if(_channelCount != file.ChannelCount()) throw std::runtime_error("Channel counts in solution file do not match");
+	size_t antennaCount = file.AntennaCount();
+	
+	_solutions.resize(antennaCount*_channelCount*4);
+	for(size_t a = 0; a!=antennaCount; ++a) {
+		std::complex<double> *antennaSol = &_solutions[a*_channelCount*4];
+		for(size_t ch = 0; ch!=_channelCount; ++ch) {
+			for(size_t p = 0; p!=4; ++p) {
+				antennaSol[ch*4+p] = file.ReadNextSolution();
+			}
+		}
 	}
 }

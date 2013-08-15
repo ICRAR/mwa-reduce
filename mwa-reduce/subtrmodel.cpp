@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: subtrmodel [-r] <model> <ms>\n"
+		std::cout << "Usage: subtrmodel [-r] <model> <solutions> <ms>\n"
 			"Subtracts the model from the visibilities. This 'peels' the\n"
 			"sources out. Only affects cross-correlations. -r to revert or -s to set.\n";
 	} else {
@@ -54,12 +54,14 @@ int main(int argc, char **argv)
 			else throw std::runtime_error("Invalid param");
 			++argi;
 		}
+		std::string solutionsFile(argv[argi+1]);
+		
 		std::cout << "Reading model... " << std::flush;
 		Model model(argv[argi]);
 		std::cout << "DONE\n";
 		
 		std::cout << "Opening measurement set... " << std::flush;
-		MeasurementSet ms(argv[argi+1], Table::Update);
+		MeasurementSet ms(argv[argi+2], Table::Update);
 		
 		/**
 		 * Read some meta data from the measurement set
@@ -78,7 +80,7 @@ int main(int argc, char **argv)
 		
 		BeamEvaluator beamEvaluator(ms);
 		
-		MSPredicter predicter(ms, model);
+		MSPredicter predicter(ms, model, solutionsFile);
 		predicter.Start(true);
 		
 		/**
@@ -91,7 +93,7 @@ int main(int argc, char **argv)
 			taskDesc << "Setting visibilities from ";
 		else
 			taskDesc << "Subtracting ";
-		taskDesc << model.SourceCount() << " sources... " << std::flush;
+		taskDesc << model.SourceCount() << " sources";
 		ProgressBar progress(taskDesc.str());
 		
 		Array<complex_t> data(dataShape);
@@ -133,7 +135,5 @@ int main(int argc, char **argv)
 			
 			predicter.FinishRow(rowData);
 		}
-		
-		std::cout << "DONE\n";
 	}
 }

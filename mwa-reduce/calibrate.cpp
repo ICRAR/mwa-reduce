@@ -79,14 +79,14 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-only-diagonal] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
 	} else {
 		int argi = 1;
-		bool savePlotFiles = false, beamOnSource = false, onlyDiagonal = false;
-		std::string plotPhaseFile, plotGainFile, modelFile;
+		bool savePlotFiles = false, beamOnSource = false, onlyScalar = false, onlyDiag = false;
+		std::string plotPhaseFile, plotGainFile, modelFile, rhsSolutionFile;
 		size_t niter = 25;
 		double limit = 0.0001, minUVW = 0.0;
 		
@@ -124,10 +124,20 @@ int main(int argc, char *argv[])
 				beamOnSource = true;
 				++argi;
 			}
-			else if(strcmp(argv[argi], "-only-diagonal") == 0)
+			else if(strcmp(argv[argi], "-scalar") == 0)
 			{
-				onlyDiagonal = true;
+				onlyScalar = true;
 				++argi;
+			}
+			else if(strcmp(argv[argi], "-diag") == 0)
+			{
+				onlyDiag = true;
+				++argi;
+			}
+			else if(strcmp(argv[argi], "-rhs") == 0)
+			{
+				rhsSolutionFile = argv[argi+1];
+				argi += 2;
 			}
 			else throw std::runtime_error("Invalid parameter");
 		}
@@ -237,7 +247,8 @@ int main(int argc, char *argv[])
 			for(size_t ch=0; ch!=partChannelCount; ++ch)
 			{
 				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepCount);
-				calMethods[ch]->SetOnlySolveDiagonal(onlyDiagonal);
+				calMethods[ch]->SetOnlySolveScalar(onlyScalar);
+				calMethods[ch]->SetOnlySolveDiag(onlyDiag);
 			}
 			std::unique_ptr<Predicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
@@ -269,7 +280,13 @@ int main(int argc, char *argv[])
 					std::cout << '\n';
 				}
 				predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, partBandData.LowestFrequency(), partBandData.HighestFrequency(), partChannelCount, true));
-				predicter->Initialize(*model);
+				if(!rhsSolutionFile.empty())
+				{
+					beamEvaluator.reset(new BeamEvaluator(ms));
+					predicter->Initialize(*model, rhsSolutionFile, &*beamEvaluator);
+				}
+				else
+					predicter->Initialize(*model);
 				predicter->ReportSources(*model);
 				std::cout << "Reading data & predicting model... " << std::flush;
 			}

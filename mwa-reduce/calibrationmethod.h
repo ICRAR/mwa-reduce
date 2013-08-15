@@ -74,8 +74,11 @@ class CalibrationMethod
 		{
 			_jonesSolutions = source._jonesSolutions;
 		}
-		void SetOnlySolveDiagonal(bool onlySolveDiagonal) {
-			_onlySolveDiagonal = onlySolveDiagonal;
+		void SetOnlySolveDiag(bool onlySolveDiag) {
+			_onlySolveDiag = onlySolveDiag;
+		}
+		void SetOnlySolveScalar(bool onlySolveScalar) {
+			_onlySolveScalar = onlySolveScalar;
 		}
 	private:
 		void calculateNextIter(size_t ant, std::complex<double> *nextJones);
@@ -89,7 +92,7 @@ class CalibrationMethod
 		WeightArray _weights, _weightSums;
 		std::vector<std::complex<double> > _jonesSolutions;
 		size_t _nChannels, _nAntenna, _nTimesteps;
-		bool _onlySolveDiagonal;
+		bool _onlySolveDiag, _onlySolveScalar;
 		
 };
 

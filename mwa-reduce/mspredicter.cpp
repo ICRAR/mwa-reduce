@@ -37,7 +37,7 @@ void MSPredicter::Start(bool reportSources)
 	long double phaseCentreDec = *refDirIter;
 	
 	_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
-	_predicter->Initialize(_model, &_beamEvaluator);
+	_predicter->Initialize(_model, _solutionFile, &_beamEvaluator);
 	if(reportSources)
 		_predicter->ReportSources(_model);
 	
@@ -75,7 +75,10 @@ void MSPredicter::ReadThreadFunc()
 
 	for(size_t rowIndex=0; rowIndex!=_ms.nrow(); ++rowIndex)
 	{
-		if(ant1Column(rowIndex) != ant2Column(rowIndex))
+		size_t
+			a1 = ant1Column(rowIndex),
+			a2 = ant2Column(rowIndex);
+		if(a1 != a2)
 		{
 			casa::Array<double> uvwArray = uvwColumn(rowIndex);
 			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
@@ -89,6 +92,8 @@ void MSPredicter::ReadThreadFunc()
 			rowData.v = v;
 			rowData.w = w;
 			rowData.rowIndex = rowIndex;
+			rowData.a1 = a1;
+			rowData.a2 = a2;
 			_workLane.write(rowData);
 			
 			lock.lock();
@@ -110,7 +115,7 @@ void MSPredicter::PredictThreadFunc()
 		for(size_t ch=0; ch!=_channelCount; ++ch)
 		{
 			double lambda = _bandData->ChannelWavelength(ch);
-			_predicter->Predict4(valIter, _model, rowData.u/lambda, rowData.v/lambda, rowData.w/lambda, ch);
+			_predicter->Predict4(valIter, _model, rowData.u/lambda, rowData.v/lambda, rowData.w/lambda, ch, rowData.a1, rowData.a2);
 			valIter += 4;
 		}
 		_outputLane.write(rowData);
