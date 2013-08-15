@@ -43,7 +43,7 @@ void ThreadFunction(ThreadData data)
 		size_t iters = data.nIter;
 		double limit = data.limit;
 		(*(data.calMethods))[taskIndex]->Execute(limit, iters);
-		if(iters >= data.nIter || !std::isfinite(limit))
+		if((iters >= data.nIter || !std::isfinite(limit)) && !(*(data.calMethods))[taskIndex]->OnlySolveRotation())
 		{
 			std::cout << "Recalculating channel " << taskIndex << " (precision=" << limit << ").\n";
 			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
@@ -79,13 +79,15 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
 	} else {
 		int argi = 1;
-		bool savePlotFiles = false, beamOnSource = false, onlyScalar = false, onlyDiag = false;
+		bool
+			savePlotFiles = false, beamOnSource = false, applyBeam = false,
+			onlyScalar = false, onlyDiag = false, onlyRotation = true;
 		std::string plotPhaseFile, plotGainFile, modelFile, rhsSolutionFile;
 		size_t niter = 25;
 		double limit = 0.0001, minUVW = 0.0;
@@ -119,6 +121,11 @@ int main(int argc, char *argv[])
 				minUVW = atof(argv[argi+1]);
 				argi += 2;
 			}
+			else if(strcmp(argv[argi], "-applybeam") == 0)
+			{
+				applyBeam = true;
+				++argi;
+			}
 			else if(strcmp(argv[argi], "-beam-on-source") == 0)
 			{
 				beamOnSource = true;
@@ -138,6 +145,11 @@ int main(int argc, char *argv[])
 			{
 				rhsSolutionFile = argv[argi+1];
 				argi += 2;
+			}
+			else if(strcmp(argv[argi], "-rotation") == 0)
+			{
+				onlyRotation = true;
+				argi++;
 			}
 			else throw std::runtime_error("Invalid parameter");
 		}
@@ -249,6 +261,7 @@ int main(int argc, char *argv[])
 				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepCount);
 				calMethods[ch]->SetOnlySolveScalar(onlyScalar);
 				calMethods[ch]->SetOnlySolveDiag(onlyDiag);
+				calMethods[ch]->SetOnlySolveRotation(onlyRotation);
 			}
 			std::unique_ptr<Predicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
@@ -258,13 +271,16 @@ int main(int argc, char *argv[])
 				modelColumn.reset(new casa::ROArrayColumn<complex_t>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 			}
 			else {
+				if(beamOnSource || applyBeam)
+				{
+					beamEvaluator.reset(new BeamEvaluator(ms));
+				}
 				if(beamOnSource)
 				{
 					if(model->SourceCount() != 1)
-						throw std::runtime_error("To correct for the beam, there should be exactly on source in the model");
+						throw std::runtime_error("To correct for the beam, there should be exactly one source in the model");
 					const ModelSource& source = model->Source(0);
 					std::cout << "Predicting beam... " << std::flush;
-					beamEvaluator.reset(new BeamEvaluator(ms));
 					beamValues.resize(partChannelCount*4);
 					double beamSum[4] = {0.0, 0.0, 0.0, 0.0};
 					for(size_t ch=0; ch!=partChannelCount; ++ch)
@@ -280,13 +296,10 @@ int main(int argc, char *argv[])
 					std::cout << '\n';
 				}
 				predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, partBandData.LowestFrequency(), partBandData.HighestFrequency(), partChannelCount, true));
-				if(!rhsSolutionFile.empty())
-				{
-					beamEvaluator.reset(new BeamEvaluator(ms));
+				if(applyBeam)
 					predicter->Initialize(*model, rhsSolutionFile, &*beamEvaluator);
-				}
 				else
-					predicter->Initialize(*model);
+					predicter->Initialize(*model, rhsSolutionFile);
 				predicter->ReportSources(*model);
 				std::cout << "Reading data & predicting model... " << std::flush;
 			}

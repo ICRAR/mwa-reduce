@@ -34,7 +34,7 @@ class Predicter
 		
 		double TotalFlux(size_t p) { return _totalFlux[p]; }
 	private:
-		void predict4(CNumType *dest, const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex);
+		void predict4(CNumType *dest, const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);
 		struct SourceParameters
 		{
 			NumType l, m, lmsqrt, *brightness;
@@ -47,7 +47,7 @@ class Predicter
 		size_t _channelCount;
 		class BeamEvaluator *_beamEvaluator;
 		double _totalFlux[4];
-		std::vector<std::complex<double>> _solutions;
+		std::vector<std::complex<double>> _rhsSolutions;
 };
 
 #endif

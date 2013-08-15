@@ -101,7 +101,7 @@ Predicter::CNumType Predicter::Predict(const Model& model, NumType u, NumType v,
 	return sum;
 }
 
-void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex)
+void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
 {
 	switch(source.Type())
 	{
@@ -120,17 +120,27 @@ void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, N
 			}
 		}
 	}
+	
+	CNumType temp[4];
+	if(!_rhsSolutions.empty())
+	{
+		std::complex<double>
+			*antenna1Sol = &_rhsSolutions[a1*_channelCount*4],
+			*antenna2Sol = &_rhsSolutions[a2*_channelCount*4];
+		Matrix2x2::ATimesB(temp, antenna1Sol, dest);
+		Matrix2x2::ATimesHermB(dest, temp, antenna2Sol);
+	}
+	if(_beamEvaluator != 0)
+	{
+		SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
+		Matrix2x2::ATimesB(temp, &parameters->beamValues[_channelCount*4], dest);
+		Matrix2x2::ATimesHermB(dest, temp, &parameters->beamValues[_channelCount*4]);
+	}
 }
 
 void Predicter::Predict4(Predicter::CNumType* dest, const ModelSource& source, Predicter::NumType u, Predicter::NumType v, Predicter::NumType w, size_t channelIndex, size_t a1, size_t a2)
 {
-	predict4(dest, source, u, v, w, channelIndex);
-	std::complex<double>
-		temp[4],
-		*antenna1Sol = &_solutions[a1*_channelCount*4],
-		*antenna2Sol = &_solutions[a2*_channelCount*4];
-	Matrix2x2::ATimesB(temp, antenna1Sol, dest);
-	Matrix2x2::ATimesHermB(dest, temp, antenna2Sol);
+	predict4(dest, source, u, v, w, channelIndex, a1, a2);
 }
 
 void Predicter::Predict4(CNumType *dest, const Model& model, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
@@ -140,16 +150,10 @@ void Predicter::Predict4(CNumType *dest, const Model& model, NumType u, NumType 
 	for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
 	{
 		CNumType temp[4];
-		predict4(temp, *i, u, v, w, channelIndex);
+		predict4(temp, *i, u, v, w, channelIndex, a1, a2);
 		for(size_t p=0; p!=4; ++p)
 			dest[p] += temp[p];
 	}
-	std::complex<double>
-		temp[4],
-		*antenna1Sol = &_solutions[a1*_channelCount*4],
-		*antenna2Sol = &_solutions[a2*_channelCount*4];
-	Matrix2x2::ATimesB(temp, antenna1Sol, dest);
-	Matrix2x2::ATimesHermB(dest, temp, antenna2Sol);
 }
 
 void Predicter::readSolutions(const std::string& solutionFile)
@@ -160,9 +164,9 @@ void Predicter::readSolutions(const std::string& solutionFile)
 	if(_channelCount != file.ChannelCount()) throw std::runtime_error("Channel counts in solution file do not match");
 	size_t antennaCount = file.AntennaCount();
 	
-	_solutions.resize(antennaCount*_channelCount*4);
+	_rhsSolutions.resize(antennaCount*_channelCount*4);
 	for(size_t a = 0; a!=antennaCount; ++a) {
-		std::complex<double> *antennaSol = &_solutions[a*_channelCount*4];
+		std::complex<double> *antennaSol = &_rhsSolutions[a*_channelCount*4];
 		for(size_t ch = 0; ch!=_channelCount; ++ch) {
 			for(size_t p = 0; p!=4; ++p) {
 				antennaSol[ch*4+p] = file.ReadNextSolution();

@@ -106,6 +106,21 @@ public:
 		e1 = sqrt((-b + sqrtd) * 0.5);
 		e2 = sqrt((-b - sqrtd) * 0.5);
 	}
+	
+	template<typename T>
+	static T RotationAngle(const std::complex<T>* matrix)
+	{
+		return std::atan2((matrix[2].real()-matrix[1].real())*0.5, (matrix[0].real()+matrix[3].real())*0.5);
+	}
+	
+	template<typename T>
+	static void RotationMatrix(std::complex<T>* matrix, double alpha)
+	{
+		T cosAlpha, sinAlpha;
+		sincos(alpha, &sinAlpha, &cosAlpha);
+		matrix[0] = cosAlpha; matrix[1] = -sinAlpha;
+		matrix[2] = sinAlpha; matrix[3] = cosAlpha;
+	}
 };
 
 #endif

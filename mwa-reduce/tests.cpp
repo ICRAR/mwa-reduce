@@ -3,6 +3,7 @@
 #include "sourcesdfwithsamples.h"
 #include "radeccoord.h"
 #include "nlplfitter.h"
+#include "matrix2x2.h"
 
 void testSourceSDFWithSamples()
 {
@@ -184,10 +185,46 @@ void testNLPLFitter()
 	std::cout << "-1000 x^-0.5 = " << f << " * x^" << e << '\n';
 }
 
+std::string matrixToStr(std::complex<double> *m)
+{
+	std::ostringstream str;
+	str
+		<< '[' << m[0].real() << ", " << m[1].real()
+		<< "; " << m[2].real() << ", " << m[3].real() << ']';
+	return str.str();
+}
+
+void testRotationAngle()
+{
+	std::complex<double> r[4];
+	r[0] = 1.0; r[1] = 0.0;
+	r[2] = 0.0; r[3] = 1.0;
+	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
+	r[0] = 1.0; r[1] = 0.0;
+	r[2] = 0.0; r[3] = -1.0;
+	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
+	r[0] = -1.0; r[1] = 0.0;
+	r[2] = 0.0; r[3] = -1.0;
+	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
+	r[0] = 0.5; r[1] = -0.5;
+	r[2] = 0.5; r[3] = 0.5;
+	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
+	r[0] = 1.0; r[1] = -1.0;
+	r[2] = 1.0; r[3] = 1.0;
+	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
+	r[0] = 0.0; r[1] = 1.0;
+	r[2] = -1.0; r[3] = 0.0;
+	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
+	r[0] = 0.5; r[1] = -0.5;
+	r[2] = 0.0; r[3] = 1.0;
+	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
+}
+
 int main(int argc, char *argv[])
 {
 	testBaselineindex();
 	testRaDecCoord();
 	testSourceSDFWithSamples();
 	testNLPLFitter();
+	testRotationAngle();
 }

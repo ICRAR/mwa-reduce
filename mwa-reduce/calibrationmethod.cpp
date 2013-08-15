@@ -14,7 +14,10 @@ CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t n
 	_jonesSolutions(nAntenna * 4 * nChannels),
 	_nChannels(nChannels),
 	_nAntenna(nAntenna),
-	_nTimesteps(nTimesteps)
+	_nTimesteps(nTimesteps),
+	_onlySolveDiag(false),
+	_onlySolveScalar(false),
+	_onlySolveRotation(false)
 {
 	InitSolutionsToUnity();
 }
@@ -246,8 +249,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
 			calculateNextIter(ant, &nextJones[ant*4*_nChannels]);
-			if(_onlySolveScalar)
-			{
+			if(_onlySolveScalar) {
 				for(size_t ch=0; ch!=_nChannels; ++ch)
 				{
 					nextJones[(ant*_nChannels+ch)*4 + 0] = (nextJones[(ant*_nChannels+ch)*4 + 0] + nextJones[(ant*_nChannels+ch)*4 + 3]) * 0.5;
@@ -256,8 +258,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 					nextJones[(ant*_nChannels+ch)*4 + 3] = nextJones[(ant*_nChannels+ch)*4 + 0];
 				}
 			}
-			else if(_onlySolveDiag)
-			{
+			else if(_onlySolveDiag) {
 				for(size_t ch=0; ch!=_nChannels; ++ch)
 				{
 					nextJones[(ant*_nChannels+ch)*4 + 1] = 0;
@@ -275,16 +276,31 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		{
 			for(size_t ch=0; ch!=_nChannels; ++ch)
 			{
-				for(size_t p=0; p!=4; ++p)
-				{
-					changeSizes[p+ant*4] += std::norm(*jonesPtr - *nextJonesPtr);
-					
-					*jonesPtr = *jonesPtr * (1.0-stepsize) + *nextJonesPtr * stepsize;
-					
-					++jonesPtr;
-					++nextJonesPtr;
+				if(_onlySolveRotation) {
+					double alpha = Matrix2x2::RotationAngle(nextJonesPtr);
+					std::complex<double> temp[4];
+					Matrix2x2::RotationMatrix(temp, alpha);
+					for(size_t p=0; p!=4; ++p)
+					{
+						*jonesPtr = *jonesPtr * (1.0-stepsize) + temp[p] * stepsize;
+						changeSizes[p+ant*4] += std::norm(*jonesPtr - temp[p]);
+						++jonesPtr;
+					}
+					nextJonesPtr += 4;
+				}
+				else {
+					for(size_t p=0; p!=4; ++p)
+					{
+						changeSizes[p+ant*4] += std::norm(*jonesPtr - *nextJonesPtr);
+						
+						*jonesPtr = *jonesPtr * (1.0-stepsize) + *nextJonesPtr * stepsize;
+						
+						++jonesPtr;
+						++nextJonesPtr;
+					}
 				}
 				
+
 				/*if(ant==1 && (ch==15 || ch==14 || ch==13))
 				{
 					std::cout << "Current value of Jones matrix for ant 1, ch " << ch << ":\n"
