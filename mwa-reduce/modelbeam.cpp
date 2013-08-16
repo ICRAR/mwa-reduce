@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 		SpectralEnergyDistribution &sed = sourceIter->SED();
 		
 		std::complex<double> gains[4];
-		beamEval.EvaluateGain(ra, dec, gains);
+		beamEval.EvaluateAbsToApparentGain(ra, dec, gains);
 		sed.SetConstantBeam(std::abs(gains[0]), std::abs(gains[1]), std::abs(gains[2]), std::abs(gains[3]));
 	}
 	

@@ -4,20 +4,6 @@
 #include "beamevaluator.h"
 #include "solutionfile.h"
 
-void Predicter::applyGain(double *dataVal, const std::complex<double> *gain)
-{
-  double gainSq[4];
-  gainSq[0] = std::fabs(gain[0] * gain[0] + gain[1] * gain[1]);
-  gainSq[1] = std::fabs(gain[0] * gain[2] + gain[1] * gain[3]);
-  gainSq[2] = std::fabs(gain[2] * gain[0] + gain[3] * gain[1]);
-  gainSq[3] = std::fabs(gain[2] * gain[2] + gain[3] * gain[3]);
-
-  dataVal[0] = dataVal[0] * gainSq[0] + dataVal[1] * gainSq[2];
-  dataVal[1] = dataVal[0] * gainSq[1] + dataVal[1] * gainSq[3];
-  dataVal[2] = dataVal[2] * gainSq[0] + dataVal[3] * gainSq[2];
-  dataVal[3] = dataVal[2] * gainSq[1] + dataVal[3] * gainSq[3];
-}
-
 void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 {
 	SourceParameters *parameters = new SourceParameters();
@@ -37,14 +23,17 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 		if(beamEvaluator != 0)
 		{
 			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
-			beamEvaluator->EvaluateGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
+			beamEvaluator->EvaluateAbsToApparentGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
 		}
 		else {
-			for(size_t p=0; p!=4; ++p)
-				parameters->beamValues[ch*4+p] = 0.0;
+			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
+			parameters->beamValues[ch*4+2] = 0.0; parameters->beamValues[ch*4+3] = 1.0;
 		}
-		for(size_t p=0; p!=4; ++p)
-			_totalFlux[p] += parameters->brightness[ch*4+p];
+		CNumType temp[4], brightness[4];
+		brightness[0] = parameters->brightness[ch*4+0]; brightness[1] = parameters->brightness[ch*4+2];
+		brightness[2] = parameters->brightness[ch*4+1]; brightness[3] = parameters->brightness[ch*4+3];
+		Matrix2x2::ATimesB(temp, &parameters->beamValues[ch*4], brightness);
+		Matrix2x2::PlusATimesHermB(_totalFlux, temp, &parameters->beamValues[ch*4]);
 	}
 	parameters->lmsqrt = sqrt(1.0 - l*l - m*m);
 	
@@ -62,9 +51,9 @@ void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEv
 void Predicter::ReportSources(Model& model)
 {
 	std::cout << "Model predicter initialized with " << model.SourceCount() << " sources of apparent brightness [";
-	std::cout << (_totalFlux[0] / _channelCount);
+	std::cout << (TotalFlux(0) / _channelCount);
 	for(size_t p=1; p!=4; ++p)
-		std::cout << ',' << (_totalFlux[p] / _channelCount);
+		std::cout << ',' << (TotalFlux(p) / _channelCount);
 	std::cout << "]\n";
 	
 	std::cout << "(absolute brightness: [";

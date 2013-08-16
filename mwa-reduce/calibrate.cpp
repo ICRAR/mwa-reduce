@@ -79,16 +79,16 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n"
 			<< "Option -a will average over frequency before fitting, nr should specify the amount\n"
 			<< "of desired channels.\n";
 	} else {
 		int argi = 1;
 		bool
-			savePlotFiles = false, beamOnSource = false, applyBeam = false,
-			onlyScalar = false, onlyDiag = false, onlyRotation = true;
-		std::string plotPhaseFile, plotGainFile, modelFile, rhsSolutionFile;
+			savePlotFiles = false, saveFaradayPlotFiles = false, saveCrossTermsPlotFile = false, beamOnSource = false, applyBeam = false,
+			onlyScalar = false, onlyDiag = false, onlyRotation = false;
+		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
 		size_t niter = 25;
 		double limit = 0.0001, minUVW = 0.0;
 		
@@ -100,6 +100,18 @@ int main(int argc, char *argv[])
 				plotPhaseFile = argv[argi+1];
 				plotGainFile = argv[argi+2];
 				argi += 3;
+			}
+			else if(strcmp(argv[argi], "-pf") == 0)
+			{
+				saveFaradayPlotFiles = true;
+				plotFaradayFile = argv[argi+1];
+				argi += 2;
+			}
+			else if(strcmp(argv[argi], "-px") == 0)
+			{
+				saveCrossTermsPlotFile = true;
+				crossTermsPlotFile = argv[argi+1];
+				argi += 2;
 			}
 			else if(strcmp(argv[argi], "-i") == 0)
 			{
@@ -151,7 +163,7 @@ int main(int argc, char *argv[])
 				onlyRotation = true;
 				argi++;
 			}
-			else throw std::runtime_error("Invalid parameter");
+			else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		}
 		
 		if(argc <= argi + 1) throw std::runtime_error("Incorrect parameters");
@@ -265,7 +277,7 @@ int main(int argc, char *argv[])
 			}
 			std::unique_ptr<Predicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
-			std::vector<double> beamValues;
+			std::vector<std::complex<double>> beamValues;
 			if(modelFile.empty()) {
 				std::cout << "Reading data and model column... " << std::flush;
 				modelColumn.reset(new casa::ROArrayColumn<complex_t>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
@@ -278,7 +290,7 @@ int main(int argc, char *argv[])
 				if(beamOnSource)
 				{
 					if(model->SourceCount() != 1)
-						throw std::runtime_error("To correct for the beam, there should be exactly one source in the model");
+						std::cout << "Warning: To correct for the beam, there should be exactly one source in the model";
 					const ModelSource& source = model->Source(0);
 					std::cout << "Predicting beam... " << std::flush;
 					beamValues.resize(partChannelCount*4);
@@ -286,9 +298,9 @@ int main(int argc, char *argv[])
 					for(size_t ch=0; ch!=partChannelCount; ++ch)
 					{
 						double frequency = partBandData.ChannelFrequency(ch);
-						beamEvaluator->EvaluateInvertAbsGain(source.PosRA(), source.PosDec(), frequency, &beamValues[ch*4]);
+						beamEvaluator->EvaluateApparentToAbsGain(source.PosRA(), source.PosDec(), frequency, &beamValues[ch*4]);
 						for(size_t p=0; p!=4; ++p)
-							beamSum[p] += beamValues[ch*4+p];
+							beamSum[p] += std::abs(beamValues[ch*4+p]);
 					}
 					std::cout << "DONE (avg inv beam:";
 					for(size_t p=0; p!=4; ++p)
@@ -453,6 +465,47 @@ int main(int argc, char *argv[])
 					}
 					phasePlotStream << '\n';
 					gainPlotStream << '\n';
+				}
+			}
+			
+			if(saveFaradayPlotFiles)
+		  {
+				std::ofstream faradayPlotStream(plotFaradayFile.c_str());
+				
+				for(size_t ch=0; ch!=partChannelCount; ++ch)
+			  {
+					faradayPlotStream << (ch+startChannel) << '\t';
+					
+					for(size_t ant=0; ant!=antennaCount; ++ant)
+					{
+						std::complex<double> val[4];
+						for(size_t p=0; p!=4; ++p)
+							val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+				
+						faradayPlotStream << '\t' << -Matrix2x2::RotationAngle(val);
+					}
+					faradayPlotStream << '\n';
+				}
+			}
+			
+			if(saveCrossTermsPlotFile)
+		  {
+				std::ofstream crossTermPlotStream(crossTermsPlotFile.c_str());
+				
+				for(size_t ch=0; ch!=partChannelCount; ++ch)
+			  {
+					crossTermPlotStream << (ch+startChannel) << '\t';
+					
+					for(size_t ant=0; ant!=antennaCount; ++ant)
+					{
+						std::complex<double> val[4];
+						for(size_t p=0; p!=4; ++p)
+							val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+						Matrix2x2::Invert(val);
+						double totalPower = std::abs(val[0]) + std::abs(val[1]) + std::abs(val[2]) + std::abs(val[3]);
+						crossTermPlotStream << '\t' << (std::abs(val[1]) + std::abs(val[2]))*100.0/totalPower;
+					}
+					crossTermPlotStream << '\n';
 				}
 			}
 			

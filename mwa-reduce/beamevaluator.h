@@ -15,18 +15,29 @@ class BeamEvaluator
 	public:
 		BeamEvaluator(casa::MeasurementSet &ms);
 		
-		void EvaluateGain(double ra, double dec, std::complex<double> *gains)
+		void EvaluateApparentToAbsGain(double ra, double dec, std::complex<double> *gains)
 		{
-			EvaluateGain(ra, dec, _frequency, gains);
+			EvaluateApparentToAbsGain(ra, dec, _frequency, gains);
 		}
 		
-		void EvaluateGain(double ra, double dec, double frequency, std::complex<double> *gains);
+		void EvaluateAbsToApparentGain(double ra, double dec, std::complex<double> *gains)
+		{
+			EvaluateAbsToApparentGain(ra, dec, _frequency, gains);
+		}
 		
-		template<typename NumType>
+		void EvaluateApparentToAbsGain(double ra, double dec, double frequency, std::complex<double> *gains)
+		{
+			EvaluateAbsToApparentGain(ra, dec, frequency, gains);
+			Matrix2x2::Invert(gains);
+		}
+		
+		void EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double> *gains);
+		
+		/*template<typename NumType>
 		void EvaluateAbsGain(double ra, double dec, double frequency, NumType* absGain)
 		{
 			std::complex<double> gains[4];
-			EvaluateGain(ra, dec, frequency, gains);
+			EvaluateAbsToApparentGain(ra, dec, frequency, gains);
 			for(size_t p=0; p!=4; ++p)
 				absGain[p] = std::fabs(gains[p]);
 		}
@@ -35,58 +46,62 @@ class BeamEvaluator
 		void EvaluateInvertAbsGain(double ra, double dec, double frequency, NumType* absGain)
 		{
 			std::complex<double> gains[4];
-			EvaluateGain(ra, dec, frequency, gains);
+			EvaluateAbsToApparentGain(ra, dec, frequency, gains);
 			for(size_t p=0; p!=4; ++p)
 				absGain[p] = std::fabs(gains[p]);
 			Matrix2x2::Invert(absGain);
+		}*/
+		
+		template<typename NumType>
+		void AbsToApparent(double ra, double dec, double frequency, std::complex<NumType>* pixelValues)
+		{
+			std::complex<NumType> gains[4], temp[4];
+			EvaluateAbsToApparentGain(ra, dec, frequency, gains);
+			
+			// Calculate A D A^H
+			Matrix2x2::ATimesB(temp, gains, pixelValues);
+			Matrix2x2::ATimesHermB(pixelValues, temp, gains);
 		}
 		
 		template<typename NumType>
 		void AbsToApparent(double ra, double dec, double frequency, NumType* pixelValues)
 		{
-			double gains[4];
-			EvaluateAbsGain(ra, dec, frequency, gains);
-			
+			std::complex<NumType> input[4], gains[4], temp[4];
+			EvaluateAbsToApparentGain(ra, dec, frequency, gains);
+			input[0] = pixelValues[0]; input[1] = pixelValues[1];
+			input[2] = pixelValues[2]; input[3] = pixelValues[3];
 			// Calculate A D A^H
-			
-			NumType part[4];
-			part[0] = gains[0] * pixelValues[0] + gains[1] * pixelValues[2];
-			part[1] = gains[0] * pixelValues[1] + gains[1] * pixelValues[3];
-			part[2] = gains[2] * pixelValues[0] + gains[3] * pixelValues[2];
-			part[3] = gains[2] * pixelValues[1] + gains[3] * pixelValues[3];
-
-			pixelValues[0] = part[0] * gains[0] + part[1] * gains[1];
-			pixelValues[1] = part[0] * gains[2] + part[1] * gains[3];
-			pixelValues[2] = part[2] * gains[0] + part[3] * gains[1];
-			pixelValues[3] = part[2] * gains[2] + part[3] * gains[3];
+			Matrix2x2::ATimesB(temp, gains, input);
+			Matrix2x2::ATimesHermB(input, temp, gains);
+			pixelValues[0] = input[0].real(); pixelValues[1] = input[1].real();
+			pixelValues[2] = input[2].real(); pixelValues[3] = input[3].real();
 		}
 		
 		template<typename NumType>
-		void ApparentToAbs(double ra, double dec, double frequency, NumType* data)
+		void ApparentToAbs(double ra, double dec, double frequency, std::complex<NumType>* data)
 		{
-			double gains[4];
-			EvaluateAbsGain(ra, dec, frequency, gains);
+			std::complex<double> gains[4], temp[4];
+			EvaluateApparentToAbsGain(ra, dec, frequency, gains);
 			
 			// Calculate A^1 D A^1^H
-			
-			double overDeterminant = 1.0 / (gains[0]*gains[3] - gains[1]*gains[2]);
-			double invGain[4];
-			invGain[0] = overDeterminant * gains[3];
-			invGain[1] = -overDeterminant * gains[1];
-			invGain[2] = -overDeterminant * gains[2];
-			invGain[3] = overDeterminant * gains[0];
-			
-			NumType part[4];
-			part[0] = invGain[0] * data[0] + invGain[1] * data[2];
-			part[1] = invGain[0] * data[1] + invGain[1] * data[3];
-			part[2] = invGain[2] * data[0] + invGain[3] * data[2];
-			part[3] = invGain[2] * data[1] + invGain[3] * data[3];
-
-			data[0] = part[0] * invGain[0] + part[1] * invGain[1];
-			data[1] = part[0] * invGain[2] + part[1] * invGain[3];
-			data[2] = part[2] * invGain[0] + part[3] * invGain[1];
-			data[3] = part[2] * invGain[2] + part[3] * invGain[3];
+			Matrix2x2::ATimesB(temp, gains, data);
+			Matrix2x2::ATimesHermB(data, temp, gains);
 		}
+		
+		template<typename NumType>
+		void ApparentToAbs(double ra, double dec, double frequency, NumType* pixelValues)
+		{
+			std::complex<double> input[4], gains[4], temp[4];
+			EvaluateApparentToAbsGain(ra, dec, frequency, gains);
+			input[0] = pixelValues[0]; input[1] = pixelValues[1];
+			input[2] = pixelValues[2]; input[3] = pixelValues[3];
+			// Calculate A D A^H
+			Matrix2x2::ATimesB(temp, gains, input);
+			Matrix2x2::ATimesHermB(input, temp, gains);
+			pixelValues[0] = input[0].real(); pixelValues[1] = input[1].real();
+			pixelValues[2] = input[2].real(); pixelValues[3] = input[3].real();
+		}
+		
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
 		casa::MPosition _ant1Pos;

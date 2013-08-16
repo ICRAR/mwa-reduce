@@ -1,9 +1,12 @@
 #include <iostream>
+#include <measures/Measures/MEpoch.h>
+#include <measures/Measures/MPosition.h>
 
 #include "sourcesdfwithsamples.h"
 #include "radeccoord.h"
 #include "nlplfitter.h"
 #include "matrix2x2.h"
+#include "tilebeam.h"
 
 void testSourceSDFWithSamples()
 {
@@ -220,6 +223,27 @@ void testRotationAngle()
 	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
 }
 
+void testBeam()
+{
+	double delays[16] = {
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0 };
+	TileBeam beam(delays);
+	std::complex<double> gains[4];
+	
+	double ra = 0.0, dec = -30.0 *(M_PI/180.0), frequency = 150000000.0;
+	casa::MDirection refDir = casa::MDirection(casa::MVDirection(0.0, dec));
+	std::cout << "refDir=" << refDir << '\n';
+	casa::MEpoch time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
+	std::cout << "time=" << time << '\n';
+	casa::MPosition arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
+	std::cout << "Pos=" << arrayPos << '\n';
+	beam.AnalyticJones(refDir, time, arrayPos, ra, dec, frequency, gains);
+	std::cout << "Gains: " << matrixToStr(gains) << '\n';
+}
+
 int main(int argc, char *argv[])
 {
 	testBaselineindex();
@@ -227,4 +251,5 @@ int main(int argc, char *argv[])
 	testSourceSDFWithSamples();
 	testNLPLFitter();
 	testRotationAngle();
+	testBeam();
 }

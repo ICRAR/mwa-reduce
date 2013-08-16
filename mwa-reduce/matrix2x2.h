@@ -32,6 +32,15 @@ public:
 		dest[3] = lhs[2] * std::conj(rhs[2]) + lhs[3] * std::conj(rhs[3]);
 	}
 
+	template<typename ComplType, typename LHS_T, typename RHS_T>
+	static void PlusATimesHermB(std::complex<ComplType> *dest, const LHS_T* lhs, const RHS_T* rhs)
+	{
+		dest[0] += lhs[0] * std::conj(rhs[0]) + lhs[1] * std::conj(rhs[1]);
+		dest[1] += lhs[0] * std::conj(rhs[2]) + lhs[1] * std::conj(rhs[3]);
+		dest[2] += lhs[2] * std::conj(rhs[0]) + lhs[3] * std::conj(rhs[1]);
+		dest[3] += lhs[2] * std::conj(rhs[2]) + lhs[3] * std::conj(rhs[3]);
+	}
+
 	static void HermATimesHermB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
 	{
 		dest[0] = std::conj(lhs[0]) * std::conj(rhs[0]) + std::conj(lhs[2]) * std::conj(rhs[1]);

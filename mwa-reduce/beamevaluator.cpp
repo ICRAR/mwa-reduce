@@ -49,7 +49,7 @@ BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms)
 	_tileBeam.reset(new TileBeam(delays));
 }
 
-void BeamEvaluator::EvaluateGain(double ra, double dec, double frequency, std::complex<double>* gains)
+void BeamEvaluator::EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double>* gains)
 {
 	_tileBeam->AnalyticJones(_refDir, _time, _ant1Pos, ra, dec, frequency, gains);
 }
