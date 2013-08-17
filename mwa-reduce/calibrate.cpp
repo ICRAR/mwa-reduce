@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <memory>
 #include <queue>
+#include <complex>
 
 struct ThreadData
 {
@@ -374,11 +375,10 @@ int main(int argc, char *argv[])
 					  {
 							double lambda = partBandData.ChannelWavelength(ch);
 							size_t chIndex = (ch + startChannel) * 4;
+							predicter->Predict4(&modelValues[chIndex], *model, u/lambda,  v/lambda, w/lambda, ch, antenna1, antenna2);
 							for(size_t p=0; p!=4; ++p)
 						  {
 								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
-								std::complex<double> pVal = predicter->Predict(*model, u/lambda,  v/lambda, w/lambda, ch, p);
-								modelValues[chIndex+p] = pVal;
 						  }
 						  if(beamOnSource)
 							{
