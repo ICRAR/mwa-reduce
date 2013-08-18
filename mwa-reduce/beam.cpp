@@ -2,6 +2,8 @@
 #include "fitsreader.h"
 #include "imagecoordinates.h"
 #include "fitswriter.h"
+#include "banddata.h"
+#include "matrix2x2.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -19,39 +21,87 @@
 
 int main(int argc, char *argv[])
 {
-	if(argc != 4)
+	if(argc < 2)
 	{
-		std::cout << "Syntax: beam <input fitsfile> <frequency-in-hz> <measurementset>\n";
+		std::cout << "Syntax: beam [-allsky] [-proto <input fitsfile>] [-ms <measurementset>]\n";
 		return 0;
 	}
-	const char *inpFitsname = argv[1];
-	double frequency = atoi(argv[2]);
-	const char *msName = argv[3];
 	
-	/**
-		* Read some meta data from the measurement set
-		*/
-	casa::MeasurementSet ms(msName);
-	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
+	int argi= 1;
+	const char *inpFitsname = 0;
+	const char *msName = 0;
+	while(argi<argc && argv[argi][0] == '-')
+	{
+		std::string param(&argv[argi][1]);
+		if(param == "proto")
+		{
+			++argi;
+			inpFitsname = argv[argi];
+		}
+		else if(param == "ms")
+		{
+			++argi;
+			msName = argv[argi];
+		}
+		else if(param == "allsky")
+		{
+		}
+		else throw std::runtime_error(std::string("Invalid param: ") + param);
+		++argi;
+	}
 	
-	casa::MSAntenna aTable = ms.antenna();
-	size_t antennaCount = aTable.nrow();
-	if(antennaCount == 0) throw std::runtime_error("No antennae in set");
-	casa::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casa::MSAntennaEnums::POSITION));
-	casa::MPosition ant1Pos = antPosColumn(0);
-	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-	casa::MEpoch time = timeColumn(0);
+	double delays[16];
+	casa::MPosition arrayPos;
+	casa::MEpoch time;
+	double centralFrequency;
 	
-	casa::MSField fTable(ms.field());
-	if(fTable.nrow() != 1) throw std::runtime_error("Need exactly one field in set");
-	casa::MDirection::ROScalarColumn refDirColumn(fTable, fTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
-	casa::MDirection refDir = refDirColumn(0);
-	casa::MeasFrame frame(ant1Pos, time);
+	if(msName == 0)
+	{
+		arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
+		time =casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
+		for(size_t i=0; i!=16; ++i)
+			delays[i] = 0.0;
+		centralFrequency = 150000000.0;
+	}
+	else {
+		/**
+			* Read some meta data from the measurement set
+			*/
+		casa::MeasurementSet ms(msName);
+		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
+		
+		casa::MSAntenna aTable = ms.antenna();
+		if(aTable.nrow() == 0) throw std::runtime_error("No antennae in set");
+		casa::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casa::MSAntennaEnums::POSITION));
+		arrayPos = antPosColumn(0);
+		casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
+		time = timeColumn(0);
+		
+		casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
+		casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
+		casa::Array<int> delaysArr = delaysCol(0);
+		casa::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
+		for(int i=0; i!=16; ++i)
+			delays[i] = delaysArrPtr[i];
+		
+		BandData bandData(ms.spectralWindow());
+		centralFrequency = bandData.CentreFrequency();
+	}
+	
+	std::cout << "Delays: [";
+	for(int i=0; i!=16; ++i)
+	{
+		std::cout << delays[i];
+		if(i != 15) std::cout << ',';
+	}
+	std::cout << "]\n";
+	
+	casa::MeasFrame frame(arrayPos, time);
 	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
 	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
 	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
-	casa::MPosition wgs = casa::MPosition::Convert(ant1Pos, casa::MPosition::WGS84)();
-	double arrLatitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
+	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
+	double arrLatitude = wgs.getValue().getLat(); // arrayPos.getValue().getLat();
 	
 	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
 	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
@@ -61,28 +111,37 @@ int main(int argc, char *argv[])
 		<< (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0]*180.0/M_PI << " RA, "
 		<< zenithDec*180.0/M_PI << " dec, "
 		<< zenithHa*180.0/M_PI << " HA.\n";
-	
-	FitsReader reader(inpFitsname);
-	size_t width = reader.ImageWidth();
-	size_t height = reader.ImageHeight();
-	double pixelSizeX = reader.PixelSizeX();
-	double pixelSizeY = reader.PixelSizeY();
-	
-	const casa::Unit radUnit("rad");
-	casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
-	casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
-	casa::Array<int> delaysArr = delaysCol(0);
-	casa::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
-	double delays[16];
-	std::cout << "Delays: [";
-	for(int i=0; i!=16; ++i)
-	{
-		delays[i] = delaysArrPtr[i];
-		std::cout << delays[i];
-		if(i != 15) std::cout << ',';
-	}
-	std::cout << "]\n";
 		
+	size_t width, height;
+	double pixelSizeX, pixelSizeY;
+	double refRA, refDec, bandWidth, dateObs;
+	if(inpFitsname == 0)
+	{
+		// All sky
+		width = 512;
+		height = 512;
+		pixelSizeX = 2.0 / (double) width;
+		pixelSizeY = 2.0 / (double) height;
+		refRA = (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0];
+		refDec = zenithDec;
+		bandWidth = 1000000.0;
+		dateObs = 0.0;
+	}
+	else {
+		FitsReader reader(inpFitsname);
+		width = reader.ImageWidth();
+		height = reader.ImageHeight();
+		pixelSizeX = reader.PixelSizeX();
+		pixelSizeY = reader.PixelSizeY();
+		refRA = reader.PhaseCentreRA();
+		refDec = reader.PhaseCentreDec();
+		bandWidth = reader.Bandwidth();
+		dateObs = reader.DateObs();
+	}
+	std::cout << "Reference dir: "
+		<< refRA*180.0/M_PI << " RA, "
+		<< refDec*180.0/M_PI << " dec.\n";
+	
 	TileBeam tilebeam(delays);
 	
 	std::vector<double> outImage[8];
@@ -102,15 +161,16 @@ int main(int argc, char *argv[])
 		{
 			double l, m, ra, dec;
 			ImageCoordinates::XYToLM(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
-			ImageCoordinates::LMToRaDec(l, m, reader.PhaseCentreRA(), reader.PhaseCentreDec(), ra, dec);
+			ImageCoordinates::LMToRaDec(l, m, refRA, refDec, ra, dec);
 			
-			std::complex<double> gain[4];
-			tilebeam.AnalyticJones(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, frequency, gain);
+			std::complex<double> gain[4], gainSq[4];
+			tilebeam.AnalyticJones(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, centralFrequency, gain);
+			Matrix2x2::ATimesHermB(gainSq, gain, gain);
 			
 			for(size_t i=0; i!=4; ++i)
 			{
-				*imgPtr[i*2] = gain[i].real();
-				*imgPtr[i*2 + 1] = gain[i].imag();
+				*imgPtr[i*2] = gainSq[i].real();
+				*imgPtr[i*2 + 1] = gainSq[i].imag();
 				++imgPtr[i*2];
 				++imgPtr[i*2 + 1];
 			}
@@ -127,6 +187,6 @@ int main(int argc, char *argv[])
 	for(size_t i=0; i!=8; ++i)
 	{
 		FitsWriter writer(names[i]);
-		writer.Write<double>(&outImage[i][0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
+		writer.Write<double>(&outImage[i][0], width, height, refRA, refDec, pixelSizeY, pixelSizeX, centralFrequency, bandWidth, dateObs);
 	}
 }

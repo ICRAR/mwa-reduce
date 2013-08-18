@@ -34,6 +34,7 @@ private:
 		Predicter *predicter;
 		std::complex<double>* data;
 		bool* flags;
+		size_t a1, a2;
 	};
 
 public:
@@ -164,7 +165,10 @@ private:
 			progress.SetProgress(rowIndex, ms.nrow());
 			
 			// Cross correlation?
-			if(ant1Column.get(rowIndex) != ant2Column.get(rowIndex))
+			size_t
+				a1 = ant1Column.get(rowIndex),
+				a2 = ant2Column.get(rowIndex);
+			if(a1 != a2)
 			{
 				std::complex<double> *data = dataBuffers[bufferIndex];
 				casa::Array<bool> &flags = *flagBuffers[bufferIndex];
@@ -193,6 +197,8 @@ private:
 					task.w = rowData.w;
 					task.sourceIndex = s;
 					task.predicter = &*predicters[s];
+					task.a1 = a1;
+					task.a2 = a2;
 					taskLanes[thread]->write(task);
 				}
 				
@@ -259,7 +265,8 @@ private:
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
 				double lambda = bandData->ChannelWavelength(ch);
-				Predicter::CNumType predicted = predicter.Predict(_sources[s], u/lambda, v/lambda, w/lambda, ch, 0);
+				Predicter::CNumType predicted[4];
+				predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
 				for(size_t p=0; p!=polarizationCount; ++p)
 				{
 					double 
@@ -268,7 +275,7 @@ private:
 					if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
 					{
 						// add real(data * conj(predicted))
-						(*measFluxIter) += real * predicted.real() + imag * predicted.imag();
+						(*measFluxIter) += real * predicted[0].real() + imag * predicted[0].imag();
 						(*measCountIter) ++;
 					}
 					++measFluxIter;

@@ -26,8 +26,8 @@ class Predicter
 		void Initialize(class Model &model, const std::string &solutionFile = std::string(), class BeamEvaluator *beamEvaluator = 0);
 		void ReportSources(class Model& model);
 		
-		CNumType Predict(const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
-		CNumType Predict(const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
+		//CNumType Predict(const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
+		//CNumType Predict(const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
 		
 		void Predict4(CNumType *dest, const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);
 		void Predict4(CNumType *dest, const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);

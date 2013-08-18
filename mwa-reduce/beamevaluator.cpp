@@ -25,11 +25,6 @@ BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms)
 	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 	_time = timeColumn(0);
 	
-	casa::MSField fTable(ms.field());
-	if(fTable.nrow() != 1) throw std::runtime_error("Need exactly one field in set");
-	casa::MDirection::ROScalarColumn refDirColumn(fTable, fTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
-	_refDir = refDirColumn(0);
-	
 	BandData band(ms.spectralWindow());
 	_frequency = (band.BandStart()+ band.BandEnd()) * 0.5;
 	
@@ -51,5 +46,5 @@ BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms)
 
 void BeamEvaluator::EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double>* gains)
 {
-	_tileBeam->AnalyticJones(_refDir, _time, _ant1Pos, ra, dec, frequency, gains);
+	_tileBeam->AnalyticJones(_time, _ant1Pos, ra, dec, frequency, gains);
 }

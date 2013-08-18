@@ -33,25 +33,6 @@ class BeamEvaluator
 		
 		void EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double> *gains);
 		
-		/*template<typename NumType>
-		void EvaluateAbsGain(double ra, double dec, double frequency, NumType* absGain)
-		{
-			std::complex<double> gains[4];
-			EvaluateAbsToApparentGain(ra, dec, frequency, gains);
-			for(size_t p=0; p!=4; ++p)
-				absGain[p] = std::fabs(gains[p]);
-		}
-		
-		template<typename NumType>
-		void EvaluateInvertAbsGain(double ra, double dec, double frequency, NumType* absGain)
-		{
-			std::complex<double> gains[4];
-			EvaluateAbsToApparentGain(ra, dec, frequency, gains);
-			for(size_t p=0; p!=4; ++p)
-				absGain[p] = std::fabs(gains[p]);
-			Matrix2x2::Invert(absGain);
-		}*/
-		
 		template<typename NumType>
 		void AbsToApparent(double ra, double dec, double frequency, std::complex<NumType>* pixelValues)
 		{
@@ -105,7 +86,6 @@ class BeamEvaluator
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
 		casa::MPosition _ant1Pos;
-		casa::MDirection _refDir;
 		casa::MEpoch _time;
 		double _frequency;
 };

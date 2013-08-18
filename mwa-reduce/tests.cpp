@@ -223,25 +223,49 @@ void testRotationAngle()
 	std::cout << "angle(" << matrixToStr(r) << ") = " << Matrix2x2::RotationAngle(r) << '\n';
 }
 
-void testBeam()
+void showBeam(const double *delays, double ra, double dec)
 {
-	double delays[16] = {
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0,
-		0.0, 0.0, 0.0, 0.0 };
 	TileBeam beam(delays);
 	std::complex<double> gains[4];
 	
-	double ra = 0.0, dec = -30.0 *(M_PI/180.0), frequency = 150000000.0;
-	casa::MDirection refDir = casa::MDirection(casa::MVDirection(0.0, dec));
-	std::cout << "refDir=" << refDir << '\n';
+	dec = dec *(M_PI/180.0);
+	ra = ra *(M_PI/180.0);
+	double frequency = 150000000.0;
 	casa::MEpoch time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
 	std::cout << "time=" << time << '\n';
 	casa::MPosition arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
 	std::cout << "Pos=" << arrayPos << '\n';
-	beam.AnalyticJones(refDir, time, arrayPos, ra, dec, frequency, gains);
+	beam.AnalyticJones(time, arrayPos, ra, dec, frequency, gains);
 	std::cout << "Gains: " << matrixToStr(gains) << '\n';
+}
+
+void testBeam()
+{
+	double delays1[16] = {
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 0.0 };
+	showBeam(delays1, 0.0, -30.0);
+
+	double delays2[16] = {
+		0.0, 1.0, 2.0, 3.0,
+		0.0, 1.0, 2.0, 3.0,
+		0.0, 1.0, 2.0, 3.0,
+		0.0, 1.0, 2.0, 3.0 };
+	showBeam(delays2, 0.0, -30.0);
+	
+	double delays3[16] = {
+		0.0, 0.0, 0.0, 0.0,
+		1.0, 1.0, 1.0, 1.0,
+		2.0, 2.0, 2.0, 2.0,
+		3.0, 3.0, 3.0, 3.0 };
+	showBeam(delays3, 0.0, -30.0);
+	
+	showBeam(delays1, 0.0, -20.0);
+
+	showBeam(delays1, 180.0, -20.0);
+
 }
 
 int main(int argc, char *argv[])

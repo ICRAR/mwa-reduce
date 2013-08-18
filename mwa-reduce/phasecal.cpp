@@ -739,11 +739,12 @@ int main(int argc, char *argv[])
 				BaselineWeights &weights = dataSet.Weights(antenna1, antenna2);
 				for(size_t ch = 0; ch!=avgChannelCount; ++ch)
 				{
+					std::complex<double> temp[4];
 					double lambda = bandData.ChannelWavelength(ch*channelCount/avgChannelCount);
-					lcomplex_t px = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, 0);
-					lcomplex_t py = predicter.Predict(model, u/lambda, v/lambda, w/lambda, ch, 3);
-					predictedData.DataX(timeIndex, ch) = px;
-					predictedData.DataY(timeIndex, ch) = py;
+					predicter.Predict4(temp, model, u/lambda, v/lambda, w/lambda, ch, antenna1, antenna2);
+					
+					predictedData.DataX(timeIndex, ch) = temp[0];
+					predictedData.DataY(timeIndex, ch) = temp[3];
 					
 					// Data was not divided by N yet during "averaging", do now
 					long double avgFactorX = weights.WeightX(timeIndex, ch)!=0 ?

@@ -394,7 +394,7 @@ int main(int argc, char *argv[])
 								calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
 							}
 						}
-					}					
+					}
 				}
 			}
 			std::cout << "DONE (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected)\nCalibrating...\n";

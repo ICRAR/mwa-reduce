@@ -17,17 +17,21 @@ class TileBeam
 public:
 	TileBeam(const double *delays);
 	
-	void AnalyticGain(casa::MDirection &referenceDir, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y);
+	void AnalyticGain(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y);
 	
 	void AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double latitude, double frequencyHz, double &x, double &y);
 	
 	void AnalyticGain(double zenithAngle, double azimuth, double frequencyHz, double &x, double &y);
 	
-	void AnalyticJones(casa::MDirection &referenceDir, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain);
+	void AnalyticJones(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain);
 	
 	void AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain);
 	
 	void AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haZenith, double decZenith, std::complex<double> *gain);
+	
+	const static double MWA_LATTITUDE; // Array latitude. degrees North
+	const static double MWA_LONGITUDE; // Array longitude. degrees East
+	const static double MWA_HEIGHT;    // Array altitude. meters above sea level
 private:
 	double _dipoleSize; // height of dipole
 	double _dipoleSeparations;

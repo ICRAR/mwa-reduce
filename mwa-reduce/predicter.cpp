@@ -26,7 +26,6 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 		{
 			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
 			beamEvaluator->EvaluateAbsToApparentGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
-			std::cout << "Init with beam\n";
 		}
 		else {
 			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
@@ -56,9 +55,9 @@ void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEv
 void Predicter::ReportSources(Model& model)
 {
 	std::cout << "Model predicter initialized with " << model.SourceCount() << " sources of apparent brightness [";
-	std::cout << (TotalFlux(0) / _channelCount);
+	std::cout << (_totalFlux[0].real() / _channelCount);
 	for(size_t p=1; p!=4; ++p)
-		std::cout << ',' << (TotalFlux(p) / _channelCount);
+		std::cout << ',' << (_totalFlux[p].real() / _channelCount);
 	std::cout << "]\n";
 	
 	std::cout << "(absolute brightness: [";
@@ -66,33 +65,6 @@ void Predicter::ReportSources(Model& model)
 	for(size_t p=1; p!=4; ++p)
 		std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, p);
 	std::cout << "], app at low freq: " << model.TotalFlux(_startFrequency, 0) << ", app at high freq: " << model.TotalFlux(_endFrequency, 0) << ")\n";
-}
-
-Predicter::CNumType Predicter::Predict(const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex)
-{
-	switch(source.Type())
-	{
-		case ModelSource::PointSource:
-		{
-			SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
-			NumType l = parameters->l, m = parameters->m;
-			NumType lmsqrt = parameters->lmsqrt;
-			NumType angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
-			NumType fact = parameters->brightness[channelIndex*4+polarizationIndex] / lmsqrt;
-			double sinangle, cosangle;
-			sincos(angle, &sinangle, &cosangle);
-			return CNumType(fact * cosangle, fact * sinangle);
-		}
-	}
-	return 0.0;
-}
-
-Predicter::CNumType Predicter::Predict(const Model& model, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex)
-{
-	CNumType sum(0.0, 0.0);
-	for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
-		sum += Predict(*i, u, v, w, channelIndex, polarizationIndex);
-	return sum;
 }
 
 void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
@@ -126,10 +98,9 @@ void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, N
 	}
 	if(_beamEvaluator != 0)
 	{
-		std::cout << "predwithbeam\n";
 		SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
-		Matrix2x2::ATimesB(temp, &parameters->beamValues[_channelCount*4], dest);
-		Matrix2x2::ATimesHermB(dest, temp, &parameters->beamValues[_channelCount*4]);
+		Matrix2x2::ATimesB(temp, &parameters->beamValues[channelIndex*4], dest);
+		Matrix2x2::ATimesHermB(dest, temp, &parameters->beamValues[channelIndex*4]);
 	}
 }
 

@@ -11,21 +11,25 @@
 #include <measures/Measures/MCPosition.h>
 #include <measures/Measures/MeasConvert.h>
 
+const double TileBeam::MWA_LATTITUDE = -26.703319; // Array latitude. degrees North
+const double TileBeam::MWA_LONGITUDE = 116.67081;  // Array longitude. degrees East
+const double TileBeam::MWA_HEIGHT = 377.0;         // Array altitude. meters above sea level
+
 // Based on code from Daniel Mitchel
 // 2012-02-13
 // taken from the RTS codebase
 // Optimized 2012-11-17 by Offringa.
 
 TileBeam::TileBeam(const double *delays) :
-	_dipoleSize(0.278),
+	_dipoleSize(0.278), /* Seems to be 0.3 in the RTS, 0278 in beam script */
 	_dipoleSeparations(1.100),
 	_delayStep(435.0e-12),
 	_zenithNorm(true)
 {
-	//const double dipoleNorth[16] = {1.5,1.5,1.5,1.5,0.5,0.5,0.5,0.5,-0.5,-0.5,-0.5,-0.5,-1.5,-1.5,-1.5,-1.5};
-	//const double dipoleEast[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
-	const double dipoleEast[16] = {-1.5,-1.5,-1.5,-1.5,-0.5,-0.5,-0.5,-0.5,0.5,0.5,0.5,0.5,1.5,1.5,1.5,1.5};
-	const double dipoleNorth[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
+	const double dipoleNorth[16] = {1.5,1.5,1.5,1.5,0.5,0.5,0.5,0.5,-0.5,-0.5,-0.5,-0.5,-1.5,-1.5,-1.5,-1.5};
+	const double dipoleEast[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
+	//const double dipoleEast[16] = {-1.5,-1.5,-1.5,-1.5,-0.5,-0.5,-0.5,-0.5,0.5,0.5,0.5,0.5,1.5,1.5,1.5,1.5};
+	//const double dipoleNorth[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
 	const double dipoleHeight[16] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
 	for(size_t i=0;i!=16;++i)
 	{
@@ -36,7 +40,7 @@ TileBeam::TileBeam(const double *delays) :
 	}
 }
 
-void TileBeam::AnalyticGain(casa::MDirection &referenceDir, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y)
+void TileBeam::AnalyticGain(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y)
 {
 	casa::MeasFrame frame(arrayPos, time);
 	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
@@ -129,7 +133,7 @@ void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequency
 	
 }
 
-void TileBeam::AnalyticJones(casa::MDirection &referenceDir, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain)
+void TileBeam::AnalyticJones(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain)
 {
 	casa::MeasFrame frame(arrayPos, time);
 	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
@@ -150,7 +154,7 @@ void TileBeam::AnalyticJones(casa::MDirection &referenceDir, casa::MEpoch &time,
 	AnalyticJones(raRad, decRad, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, arrLatitude, zenithHa, zenithDec, frequencyHz, gain);
 }
 
-void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain)
+void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haAntennaZenith, double decAntennaZenith, double frequencyHz, std::complex<double>* gain)
 {
 	static const casa::Unit radUnit("rad");
 	casa::MDirection imageDir(casa::MVDirection(
@@ -169,11 +173,12 @@ void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection
 	double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
 	casa::MDirection azel = j2000ToAzelGeo(imageDir);
 	double azimuth = azel.getValue().get()[0];
+	//std::cout << "za=" << zenithDistance << ", az=" << azimuth << '\n';
 	
-	AnalyticJones(zenithDistance, azimuth, frequencyHz, ha, decRad, haZenith, decZenith, gain);
+	AnalyticJones(zenithDistance, azimuth, frequencyHz, ha, decRad, haAntennaZenith, decAntennaZenith, gain);
 }
 
-void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haZenith, double decZenith, std::complex<double> *gain)
+void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
 {
 	// direction cosines (relative to zenith) for direction az,za
 	double sinZenith, cosZenith, sinAzimuth, cosAzimuth;
@@ -230,10 +235,10 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 		groundPlane /= 2.0 * sin(twoPiOverLambda * _dipoleSize);
 
 	double rot[4];
-	rot[0] =  cos(decZenith)*cos(dec) + sin(decZenith)*sin(dec)*cos(ha - haZenith);
-	rot[1] = -sin(decZenith)*sin(ha - haZenith);
-	rot[2] =  sin(dec)*sin(ha - haZenith);
-	rot[3] =  cos(ha - haZenith);
+	rot[0] =  cos(decAntennaZenith)*cos(dec) + sin(decAntennaZenith)*sin(dec)*cos(ha - haAntennaZenith);
+	rot[1] =  sin(decAntennaZenith)*sin(ha - haAntennaZenith);
+	rot[2] = -sin(dec)*sin(ha - haAntennaZenith);
+	rot[3] =  cos(ha - haAntennaZenith);
 	//std::cout << "rot[0]=" << rot[0] << " groundPlane=" << groundPlane << " arrayFactor=" << arrayFactor << '\n';
 	
 	arrayFactor *= groundPlane;
