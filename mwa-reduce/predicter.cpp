@@ -6,6 +6,8 @@
 
 void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 {
+	_beamEvaluator = beamEvaluator;
+	
 	SourceParameters *parameters = new SourceParameters();
 	NumType l, m;
 	ImageCoordinates::RaDecToLM<NumType>(source.PosRA(), source.PosDec(), _ra0, _dec0, l, m);
@@ -24,6 +26,7 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 		{
 			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
 			beamEvaluator->EvaluateAbsToApparentGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
+			std::cout << "Init with beam\n";
 		}
 		else {
 			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
@@ -42,6 +45,8 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 
 void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEvaluator *beamEvaluator)
 {
+	_beamEvaluator = beamEvaluator;
+	
 	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
 		Initialize(*i, beamEvaluator);
 	if(!solutionFile.empty())
@@ -121,6 +126,7 @@ void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, N
 	}
 	if(_beamEvaluator != 0)
 	{
+		std::cout << "predwithbeam\n";
 		SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
 		Matrix2x2::ATimesB(temp, &parameters->beamValues[_channelCount*4], dest);
 		Matrix2x2::ATimesHermB(dest, temp, &parameters->beamValues[_channelCount*4]);

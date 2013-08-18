@@ -18,12 +18,14 @@
 
 TileBeam::TileBeam(const double *delays) :
 	_dipoleSize(0.278),
-	_dipoleSeparations(1.1),
+	_dipoleSeparations(1.100),
 	_delayStep(435.0e-12),
 	_zenithNorm(true)
 {
-	const double dipoleNorth[16] = {1.5,1.5,1.5,1.5,0.5,0.5,0.5,0.5,-0.5,-0.5,-0.5,-0.5,-1.5,-1.5,-1.5,-1.5};
-	const double dipoleEast[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
+	//const double dipoleNorth[16] = {1.5,1.5,1.5,1.5,0.5,0.5,0.5,0.5,-0.5,-0.5,-0.5,-0.5,-1.5,-1.5,-1.5,-1.5};
+	//const double dipoleEast[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
+	const double dipoleEast[16] = {-1.5,-1.5,-1.5,-1.5,-0.5,-0.5,-0.5,-0.5,0.5,0.5,0.5,0.5,1.5,1.5,1.5,1.5};
+	const double dipoleNorth[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
 	const double dipoleHeight[16] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
 	for(size_t i=0;i!=16;++i)
 	{
@@ -173,11 +175,6 @@ void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection
 
 void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haZenith, double decZenith, std::complex<double> *gain)
 {
-	gain[0] = 0.0;
-	gain[1] = 0.0;
-	gain[2] = 0.0;
-	gain[3] = 0.0;
-	
 	// direction cosines (relative to zenith) for direction az,za
 	double sinZenith, cosZenith, sinAzimuth, cosAzimuth;
 	sincos(zenithAngle, &sinZenith, &cosZenith);

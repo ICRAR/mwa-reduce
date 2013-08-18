@@ -307,6 +307,7 @@ int main(int argc, char *argv[])
 						std::cout << ' ' << beamSum[p]/partChannelCount;
 					std::cout << '\n';
 				}
+				
 				predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, partBandData.LowestFrequency(), partBandData.HighestFrequency(), partChannelCount, true));
 				if(applyBeam)
 					predicter->Initialize(*model, rhsSolutionFile, &*beamEvaluator);
