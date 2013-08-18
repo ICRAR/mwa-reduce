@@ -1,5 +1,6 @@
 #include "banddata.h"
 #include "model.h"
+#include "imagecoordinates.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -13,7 +14,7 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] <model> [<more models>..]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] <model> [<more models>..]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -23,11 +24,22 @@ int main(int argc, char *argv[])
 	long double scale = 1.0, threshold = 0.0, delNoisySourceLimit = 0.0;
 	size_t newChannelCount = 0;
 	std::string outputModel;
+	bool nearFilter = false;
+	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	while(argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
 		{
 			outputPlot = true;
+		} else if(strcmp(argv[argi], "-near") == 0)
+		{
+			++argi;
+			nearFilterRA = RaDecCoord::ParseRA(argv[argi]);
+			++argi;
+			nearFilterDec = RaDecCoord::ParseDec(argv[argi]);
+			++argi;
+			nearFilterDist = atof(argv[argi]);
+			nearFilter = true;
 		} else if(strcmp(argv[argi], "-m") == 0)
 		{
 			++argi;
@@ -124,6 +136,17 @@ int main(int argc, char *argv[])
 		}
 		for(std::set<size_t>::reverse_iterator i=sourcesToDelete.rbegin(); i!=sourcesToDelete.rend(); ++i)
 			model.RemoveSource(*i);
+	}
+	
+	if(nearFilter)
+	{
+		for(size_t i = model.SourceCount(); i>0; --i)
+		{
+			ModelSource& source = model.Source(i-1);
+			double dist = ImageCoordinates::AngularDistance(source.PosRA(), source.PosDec(), nearFilterRA, nearFilterDec);
+			if(dist > nearFilterDist)
+				model.RemoveSource(i-1);
+		}
 	}
 	
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
