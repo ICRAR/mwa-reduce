@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 			++argi;
 			nearFilterDec = RaDecCoord::ParseDec(argv[argi]);
 			++argi;
-			nearFilterDist = atof(argv[argi]);
+			nearFilterDist = atof(argv[argi]) * (M_PI/180.0);
 			nearFilter = true;
 		} else if(strcmp(argv[argi], "-m") == 0)
 		{
