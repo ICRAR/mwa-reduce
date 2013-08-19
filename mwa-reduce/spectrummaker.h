@@ -74,14 +74,14 @@ private:
 	
 	struct Measurement
 	{
-		long double flux[4];
-		long unsigned count[4];
+		double flux[4];
+		double weights[4];
 		
 		Measurement() {
 			for(size_t p=0; p!=4; ++p)
 			{
 				flux[p] = 0.0;
-				count[p] = 0;
+				weights[p] = 0;
 			}
 		}
 		
@@ -89,12 +89,12 @@ private:
 		{
 			for(size_t p=0; p!=4; ++p)
 			{
-				if(count[p] != 0)
-					flux[p] /= count[p];
+				if(weights[p] != 0)
+					flux[p] /= weights[p];
 				else
 					flux[p] = std::numeric_limits<double>::quiet_NaN();
 				
-				count[p] = 0;
+				weights[p] = 0;
 			}
 		}
 	};
@@ -115,7 +115,7 @@ private:
 			}
 			void Clear() { _measurements.clear(); }
 			
-			void AddMeasurement(double frequency, const long double *values, const long unsigned *counts)
+			void AddMeasurement(double frequency, const long double *values, const long double *weights)
 			{
 				iterator i = _measurements.find(frequency);
 				if(i == end())
@@ -124,7 +124,7 @@ private:
 					for(size_t p=0; p!=4; ++p)
 					{
 						m.flux[p] = values[p];
-						m.count[p] = counts[p];
+						m.weights[p] = weights[p];
 					}
 					_measurements.insert(std::pair<double, Measurement>(frequency, m));
 				}
@@ -132,7 +132,7 @@ private:
 					for(size_t p=0; p!=4; ++p)
 					{
 						i->second.flux[p] += values[p];
-						i->second.count[p] += counts[p];
+						i->second.weights[p] += weights[p];
 					}
 				}
 			}
