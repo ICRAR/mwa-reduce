@@ -20,18 +20,27 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum [-s <model to subtract> <solutions>] <model for positions> <output-model> <ms> [<ms2>...]\n"
+		std::cout << "Usage: spectrum [-s <model to subtract>] [-g <solutions>] <model for positions> <output-model> <ms> [<ms2>...]\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
 		const char *subtractionModelFile = 0, *solutionsFile = 0;
-		if(strcmp(argv[argi], "-s") == 0)
+		while(argv[argi][0] == '-')
 		{
-			++argi;
-			subtractionModelFile = argv[argi];
-			++argi;
-			solutionsFile = argv[argi];
-			++argi;
+			const std::string param = &argv[argi][1];
+			if(param == "s")
+			{
+				++argi;
+				subtractionModelFile = argv[argi];
+				++argi;
+			}
+			else if(param == "g")
+			{
+				++argi;
+				solutionsFile = argv[argi];
+				++argi;
+			}
+			else throw std::runtime_error("Invalid parameter");
 		}
 		
 		Model model(argv[argi]);

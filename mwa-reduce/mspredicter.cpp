@@ -37,7 +37,10 @@ void MSPredicter::Start(bool reportSources)
 	long double phaseCentreDec = *refDirIter;
 	
 	_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
-	_predicter->Initialize(_model, _solutionFile, &_beamEvaluator);
+	if(_applyBeam)
+		_predicter->Initialize(_model, _solutionFile, &_beamEvaluator);
+	else
+		_predicter->Initialize(_model, _solutionFile);
 	if(reportSources)
 		_predicter->ReportSources(_model);
 	

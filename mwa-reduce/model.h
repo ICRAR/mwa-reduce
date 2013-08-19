@@ -96,6 +96,16 @@ class Model
 				}
 			}
 		}
+		
+		void CombineMeasurements(const Model& model)
+		{
+			if(Empty())
+				(*this) = model;
+			else {
+				for(const_iterator i = model.begin(); i!=model.end(); ++i)
+					combineMeasurements(*i);
+			}
+		}
 	private:
 		enum PolarizationType _polarizationType;
 		std::vector<ModelSource> _sources;
@@ -103,7 +113,8 @@ class Model
 		static bool isCommentSymbol(char c) { return c=='#'; }
 		static bool isDelimiter(char c) { return c==' ' || c=='\t' || c=='\r' || c=='\n';	}
 		void add(const ModelSource& source);
-		void addOptimized(const ModelSource &source);
+		void addOptimized(const ModelSource& source);
+		void combineMeasurements(const ModelSource& source);
 };
 
 #endif

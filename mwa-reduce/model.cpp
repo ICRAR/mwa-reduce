@@ -62,6 +62,19 @@ void Model::addOptimized(const ModelSource& source)
 	_sources.push_back(source);
 }
 
+void Model::combineMeasurements(const ModelSource& source)
+{
+	for(iterator i = begin(); i!=end(); ++i)
+	{
+		if(source.PosDec() == i->PosDec() && source.PosRA() == i->PosRA())
+		{
+			i->SED().CombineMeasurements(source.SED());
+			return;
+		}
+	}
+	throw std::runtime_error("Combining measurements while not same sources were measured!");
+}
+
 void Model::Save(const char* filename)
 {
 	std::ofstream file(filename);

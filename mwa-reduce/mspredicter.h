@@ -30,6 +30,7 @@ public:
 	explicit MSPredicter(casa::MeasurementSet &ms) :
 		_ms(ms),
 		_beamEvaluator(ms),
+		_applyBeam(true),
 		_model(),
 		_laneSize(64),
 		_workLane(_laneSize),
@@ -37,9 +38,10 @@ public:
 		_availableBufferLane(_laneSize)
 	{ }
 	
-	MSPredicter(casa::MeasurementSet &ms, const Model &model, const std::string solutionFile) :
+	MSPredicter(casa::MeasurementSet &ms, const Model &model, const std::string solutionFile = "") :
 		_ms(ms),
 		_beamEvaluator(ms),
+		_applyBeam(true),
 		_model(model),
 		_laneSize(64),
 		_workLane(_laneSize),
@@ -52,16 +54,18 @@ public:
 	
 	void Start(bool reportSources = false);
 	
-	bool GetNextRow(RowData &data)
+	bool GetNextRow(RowData& data)
 	{
 		return _outputLane.read(data);
 	}
-	void FinishRow(RowData &data)
+	void FinishRow(RowData& data)
 	{
 		_availableBufferLane.write(data);
 	}
 	
 	boost::mutex &IOMutex() { return _mutex; }
+	
+	void SetApplyBeam(bool applyBeam) { _applyBeam = applyBeam; }
 private:
 	void ReadThreadFunc();
 	void PredictThreadFunc();
@@ -70,6 +74,7 @@ private:
 	casa::MeasurementSet &_ms;
 	BeamEvaluator _beamEvaluator;
 	size_t _channelCount;
+	bool _applyBeam;
 	
 	Model _model;
 	boost::mutex _mutex;

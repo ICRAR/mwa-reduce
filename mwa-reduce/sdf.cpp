@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] <model> [<more models>..]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 	std::string outputModel;
 	bool nearFilter = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
+	enum { AddFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
 	while(argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
@@ -92,15 +93,29 @@ int main(int argc, char *argv[])
 		} else if(strcmp(argv[argi], "-o") == 0)
 		{
 			optimize = true;
+		} else if(strcmp(argv[argi], "-combine-diff-meas") == 0)
+		{
+			combineStrategy = DifferentFrequencies;
 		} else {
-			throw std::runtime_error("Unknown option given");
+			throw std::runtime_error(std::string("Unknown option given: ") + argv[argi]);
 		}
 		++argi;
 	}
 	Model model;
-	for(int modelIndex=argi; modelIndex!=argc; ++modelIndex)
+	switch(combineStrategy)
 	{
-		model += Model(argv[modelIndex]);
+		case AddFluxes:
+			for(int modelIndex=argi; modelIndex!=argc; ++modelIndex)
+			{
+				model += Model(argv[modelIndex]);
+			}
+			break;
+		case DifferentFrequencies:
+			for(int modelIndex=argi; modelIndex!=argc; ++modelIndex)
+			{
+				model.CombineMeasurements(Model(argv[modelIndex]));
+			}
+			break;
 	}
 	
 	if(optimize)
