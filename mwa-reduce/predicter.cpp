@@ -4,11 +4,10 @@
 #include "beamevaluator.h"
 #include "solutionfile.h"
 
-void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
+void Predicter::initialize(ModelSource& source)
 {
-	_beamEvaluator = beamEvaluator;
-	
 	SourceParameters *parameters = new SourceParameters();
+	source.SetUserData(parameters);
 	NumType l, m;
 	ImageCoordinates::RaDecToLM<NumType>(source.PosRA(), source.PosDec(), _ra0, _dec0, l, m);
 	parameters->l = l;
@@ -22,15 +21,12 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 			parameters->brightness[ch*4+p] =
 				source.SED().FluxAtChannel(ch, _channelCount, _startFrequency, _endFrequency, p);
 		}
-		if(beamEvaluator != 0)
-		{
-			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
-			beamEvaluator->EvaluateAbsToApparentGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
-		}
-		else {
-			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
-			parameters->beamValues[ch*4+2] = 0.0; parameters->beamValues[ch*4+3] = 1.0;
-		}
+	}
+
+	updateBeam(source);
+	
+	for(size_t ch=0;ch!=_channelCount;++ch)
+	{
 		CNumType temp[4], brightness[4];
 		brightness[0] = parameters->brightness[ch*4+0]; brightness[1] = parameters->brightness[ch*4+2];
 		brightness[2] = parameters->brightness[ch*4+1]; brightness[3] = parameters->brightness[ch*4+3];
@@ -38,8 +34,12 @@ void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 		Matrix2x2::PlusATimesHermB(_totalFlux, temp, &parameters->beamValues[ch*4]);
 	}
 	parameters->lmsqrt = sqrt(1.0 - l*l - m*m);
-	
-	source.SetUserData(parameters);
+}
+
+void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
+{
+	_beamEvaluator = beamEvaluator;
+	initialize(source);
 }
 
 void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEvaluator *beamEvaluator)
@@ -47,9 +47,32 @@ void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEv
 	_beamEvaluator = beamEvaluator;
 	
 	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
-		Initialize(*i, beamEvaluator);
+		initialize(*i);
 	if(!solutionFile.empty())
 		readSolutions(solutionFile);
+}
+
+void Predicter::updateBeam(ModelSource& source)
+{
+	SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
+	for(size_t ch=0;ch!=_channelCount;++ch)
+	{
+		if(_beamEvaluator != 0)
+		{
+			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
+			_beamEvaluator->EvaluateAbsToApparentGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
+		}
+		else {
+			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
+			parameters->beamValues[ch*4+2] = 0.0; parameters->beamValues[ch*4+3] = 1.0;
+		}
+	}
+}
+
+void Predicter::UpdateBeam(Model& model)
+{
+	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
+		updateBeam(*i);
 }
 
 void Predicter::ReportSources(Model& model)

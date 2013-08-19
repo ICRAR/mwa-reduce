@@ -1,5 +1,8 @@
 #include "mspredicter.h"
 
+#include <measures/Measures/MEpoch.h>
+#include <measures/TableMeasures/ScalarMeasColumn.h>
+
 MSPredicter::~MSPredicter()
 {
 	if(_readThread != 0)
@@ -58,21 +61,24 @@ void MSPredicter::Start(bool reportSources)
 	}
 
 	// Start all threads
-	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-	if(_model.SourceCount() == 0)
-		cpuCount = 1;
-	for(size_t i=0; i!=cpuCount; ++i)
-		_workThreadGroup.add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
+	_workThreadGroup.reset(new boost::thread_group());
 	_readThread.reset(new boost::thread(&MSPredicter::ReadThreadFunc, this));
 }
 	
 void MSPredicter::ReadThreadFunc()
 {
+	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	if(_model.SourceCount() == 0)
+		cpuCount = 1;
+	for(size_t i=0; i!=cpuCount; ++i)
+		_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
+	
 	boost::mutex::scoped_lock lock(_mutex);
 
 	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
+	casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
 	
 	RowData rowData;
 
@@ -81,6 +87,7 @@ void MSPredicter::ReadThreadFunc()
 		size_t
 			a1 = ant1Column(rowIndex),
 			a2 = ant2Column(rowIndex);
+		casa::MEpoch time = timeColumn(rowIndex);
 		if(a1 != a2)
 		{
 			casa::Array<double> uvwArray = uvwColumn(rowIndex);
@@ -89,6 +96,20 @@ void MSPredicter::ReadThreadFunc()
 			double v = *uvwI; ++uvwI;
 			double w = *uvwI;
 			lock.unlock();
+			
+			if(_beamEvaluator.Time().getValue() != time.getValue())
+			{
+				// Stop all threads, then update beam values, then restart threads.
+				_workLane.write_end();
+				_workThreadGroup->join_all();
+				
+				_workLane.clear();
+				_beamEvaluator.SetTime(time);
+				_predicter->UpdateBeam(_model);
+				_workThreadGroup.reset(new boost::thread_group());
+				for(size_t i=0; i!=cpuCount; ++i)
+					_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
+			}
 			
 			_availableBufferLane.read(rowData);
 			rowData.u = u;
@@ -105,7 +126,8 @@ void MSPredicter::ReadThreadFunc()
 	
 	lock.unlock();
 	_workLane.write_end();
-	_workThreadGroup.join_all();
+	std::cout << "Joining all.\n";
+	_workThreadGroup->join_all();
 	_outputLane.write_end();
 }
 

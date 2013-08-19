@@ -325,6 +325,7 @@ int main(int argc, char *argv[])
 			while(predicter->GetNextRow(rowData))
 			{
 				size_t rowIndex = rowData.rowIndex;
+				boost::mutex::scoped_lock lock(predicter->IOMutex());
 				if(timeColumn(rowIndex) != time)
 				{
 					++timeIndex;
@@ -333,9 +334,11 @@ int main(int argc, char *argv[])
 				}
 				// Cross correlation?
 				size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
-				if(antenna1 != antenna2)
-			  {
-					boost::mutex::scoped_lock lock(predicter->IOMutex());
+				if(antenna1 == antenna2)
+				{
+					lock.unlock();
+				}
+				else {
 					dataColumn.get(rowIndex, data);
 					weightColumn.get(rowIndex, weights);
 					flagColumn.get(rowIndex, flags);

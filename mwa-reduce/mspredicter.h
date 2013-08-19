@@ -83,7 +83,7 @@ private:
 	lane<RowData> _workLane, _outputLane, _availableBufferLane;
 	
 	std::unique_ptr<boost::thread> _readThread;
-	boost::thread_group _workThreadGroup;
+	std::unique_ptr<boost::thread_group> _workThreadGroup;
 	std::unique_ptr<Predicter> _predicter;
 	std::vector<std::complex<double>*> _buffers;
 	std::unique_ptr<BandData> _bandData;
