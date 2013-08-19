@@ -4,6 +4,7 @@
 #include "solutionfile.h"
 #include "beamevaluator.h"
 #include "matrix2x2.h"
+#include "mspredicter.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -197,13 +198,10 @@ int main(int argc, char *argv[])
 		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
-		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 		casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 		casa::ROArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 		casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 		casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-		casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 		std::unique_ptr<casa::ROArrayColumn<complex_t>> modelColumn;
 		
 		casa::IPosition dataShape = dataColumn.shape(0);
@@ -276,7 +274,7 @@ int main(int argc, char *argv[])
 				calMethods[ch]->SetOnlySolveDiag(onlyDiag);
 				calMethods[ch]->SetOnlySolveRotation(onlyRotation);
 			}
-			std::unique_ptr<Predicter> predicter;
+			std::unique_ptr<MSPredicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
 			std::vector<std::complex<double>> beamValues;
 			if(modelFile.empty()) {
@@ -309,15 +307,11 @@ int main(int argc, char *argv[])
 					std::cout << '\n';
 				}
 				
-				predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, partBandData.LowestFrequency(), partBandData.HighestFrequency(), partChannelCount, true));
-				if(applyBeam)
-					predicter->Initialize(*model, rhsSolutionFile, &*beamEvaluator);
-				else
-					predicter->Initialize(*model, rhsSolutionFile);
-				predicter->ReportSources(*model);
-				std::cout << "Reading data & predicting model... " << std::flush;
+				predicter.reset(new MSPredicter(ms, *model));
+				predicter->SetApplyBeam(applyBeam);
+				std::cout << "Reading data & predicting model...\n";
 			}
-		
+			
 			std::vector<std::complex<double> > modelValues(4 * channelCount);
 			casa::Array<complex_t> data(dataShape), modelData(dataShape);
 			casa::Array<float> weights(dataShape);
@@ -325,8 +319,12 @@ int main(int argc, char *argv[])
 			size_t timeIndex = 0;
 			time = timeColumn(0);
 			size_t selectedCount = 0, notSelected = 0;
-			for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
+			MSPredicter::RowData rowData;
+			
+			predicter->Start(true);
+			while(predicter->GetNextRow(rowData))
 			{
+				size_t rowIndex = rowData.rowIndex;
 				if(timeColumn(rowIndex) != time)
 				{
 					++timeIndex;
@@ -334,21 +332,24 @@ int main(int argc, char *argv[])
 					std::cout << '.' << std::flush;
 				}
 				// Cross correlation?
-				size_t antenna1 = ant1Column.get(rowIndex), antenna2 = ant2Column.get(rowIndex);
+				size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
 				if(antenna1 != antenna2)
 			  {
+					boost::mutex::scoped_lock lock(predicter->IOMutex());
 					dataColumn.get(rowIndex, data);
 					weightColumn.get(rowIndex, weights);
 					flagColumn.get(rowIndex, flags);
+					if(modelFile.empty())
+						modelColumn->get(rowIndex, modelData);
+					lock.unlock();
+					
 					std::complex<float> *dataPtr = data.cbegin();
 					float *weightsPtr = weights.cbegin();
 					bool *flagPtr = flags.cbegin();
 				
-					casa::Array<double> uvwArray = uvwColumn(rowIndex);
-					casa::Array<double>::const_iterator i = uvwArray.begin();
-					double u = *i; ++i;
-					double v = *i; ++i;
-					double w = *i;
+					double u = rowData.u;
+					double v = rowData.v;
+					double w = rowData.w;
 					
 					bool selected = true;
 					if(u*u + v*v + w*w < minUVW*minUVW)
@@ -360,7 +361,6 @@ int main(int argc, char *argv[])
 				
 					if(modelFile.empty())
 				  {
-						modelColumn->get(rowIndex, modelData);
 						std::complex<float> *modelDataPtr = modelData.cbegin();
 						for(size_t ch = 0; ch!=channelCount; ++ch)
 					  {
@@ -376,9 +376,9 @@ int main(int argc, char *argv[])
 					  {
 							double lambda = partBandData.ChannelWavelength(ch);
 							size_t chIndex = (ch + startChannel) * 4;
-							predicter->Predict4(&modelValues[chIndex], *model, u/lambda,  v/lambda, w/lambda, ch, antenna1, antenna2);
 							for(size_t p=0; p!=4; ++p)
 						  {
+								modelValues[chIndex+p] = rowData.modelData[chIndex+p];
 								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
 						  }
 						  if(beamOnSource)
@@ -396,6 +396,8 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
+				
+				predicter->FinishRow(rowData);
 			}
 			std::cout << "DONE (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected)\nCalibrating...\n";
 		

@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <limits>
+#include <stdexcept>
 #include "nlplfitter.h"
 
 class Measurement
@@ -129,17 +130,17 @@ class SpectralEnergyDistribution
 			AddMeasurement(fluxDensityBJy, frequencyBHz);
 		}
 		
-		SpectralEnergyDistribution(const SpectralEnergyDistribution &source)
+		SpectralEnergyDistribution(const SpectralEnergyDistribution& source)
 		: _measurements(source._measurements)
 		{
 		}
 		
-		void operator=(const SpectralEnergyDistribution &source)
+		void operator=(const SpectralEnergyDistribution& source)
 		{
 			_measurements = source._measurements;
 		}
 		
-		void operator+=(const SpectralEnergyDistribution &rhs)
+		void operator+=(const SpectralEnergyDistribution& rhs)
 		{
 			for(iterator i=begin(); i!=end(); ++i)
 			{
@@ -152,7 +153,19 @@ class SpectralEnergyDistribution
 			}
 		}
 		
-		void AddMeasurement(const Measurement &measurement)
+		void CombineMeasurements(const SpectralEnergyDistribution& other)
+		{
+			for(const_iterator i=other.begin(); i!=other.end(); ++i)
+			{
+				double freq = i->first;
+				if(_measurements.find(freq) != end())
+					throw std::runtime_error("Combining measurements for new frequencies, but frequencies overlap");
+				const Measurement& m = i->second;
+				AddMeasurement(m);
+			}
+		}
+		
+		void AddMeasurement(const Measurement& measurement)
 		{
 			_measurements.insert(std::pair<long double, Measurement>(measurement.FrequencyHz(), measurement));
 		}
