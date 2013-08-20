@@ -28,6 +28,14 @@ class lane : public boost::noncopyable
 			delete[] _buffer;
 		}
 		
+		void clear()
+		{
+			boost::mutex::scoped_lock lock(_mutex);
+			_write_position = 0;
+			_free_write_space = _capacity;
+			_status = status_normal;
+		}
+		
 		void write(const data_type &element)
 		{
 			write(&element, 1);
@@ -106,6 +114,8 @@ class lane : public boost::noncopyable
 			boost::mutex::scoped_lock lock(_mutex);
 			return _capacity - _free_write_space;
 		}
+		
+		bool empty() const { return size() == 0; }
 	private:
 		const size_t _capacity;
 		

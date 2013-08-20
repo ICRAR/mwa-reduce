@@ -83,6 +83,9 @@ class BeamEvaluator
 			pixelValues[2] = input[2].real(); pixelValues[3] = input[3].real();
 		}
 		
+		void SetTime(const casa::MEpoch& time) { _time = time; }
+		const casa::MEpoch& Time() { return _time; }
+		
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
 		casa::MPosition _ant1Pos;
