@@ -46,8 +46,9 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	casa::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	
-	std::vector<long double> measFlux(channelCount * _sources.size() * 4);
-	std::vector<unsigned long> measCount(channelCount * _sources.size() * 4);
+	std::vector<long double>
+		measFlux(channelCount * _sources.size() * 4),
+		measWeights(channelCount * _sources.size() * 4);
 	
 	MSPredicter modelPredicter(ms, _subtractedModel, solutionsFile);
 	
@@ -124,7 +125,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 				size_t thread = s % cpuCount;
 				ThreadTaskInfo task;
 				task.flux = &measFlux[s * channelCount * polarizationCount];
-				task.count = &measCount[s * channelCount * polarizationCount];
+				task.fluxWeights = &measWeights[s * channelCount * polarizationCount];
 				task.data = data;
 				task.flags = flags.cbegin();
 				task.u = rowData.u;
@@ -176,7 +177,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
 			double freq = bandData.ChannelFrequency(ch);
-			spectrum.AddMeasurement(freq, &measFlux[(s * channelCount + ch) * 4], &measCount[(s * channelCount + ch) * 4]);
+			spectrum.AddMeasurement(freq, &measFlux[(s * channelCount + ch) * 4], &measWeights[(s * channelCount + ch) * 4]);
 		}
 	}
 }
@@ -189,7 +190,7 @@ void SpectrumMaker::measureThreadFunc(const BandData* bandData, lane< SpectrumMa
 		std::complex<double>* dataPtr = taskInfo.data;
 		bool* flagPtr = taskInfo.flags;
 		long double* measFluxIter = taskInfo.flux;
-		long unsigned* measCountIter = taskInfo.count;
+		long double* measWeightIter = taskInfo.fluxWeights;
 		Predicter& predicter = *taskInfo.predicter;
 		double
 			u = taskInfo.u,
@@ -202,7 +203,10 @@ void SpectrumMaker::measureThreadFunc(const BandData* bandData, lane< SpectrumMa
 			double lambda = bandData->ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
 			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
-			for(size_t p=0; p!=polarizationCount; ++p)
+			std::complex<double> weight[4]; // TODO determine these
+			double visSample[4];
+			bool sampleGood = true;
+			for(size_t p=0; p!=4; ++p)
 			{
 				double 
 					real = dataPtr->real(),
@@ -210,14 +214,26 @@ void SpectrumMaker::measureThreadFunc(const BandData* bandData, lane< SpectrumMa
 				if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
 				{
 					// add real(data * conj(predicted))
-					(*measFluxIter) += real * predicted[0].real() + imag * predicted[0].imag();
-					(*measCountIter) ++;
+					visSample[p] = real * predicted[0].real() + imag * predicted[0].imag();
 				}
-				++measFluxIter;
-				++measCountIter;
+				else {
+					sampleGood = false;
+				}
 				++dataPtr;
 				++flagPtr;
 			}
+			
+			if(sampleGood)
+			{
+				std::complex<double> temp[4];
+				Matrix2x2::HermATimesB(temp, weight, visSample);
+				Matrix2x2::PlusATimesB(measFluxIter, temp, weight);
+				
+				Matrix2x2::PlusATimesHermB(measWeightIter, weight, weight);
+			}
+			
+			measFluxIter += 4;
+			measWeightIter += 4;
 		}
 	}
 }

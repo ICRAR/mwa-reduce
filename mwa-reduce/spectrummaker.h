@@ -15,7 +15,7 @@ private:
 	{
 		size_t sourceIndex;
 		long double *flux;
-		unsigned long *count;
+		long double *fluxWeights;
 		double u, v, w;
 		class Predicter *predicter;
 		std::complex<double>* data;
