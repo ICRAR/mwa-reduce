@@ -22,8 +22,6 @@ int main(int argc, char* argv[])
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 	
-	double time = timeColumn(0);
-	
 	casa::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	if(polarizationCount != 4)
@@ -33,16 +31,25 @@ int main(int argc, char* argv[])
 	casa::Array<bool> flagArray(dataShape);
 	casa::Array<float> weightArray(dataShape);
 	
+	double time = timeColumn(0);
+	size_t timeStepStartRow = 0;
+	
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
+		double thisTime = timeColumn(row);
+		if(thisTime != time)
+		{
+			// Subtract data
+			
+			time = thisTime;
+			timeStepStartRow = row+1;
+		}
+		
+		
 		dataColumn.get(row, dataArray);
 		flagColumn.get(row, flagArray);
 		weightColumn.get(row, weightArray);
 		
-		double thisTime = timeColumn(row);
-		if(thisTime != time)
-		{
-			time = thisTime;
-		}
+		// Push data per source into thread
 	}
 }
