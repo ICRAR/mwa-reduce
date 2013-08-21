@@ -14,6 +14,13 @@ public:
 	}
 	
 	template<typename T>
+	static void Add(std::complex<T>* dest, std::complex<T>* rhs)
+	{
+		for(size_t p=0; p!=4; ++p)
+			dest[p] += rhs[p];
+	}
+	
+	template<typename T>
 	static void ScalarMultiply(std::complex<T>* dest, T factor)
 	{
 		for(size_t p=0; p!=4; ++p)
