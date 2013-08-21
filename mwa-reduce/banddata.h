@@ -11,6 +11,10 @@
 class BandData
 {
 	public:
+		BandData() : _channelCount(0), _channelFrequencies(0)
+		{
+		}
+		
 		BandData(casa::MSSpectralWindow &spwTable)
 		{
 			size_t spwCount = spwTable.nrow();
@@ -36,6 +40,15 @@ class BandData
 			}
 		}
 		
+		BandData(const BandData& source) : _channelCount(source._channelCount)
+		{
+			_channelFrequencies = new double[_channelCount];
+			for(size_t index = 0; index != _channelCount; ++index)
+			{
+				_channelFrequencies[index] = source._channelFrequencies[index];
+			}
+		}
+		
 		BandData(const BandData &source, size_t startChannel, size_t endChannel)
 		{
 			_channelCount = endChannel - startChannel;
@@ -46,7 +59,22 @@ class BandData
 			{
 				_channelFrequencies[index] = source._channelFrequencies[index + startChannel];
 			}
-		}		
+		}
+		
+		~BandData()
+		{
+			delete[] _channelFrequencies;
+		}
+		
+		void operator=(const BandData& source)
+		{
+			_channelCount = source._channelCount;
+			_channelFrequencies = new double[_channelCount];
+			for(size_t index = 0; index != _channelCount; ++index)
+			{
+				_channelFrequencies[index] = source._channelFrequencies[index];
+			}
+		}
 		
 		size_t ChannelCount() const { return _channelCount; }
 		

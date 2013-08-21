@@ -6,6 +6,27 @@
 class Matrix2x2
 {
 public:
+	template<typename T>
+	static void Assign(std::complex<T>* dest, std::complex<T>* source)
+	{
+		for(size_t p=0; p!=4; ++p)
+			dest[p] = source[p];
+	}
+	
+	template<typename T>
+	static void ScalarMultiply(std::complex<T>* dest, T factor)
+	{
+		for(size_t p=0; p!=4; ++p)
+			dest[p] *= factor;
+	}
+	
+	template<typename T>
+	static void MultiplyAdd(std::complex<T>* dest, const std::complex<T>* rhs, T factor)
+	{
+		for(size_t p=0; p!=4; ++p)
+			dest[p] += rhs[p] * factor;
+	}
+	
 	template<typename ComplType, typename LHS_T, typename RHS_T>
 	static void ATimesB(std::complex<ComplType>* dest, const LHS_T* lhs, const RHS_T* rhs)
 	{

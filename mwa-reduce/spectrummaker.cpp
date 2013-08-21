@@ -15,7 +15,18 @@
 #include <tables/Tables/ArrayColumn.h>
 #include <tables/Tables/ScalarColumn.h>
 
+#include <measures/Measures/MEpoch.h>
+#include <measures/TableMeasures/ScalarMeasColumn.h>
+
 #include <limits>
+
+SpectrumMaker::SpectrumMaker()
+{
+}
+
+SpectrumMaker::~SpectrumMaker()
+{
+}
 
 void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 {
@@ -24,8 +35,8 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	/**
 		* Read some meta data from the measurement set
 		*/
-	BandData bandData(ms.spectralWindow());
-	size_t channelCount = bandData.ChannelCount();
+	_bandData = BandData(ms.spectralWindow());
+	size_t channelCount = _bandData.ChannelCount();
 	
 	casa::MSField fieldTable = ms.field();
 	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
@@ -38,15 +49,15 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
-	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<casa::Complex> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
+	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 	
 	casa::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	
-	std::vector<long double>
+	std::vector<std::complex<double>>
 		measFlux(channelCount * _sources.size() * 4),
 		measWeights(channelCount * _sources.size() * 4);
 	
@@ -57,12 +68,15 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 			sourceIter!=_sources.end(); ++sourceIter)
 	{
 		predicters.push_back(std::unique_ptr<Predicter>(
-			new Predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount)));
+			new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount)));
 		(*predicters.rbegin())->Initialize(*sourceIter);
 	}
 	
-	const size_t BUFFER_COUNT = 16;
+	_beamWeights[0].resize(_sources.size() * channelCount * 4);
+	_beamWeights[1].resize(_sources.size() * channelCount * 4);
+	_beamEvaluator.reset(new BeamEvaluator(ms));
 	
+	const size_t BUFFER_COUNT = 16;
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	boost::thread_group threadGroup;
 	std::vector<lane<ThreadTaskInfo>*> taskLanes(cpuCount);
@@ -73,14 +87,16 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		// overwritting the n-1 th buffer while the popping thread
 		// can just get the n-1 th buffer out.
 		taskLanes[i] = new lane<ThreadTaskInfo>(BUFFER_COUNT-2);
-		threadGroup.add_thread(new boost::thread(&SpectrumMaker::measureThreadFunc, this, &bandData, &*taskLanes[i], channelCount, polarizationCount));
+		threadGroup.add_thread(new boost::thread(&SpectrumMaker::measureThreadFunc, this, &*taskLanes[i]));
 	}
 	
 	std::vector<std::complex<double>*> dataBuffers(BUFFER_COUNT);
+	std::vector<casa::Array<float>*> weightBuffers(BUFFER_COUNT);
 	std::vector<casa::Array<bool>*> flagBuffers(BUFFER_COUNT);
 	for(size_t i=0; i!=BUFFER_COUNT; ++i)
 	{
 		dataBuffers[i] = new std::complex<double>[channelCount * polarizationCount];
+		weightBuffers[i] = new casa::Array<float>(dataShape);
 		flagBuffers[i] = new casa::Array<bool>(dataShape);
 	}
 	casa::Array<casa::Complex> dataArray(dataShape);
@@ -92,6 +108,9 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		*/
 	size_t bufferIndex = 0;
 	MSPredicter::RowData rowData;
+	size_t beamWeightIndex = 0;
+	recalculateBeamWeights(beamWeightIndex);
+	
 	ProgressBar progress(std::string("Measure spectra in ") + filename);
 	while(modelPredicter.GetNextRow(rowData))
 	{
@@ -101,20 +120,28 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		progress.SetProgress(rowIndex, ms.nrow());
 		
 		// Cross correlation?
-		size_t
-			a1 = ant1Column.get(rowIndex),
-			a2 = ant2Column.get(rowIndex);
-		if(a1 != a2)
+		if(rowData.a1 != rowData.a2)
 		{
 			std::complex<double> *data = dataBuffers[bufferIndex];
+			casa::Array<float> &dataWeights = *weightBuffers[bufferIndex];
 			casa::Array<bool> &flags = *flagBuffers[bufferIndex];
 			
 			dataColumn.get(rowIndex, dataArray);
+			weightColumn.get(rowIndex, dataWeights);
 			flagColumn.get(rowIndex, flags);
+			casa::MEpoch time = timeColumn(rowIndex);
 			lock.unlock();
 			
+			if(time.getValue() != _beamEvaluator->Time().getValue())
+			{
+				std::cout << 'B' << std::flush;
+				_beamEvaluator->SetTime(time);
+				beamWeightIndex = (beamWeightIndex+1)%2;
+				recalculateBeamWeights(beamWeightIndex);
+			}
+			
 			casa::Array<casa::Complex>::const_contiter dataArrayIter = dataArray.cbegin();
-			for(size_t i=0; i!=polarizationCount*channelCount; ++i)
+			for(size_t i=0; i!=4*channelCount; ++i)
 			{
 				data[i] = std::complex<double>(dataArrayIter->real(), dataArrayIter->imag()) - rowData.modelData[i];
 				++dataArrayIter;
@@ -124,17 +151,19 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 			{
 				size_t thread = s % cpuCount;
 				ThreadTaskInfo task;
-				task.flux = &measFlux[s * channelCount * polarizationCount];
-				task.fluxWeights = &measWeights[s * channelCount * polarizationCount];
+				task.flux = &measFlux[s * channelCount * 4];
+				task.fluxWeights = &measWeights[s * channelCount * 4];
 				task.data = data;
+				task.dataWeights = dataWeights.cbegin();
 				task.flags = flags.cbegin();
 				task.u = rowData.u;
 				task.v = rowData.v;
 				task.w = rowData.w;
+				task.beamWeights = &_beamWeights[beamWeightIndex][s * channelCount * 4];
 				task.sourceIndex = s;
 				task.predicter = &*predicters[s];
-				task.a1 = a1;
-				task.a2 = a2;
+				task.a1 = rowData.a1;
+				task.a2 = rowData.a2;
 				taskLanes[thread]->write(task);
 			}
 			
@@ -154,21 +183,11 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	for(size_t i=0; i!=BUFFER_COUNT; ++i)
 	{
 		delete[] dataBuffers[i];
+		delete weightBuffers[i];
 		delete flagBuffers[i];
 	}
 	
 	progress.SetProgress(ms.nrow(), ms.nrow());
-	
-	// Apply beam
-	BeamEvaluator beamEval(ms);
-	for(size_t s=0; s!=_sources.size(); ++s)
-	{
-		for(size_t ch=0; ch!=channelCount; ++ch)
-		{
-			const ModelSource& src = _sources[s];
-			beamEval.ApparentToAbs(src.PosRA(), src.PosDec(), bandData.ChannelFrequency(ch), &measFlux[(s * channelCount + ch) * 4]);
-		}
-	}
 	
 	// Add to the total values
 	for(size_t s=0; s!=_sources.size(); ++s)
@@ -176,21 +195,66 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		Spectrum &spectrum = _spectrumPerSource[s];
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			double freq = bandData.ChannelFrequency(ch);
+			double freq = _bandData.ChannelFrequency(ch);
 			spectrum.AddMeasurement(freq, &measFlux[(s * channelCount + ch) * 4], &measWeights[(s * channelCount + ch) * 4]);
 		}
 	}
 }
 
-void SpectrumMaker::measureThreadFunc(const BandData* bandData, lane< SpectrumMaker::ThreadTaskInfo >* taskLane, size_t channelCount, size_t polarizationCount)
+void SpectrumMaker::recalculateBeamWeights(size_t beamWeightIndex)
 {
+	/*lane<BeamEvalTaskInfo> taskLane(_sources.size());
+	
+	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	boost::thread_group threadGroup;
+	for(size_t i=0; i!=cpuCount; ++i)
+		threadGroup.add_thread(new boost::thread(&SpectrumMaker::recalculateBeamWeightsThreadFunc, this, &taskLane));*/
+	
+	std::complex<double>* beamWeightPtr = &_beamWeights[beamWeightIndex][0];
+	for(size_t s=0; s!=_sources.size(); ++s)
+	{
+		BeamEvalTaskInfo info;
+		info.source = &_sources[s];
+		info.weights = beamWeightPtr;
+		beamWeightPtr += _bandData.ChannelCount() * 4;
+		//taskLane.write(info);
+		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+		{
+			_beamEvaluator->EvaluateAbsToApparentGain(info.source->PosRA(), info.source->PosDec(), _bandData.ChannelFrequency(ch), info.weights);
+			beamWeightPtr += 4;
+		}
+	}
+	//taskLane.write_end();
+	//threadGroup.join_all();
+}
+
+void SpectrumMaker::recalculateBeamWeightsThreadFunc(lane<BeamEvalTaskInfo> *taskLane)
+{
+	BeamEvalTaskInfo info;
+	while(taskLane->read(info))
+	{
+		std::complex<double>* weights = info.weights;
+		const ModelSource& src = *info.source;
+		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+		{
+			_beamEvaluator->EvaluateAbsToApparentGain(src.PosRA(), src.PosDec(), _bandData.ChannelFrequency(ch), weights);
+			weights += 4;
+		}
+	}
+}
+
+void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskLane)
+{
+	size_t channelCount = _bandData.ChannelCount();
 	ThreadTaskInfo taskInfo;
 	while(taskLane->read(taskInfo))
 	{
 		std::complex<double>* dataPtr = taskInfo.data;
+		float* weightPtr = taskInfo.dataWeights;
+		std::complex<double>* beamWeightPtr = taskInfo.beamWeights;
 		bool* flagPtr = taskInfo.flags;
-		long double* measFluxIter = taskInfo.flux;
-		long double* measWeightIter = taskInfo.fluxWeights;
+		std::complex<double>* measFluxIter = taskInfo.flux;
+		std::complex<double>* measWeightIter = taskInfo.fluxWeights;
 		Predicter& predicter = *taskInfo.predicter;
 		double
 			u = taskInfo.u,
@@ -200,12 +264,12 @@ void SpectrumMaker::measureThreadFunc(const BandData* bandData, lane< SpectrumMa
 		
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			double lambda = bandData->ChannelWavelength(ch);
+			double lambda = _bandData.ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
 			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
-			std::complex<double> weight[4]; // TODO determine these
 			double visSample[4];
 			bool sampleGood = true;
+			double weightScalar = 0.0;
 			for(size_t p=0; p!=4; ++p)
 			{
 				double 
@@ -213,23 +277,33 @@ void SpectrumMaker::measureThreadFunc(const BandData* bandData, lane< SpectrumMa
 					imag = dataPtr->imag();
 				if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
 				{
+					// TODO should this not actually be a conjugate transpose of predicted to not mess up XY/YX ?
 					// add real(data * conj(predicted))
 					visSample[p] = real * predicted[0].real() + imag * predicted[0].imag();
+					weightScalar += *weightPtr;
 				}
 				else {
 					sampleGood = false;
 				}
 				++dataPtr;
+				++weightPtr;
 				++flagPtr;
 			}
 			
 			if(sampleGood)
 			{
+				weightScalar = 0.25 * weightScalar;
+			
+				// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
+				// w = data weight, B = beam weight, V = vis
 				std::complex<double> temp[4];
-				Matrix2x2::HermATimesB(temp, weight, visSample);
-				Matrix2x2::PlusATimesB(measFluxIter, temp, weight);
+				Matrix2x2::HermATimesB(temp, beamWeightPtr, visSample);
+				Matrix2x2::ScalarMultiply(temp, weightScalar);
+				Matrix2x2::PlusATimesB(measFluxIter, temp, beamWeightPtr);
 				
-				Matrix2x2::PlusATimesHermB(measWeightIter, weight, weight);
+				// Calculate Weight += w B* B
+				Matrix2x2::HermATimesB(temp, beamWeightPtr, beamWeightPtr);
+				Matrix2x2::MultiplyAdd(measWeightIter, temp, weightScalar);
 			}
 			
 			measFluxIter += 4;

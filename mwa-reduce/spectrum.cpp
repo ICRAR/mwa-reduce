@@ -65,13 +65,13 @@ int main(int argc, char **argv)
 		for(size_t sourceIndex = 0; sourceIndex!=model.SourceCount(); ++sourceIndex)
 		{
 			SpectralEnergyDistribution sed;
-			std::map<double, long double> spectrum[4];
+			std::map<double, double> spectrum[4];
 			for(size_t p=0; p!=4; ++p)
 				spectrumMaker.FluxPerFrequency(spectrum[p], sourceIndex, p);
 			
-			std::map<double, long double>::const_iterator
+			std::map<double, double>::const_iterator
 				chIter1 = spectrum[1].begin(), chIter2 = spectrum[2].begin(), chIter3 = spectrum[3].begin();
-			for(std::map<double, long double>::const_iterator chIter0=spectrum[0].begin(); chIter0!=spectrum[0].end(); ++chIter0)
+			for(std::map<double, double>::const_iterator chIter0=spectrum[0].begin(); chIter0!=spectrum[0].end(); ++chIter0)
 			{
 				Measurement m;
 				m.SetFluxDensity(0, chIter0->second);

@@ -234,11 +234,19 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	if(_zenithNorm)
 		groundPlane /= 2.0 * sin(twoPiOverLambda * _dipoleSize);
 
+	double
+		sinDecAntennaZenith, cosDecAntennaZenith,
+		sinDec, cosDec,
+		sinHa, cosHa;
+	sincos(decAntennaZenith, &sinDecAntennaZenith, &cosDecAntennaZenith);
+	sincos(dec, &sinDec, &cosDec);
+	sincos(ha - haAntennaZenith, &sinHa, &cosHa);
+	
 	double rot[4];
-	rot[0] =  cos(decAntennaZenith)*cos(dec) + sin(decAntennaZenith)*sin(dec)*cos(ha - haAntennaZenith);
-	rot[1] =  sin(decAntennaZenith)*sin(ha - haAntennaZenith);
-	rot[2] = -sin(dec)*sin(ha - haAntennaZenith);
-	rot[3] =  cos(ha - haAntennaZenith);
+	rot[0] =  cosDecAntennaZenith*cosDec + sinDecAntennaZenith*sinDec*cosHa;
+	rot[1] =  sinDecAntennaZenith*sinHa;
+	rot[2] = -sinDec*sinHa;
+	rot[3] =  cosHa;
 	//std::cout << "rot[0]=" << rot[0] << " groundPlane=" << groundPlane << " arrayFactor=" << arrayFactor << '\n';
 	
 	arrayFactor *= groundPlane;
