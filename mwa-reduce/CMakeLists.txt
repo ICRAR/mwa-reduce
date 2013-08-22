@@ -136,11 +136,11 @@ target_link_libraries(tests ${CASA_LIBS})
 target_link_libraries(testbugcasams ${CASA_LIBS})
 target_link_libraries(wsimager ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
 
-if(NOT GSL_LIB_NOTFOUND AND NOT CBLAS_LIB_NOTFOUND)
+if(GSL_LIB AND CBLAS_LIB)
   add_definitions(-DHAVE_GSL)
   target_link_libraries(tests ${GSL_LIB} ${CBLAS_LIB})
   target_link_libraries(sdf ${GSL_LIB} ${CBLAS_LIB})
   target_link_libraries(simcompress ${GSL_LIB} ${CBLAS_LIB})
-endif(NOT GSL_LIB_NOTFOUND AND NOT CBLAS_LIB_NOTFOUND)
+endif(GSL_LIB AND CBLAS_LIB)
 
 target_link_libraries(aoimage ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
