@@ -247,10 +247,10 @@ void LayeredImager::AddData(const std::complex<float>* data, double uInM, double
  	const size_t
 		layerOffset = layerRangeStart(_curLayerRangeIndex),
 		layerRangeEnd = layerRangeStart(_curLayerRangeIndex+1);
-	for(size_t ch=0; ch!=_bandData->ChannelCount(); ++ch)
+	for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 	{
 		double
-			wavelength = _bandData->ChannelWavelength(ch),
+			wavelength = _bandData.ChannelWavelength(ch),
 			u = uInM / wavelength,
 			v = vInM / wavelength,
 			w = wInM / wavelength;
@@ -342,10 +342,10 @@ void LayeredImager::SampleData(std::complex<float>* data, double uInM, double vI
  	const size_t
 		layerOffset = layerRangeStart(_curLayerRangeIndex),
 		layerRangeEnd = layerRangeStart(_curLayerRangeIndex+1);
-	for(size_t ch=0; ch!=_bandData->ChannelCount(); ++ch)
+	for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 	{
 		double
-			wavelength = _bandData->ChannelWavelength(ch),
+			wavelength = _bandData.ChannelWavelength(ch),
 			u = uInM / wavelength,
 			v = vInM / wavelength,
 			w = wInM / wavelength;

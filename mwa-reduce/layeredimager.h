@@ -23,7 +23,7 @@ class LayeredImager
 		
 		void PrepareBand(const BandData &bandData)
 		{
-			_bandData = &bandData;
+			_bandData = bandData;
 		}
 		
 		size_t WToLayer(double w) const
@@ -107,7 +107,7 @@ class LayeredImager
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
-		const BandData *_bandData;
+		BandData _bandData;
 		
 		enum GridModeEnum _gridMode;
 		size_t _overSamplingFactor, _kernelSize;
