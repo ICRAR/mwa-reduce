@@ -191,7 +191,7 @@ void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage
 		{
 			CleanResult result;
 			resultLanes[i]->read(result);
-			if(result.peakLevel >= peak)
+			if(fabs(result.peakLevel) >= fabs(peak))
 			{
 				peak = result.peakLevel;
 				componentX = result.nextPeakX;

@@ -34,6 +34,8 @@ int main(int argc, char *argv[])
 			"\t-gain <gain>\n"
 			"\t   Cleaning gain: Ratio of peak that will be subtracted in each iteration\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
+			"\t-negative\n"
+			"\t   Allow negative components during cleaning\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
@@ -47,7 +49,7 @@ int main(int argc, char *argv[])
 	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
-	bool majorIterations = false;
+	bool majorIterations = false, allowNegative = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	
 	while(argi < argc && argv[argi][0] == '-')
@@ -104,6 +106,10 @@ int main(int argc, char *argv[])
 				polarization = InversionAlgorithm::YY;
 			else if(polStr == "stokesi")
 				polarization = InversionAlgorithm::StokesI;
+		}
+		else if(strcmp(param, "negative") == 0)
+		{
+			allowNegative = true;
 		}
 		else if(strcmp(param, "addmodel") == 0)
 		{
@@ -214,6 +220,7 @@ int main(int argc, char *argv[])
 	cleanAlgorithm.SetMaxNIter(nIter);
 	cleanAlgorithm.SetThreshold(threshold);
 	cleanAlgorithm.SetSubtractionGain(gain);
+	cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
 	
 	std::unique_ptr<AreaSet> cleanAreas;
 	if(!cleanAreasFilename.empty())
