@@ -4,6 +4,7 @@
 #include "fitswriter.h"
 #include "banddata.h"
 #include "matrix2x2.h"
+#include "numberlist.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -23,13 +24,16 @@ int main(int argc, char *argv[])
 {
 	if(argc < 2)
 	{
-		std::cout << "Syntax: beam [-allsky] [-proto <input fitsfile>] [-ms <measurementset>]\n";
+		std::cout << "Syntax: beam [-allsky] [-proto <input fitsfile>] [-ms <measurementset>] [-delays <0,0,..>\n";
 		return 0;
 	}
 	
 	int argi= 1;
 	const char *inpFitsname = 0;
 	const char *msName = 0;
+	double delays[16];
+	for(size_t i=0; i!=16; ++i)
+		delays[i] = 0.0;
 	while(argi<argc && argv[argi][0] == '-')
 	{
 		std::string param(&argv[argi][1]);
@@ -46,11 +50,22 @@ int main(int argc, char *argv[])
 		else if(param == "allsky")
 		{
 		}
+		else if(param == "delays")
+		{
+			++argi;
+			std::vector<int> list;
+			NumberList::ParseIntList(argv[argi], list);
+			if(list.size() != 16) {
+				std::cerr << "Need 16 delays\n";
+			  exit(1);
+			}
+			for(size_t i=0; i!=16; ++i)
+				delays[i] = list[i];
+		}
 		else throw std::runtime_error(std::string("Invalid param: ") + param);
 		++argi;
 	}
 	
-	double delays[16];
 	casa::MPosition arrayPos;
 	casa::MEpoch time;
 	double centralFrequency;
@@ -59,8 +74,6 @@ int main(int argc, char *argv[])
 	{
 		arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
 		time =casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
-		for(size_t i=0; i!=16; ++i)
-			delays[i] = 0.0;
 		centralFrequency = 150000000.0;
 	}
 	else {
