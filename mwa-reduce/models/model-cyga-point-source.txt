@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "CygA"
+  component {
+    type point
+    position 19h59m28.3s +40d44m02s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 17205.0 0 0 17205.0
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 8700.0 0 0 8700.0
+    }
+  }
+}
+
