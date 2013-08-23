@@ -42,6 +42,7 @@ class SpectrumSubtractor
 		~SpectrumSubtractor();
 		
 		void Perform();
+		void SetDataColumn(const std::string &dataColumn) { _dataColumn = dataColumn; }
 	private:
 		void initMeasureThreadData();
 		void initPredictors();
@@ -75,6 +76,7 @@ class SpectrumSubtractor
 		lane<SubtractThreadInfo> _subtractAvailableBufferLane;
 		
 		static const size_t BUFFER_COUNT;
+		std::string _dataColumn;
 };
 
 #endif

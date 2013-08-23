@@ -4,14 +4,28 @@
 
 int main(int argc, char* argv[])
 {
-	if(argc != 3)
+	if(argc < 3)
 	{
-		std::cout << "Syntax: subtrspectrum <model> <ms>\nDetermines spectrum for each source in the model at each time step,\nand subtracts it from the measurement set.";
+		std::cout << "Syntax: subtrspectrum [-datacolumn <column>] <model> <ms>\nDetermines spectrum for each source in the model at each time step,\nand subtracts it from the measurement set.";
 		return -1;
 	}
-	
-	Model model(argv[1]);
-	casa::MeasurementSet ms(argv[2], casa::MeasurementSet::Update);
+	int argi = 1;
+	std::string dataColumn = "DATA";
+	while(argv[argi][0] == '-')
+	{
+		std::string param(&argv[argi][1]);
+		if(param == "datacolumn")
+		{
+			++argi;
+			dataColumn = argv[argi];
+		}
+		else
+			throw std::runtime_error(std::string("Bad param ") + param);
+		++argi;
+	}
+	Model model(argv[argi]);
+	casa::MeasurementSet ms(argv[argi+1], casa::MeasurementSet::Update);
 	SpectrumSubtractor subtractor(ms, model);
+	subtractor.SetDataColumn(dataColumn);
 	subtractor.Perform();
 }

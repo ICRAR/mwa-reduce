@@ -24,7 +24,7 @@ SpectrumSubtractor::~SpectrumSubtractor()
 
 void SpectrumSubtractor::Perform()
 {
-	casa::ROArrayColumn<casa::Complex> dataColumn(_ms, _ms.columnName(casa::MSMainEnums::DATA));
+	casa::ROArrayColumn<casa::Complex> dataColumn(_ms, _dataColumn);
 	casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
@@ -241,7 +241,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 	}
 	std::cout << "Flux: " << (2.0*totalFlux/count) << ',' << count << '\n';
 	
-	casa::ArrayColumn<casa::Complex> dataColumn(_ms, _ms.columnName(casa::MSMainEnums::DATA));
+	casa::ArrayColumn<casa::Complex> dataColumn(_ms, _dataColumn);
 	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
