@@ -8,7 +8,7 @@
 #include "beamevaluator.h"
 #include "banddata.h"
 
-BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms)
+BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms, bool reportDelays)
 {
 	/**
 		* Read some meta data from the measurement set
@@ -33,14 +33,19 @@ BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms)
 	casa::Array<int> delaysArr = delaysCol(0);
 	casa::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
 	double delays[16];
-	std::cout << "Delays: [";
+	if(reportDelays)
+		std::cout << "Delays: [";
 	for(int i=0; i!=16; ++i)
 	{
 		delays[i] = delaysArrPtr[i];
-		std::cout << delays[i];
-		if(i != 15) std::cout << ',';
+		if(reportDelays)
+		{
+			std::cout << delays[i];
+			if(i != 15) std::cout << ',';
+		}
 	}
-	std::cout << "]\n";
+	if(reportDelays)
+		std::cout << "]\n";
 	_tileBeam.reset(new TileBeam(delays));
 }
 

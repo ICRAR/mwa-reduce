@@ -13,7 +13,7 @@
 class BeamEvaluator
 {
 	public:
-		BeamEvaluator(casa::MeasurementSet &ms);
+		BeamEvaluator(casa::MeasurementSet& ms, bool reportDelays = true);
 		
 		void EvaluateApparentToAbsGain(double ra, double dec, std::complex<double> *gains)
 		{

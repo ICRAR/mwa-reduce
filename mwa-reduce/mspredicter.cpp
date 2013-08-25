@@ -82,7 +82,7 @@ void MSPredicter::ReadThreadFunc()
 	
 	RowData rowData;
 
-	for(size_t rowIndex=0; rowIndex!=_ms.nrow(); ++rowIndex)
+	for(size_t rowIndex=_startRow; rowIndex!=_endRow; ++rowIndex)
 	{
 		size_t
 			a1 = ant1Column(rowIndex),
@@ -126,7 +126,6 @@ void MSPredicter::ReadThreadFunc()
 	
 	lock.unlock();
 	_workLane.write_end();
-	std::cout << "Joining all.\n";
 	_workThreadGroup->join_all();
 	_outputLane.write_end();
 }

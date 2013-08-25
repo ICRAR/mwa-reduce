@@ -29,25 +29,29 @@ public:
 	
 	explicit MSPredicter(casa::MeasurementSet &ms) :
 		_ms(ms),
-		_beamEvaluator(ms),
+		_beamEvaluator(ms, false),
 		_applyBeam(true),
 		_model(),
 		_laneSize(64),
 		_workLane(_laneSize),
 		_outputLane(_laneSize),
-		_availableBufferLane(_laneSize)
+		_availableBufferLane(_laneSize),
+		_startRow(0),
+		_endRow(ms.nrow())
 	{ }
 	
 	MSPredicter(casa::MeasurementSet &ms, const Model &model, const std::string solutionFile = "") :
 		_ms(ms),
-		_beamEvaluator(ms),
+		_beamEvaluator(ms, false),
 		_applyBeam(true),
 		_model(model),
 		_laneSize(64),
 		_workLane(_laneSize),
 		_outputLane(_laneSize),
 		_availableBufferLane(_laneSize),
-		_solutionFile(solutionFile)
+		_solutionFile(solutionFile),
+		_startRow(0),
+		_endRow(ms.nrow())
 	{ }
 	
 	~MSPredicter();
@@ -66,6 +70,8 @@ public:
 	boost::mutex &IOMutex() { return _mutex; }
 	
 	void SetApplyBeam(bool applyBeam) { _applyBeam = applyBeam; }
+	void SetStartRow(size_t startRow) { _startRow = startRow; }
+	void SetEndRow(size_t endRow) { _endRow = endRow; }
 private:
 	void ReadThreadFunc();
 	void PredictThreadFunc();
@@ -88,6 +94,7 @@ private:
 	std::vector<std::complex<double>*> _buffers;
 	std::unique_ptr<BandData> _bandData;
 	std::string _solutionFile;
+	size_t _startRow, _endRow;
 };
 
 #endif

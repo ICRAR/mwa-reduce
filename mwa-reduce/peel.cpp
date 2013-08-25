@@ -33,7 +33,6 @@ struct ThreadData
 
 void ThreadFunction(ThreadData data)
 {
-	std::cout << "Thread signing up for duty!\n";
 	boost::mutex::scoped_lock lock(*data.mutex);
 	size_t lastTaskIndex = data.tasks->front();
 	while(!data.tasks->empty()) {
@@ -65,15 +64,7 @@ void ThreadFunction(ThreadData data)
 			lastTaskIndex = taskIndex;
 		}
 		lock.lock();
-		if(taskIndex<=16)
-		{
-			std::cout << "Current value of Jones matrix for ant 1, ch " << taskIndex << ":\n"
-			<< CalibrationMethod::MatrixToString(& (*(data.calMethods))[taskIndex]->JonesSolution(1, 0, 0));
-		}
-	
-		std::cout << "Finished calibrating channel " << taskIndex << " in " << iters << " iterations, precision=" << limit << ".\n";
 	}
-	std::cout << "Thread done.\n";
 }
 
 int main(int argc, char *argv[])
@@ -81,7 +72,7 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: peel [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
@@ -201,38 +192,22 @@ int main(int argc, char *argv[])
 		
 		std::cout << "DONE\nCounting timesteps... " << std::flush;
 		double time = -1.0;
-		size_t timestepCount = 0;
+		std::vector<size_t> timestepRows;
 		for(size_t rowIndex=0;rowIndex!=ms.nrow();++rowIndex)
 		{
 			if(timeColumn(rowIndex) != time)
 			{
-				++timestepCount;
+				timestepRows.push_back(rowIndex);
 				time = timeColumn(rowIndex);
 			}
 		}
+		size_t timestepCount = timestepRows.size();
+		timestepRows.push_back(ms.nrow());
 		std::cout << "DONE (" << timestepCount << ")\n";
-
-		long int
-			pageCount = sysconf(_SC_PHYS_PAGES),
-			pageSize = sysconf(_SC_PAGE_SIZE);
-		int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
-		double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
-		std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
-
-		size_t nBaselines = antennaCount * (antennaCount-1) / 2;
-		size_t samplesPerChannel = nBaselines * timestepCount * 4;
-		// 2 for complex data, 2 for complex model, 1 for weights
-		double memPerChannel = samplesPerChannel * 5 * sizeof(double);
-		std::cout << "One channel takes " << round(memPerChannel*10.0/(1024*1024))/10.0 << " MB of mem.\n";
-		size_t channelsPerPass = memSize / memPerChannel;
-		if(channelsPerPass > channelCount)
-			channelsPerPass = channelCount;
-		if(channelsPerPass == 0) {
-			std::cout << "WARNING: NOT ENOUGH MEMORY FOR EVEN ONE CHANNEL, expect very bad performance.\n";
-			channelsPerPass = 1;
-		}
-		size_t passCount = (channelCount + channelsPerPass - 1) / channelsPerPass;
-		std::cout << "Number of channels that fit in memory: " << channelsPerPass << " (" << passCount << " passes)\n";
+		
+		size_t timestepsPerSolution = 1;
+		
+		size_t passCount = (timestepCount + timestepsPerSolution) / timestepsPerSolution;
 		
 		std::unique_ptr<Model> model;
 		if(!modelFile.empty()) {
@@ -241,22 +216,28 @@ int main(int argc, char *argv[])
 				std::cout << "DONE\n";
 		}
 
+		for(size_t ant=0; ant!=antennaCount; ++ant)
+		{
+			std::ostringstream antFilename;
+			antFilename << "peel-sol-ant" << ant << ".txt";
+			std::ofstream(antFilename.str().c_str());
+		}
+			
 		SolutionFile solutionFile;
 		solutionFile.SetAntennaCount(antennaCount);
 		solutionFile.SetChannelCount(channelCount);
 		solutionFile.SetPolarizationCount(4);
 		solutionFile.OpenForWriting(outName);
 
-		for(size_t pass=0; pass!=passCount; ++pass) {
+		for(size_t pass=0; pass!=passCount; ++pass)
+		{
 			size_t
-				startChannel = (channelCount * pass) / passCount,
-				endChannel = (channelCount * (pass+1)) / passCount,
-				partChannelCount = endChannel - startChannel;
-
-			BandData partBandData(bandData, startChannel, endChannel);
-
-			std::vector<CalibrationMethod*> calMethods(partChannelCount);
-			for(size_t ch=0; ch!=partChannelCount; ++ch)
+				startTimestep = timestepCount * pass / passCount,
+				endTimestep = timestepCount * (pass+1) / passCount,
+				startRow = timestepRows[startTimestep],
+				endRow = timestepRows[endTimestep];
+			std::vector<CalibrationMethod*> calMethods(channelCount);
+			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
 				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepCount);
 				calMethods[ch]->SetOnlySolveScalar(onlyScalar);
@@ -280,25 +261,21 @@ int main(int argc, char *argv[])
 					if(model->SourceCount() != 1)
 						std::cout << "Warning: To correct for the beam, there should be exactly one source in the model";
 					const ModelSource& source = model->Source(0);
-					std::cout << "Predicting beam... " << std::flush;
-					beamValues.resize(partChannelCount*4);
+					beamValues.resize(channelCount*4);
 					double beamSum[4] = {0.0, 0.0, 0.0, 0.0};
-					for(size_t ch=0; ch!=partChannelCount; ++ch)
+					for(size_t ch=0; ch!=channelCount; ++ch)
 					{
-						double frequency = partBandData.ChannelFrequency(ch);
+						double frequency = bandData.ChannelFrequency(ch);
 						beamEvaluator->EvaluateApparentToAbsGain(source.PosRA(), source.PosDec(), frequency, &beamValues[ch*4]);
 						for(size_t p=0; p!=4; ++p)
 							beamSum[p] += std::abs(beamValues[ch*4+p]);
 					}
-					std::cout << "DONE (avg inv beam:";
-					for(size_t p=0; p!=4; ++p)
-						std::cout << ' ' << beamSum[p]/partChannelCount;
-					std::cout << '\n';
 				}
 				
 				predicter.reset(new MSPredicter(ms, *model));
 				predicter->SetApplyBeam(applyBeam);
-				std::cout << "Reading data & predicting model...\n";
+				predicter->SetStartRow(startRow);
+				predicter->SetEndRow(endRow);
 			}
 			
 			std::vector<std::complex<double> > modelValues(4 * channelCount);
@@ -310,7 +287,7 @@ int main(int argc, char *argv[])
 			size_t selectedCount = 0, notSelected = 0;
 			MSPredicter::RowData rowData;
 			
-			predicter->Start(true);
+			predicter->Start(false);
 			while(predicter->GetNextRow(rowData))
 			{
 				size_t rowIndex = rowData.rowIndex;
@@ -319,7 +296,6 @@ int main(int argc, char *argv[])
 				{
 					++timeIndex;
 					time = timeColumn(rowIndex);
-					std::cout << '.' << std::flush;
 				}
 				// Cross correlation?
 				size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
@@ -352,27 +328,27 @@ int main(int argc, char *argv[])
 						notSelected++;
 				
 					if(modelFile.empty())
-				  {
+					{
 						std::complex<float> *modelDataPtr = modelData.cbegin();
 						for(size_t ch = 0; ch!=channelCount; ++ch)
-					  {
+						{
 							for(size_t p=0; p!=4; ++p)
-						  {
+							{
 								modelValues[ch*4+p] = *modelDataPtr;
 								++modelDataPtr;
 							}
 						}
 					}
 					else {
-						for(size_t ch = 0; ch!=partChannelCount; ++ch)
-					  {
-							size_t chIndex = (ch + startChannel) * 4;
+						for(size_t ch = 0; ch!=channelCount; ++ch)
+						{
+							size_t chIndex = ch * 4;
 							for(size_t p=0; p!=4; ++p)
-						  {
+							{
 								modelValues[chIndex+p] = rowData.modelData[chIndex+p];
 								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
-						  }
-						  if(beamOnSource)
+							}
+							if(beamOnSource)
 							{
 								std::complex<double>
 									tempResult[4],
@@ -390,10 +366,9 @@ int main(int argc, char *argv[])
 				
 				predicter->FinishRow(rowData);
 			}
-			std::cout << "DONE (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected)\nCalibrating...\n";
 		
 			std::queue<size_t> tasks;
-			for(size_t ch=0; ch!=partChannelCount; ++ch)
+			for(size_t ch=0; ch!=channelCount; ++ch)
 				tasks.push(ch);
 			size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 			boost::thread_group threadGroup;
@@ -411,36 +386,77 @@ int main(int argc, char *argv[])
 			threadGroup.join_all();
 
 			for(size_t ant=0; ant!=antennaCount; ++ant)
-		  {
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
-			  {
+			{
+				for(size_t ch=0; ch!=channelCount; ++ch)
+				{
 					std::complex<double> val[4];
 					for(size_t p=0; p!=4; ++p)
 						val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
 					Matrix2x2::Invert(val);
 					
 					for(size_t p=0; p!=4; ++p)
-				  {
-						solutionFile.WriteSolution(val[p], ant, ch+startChannel, p);
+					{
+						solutionFile.WriteSolution(val[p], ant, ch, p);
 					}
 				}
 			}
 			
-			if(savePlotFiles)
-		  {
-				std::ofstream phasePlotStream(plotPhaseFile.c_str()), gainPlotStream(plotGainFile.c_str());
-				phasePlotStream << antennaCount << ' ' << partChannelCount << " 4\n";
-				gainPlotStream << antennaCount << ' ' << partChannelCount << " 4\n";
+			double refPhaseXX = 0.0, refPhaseYY = 0.0;
+			for(size_t ant=0; ant!=antennaCount; ++ant)
+			{
+				std::ostringstream antFilename;
+				antFilename << "peel-sol-ant" << ant << ".txt";
+				std::ofstream antFile(antFilename.str().c_str(), std::ios_base::app);
+				double sumPhaseXX = 0.0, sumPhaseYY = 0.0, sumGainXX = 0.0, sumGainYY = 0.0;
+				size_t sumCount = 0;
+				for(size_t ch=0; ch!=channelCount; ++ch)
+				{
+					std::complex<double> val[4];
+					for(size_t p=0; p!=4; ++p)
+						val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+					Matrix2x2::Invert(val);
+					if(std::isfinite(val[0].real()) && std::isfinite(val[3].real()) &&
+						std::isfinite(val[0].imag()) && std::isfinite(val[3].imag()))
+					{
+						sumGainXX += std::abs(val[0]);
+						sumGainYY += std::abs(val[3]); 
+						sumPhaseXX += std::arg(val[0]);
+						sumPhaseYY += std::arg(val[3]);
+						++sumCount;
+					}
+				}
+				if(ant==0)
+				{
+					refPhaseXX = sumPhaseXX/sumCount;
+					refPhaseYY = sumPhaseYY/sumCount;
+				}
+				sumPhaseXX = (sumPhaseXX/sumCount - refPhaseXX) * (180.0 / M_PI);
+				sumPhaseYY = (sumPhaseYY/sumCount - refPhaseYY) * (180.0 / M_PI);
 				
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
-			  {
-					phasePlotStream << (ch+startChannel) << '\t';
-					gainPlotStream << (ch+startChannel) << '\t';
+				antFile << startTimestep
+					<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
+					<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
+				if(ant == 1)
+					std::cout << startTimestep
+						<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
+						<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
+			}
+				
+			if(savePlotFiles)
+			{
+				std::ofstream phasePlotStream(plotPhaseFile.c_str()), gainPlotStream(plotGainFile.c_str());
+				phasePlotStream << antennaCount << ' ' << channelCount << " 4\n";
+				gainPlotStream << antennaCount << ' ' << channelCount << " 4\n";
+				
+				for(size_t ch=0; ch!=channelCount; ++ch)
+				{
+					phasePlotStream << ch << '\t';
+					gainPlotStream << ch << '\t';
 					
 					for(size_t p=0; p!=4; ++p)
-				  {
+					{
 						for(size_t ant=0; ant!=antennaCount; ++ant)
-					  {
+						{
 							std::complex<double> val[4];
 							for(size_t p2=0; p2!=4; ++p2)
 								val[p2] = calMethods[ch]->JonesSolution(ant, 0, p2);
@@ -463,12 +479,12 @@ int main(int argc, char *argv[])
 			}
 			
 			if(saveFaradayPlotFiles)
-		  {
+			{
 				std::ofstream faradayPlotStream(plotFaradayFile.c_str());
 				
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
-			  {
-					faradayPlotStream << (ch+startChannel) << '\t';
+				for(size_t ch=0; ch!=channelCount; ++ch)
+				{
+					faradayPlotStream << ch << '\t';
 					
 					for(size_t ant=0; ant!=antennaCount; ++ant)
 					{
@@ -483,12 +499,12 @@ int main(int argc, char *argv[])
 			}
 			
 			if(saveCrossTermsPlotFile)
-		  {
+			{
 				std::ofstream crossTermPlotStream(crossTermsPlotFile.c_str());
 				
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
-			  {
-					crossTermPlotStream << (ch+startChannel) << '\t';
+				for(size_t ch=0; ch!=channelCount; ++ch)
+				{
+					crossTermPlotStream << ch << '\t';
 					
 					for(size_t ant=0; ant!=antennaCount; ++ant)
 					{
@@ -503,7 +519,7 @@ int main(int argc, char *argv[])
 				}
 			}
 			
-			for(size_t ch=0; ch!=partChannelCount; ++ch)
+			for(size_t ch=0; ch!=channelCount; ++ch)
 				delete calMethods[ch];
 		}
 	}
