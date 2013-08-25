@@ -157,8 +157,8 @@ int main(int argc, char *argv[])
 			}
 			else if(strcmp(argv[argi], "-datacolumn") == 0)
 			{
-				++argi;
-				dataColumnName = argv[argi];
+				dataColumnName = argv[argi+1];
+				argi += 2;
 			}
 			else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		}
