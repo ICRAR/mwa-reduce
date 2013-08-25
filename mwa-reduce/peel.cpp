@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 				onlyRotation = true;
 				argi++;
 			}
-			else if(strcmp(argv[argi], "datacolumn") == 0)
+			else if(strcmp(argv[argi], "-datacolumn") == 0)
 			{
 				++argi;
 				dataColumnName = argv[argi];
