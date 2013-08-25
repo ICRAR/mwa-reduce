@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: peel [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: peel [-datacolumn <column>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
@@ -80,6 +80,7 @@ int main(int argc, char *argv[])
 			savePlotFiles = false, saveFaradayPlotFiles = false, saveCrossTermsPlotFile = false, beamOnSource = false, applyBeam = false,
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
+		std::string dataColumnName = "DATA";
 		size_t niter = 25;
 		double limit = 0.0001, minUVW = 0.0;
 		
@@ -154,6 +155,11 @@ int main(int argc, char *argv[])
 				onlyRotation = true;
 				argi++;
 			}
+			else if(strcmp(argv[argi], "datacolumn") == 0)
+			{
+				++argi;
+				dataColumnName = argv[argi];
+			}
 			else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		}
 		
@@ -179,7 +185,7 @@ int main(int argc, char *argv[])
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
 		casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-		casa::ROArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+		casa::ROArrayColumn<complex_t> dataColumn(ms, dataColumnName);
 		casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 		casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 		std::unique_ptr<casa::ROArrayColumn<complex_t>> modelColumn;
@@ -207,7 +213,7 @@ int main(int argc, char *argv[])
 		
 		size_t timestepsPerSolution = 1;
 		
-		size_t passCount = (timestepCount + timestepsPerSolution) / timestepsPerSolution;
+		size_t passCount = (timestepCount + timestepsPerSolution - 1) / timestepsPerSolution;
 		
 		std::unique_ptr<Model> model;
 		if(!modelFile.empty()) {
@@ -234,12 +240,13 @@ int main(int argc, char *argv[])
 			size_t
 				startTimestep = timestepCount * pass / passCount,
 				endTimestep = timestepCount * (pass+1) / passCount,
+				timestepsInPass = endTimestep - startTimestep,
 				startRow = timestepRows[startTimestep],
 				endRow = timestepRows[endTimestep];
 			std::vector<CalibrationMethod*> calMethods(channelCount);
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
-				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepCount);
+				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepsInPass);
 				calMethods[ch]->SetOnlySolveScalar(onlyScalar);
 				calMethods[ch]->SetOnlySolveDiag(onlyDiag);
 				calMethods[ch]->SetOnlySolveRotation(onlyRotation);
@@ -283,7 +290,7 @@ int main(int argc, char *argv[])
 			casa::Array<float> weights(dataShape);
 			casa::Array<bool> flags(dataShape);
 			size_t timeIndex = 0;
-			time = timeColumn(0);
+			time = timeColumn(startRow);
 			size_t selectedCount = 0, notSelected = 0;
 			MSPredicter::RowData rowData;
 			
