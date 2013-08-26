@@ -6,8 +6,8 @@
 class Matrix2x2
 {
 public:
-	template<typename T>
-	static void Assign(std::complex<T>* dest, std::complex<T>* source)
+	template<typename LHS_T, typename RHS_T>
+	static void Assign(std::complex<LHS_T>* dest, std::complex<RHS_T>* source)
 	{
 		for(size_t p=0; p!=4; ++p)
 			dest[p] = source[p];
@@ -18,6 +18,23 @@ public:
 	{
 		for(size_t p=0; p!=4; ++p)
 			dest[p] += rhs[p];
+	}
+	
+	template<typename T>
+	static void Subtract(std::complex<T>* dest, std::complex<T>* rhs)
+	{
+		for(size_t p=0; p!=4; ++p)
+			dest[p] -= rhs[p];
+	}
+	
+	template<typename T>
+	static bool IsFinite(std::complex<T>* matrix)
+	{
+		return
+			std::isfinite(matrix[0].real()) && std::isfinite(matrix[0].imag()) &&
+			std::isfinite(matrix[1].real()) && std::isfinite(matrix[1].imag()) &&
+			std::isfinite(matrix[2].real()) && std::isfinite(matrix[2].imag()) &&
+			std::isfinite(matrix[3].real()) && std::isfinite(matrix[3].imag());
 	}
 	
 	template<typename T>
