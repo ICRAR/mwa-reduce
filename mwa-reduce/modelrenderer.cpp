@@ -18,7 +18,6 @@ template<typename NumType>
 void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex)
 {
 	int boundingBoxSize = ceil(beamSize * 5.0 / (0.5 * (_pixelScaleL + _pixelScaleM)));
-	std::cout << "Render bounding box: " << boundingBoxSize << '\n';
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
 		long double
@@ -33,9 +32,9 @@ void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHe
 			
 		int sourceX, sourceY;
 		ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
-		std::cout << "Adding source " << src->Name() << " at " << sourceX << "," << sourceY << " of "
-			<< intFlux << " Jy ("
-			<< startFrequency/1000000.0 << "-" << endFrequency/1000000.0 << " MHz).\n";
+		//std::cout << "Adding source " << src->Name() << " at " << sourceX << "," << sourceY << " of "
+		//	<< intFlux << " Jy ("
+		//	<< startFrequency/1000000.0 << "-" << endFrequency/1000000.0 << " MHz).\n";
 		int
 			xLeft = sourceX - boundingBoxSize,
 			xRight = sourceX + boundingBoxSize,

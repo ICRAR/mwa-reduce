@@ -52,13 +52,15 @@ class CleanAlgorithm
 		 */
 		void ExecuteMajorIterationST(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height);
 		
-		void ExecuteMajorIteration(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height);
+		void ExecuteMajorIteration(double* dataImage, double* modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain);
 		
 		void SetMaxNIter(size_t nIter) { _maxIter = nIter; }
 		
 		void SetThreshold(double threshold) { _threshold = threshold; }
 		
 		void SetSubtractionGain(double gain) { _subtractionGain = gain; }
+		
+		void SetStopGain(double stopGain) { _stopGain = stopGain; }
 		
 		void SetAllowNegativeComponents(bool allowNegativeComponents) { _allowNegativeComponents = allowNegativeComponents; }
 		
@@ -94,8 +96,8 @@ class CleanAlgorithm
 		}
 		static double partialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas);
 		
-		double _threshold, _subtractionGain;
-		size_t _maxIter;
+		double _threshold, _subtractionGain, _stopGain;
+		size_t _maxIter, _iterationNumber;
 		bool _allowNegativeComponents;
 		const class AreaSet *_cleanAreas;
 };

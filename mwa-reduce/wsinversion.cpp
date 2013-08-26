@@ -322,8 +322,14 @@ void WSInversion::visSampleThread()
 			{
 				if(std::isfinite(workItem.data[ch].real()))
 				{
-					*dataIter = workItem.data[ch];
-					*(dataIter + 3) = workItem.data[ch];
+					if(AddToModel())
+					{
+						*dataIter += workItem.data[ch];
+						*(dataIter + 3) += workItem.data[ch];
+					} else {
+						*dataIter = workItem.data[ch];
+						*(dataIter + 3) = workItem.data[ch];
+					}
 				}
 				dataIter += 4;
 			}
@@ -331,7 +337,12 @@ void WSInversion::visSampleThread()
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{
 				if(std::isfinite(workItem.data[ch].real()))
-					*(dataIter+polIndex) = workItem.data[ch];
+				{
+					if(AddToModel())
+						*(dataIter+polIndex) += workItem.data[ch];
+					else
+						*(dataIter+polIndex) = workItem.data[ch];
+				}
 				dataIter += 4;
 			}
 		}

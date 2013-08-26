@@ -32,7 +32,10 @@ int main(int argc, char *argv[])
 			"\t-threshold <threshold>\n"
 			"\t   Stopping clean thresholding in Jy\n"
 			"\t-gain <gain>\n"
-			"\t   Cleaning gain: Ratio of peak that will be subtracted in each iteration\n"
+			"\t   Cleaning gain: Ratio of peak that will be subtracted in each iteration (default = 0.1).\n"
+			"\t-mgain <gain>\n"
+			"\t   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major\n"
+			"\t   iteration (default = 1.0, to use major iterations, 0.9 is a good value).\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
 			"\t-negative\n"
 			"\t   Allow negative components during cleaning\n"
@@ -44,12 +47,12 @@ int main(int argc, char *argv[])
 	
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
-	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1;
+	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
 	size_t nWLayers = 64, nIter = 500;
 	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
-	bool majorIterations = false, allowNegative = false;
+	bool allowNegative = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	
 	while(argi < argc && argv[argi][0] == '-')
@@ -75,6 +78,11 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			gain = atof(argv[argi]);
+		}
+		else if(strcmp(param, "mgain") == 0)
+		{
+			++argi;
+			mGain = atof(argv[argi]);
 		}
 		else if(strcmp(param, "niter") == 0)
 		{
@@ -125,10 +133,6 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			cleanAreasFilename = argv[argi];
-		}
-		else if(strcmp(param, "major") == 0)
-		{
-			majorIterations = true;
 		}
 		else if(strcmp(param, "name") == 0)
 		{
@@ -207,7 +211,7 @@ int main(int argc, char *argv[])
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
 	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 	
-	if(!majorIterations)
+	if(mGain == 1.0)
 		inversionAlgorithm.reset();
 	
 	std::cout << "Writing dirty image... " << std::flush;
@@ -220,8 +224,9 @@ int main(int argc, char *argv[])
 	cleanAlgorithm.SetMaxNIter(nIter);
 	cleanAlgorithm.SetThreshold(threshold);
 	cleanAlgorithm.SetSubtractionGain(gain);
+	cleanAlgorithm.SetStopGain(mGain);
 	cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
-	
+		
 	std::unique_ptr<AreaSet> cleanAreas;
 	if(!cleanAreasFilename.empty())
 	{
@@ -233,33 +238,51 @@ int main(int argc, char *argv[])
 		cleanAlgorithm.SetCleanAreas(*cleanAreas);
 	}
 	
-	cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight);
-	
-	std::cout << "Writing residual image... " << std::flush;
-	FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
-	resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
-	std::cout << "DONE\n";
-	
-	std::cout << "Writing model image... " << std::flush;
-	FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
-	modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
-	std::cout << "DONE\n";
-	
-	if(majorIterations)
-	{
-		std::cout << " == Converting model image to visibilities ==\n";
-		inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+	// Start major cleaning loop
+	size_t majorIterationNr = 1;
+	bool reachedMajorThreshold = false;
+	do {
+		cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
 		
-		std::cout << " == Constructing image ==\n";
-		inversionAlgorithm->SetDoSubtractModel(true);
-		inversionAlgorithm->Invert();
-		memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
-		inversionAlgorithm.reset();
-		std::cout << "Writing residual image... " << std::flush;
-		FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
-		resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
-		std::cout << "DONE\n";
-	}
+		if(majorIterationNr == 1)
+		{
+			std::cout << "Writing residual image... " << std::flush;
+			FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
+			resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+			std::cout << "DONE\n";
+		}
+		
+		if(!reachedMajorThreshold)
+		{
+			std::cout << "Writing model image... " << std::flush;
+			FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
+			modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+			std::cout << "DONE\n";
+		}
+		
+		if(mGain != 1.0)
+		{
+			std::cout << " == Converting model image to visibilities ==\n";
+			inversionAlgorithm->SetAddToModel(majorIterationNr!=1);
+			inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+			
+			std::cout << " == Constructing image ==\n";
+			inversionAlgorithm->SetDoSubtractModel(true);
+			inversionAlgorithm->Invert();
+			
+			if(!reachedMajorThreshold)
+			{
+				// This was the final major iteration: clean up & save results
+				memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+				inversionAlgorithm.reset();
+				
+				std::cout << "Writing residual image... " << std::flush;
+				FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
+				resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+				std::cout << "DONE\n";
+			}
+		}
+	} while(reachedMajorThreshold);
 	
 	Model model;
 	if(!addModelFilename.empty())

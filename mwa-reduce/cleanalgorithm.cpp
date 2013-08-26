@@ -14,7 +14,9 @@
 CleanAlgorithm::CleanAlgorithm() :
 	_threshold(0.0),
 	_subtractionGain(0.1),
+	_stopGain(1.0),
 	_maxIter(500),
+	_iterationNumber(0),
 	_allowNegativeComponents(false),
 	_cleanAreas(0)
 {
@@ -134,26 +136,33 @@ void CleanAlgorithm::ExecuteMajorIterationST(double *dataImage, double *modelIma
 	size_t componentX, componentY;
 	double peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
 	std::cout << "Initial peak: " << peak << '\n';
-	size_t iterationNumber = 0;
-	while(fabs(peak) > _threshold && iterationNumber < _maxIter)
+	while(fabs(peak) > _threshold && _iterationNumber < _maxIter)
 	{
-		if(iterationNumber % 10 == 0)
-			std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
+		if(_iterationNumber % 10 == 0)
+			std::cout << "Iteration " << _iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
 		SubtractImage(dataImage, psfImage, width, height, componentX, componentY, _subtractionGain * peak);
 		modelImage[componentX + componentY*width] += _subtractionGain * peak;
 		
 		peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
-		++iterationNumber;
+		++_iterationNumber;
 	}
 	std::cout << "Stopped on peak " << peak << '\n';
 }
 
-void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height)
+void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain)
 {
 	size_t componentX, componentY;
 	double peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
 	std::cout << "Initial peak: " << peak << '\n';
-	size_t iterationNumber = 0;
+	double firstThreshold = _threshold, stopGainThreshold = fabs(peak*(1.0-_stopGain));
+	if(stopGainThreshold > firstThreshold)
+	{
+		firstThreshold = stopGainThreshold;
+		std::cout << "Next major iteration at: " << stopGainThreshold << '\n';
+	}
+	else if(_stopGain != 1.0) {
+		std::cout << "Major iteration threshold reached global threshold of " << _threshold << ": final major iteration.\n";
+	}
 
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	std::vector<lane<CleanTask>*> taskLanes(cpuCount);
@@ -172,10 +181,10 @@ void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage
 		cleanThreadData.endY = height*(i+1)/cpuCount;
 		threadGroup.add_thread(new boost::thread(&CleanAlgorithm::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
-	while(fabs(peak) > _threshold && iterationNumber < _maxIter)
+	while(fabs(peak) > firstThreshold && _iterationNumber < _maxIter)
 	{
-		if(iterationNumber % 10 == 0)
-			std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
+		if(_iterationNumber % 10 == 0)
+			std::cout << "Iteration " << _iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
 		
 		CleanTask task;
 		task.cleanCompX = componentX;
@@ -199,7 +208,7 @@ void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage
 			}
 		}
 		
-		++iterationNumber;
+		++_iterationNumber;
 	}
 	for(size_t i=0; i!=cpuCount; ++i)
 		taskLanes[i]->write_end();
@@ -210,6 +219,7 @@ void CleanAlgorithm::ExecuteMajorIteration(double *dataImage, double *modelImage
 		delete resultLanes[i];
 	}
 	std::cout << "Stopped on peak " << peak << '\n';
+	reachedStopGain = fabs(peak) < stopGainThreshold;
 }
 
 void CleanAlgorithm::cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult> *resultLane, CleanThreadData cleanData)
