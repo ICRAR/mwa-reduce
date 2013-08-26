@@ -219,7 +219,6 @@ int main(int argc, char *argv[])
 	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
-	std::cout << " == Cleaning ==\n";
 	CleanAlgorithm cleanAlgorithm;
 	cleanAlgorithm.SetMaxNIter(nIter);
 	cleanAlgorithm.SetThreshold(threshold);
@@ -242,6 +241,7 @@ int main(int argc, char *argv[])
 	size_t majorIterationNr = 1;
 	bool reachedMajorThreshold = false;
 	do {
+		std::cout << " == Cleaning (" << majorIterationNr << ") ==\n";
 		cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
 		
 		if(majorIterationNr == 1)
@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
 		if(mGain != 1.0)
 		{
 			std::cout << " == Converting model image to visibilities ==\n";
-			inversionAlgorithm->SetAddToModel(majorIterationNr!=1);
+			inversionAlgorithm->SetAddToModel(false);
 			inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
 			
 			std::cout << " == Constructing image ==\n";
@@ -282,7 +282,12 @@ int main(int argc, char *argv[])
 				std::cout << "DONE\n";
 			}
 		}
+		
+		++majorIterationNr;
+		
 	} while(reachedMajorThreshold);
+	
+	std::cout << majorIterationNr << " major iterations were performed.\n";
 	
 	Model model;
 	if(!addModelFilename.empty())
