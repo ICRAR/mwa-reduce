@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 			else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		}
 		
-		if(argc <= argi + 1) throw std::runtime_error("Incorrect parameters");
+		if(argc <= argi) throw std::runtime_error("Incorrect number of parameters");
 		
 		const char *msName = argv[argi];
 		//const char *outName = argv[argi+1];
