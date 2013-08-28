@@ -548,7 +548,10 @@ void LayeredImager::initializeSqrtLMLookupTable()
 			if(xSrc >= _width) xSrc -= _width;
 			
 			double l = ((double) xSrc-(_width/2)) * _pixelSizeX;
-			*iter = (sqrt(1.0 - l*l - m*m)-1.0);
+			if(l*l + m*m < 1.0)
+				*iter = sqrt(1.0 - l*l - m*m) - 1.0;
+			else
+				*iter = 0.0;
 			iter++;
 		}
 	}
