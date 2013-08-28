@@ -27,7 +27,8 @@ Peeler::Peeler(casa::MeasurementSet& ms) :
 	_dataColumnName("DATA"),
 	_nIter(100),
 	_limit(0.0001),
-	_minUVW(0.0)
+	_minUVW(0.0),
+	_solutionInterval(1)
 {
 	_ms.reopenRW();
 }
@@ -76,9 +77,7 @@ void Peeler::Perform()
 	timestepRows.push_back(_ms.nrow());
 	std::cout << "DONE (" << timestepCount << ")\n";
 	
-	size_t timestepsPerSolution = 1;
-	
-	size_t passCount = (timestepCount + timestepsPerSolution - 1) / timestepsPerSolution;
+	size_t passCount = (timestepCount + _solutionInterval - 1) / _solutionInterval;
 	
 	std::unique_ptr<Model> model;
 	if(!_modelFilename.empty()) {

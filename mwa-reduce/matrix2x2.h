@@ -13,8 +13,8 @@ public:
 			dest[p] = source[p];
 	}
 	
-	template<typename T>
-	static void Add(std::complex<T>* dest, std::complex<T>* rhs)
+	template<typename T, typename RHS_T>
+	static void Add(std::complex<T>* dest, RHS_T * rhs)
 	{
 		for(size_t p=0; p!=4; ++p)
 			dest[p] += rhs[p];

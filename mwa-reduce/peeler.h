@@ -71,6 +71,11 @@ public:
 		_minUVW = minUVW;
 	}
 	
+	void SetSolutionInterval(size_t solutionInterval)
+	{
+		_solutionInterval = solutionInterval;
+	}
+	
 private:
 	struct ThreadData
 	{
@@ -108,6 +113,7 @@ private:
 		_dataColumnName;
 	size_t _nIter;
 	double _limit, _minUVW;
+	size_t _solutionInterval;
 };
 
 #endif

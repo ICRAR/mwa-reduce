@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 			"Subtracts the model from the visibilities. This 'peels' the\n"
 			"sources out. Only affects cross-correlations. -r to revert or -s to set.\n";
 	} else {
-		bool revert = false , setvis = false, addNoise = false;
+		bool revert = false , setvis = false, addNoise = false, applyBeam = false;
 		double noiseSigma = 1.0;
 		size_t argi = 1;
 		while(argv[argi][0] == '-')
@@ -51,6 +51,7 @@ int main(int argc, char **argv)
 			if(strcmp(argv[argi], "-r") == 0) { revert=true; }
 			else if(strcmp(argv[argi], "-s") == 0) { setvis=true; }
 			else if(strcmp(argv[argi], "-n") == 0) { addNoise=true; ++argi; noiseSigma = atof(argv[argi]); }
+			else if(strcmp(argv[argi], "-applybeam") == 0) { applyBeam=true; }
 			else throw std::runtime_error("Invalid param");
 			++argi;
 		}
@@ -80,6 +81,7 @@ int main(int argc, char **argv)
 		BeamEvaluator beamEvaluator(ms);
 		
 		MSPredicter predicter(ms, model);
+		predicter.SetApplyBeam(applyBeam);
 		predicter.Start(true);
 		
 		/**

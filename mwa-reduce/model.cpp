@@ -77,11 +77,16 @@ void Model::combineMeasurements(const ModelSource& source)
 
 void Model::Save(const char* filename)
 {
-	std::ofstream file(filename);
-	file << "skymodel fileformat 1.0\n";
+	std::ofstream stream(filename);
+	Save(stream);
+}
+
+void Model::Save(std::ostream& stream)
+{
+	stream << "skymodel fileformat 1.0\n";
 	for(const_iterator i=begin(); i!=end(); ++i)
 	{
-		file << i->ToString();
+		stream << i->ToString();
 	}
 }
 

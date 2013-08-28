@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: peel [-datacolumn <column>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms>\n\n"
+			<< "Usage: peel [-datacolumn <column>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t <solution interval timesteps>] <measurementset.ms>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string modelFile, rhsSolutionFile;
 		std::string dataColumnName = "DATA";
-		size_t niter = 25;
+		size_t niter = 25, solutionInterval = 1;
 		double limit = 0.0001, minUVW = 0.0;
 		
 		while(argv[argi][0] == '-')
@@ -76,6 +76,11 @@ int main(int argc, char *argv[])
 				dataColumnName = argv[argi+1];
 				argi += 2;
 			}
+			else if(strcmp(argv[argi], "-t") == 0)
+			{
+				solutionInterval = atoi(argv[argi+1]);
+				argi += 2;
+			}
 			else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		}
 		
@@ -98,6 +103,7 @@ int main(int argc, char *argv[])
 		peeler.SetOnlyRotation(onlyRotation);
 		peeler.SetRHSSolutionFile(rhsSolutionFile);
 		peeler.SetDataColumName(dataColumnName);
+		peeler.SetSolutionInterval(solutionInterval);
 		
 		peeler.Perform();
 	}

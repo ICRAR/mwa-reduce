@@ -20,11 +20,12 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum [-s <model to subtract>] [-g <solutions>] <model for positions> <output-model> <ms> [<ms2>...]\n"
+		std::cout << "Usage: spectrum [-s <model to subtract>] [-g <solutions>] [-applybeam] <model for positions> <output-model> <ms> [<ms2>...]\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
 		const char *subtractionModelFile = 0, *solutionsFile = 0;
+		bool applyBeam = false;
 		while(argv[argi][0] == '-')
 		{
 			const std::string param = &argv[argi][1];
@@ -32,15 +33,18 @@ int main(int argc, char **argv)
 			{
 				++argi;
 				subtractionModelFile = argv[argi];
-				++argi;
 			}
 			else if(param == "g")
 			{
 				++argi;
 				solutionsFile = argv[argi];
-				++argi;
+			}
+			else if(param == "applybeam")
+			{
+				applyBeam = true;
 			}
 			else throw std::runtime_error("Invalid parameter");
+			++argi;
 		}
 		
 		Model model(argv[argi]);
@@ -56,6 +60,7 @@ int main(int argc, char **argv)
 		}
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			spectrumMaker.AddSource(*s);
+		spectrumMaker.SetApplyBeam(applyBeam);
 		
 		if(subtractionModelFile != 0) spectrumMaker.SetSubtractedModel(Model(subtractionModelFile));
 		

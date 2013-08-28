@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 				else
 					flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, 0);
 				
-				newSED.AddMeasurement(flux*scale, (chStartFreq+chEndFreq)*0.5);
+				newSED.AddMeasurement(flux, (chStartFreq+chEndFreq)*0.5);
 			}
 			
 			sourcePtr->SetSED(newSED);
@@ -218,6 +218,17 @@ int main(int argc, char *argv[])
 				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 				{
 					m->second.SetFluxDensity(p, setPolFlux[p]);
+				}
+			}
+		}
+		if(scale != 1.0)
+		{
+			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+			{
+				SpectralEnergyDistribution &sed = sourcePtr->SED();
+				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				{
+					m->second.SetFluxDensity(p, m->second.FluxDensity(p) * scale);
 				}
 			}
 		}

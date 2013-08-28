@@ -62,6 +62,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		measWeights(channelCount * _sources.size() * 4);
 	
 	MSPredicter modelPredicter(ms, _subtractedModel, solutionsFile);
+	modelPredicter.SetApplyBeam(_applyBeam);
 	
 	std::vector<std::unique_ptr<Predicter>> predicters;
 	for(std::vector<ModelSource>::iterator sourceIter=_sources.begin();
@@ -74,7 +75,8 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	
 	_beamWeights[0].resize(_sources.size() * channelCount * 4);
 	_beamWeights[1].resize(_sources.size() * channelCount * 4);
-	_beamEvaluator.reset(new BeamEvaluator(ms));
+	if(_applyBeam)
+		_beamEvaluator.reset(new BeamEvaluator(ms));
 	
 	const size_t BUFFER_COUNT = 16;
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
@@ -132,7 +134,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 			casa::MEpoch time = timeColumn(rowIndex);
 			lock.unlock();
 			
-			if(time.getValue() != _beamEvaluator->Time().getValue())
+			if(_applyBeam && time.getValue() != _beamEvaluator->Time().getValue())
 			{
 				std::cout << 'B' << std::flush;
 				_beamEvaluator->SetTime(time);
@@ -203,29 +205,31 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 
 void SpectrumMaker::recalculateBeamWeights(size_t beamWeightIndex)
 {
-	/*lane<BeamEvalTaskInfo> taskLane(_sources.size());
-	
-	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-	boost::thread_group threadGroup;
-	for(size_t i=0; i!=cpuCount; ++i)
-		threadGroup.add_thread(new boost::thread(&SpectrumMaker::recalculateBeamWeightsThreadFunc, this, &taskLane));*/
-	
 	std::complex<double>* beamWeightPtr = &_beamWeights[beamWeightIndex][0];
-	for(size_t s=0; s!=_sources.size(); ++s)
+	if(_applyBeam)
 	{
-		BeamEvalTaskInfo info;
-		info.source = &_sources[s];
-		info.weights = beamWeightPtr;
-		beamWeightPtr += _bandData.ChannelCount() * 4;
-		//taskLane.write(info);
-		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+		for(size_t s=0; s!=_sources.size(); ++s)
 		{
-			_beamEvaluator->EvaluateAbsToApparentGain(info.source->PosRA(), info.source->PosDec(), _bandData.ChannelFrequency(ch), info.weights);
-			beamWeightPtr += 4;
+			BeamEvalTaskInfo info;
+			info.source = &_sources[s];
+			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+			{
+				info.weights = beamWeightPtr;
+				_beamEvaluator->EvaluateAbsToApparentGain(info.source->PosRA(), info.source->PosDec(), _bandData.ChannelFrequency(ch), info.weights);
+				beamWeightPtr += 4;
+			}
+		}
+	} else {
+	for(size_t s=0; s!=_sources.size(); ++s)
+		{
+			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+			{
+				beamWeightPtr[0] = 1.0; beamWeightPtr[1] = 0.0;
+				beamWeightPtr[2] = 0.0; beamWeightPtr[3] = 1.0;
+				beamWeightPtr += 4;
+			}
 		}
 	}
-	//taskLane.write_end();
-	//threadGroup.join_all();
 }
 
 void SpectrumMaker::recalculateBeamWeightsThreadFunc(lane<BeamEvalTaskInfo> *taskLane)

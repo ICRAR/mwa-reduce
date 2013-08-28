@@ -60,6 +60,11 @@ public:
 		_subtractedModel = model;
 	}
 	
+	void SetApplyBeam(bool applyBeam)
+	{
+		_applyBeam = applyBeam;
+	}
+	
 	void Measure()
 	{
 		// Set all sources to flux 1 Jy
@@ -178,6 +183,7 @@ private:
 	Model _subtractedModel;
 	std::unique_ptr<BeamEvaluator> _beamEvaluator;
 	BandData _bandData;
+	bool _applyBeam;
 };
 
 #endif
