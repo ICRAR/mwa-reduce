@@ -3,6 +3,7 @@
 #include "fitswriter.h"
 #include "imagecoordinates.h"
 #include "modelsource.h"
+#include "model.h"
 
 #include <vector>
 #include <stdexcept>
@@ -51,14 +52,16 @@ int main(int argc, char *argv[])
 	if(onlyFindPeak)
 	{
 		double l, m, ra, dec;
-		ImageCoordinates::XYToLM(componentX, height-componentY, inpReader.PixelSizeX(), inpReader.PixelSizeY(), width, height, l, m);
+		ImageCoordinates::XYToLM(componentX, componentY, inpReader.PixelSizeX(), inpReader.PixelSizeY(), width, height, l, m);
 		ImageCoordinates::LMToRaDec(l, m, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), ra, dec);
 		ModelSource source;
 		source.SetName("clcomp");
 		source.SetPosRA(ra);
 		source.SetPosDec(dec);
 		source.SetSED(SpectralEnergyDistribution(peak, 1.0));
-		std::cout << source.ToString() << '\n';
+		Model outputModel;
+		outputModel.AddSource(source);
+		outputModel.Save(std::cout);
 	} else {
 		double lastPeak = peak;
 		std::cout << "Initial peak: " << peak << '\n';
