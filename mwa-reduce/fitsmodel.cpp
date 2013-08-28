@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 {
 	if(argc < 2)
 	{
-		std::cout << "Usage: fitsmodel [options] <output model> <fitsfile> [spectral index] [ref freq]\n"
+		std::cout << "Usage: fitsmodel [options] <output model> <fitsfile> [spectral index] [ref freq MHz]\n"
 			"Turns components in fitsfile into a model.\nOptions:\n"
 			"\t-a <output areafile>\n\t-d <merge distance>\n\t-l <lower limit>\n";
 	} else {

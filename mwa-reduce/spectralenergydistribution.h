@@ -194,11 +194,11 @@ class SpectralEnergyDistribution
 			{
 				long double fluxB = /* Calculate the flux density for 1 Hz frequency */
 					fluxDensityJy * std::pow(1.0 / frequencyHz, spectralIndex);
-				long double refFreqB = 1.0;
+				long double refFreqB = frequencyHz + 15000000.0;
 				if(refFreqB == frequencyHz) {
-					refFreqB = 2.0;
-					fluxB = fluxB * std::pow(frequencyHz, spectralIndex);
+					refFreqB *= 2.0;
 				}
+				fluxB = fluxB * std::pow(refFreqB, spectralIndex);
 				measurementB.SetFluxDensity(0, fluxB);
 				measurementB.SetFluxDensity(1, 0.0);
 				measurementB.SetFluxDensity(2, 0.0);

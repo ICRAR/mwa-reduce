@@ -175,12 +175,21 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	
-	std::cout << " == Constructing PSF ==\n";
-	inversionAlgorithm->SetDoImagePSF(true);
-	inversionAlgorithm->Invert();
-	std::vector<double> psf(imgWidth * imgHeight);
-	memcpy(&psf[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
-	const double
+	double
+		ra, dec,
+		freqHigh, freqLow, freqCentre,
+		bandwidth, beamSize, dateObs;
+		
+	std::vector<double> psf;
+	
+	if(nIter > 0)
+	{
+		std::cout << " == Constructing PSF ==\n";
+		inversionAlgorithm->SetDoImagePSF(true);
+		inversionAlgorithm->Invert();
+		psf.resize(imgWidth * imgHeight);
+		memcpy(&psf[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+		
 		ra = inversionAlgorithm->ImageResultRA(),
 		dec = inversionAlgorithm->ImageResultDec(),
 		freqHigh = inversionAlgorithm->ImageHighestFrequencyChannel(),
@@ -189,25 +198,36 @@ int main(int argc, char *argv[])
 		bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
 		beamSize = inversionAlgorithm->ImageBeamSize(),
 		dateObs = inversionAlgorithm->ImageStartTime();
-	
-	std::cout << "Writing psf image... " << std::flush;
-	FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
-	psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
-	std::cout << "DONE\n";
-	
-	if(inversionAlgorithm->HasGriddingCorrectionImage())
-	{
-		std::cout << "Writing gridding correction image... " << std::flush;
-		FitsWriter griddingWriter(std::string(prefixName) + "-gridding.fits");
-		std::vector<double> gridding(imgWidth * imgHeight);
-		inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
-		griddingWriter.Write(&gridding[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+		
+		std::cout << "Writing psf image... " << std::flush;
+		FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
+		psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 		std::cout << "DONE\n";
+	
+		if(inversionAlgorithm->HasGriddingCorrectionImage())
+		{
+			std::cout << "Writing gridding correction image... " << std::flush;
+			FitsWriter griddingWriter(std::string(prefixName) + "-gridding.fits");
+			std::vector<double> gridding(imgWidth * imgHeight);
+			inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
+			griddingWriter.Write(&gridding[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+			std::cout << "DONE\n";
+		}
 	}
 	
 	std::cout << " == Constructing image ==\n";
 	inversionAlgorithm->SetDoImagePSF(false);
 	inversionAlgorithm->Invert();
+	
+	ra = inversionAlgorithm->ImageResultRA(),
+	dec = inversionAlgorithm->ImageResultDec(),
+	freqHigh = inversionAlgorithm->ImageHighestFrequencyChannel(),
+	freqLow = inversionAlgorithm->ImageLowestFrequencyChannel(),
+	freqCentre = (freqHigh + freqLow) * 0.5,
+	bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
+	beamSize = inversionAlgorithm->ImageBeamSize(),
+	dateObs = inversionAlgorithm->ImageStartTime();
+	
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
 	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 	
@@ -219,75 +239,78 @@ int main(int argc, char *argv[])
 	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
-	CleanAlgorithm cleanAlgorithm;
-	cleanAlgorithm.SetMaxNIter(nIter);
-	cleanAlgorithm.SetThreshold(threshold);
-	cleanAlgorithm.SetSubtractionGain(gain);
-	cleanAlgorithm.SetStopGain(mGain);
-	cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
-		
-	std::unique_ptr<AreaSet> cleanAreas;
-	if(!cleanAreasFilename.empty())
+	if(nIter > 0)
 	{
-		cleanAreas.reset(new AreaSet());
-		AreaParser parser;
-		std::ifstream caFile(cleanAreasFilename.c_str());
-		parser.Parse(*cleanAreas, caFile);
-		cleanAreas->SetImageProperties(pixelScale, pixelScale, ra, dec, imgWidth, imgHeight);
-		cleanAlgorithm.SetCleanAreas(*cleanAreas);
-	}
-	
-	// Start major cleaning loop
-	size_t majorIterationNr = 1;
-	bool reachedMajorThreshold = false;
-	do {
-		std::cout << " == Cleaning (" << majorIterationNr << ") ==\n";
-		cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
-		
-		if(majorIterationNr == 1)
+		CleanAlgorithm cleanAlgorithm;
+		cleanAlgorithm.SetMaxNIter(nIter);
+		cleanAlgorithm.SetThreshold(threshold);
+		cleanAlgorithm.SetSubtractionGain(gain);
+		cleanAlgorithm.SetStopGain(mGain);
+		cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
+			
+		std::unique_ptr<AreaSet> cleanAreas;
+		if(!cleanAreasFilename.empty())
 		{
-			std::cout << "Writing residual image... " << std::flush;
-			FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
-			resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
-			std::cout << "DONE\n";
+			cleanAreas.reset(new AreaSet());
+			AreaParser parser;
+			std::ifstream caFile(cleanAreasFilename.c_str());
+			parser.Parse(*cleanAreas, caFile);
+			cleanAreas->SetImageProperties(pixelScale, pixelScale, ra, dec, imgWidth, imgHeight);
+			cleanAlgorithm.SetCleanAreas(*cleanAreas);
 		}
 		
-		if(!reachedMajorThreshold)
-		{
-			std::cout << "Writing model image... " << std::flush;
-			FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
-			modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
-			std::cout << "DONE\n";
-		}
-		
-		if(mGain != 1.0)
-		{
-			std::cout << " == Converting model image to visibilities ==\n";
-			inversionAlgorithm->SetAddToModel(false);
-			inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+		// Start major cleaning loop
+		size_t majorIterationNr = 1;
+		bool reachedMajorThreshold = false;
+		do {
+			std::cout << " == Cleaning (" << majorIterationNr << ") ==\n";
+			cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
 			
-			std::cout << " == Constructing image ==\n";
-			inversionAlgorithm->SetDoSubtractModel(true);
-			inversionAlgorithm->Invert();
-			
-			if(!reachedMajorThreshold)
+			if(majorIterationNr == 1)
 			{
-				// This was the final major iteration: clean up & save results
-				memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
-				inversionAlgorithm.reset();
-				
 				std::cout << "Writing residual image... " << std::flush;
-				FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
+				FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
 				resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 				std::cout << "DONE\n";
 			}
-		}
+			
+			if(!reachedMajorThreshold)
+			{
+				std::cout << "Writing model image... " << std::flush;
+				FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
+				modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+				std::cout << "DONE\n";
+			}
+			
+			if(mGain != 1.0)
+			{
+				std::cout << " == Converting model image to visibilities ==\n";
+				inversionAlgorithm->SetAddToModel(false);
+				inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+				
+				std::cout << " == Constructing image ==\n";
+				inversionAlgorithm->SetDoSubtractModel(true);
+				inversionAlgorithm->Invert();
+				
+				if(!reachedMajorThreshold)
+				{
+					// This was the final major iteration: clean up & save results
+					memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+					inversionAlgorithm.reset();
+					
+					std::cout << "Writing residual image... " << std::flush;
+					FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
+					resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+					std::cout << "DONE\n";
+				}
+			}
+			
+			++majorIterationNr;
+			
+		} while(reachedMajorThreshold);
 		
-		++majorIterationNr;
-		
-	} while(reachedMajorThreshold);
-	
-	std::cout << majorIterationNr << " major iterations were performed.\n";
+		std::cout << majorIterationNr << " major iterations were performed.\n";
+	}
 	
 	Model model;
 	if(!addModelFilename.empty())
@@ -313,7 +336,7 @@ int main(int argc, char *argv[])
 		case InversionAlgorithm::YX: polarizationIndex = 2; break;
 		case InversionAlgorithm::YY: polarizationIndex = 3; break;
 	}
-	renderer.Render(&residual[0], imgWidth, imgHeight, model, beamSize, freqLow, freqHigh, polarizationIndex);
+	renderer.Restore(&residual[0], imgWidth, imgHeight, model, beamSize, freqLow, freqHigh, polarizationIndex);
 	std::cout << "DONE\n";
 	
 	std::cout << "Writing restored image... " << std::flush;

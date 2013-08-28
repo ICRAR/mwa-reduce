@@ -64,8 +64,8 @@ class ImageCoordinates
 		static void LMToXY(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, int &x, int &y)
 		{
 			T midX = (T) width / 2.0, midY = (T) height / 2.0;
-			x = -l / pixelSizeX + midX;
-			y = m / pixelSizeY + midY;
+			x = round(-l / pixelSizeX) + midX;
+			y = round(m / pixelSizeY) + midY;
 		}
 		
 		template<typename T>

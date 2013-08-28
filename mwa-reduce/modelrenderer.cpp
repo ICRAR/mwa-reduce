@@ -12,10 +12,10 @@ T ModelRenderer::gaus(T x, T sigma) const
 	return exp(T(-0.5) * xi * xi);// / (sigma * sqrt(T(2.0) * M_PIl));
 }
 
-template void ModelRenderer::Render(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex);
+template void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex);
 
 template<typename NumType>
-void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex)
+void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex)
 {
 	int boundingBoxSize = ceil(beamSize * 5.0 / (0.5 * (_pixelScaleL + _pixelScaleM)));
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
@@ -61,6 +61,32 @@ void ModelRenderer::Render(NumType* imageData, size_t imageWidth, size_t imageHe
 				(*imageDataPtr) += NumType(g * g * intFlux);
 				++imageDataPtr;
 			}
+		}
+	}
+}
+
+template void ModelRenderer::RenderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, size_t polarizationIndex);
+
+template<typename NumType>
+void ModelRenderer::RenderModel(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, size_t polarizationIndex)
+{
+	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
+	{
+		long double
+			posRA = src->PosRA(),
+			posDec = src->PosDec(),
+			sourceL, sourceM;
+		int sourceX, sourceY;
+		ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
+		ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
+		
+		const long double intFlux = src->SED().IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
+		
+		if(sourceX >= 0 && sourceX < (int) imageWidth && sourceY >= 0 && sourceY < (int) imageHeight)
+		{
+			std::cout << "Rendering " << src->Name() << '\n';
+			NumType *imageDataPtr = imageData + sourceY*imageWidth + sourceX;
+			(*imageDataPtr) += NumType(intFlux);
 		}
 	}
 }
