@@ -518,7 +518,10 @@ void LayeredImager::PrepareImageForVisibilitySampling(const double *image, doubl
 		for(size_t x=0;x!=_width;++x)
 		{
 			double l = ((double) x-(_width/2)) * _pixelSizeX;
-			*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
+			if(std::isfinite(*dataPtr))
+				*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
+			else
+				*dataPtr = 0.0;
 			++dataPtr;
 			++image;
 		}
