@@ -1,0 +1,16 @@
+skymodel fileformat 1.0
+source {
+  name "PicA"
+  component {
+    type point
+    position 05h19m49.7s -45d46m44s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 410.0 0 0 410.0
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 452.0 0 0 452.0
+    }
+  }
+}

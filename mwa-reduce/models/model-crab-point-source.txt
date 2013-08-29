@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "Crab SNR"
+  component {
+    type point
+    position 05h34m32.0s +22d00m52s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 1888.55 0 0 1888.55
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 1256.0 0 0 1256.0
+    }
+  }
+}
+
