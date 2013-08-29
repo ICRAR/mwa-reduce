@@ -265,3 +265,14 @@ void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t
 		}
 	}
 }
+
+void CleanAlgorithm::PreparePSF(double* psf, size_t width, size_t height)
+{
+	double* endPtr = psf + width*height;
+	while(psf != endPtr)
+	{
+		if(!std::isfinite(*psf)) *psf = 0.0;
+		++psf;
+	}
+}
+

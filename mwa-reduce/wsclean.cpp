@@ -203,6 +203,8 @@ int main(int argc, char *argv[])
 		FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
 		psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 		std::cout << "DONE\n";
+		
+		CleanAlgorithm::PreparePSF(&psf[0], imgWidth, imgHeight);
 	
 		if(inversionAlgorithm->HasGriddingCorrectionImage())
 		{
