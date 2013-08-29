@@ -1,0 +1,151 @@
+skymodel fileformat 1.0
+source {
+  name "3C353"
+  component {
+    type point
+    position 17h20m28.1s -00d58m47s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 388 0 0 388
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 276 0 0 276
+    }
+  }
+}
+source {
+  name "3C409"
+  component {
+    type point
+    position 20h14m27.6s 23d34m53s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 153.68 0 0 153.68
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 99 0 0 99
+    }
+  }
+}
+source {
+  name "3C444"
+  component {
+    type point
+    position 22h14m25.7s -17d01m36s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 146 0 0 146
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 79.6 0 0 79.6
+    }
+  }
+}
+source {
+  name "Crab SNR"
+  component {
+    type point
+    position 05h34m32.0s 22d00m52s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 1888.55 0 0 1888.55
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 1256 0 0 1256
+    }
+  }
+}
+source {
+  name "CygA"
+  component {
+    type point
+    position 19h59m28.3s 40d44m02s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 17205 0 0 17205
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 8700 0 0 8700
+    }
+  }
+}
+source {
+  name "HerA"
+  component {
+    type point
+    position 16h51m08.1s 04d59m33s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 838 0 0 838
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 378 0 0 378
+    }
+  }
+}
+source {
+  name "HydA"
+  component {
+    type point
+    position 09h18m05.8s -12d05m44s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 579.59 0 0 579.59
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 243 0 0 243
+    }
+  }
+}
+source {
+  name "PicA"
+  component {
+    type point
+    position 05h19m49.7s -45d46m44s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 410 0 0 410
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 452 0 0 452
+    }
+  }
+}
+source {
+  name "PKS2153-69"
+  component {
+    type point
+    position 21h57m06.0s -69d41m24s
+    measurement {
+      frequency 145 MHz
+      fluxdensity Jy 131.4 0 0 131.4
+    }
+    measurement {
+      frequency 468 MHz
+      fluxdensity Jy 68.31 0 0 68.31
+    }
+  }
+}
+source {
+  name "PKS2356-61"
+  component {
+    type point
+    position 23h59m04.3s -60d54m59s
+    measurement {
+      frequency 145 MHz
+      fluxdensity Jy 123.8 0 0 123.8
+    }
+    measurement {
+      frequency 408 MHz
+      fluxdensity Jy 57 0 0 57
+    }
+  }
+}
