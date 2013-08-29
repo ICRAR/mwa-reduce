@@ -294,10 +294,11 @@ int main(int argc, char *argv[])
 				inversionAlgorithm->SetDoSubtractModel(true);
 				inversionAlgorithm->Invert();
 				
+				memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+				
 				if(!reachedMajorThreshold)
 				{
 					// This was the final major iteration: clean up & save results
-					memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 					inversionAlgorithm.reset();
 					
 					std::cout << "Writing residual image... " << std::flush;

@@ -518,7 +518,10 @@ void LayeredImager::PrepareImageForVisibilitySampling(const double *image, doubl
 		for(size_t x=0;x!=_width;++x)
 		{
 			double l = ((double) x-(_width/2)) * _pixelSizeX;
-			*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
+			if(std::isfinite(*dataPtr) && l*l + m*m < 1.0)
+				*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
+			else
+				*dataPtr = 0.0;
 			++dataPtr;
 			++image;
 		}
@@ -545,7 +548,10 @@ void LayeredImager::initializeSqrtLMLookupTable()
 			if(xSrc >= _width) xSrc -= _width;
 			
 			double l = ((double) xSrc-(_width/2)) * _pixelSizeX;
-			*iter = (sqrt(1.0 - l*l - m*m)-1.0);
+			if(l*l + m*m < 1.0)
+				*iter = sqrt(1.0 - l*l - m*m) - 1.0;
+			else
+				*iter = 0.0;
 			iter++;
 		}
 	}
