@@ -1,39 +1,12 @@
 #include <iostream>
 #include <stdexcept>
-#include <cmath>
-#include <fstream>
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
-
-#include "beamevaluator.h"
-#include "banddata.h"
-#include "sourcesdf.h"
 #include "model.h"
-#include "predicter.h"
-#include "mspredicter.h"
-#include "progressbar.h"
+#include "subtractor.h"
 
 using namespace casa;
-
-template<typename T>
-void addGausNoise(std::complex<T> &value, double sigma)
-{
-	long double x1, x2, w;
-
-	do {
-		long double r1 = (long double) rand() / (long double) RAND_MAX; 
-		long double r2 = (long double) rand() / (long double) RAND_MAX; 
-		x1 = 2.0 * r1 - 1.0;
-		x2 = 2.0 * r2 - 1.0;
-		w = x1 * x1 + x2 * x2;
-	} while ( w >= 1.0 );
-
-	w = std::sqrt( (-2.0 * std::log( w ) ) / w ) * sigma;
-	value += std::complex<T>(x1 * w, x2 * w);
-}
 
 int main(int argc, char **argv)
 {
@@ -63,78 +36,12 @@ int main(int argc, char **argv)
 		std::cout << "Opening measurement set... " << std::flush;
 		MeasurementSet ms(argv[argi+1], Table::Update);
 		
-		/**
-		 * Read some meta data from the measurement set
-		 */
-		BandData bandData(ms.spectralWindow());
-		size_t channelCount = bandData.ChannelCount();
-		
-		typedef float num_t;
-		typedef std::complex<num_t> complex_t;
-		ArrayColumn<complex_t> dataColumn(ms, ms.columnName(MSMainEnums::DATA));
-		
-		IPosition dataShape = dataColumn.shape(0);
-		unsigned polarizationCount = dataShape[0];
-		
-		std::cout << "DONE\n";
-		
-		BeamEvaluator beamEvaluator(ms);
-		
-		MSPredicter predicter(ms, model);
-		predicter.SetApplyBeam(applyBeam);
-		predicter.Start(true);
-		
-		/**
-		 * Subtract
-		 */
-		std::ostringstream taskDesc;
-		if(revert)
-			taskDesc << "Adding back ";
-		else if(setvis)
-			taskDesc << "Setting visibilities from ";
-		else
-			taskDesc << "Subtracting ";
-		taskDesc << model.SourceCount() << " sources";
-		ProgressBar progress(taskDesc.str());
-		
-		Array<complex_t> data(dataShape);
-		MSPredicter::RowData rowData;
-		while(predicter.GetNextRow(rowData))
-		{
-			size_t rowIndex = rowData.rowIndex;
-			
-			boost::mutex::scoped_lock lock(predicter.IOMutex());
-			progress.SetProgress(rowIndex, ms.nrow());
-			dataColumn.get(rowIndex, data);
-			lock.unlock();
-			
-			Array<complex_t>::iterator dataPtr = data.begin();
-			std::complex<double> *modelDataPtr = rowData.modelData;
-			for(size_t ch=0; ch!=channelCount; ++ch)
-			{
-				for(size_t p=0; p!=polarizationCount; ++p)
-				{
-					std::complex<double> predicted;
-					if(revert || setvis)
-						predicted = *modelDataPtr;
-					else
-						predicted = -*modelDataPtr;
-					if(addNoise)
-						addGausNoise(predicted, noiseSigma);
-					if(setvis)
-						*dataPtr = predicted;
-					else
-						*dataPtr += predicted;
-					++dataPtr;
-					++modelDataPtr;
-				}
-			}
-			
-			lock.lock();
-			dataColumn.put(rowIndex, data);
-			lock.unlock();
-			
-			predicter.FinishRow(rowData);
-		}
+		Subtractor subtractor;
+		subtractor.SetRevert(revert);
+		subtractor.SetToModel(setvis);
+		subtractor.SetAddNoise(addNoise);
+		subtractor.SetApplyBeam(applyBeam);
+		subtractor.SetNoiseSigma(noiseSigma);
+		subtractor.Subtract(ms, model);
 	}
 }

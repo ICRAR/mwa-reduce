@@ -77,12 +77,11 @@ void Peeler::Perform()
 	timestepRows.push_back(_ms.nrow());
 	std::cout << "DONE (" << timestepCount << ")\n";
 	
-	size_t passCount = (timestepCount + _solutionInterval - 1) / _solutionInterval;
+	size_t passCount = (_solutionInterval==0) ? 1 : (timestepCount + _solutionInterval - 1) / _solutionInterval;
 	
-	std::unique_ptr<Model> model;
 	if(!_modelFilename.empty()) {
 			std::cout << "Reading model... " << std::flush;
-			model.reset(new Model(_modelFilename.c_str()));
+			_model = Model(_modelFilename.c_str());
 			std::cout << "DONE\n";
 	}
 
@@ -93,12 +92,6 @@ void Peeler::Perform()
 		std::ofstream(antFilename.str().c_str());
 	}
 		
-	/*SolutionFile solutionFile;
-	solutionFile.SetAntennaCount(antennaCount);
-	solutionFile.SetChannelCount(channelCount);
-	solutionFile.SetPolarizationCount(4);
-	solutionFile.OpenForWriting(outName);*/
-
 	for(size_t pass=0; pass!=passCount; ++pass)
 	{
 		size_t
@@ -118,7 +111,7 @@ void Peeler::Perform()
 		std::unique_ptr<MSPredicter> predicter;
 		std::unique_ptr<BeamEvaluator> beamEvaluator;
 		std::vector<std::complex<double>> beamValues;
-		if(model == 0) {
+		if(_model.Empty()) {
 			std::cout << "Reading data and model column... " << std::flush;
 			modelColumn.reset(new casa::ROArrayColumn<complex_t>(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 		}
@@ -129,9 +122,9 @@ void Peeler::Perform()
 			}
 			if(_beamOnSource)
 			{
-				if(model->SourceCount() != 1)
+				if(_model.SourceCount() != 1)
 					std::cout << "Warning: To correct for the beam, there should be exactly one source in the model";
-				const ModelSource& source = model->Source(0);
+				const ModelSource& source = _model.Source(0);
 				beamValues.resize(channelCount*4);
 				double beamSum[4] = {0.0, 0.0, 0.0, 0.0};
 				for(size_t ch=0; ch!=channelCount; ++ch)
@@ -143,7 +136,7 @@ void Peeler::Perform()
 				}
 			}
 			
-			predicter.reset(new MSPredicter(_ms, *model));
+			predicter.reset(new MSPredicter(_ms, _model));
 			predicter->SetApplyBeam(_applyBeam);
 			predicter->SetStartRow(startRow);
 			predicter->SetEndRow(endRow);
@@ -178,7 +171,7 @@ void Peeler::Perform()
 				dataColumn.get(rowIndex, data);
 				weightColumn.get(rowIndex, weights);
 				flagColumn.get(rowIndex, flags);
-				if(model == 0)
+				if(_model.Empty())
 					modelColumn->get(rowIndex, modelData);
 				lock.unlock();
 				
@@ -198,7 +191,7 @@ void Peeler::Perform()
 				else
 					notSelected++;
 			
-				if(model == 0)
+				if(_model.Empty())
 				{
 					std::complex<float> *modelDataPtr = modelData.cbegin();
 					for(size_t ch = 0; ch!=channelCount; ++ch)
@@ -300,7 +293,7 @@ void Peeler::Perform()
 		/**
 		 * Do the subtraction
 		 */
-		predicter.reset(new MSPredicter(_ms, *model));
+		predicter.reset(new MSPredicter(_ms, _model));
 		predicter->SetApplyBeam(_applyBeam);
 		predicter->SetStartRow(startRow);
 		predicter->SetEndRow(endRow);

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <complex>
 #include <stdexcept>
+#include <vector>
 
 #include <stdint.h>
 
@@ -47,43 +48,63 @@ class SolutionFile
 
   void OpenForWriting(const char *filename)
   {
-    delete _outputStream;
-    _outputStream = new std::ofstream(filename);    
-    _outputStream->write(reinterpret_cast<const char*>(&_header), sizeof(_header));
-    double timeStart = 0.0, timeEnd = 0.0;
-    _outputStream->write(reinterpret_cast<const char*>(&timeStart), sizeof(timeStart));
-    _outputStream->write(reinterpret_cast<const char*>(&timeEnd), sizeof(timeEnd)); 
+		delete _outputStream;
+		_outputStream = new std::ofstream(filename);    
+		_data.clear();
+		
+		_outputStream->write(reinterpret_cast<const char*>(&_header), sizeof(_header));
+		double timeStart = 0.0, timeEnd = 0.0;
+		_outputStream->write(reinterpret_cast<const char*>(&timeStart), sizeof(timeStart));
+		_outputStream->write(reinterpret_cast<const char*>(&timeEnd), sizeof(timeEnd)); 
   }
+  
+  void OpenInMemory()
+	{
+		delete _outputStream;
+		_outputStream = 0;
+		
+		_data.resize(_header.intervalCount * _header.antennaCount * _header.channelCount * _header.polarizationCount);
+		_readPointer = &_data[0];
+	}
 
-  void OpenForReading(const char *filename)
-  {
-    delete _inputStream;
-    _inputStream = new std::ifstream(filename);
-    if(_inputStream->bad())
-      throw std::runtime_error("Error reading input solutions file");
-    _inputStream->read(reinterpret_cast<char*>(&_header), sizeof(_header));
-    double timeStart, timeEnd;
-    _inputStream->read(reinterpret_cast<char*>(&timeStart), sizeof(timeStart));
-    _inputStream->read(reinterpret_cast<char*>(&timeEnd), sizeof(timeEnd)); 
-  }
+	void OpenForReading(const char *filename)
+	{
+		delete _inputStream;
+		_inputStream = new std::ifstream(filename);
+		if(_inputStream->bad())
+			throw std::runtime_error("Error reading input solutions file");
+		_inputStream->read(reinterpret_cast<char*>(&_header), sizeof(_header));
+		double timeStart, timeEnd;
+		_inputStream->read(reinterpret_cast<char*>(&timeStart), sizeof(timeStart));
+		_inputStream->read(reinterpret_cast<char*>(&timeEnd), sizeof(timeEnd)); 
+	}
 
   std::complex<double> ReadNextSolution() {
-    std::complex<double> val;
-    _inputStream->read(reinterpret_cast<char*>(&val), sizeof(val));
-    return val;
-  }
-
-  void WriteNextSolution(const std::complex<double> &val)
-  {
-    _outputStream->write(reinterpret_cast<const char*>(&val), sizeof(val));
+		if(_inputStream == 0)
+		{
+			std::complex<double> val = *_readPointer;
+			++_readPointer;
+			return val;
+		}
+		else {
+			std::complex<double> val;
+			_inputStream->read(reinterpret_cast<char*>(&val), sizeof(val));
+			return val;
+		}
   }
 
   void WriteSolution(const std::complex<double> &val, size_t interval, size_t antenna, size_t channel, size_t polarization)
   {
-		size_t index = ((interval * _header.intervalCount + antenna) * _header.channelCount + channel) * _header.polarizationCount + polarization;
-		size_t offset = sizeof(_header) + sizeof(double)*2;
-		_outputStream->seekp(offset + sizeof(val) * index, std::ios::beg);
-    _outputStream->write(reinterpret_cast<const char*>(&val), sizeof(val));
+		size_t index = ((interval * _header.antennaCount + antenna) * _header.channelCount + channel) * _header.polarizationCount + polarization;
+		if(_outputStream == 0)
+		{
+			_data[index] = val;
+		}
+		else {
+			size_t offset = sizeof(_header) + sizeof(double)*2;
+			_outputStream->seekp(offset + sizeof(val) * index, std::ios::beg);
+			_outputStream->write(reinterpret_cast<const char*>(&val), sizeof(val));
+		}
   }
 
  private:
@@ -95,6 +116,8 @@ class SolutionFile
   } _header;
   std::ofstream *_outputStream;
   std::ifstream *_inputStream;
+	std::vector<std::complex<double> > _data;
+	std::complex<double>* _readPointer;
 };
 
 #endif

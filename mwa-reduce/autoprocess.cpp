@@ -5,6 +5,9 @@
 #include "banddata.h"
 #include "imagecoordinates.h"
 #include "peeler.h"
+#include "calibrator.h"
+#include "solutionapplier.h"
+#include "subtractor.h"
 
 std::string sourceList(const std::vector<ModelSource*>& sources)
 {
@@ -28,13 +31,17 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	int argi = 1;
-	bool doExecute = false;
+	bool doExecute = false, doPeel = true;
 	while(argv[argi][0] == '-')
 	{
 		std::string param(&argv[argi][1]);
 		if(param == "go")
 		{
 			doExecute = true;
+		}
+		else if(param == "nopeel")
+		{
+			doPeel = false;
 		}
 		else throw std::runtime_error("Invalid parameter");
 		++argi;
@@ -59,6 +66,16 @@ int main(int argc, char* argv[])
 		peelMinRunnerUpFactor = 3.0,
 		maxCalibrateDist = 12.5;
 	
+	bool hasCorrected = ms.tableDesc().isColumn("CORRECTED_DATA");
+	std::string dataColumn;
+	if(hasCorrected) {
+		std::cout << "This measurement set has corrected data: tasks will be applied on the corrected data column.\n";
+		dataColumn = "CORRECTED_DATA";
+	} else {
+		std::cout << "No corrected data in set: tasks will be applied on the data column.\n";
+		dataColumn= "DATA";
+	}
+		
 	BeamEvaluator beamEvaluator(ms, false);
 	
 	std::vector<std::pair<double, ModelSource*>> sources;
@@ -139,21 +156,68 @@ int main(int argc, char* argv[])
 		std::cout << "Not performing tasks: specify '-go' on command line to execute.\n";
 	else
 	{
-		if(!peelSources.empty())
+		Model restorationModel;
+		
+		if(!calibrateSources.empty())
 		{
+			std::cout << "Calibrating using " << sourceList(calibrateSources) << "...\n";
+			
+			Calibrator calibrator(ms);
+			
+			Model calModel;
+			for(std::vector<ModelSource*>::const_iterator i=calibrateSources.begin(); i!=calibrateSources.end(); ++i)
+			{
+				calModel.AddSource(**i);
+				restorationModel.AddSource(**i);
+			}
+			calibrator.SetNIter(1000);
+			calibrator.SetModel(calModel);
+			calibrator.SetDataColumName(dataColumn);
+			calibrator.SetSolutionInterval(0);
+			calibrator.SetApplyBeam(true);
+			calibrator.SetVerbose(true);
+			
+			calibrator.Perform();
+			
+			std::cout << "Applying solutions...\n";
+			SolutionApplier applier;
+			applier.Apply(ms, calibrator.GetSolutionFile());
+			
+			std::cout << "Subtracting model...\n";
+			Subtractor subtractor;
+			subtractor.SetApplyBeam(true);
+			subtractor.Subtract(ms, calModel);
+		}
+		
+		if(!peelSources.empty() && doPeel)
+		{
+			std::cout << "Peeling " << sourceList(peelSources) << "...\n";
+			
 			Model peelModel;
 			for(std::vector<ModelSource*>::const_iterator i=peelSources.begin(); i!=peelSources.end(); ++i)
-				peelModel.AddSource(**i);
+			{
+				restorationModel.AddSource(**i);
+				ModelSource peelSource = **i;
+				std::complex<double> beamMatrix[4], beamGain[4];
+				beamEvaluator.EvaluateAbsToApparentGain(peelSource.PosRA(), peelSource.PosDec(), beamMatrix);
+				Matrix2x2::ATimesHermB(beamGain, beamMatrix, beamMatrix);
+				double gain = (beamGain[0].real() + beamGain[3].real()) * 0.5;
+				peelSource.SED() *= gain;
+				peelModel.AddSource(peelSource);
+			}
 			
 			Peeler peeler(ms);
 			
 			peeler.SetNIter(1000);
 			peeler.SetLimit(0.001);
 			peeler.SetModel(peelModel);
-			peeler.SetDataColumName("CORRECTED_DATA");
-			peeler.SetSolutionInterval(4);
+			peeler.SetDataColumName(dataColumn);
+			peeler.SetSolutionInterval(8);
 			
 			peeler.Perform();
 		}
+		
+		restorationModel.Save("model-restore.txt");
+		std::cout << "Restoration model containing " << restorationModel.SourceCount() << " sources written to model-restore.txt .\n";
 	}
 }

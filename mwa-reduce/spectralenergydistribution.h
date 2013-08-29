@@ -153,6 +153,18 @@ class SpectralEnergyDistribution
 			}
 		}
 		
+		void operator*=(double factor)
+		{
+			for(iterator i=begin(); i!=end(); ++i)
+			{
+				Measurement &m = i->second;
+				for(size_t p=0; p!=4; ++p)
+				{
+					m.SetFluxDensity(p, m.FluxDensity(p) * factor);
+				}
+			}
+		}
+		
 		void CombineMeasurements(const SpectralEnergyDistribution& other)
 		{
 			for(const_iterator i=other.begin(); i!=other.end(); ++i)
