@@ -13,7 +13,9 @@ SpectrumSubtractor::SpectrumSubtractor(casa::MeasurementSet& ms, Model& model) :
 	_model(model),
 	_bandData(ms.spectralWindow()),
 	_subtractWorkLane(BUFFER_COUNT),
-	_subtractAvailableBufferLane(BUFFER_COUNT)
+	_subtractAvailableBufferLane(BUFFER_COUNT),
+	_timestepCount(0),
+	_fittingInterval(1)
 {
 	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -38,10 +40,14 @@ void SpectrumSubtractor::Perform()
 		throw std::runtime_error("Need 4 polarizations");
 	
 	double time = timeColumn(0);
-	size_t timeStepStartRow = 0;
+	size_t intervalStartRow = 0;
 	
 	initSources();
 	initPredictors();
+	countTimesteps(timeColumn);
+	size_t intervalCount = _timestepCount / _fittingInterval;
+	if(intervalCount == 0) intervalCount = 1;
+	std::cout << "Measuring spectra for " << intervalCount << " intervals...\n";
 	
 	_spectrumSums.resize(4 * _bandData.ChannelCount() * _model.SourceCount());
 	_spectrumWeights.resize(4 * _bandData.ChannelCount() * _model.SourceCount());
@@ -59,7 +65,7 @@ void SpectrumSubtractor::Perform()
 	initMeasureThreadData();
 	startMeasureThreads();
 	
-	size_t bufferIndex = 0;
+	size_t bufferIndex = 0, timeIndex = 0, intervalIndex = 0;
 	for(size_t row=0; row!=_ms.nrow(); ++row)
 	{
 		size_t
@@ -70,14 +76,19 @@ void SpectrumSubtractor::Perform()
 			double thisTime = timeColumn(row);
 			if(thisTime != time)
 			{
-				stopMeasureThreads();
-				std::cout << 'S' << std::flush;
-				
-				performSubtraction(timeStepStartRow, row);
-				
+				++timeIndex;
 				time = thisTime;
-				timeStepStartRow = row;
-				startMeasureThreads();
+				size_t nextIntervalTimestep = _timestepCount * (intervalIndex+1) / intervalCount;
+				if(timeIndex == nextIntervalTimestep)
+				{
+					stopMeasureThreads();
+					
+					performSubtraction(intervalStartRow, row);
+					
+					intervalStartRow = row;
+					startMeasureThreads();
+					++intervalIndex;
+				}
 			}
 			
 			casa::Array<casa::Complex> &dataArray = *_dataBuffers[bufferIndex];
@@ -112,6 +123,7 @@ void SpectrumSubtractor::Perform()
 		}
 	}
 	stopMeasureThreads();
+	performSubtraction(intervalStartRow, _ms.nrow());
 }
 
 void SpectrumSubtractor::initMeasureThreadData()
@@ -144,6 +156,20 @@ void SpectrumSubtractor::initPredictors()
 		_predicters.push_back(std::unique_ptr<Predicter>(
 			new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), _bandData.ChannelCount())));
 		(*_predicters.rbegin())->Initialize(*sourceIter);
+	}
+}
+
+void SpectrumSubtractor::countTimesteps(casa::ROScalarColumn<double>& timeColumn)
+{
+	double currentTimestep = timeColumn(0);
+	_timestepCount = 1;
+	for(size_t i=0; i!=_ms.nrow(); ++i)
+	{
+		if(timeColumn(i) != currentTimestep)
+		{
+			++_timestepCount;
+			currentTimestep = timeColumn(i);
+		}
 	}
 }
 

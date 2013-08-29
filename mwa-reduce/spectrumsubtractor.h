@@ -43,10 +43,12 @@ class SpectrumSubtractor
 		
 		void Perform();
 		void SetDataColumn(const std::string &dataColumn) { _dataColumn = dataColumn; }
+		void SetFittingInterval(size_t fittingInterval) { _fittingInterval = fittingInterval; }
 	private:
 		void initMeasureThreadData();
 		void initPredictors();
 		void initSources();
+		void countTimesteps(casa::ROScalarColumn<double>& timeColumn);
 		
 		void startMeasureThreads();
 		void stopMeasureThreads();
@@ -77,6 +79,7 @@ class SpectrumSubtractor
 		
 		static const size_t BUFFER_COUNT;
 		std::string _dataColumn;
+		size_t _timestepCount, _fittingInterval;
 };
 
 #endif
