@@ -8,6 +8,7 @@
 #include <queue>
 #include "banddata.h"
 #include "lane.h"
+#include "model.h"
 
 class Peeler
 {
@@ -44,6 +45,11 @@ public:
 	void SetModelFilename(const std::string& modelFilename)
 	{
 		_modelFilename = modelFilename;
+	}
+	
+	void SetModel(const Model& model)
+	{
+		_model = model;
 	}
 	
 	void SetRHSSolutionFile(const std::string& rhsSolutionFile)
@@ -114,6 +120,7 @@ private:
 	size_t _nIter;
 	double _limit, _minUVW;
 	size_t _solutionInterval;
+	Model _model;
 };
 
 #endif

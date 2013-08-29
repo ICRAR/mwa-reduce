@@ -4,6 +4,7 @@
 #include "model.h"
 #include "banddata.h"
 #include "imagecoordinates.h"
+#include "peeler.h"
 
 std::string sourceList(const std::vector<ModelSource*>& sources)
 {
@@ -23,12 +24,24 @@ std::string sourceList(const std::vector<ModelSource*>& sources)
 int main(int argc, char* argv[])
 {
 	if(argc < 2) {
-		std::cout << "Syntax: autoprocess <catalogue> <ms>\n";
+		std::cout << "Syntax: autoprocess [options] <catalogue> <ms>\n";
 		return 1;
 	}
+	int argi = 1;
+	bool doExecute = false;
+	while(argv[argi][0] == '-')
+	{
+		std::string param(&argv[argi][1]);
+		if(param == "go")
+		{
+			doExecute = true;
+		}
+		else throw std::runtime_error("Invalid parameter");
+		++argi;
+	}
 	
-	Model catalogue(argv[1]);
-	casa::MeasurementSet ms(argv[2]);
+	Model catalogue(argv[argi]);
+	casa::MeasurementSet ms(argv[argi+1]);
 	BandData bandData(ms.spectralWindow());
 	
 	casa::MSField fieldTable = ms.field();
@@ -102,20 +115,45 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	std::cout << "\nProcessing of this set consists of:\n";
+	std::cout << "\nTasks:\n";
 	
 	if(calibrateSources.empty())
 		std::cout << "- No self-calibration (no obvious strong sources close to the centre).\n";
 	else
-		std::cout << "- Self-calibrating using " << sourceList(calibrateSources) << '\n';
+		std::cout << "- Self-calibrate using " << sourceList(calibrateSources) << '\n';
 	
 	if(peelSources.empty())
 		std::cout << "- No peeling.\n";
 	else
-		std::cout << "- Peeling out " << sourceList(peelSources) << '\n';
+		std::cout << "- Peel out " << sourceList(peelSources) << '\n';
 	
 	if(subtractSources.empty())
 		std::cout << "- No spectral source subtraction.\n";
 	else
 		std::cout << "- Spectrally subtract " << sourceList(subtractSources) << '\n';
+	
+	std::cout << '\n';	
+	if(calibrateSources.size() + peelSources.size() + subtractSources.size() == 0)
+		std::cout << "No tasks to perform.\n";
+	else if(!doExecute)
+		std::cout << "Not performing tasks: specify '-go' on command line to execute.\n";
+	else
+	{
+		if(!peelSources.empty())
+		{
+			Model peelModel;
+			for(std::vector<ModelSource*>::const_iterator i=peelSources.begin(); i!=peelSources.end(); ++i)
+				peelModel.AddSource(**i);
+			
+			Peeler peeler(ms);
+			
+			peeler.SetNIter(1000);
+			peeler.SetLimit(0.001);
+			peeler.SetModel(peelModel);
+			peeler.SetDataColumName("CORRECTED_DATA");
+			peeler.SetSolutionInterval(4);
+			
+			peeler.Perform();
+		}
+	}
 }

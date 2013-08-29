@@ -118,7 +118,7 @@ void Peeler::Perform()
 		std::unique_ptr<MSPredicter> predicter;
 		std::unique_ptr<BeamEvaluator> beamEvaluator;
 		std::vector<std::complex<double>> beamValues;
-		if(_modelFilename.empty()) {
+		if(model == 0) {
 			std::cout << "Reading data and model column... " << std::flush;
 			modelColumn.reset(new casa::ROArrayColumn<complex_t>(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 		}
@@ -178,7 +178,7 @@ void Peeler::Perform()
 				dataColumn.get(rowIndex, data);
 				weightColumn.get(rowIndex, weights);
 				flagColumn.get(rowIndex, flags);
-				if(_modelFilename.empty())
+				if(model == 0)
 					modelColumn->get(rowIndex, modelData);
 				lock.unlock();
 				
@@ -198,7 +198,7 @@ void Peeler::Perform()
 				else
 					notSelected++;
 			
-				if(_modelFilename.empty())
+				if(model == 0)
 				{
 					std::complex<float> *modelDataPtr = modelData.cbegin();
 					for(size_t ch = 0; ch!=channelCount; ++ch)
