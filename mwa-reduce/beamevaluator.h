@@ -34,6 +34,12 @@ class BeamEvaluator
 		void EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double> *gains);
 		
 		template<typename NumType>
+		void AbsToApparent(double ra, double dec, std::complex<NumType>* pixelValues)
+		{
+			AbsToApparent<NumType>(ra, dec, _frequency, pixelValues);
+		}
+		
+		template<typename NumType>
 		void AbsToApparent(double ra, double dec, double frequency, std::complex<NumType>* pixelValues)
 		{
 			std::complex<NumType> gains[4], temp[4];
@@ -56,6 +62,12 @@ class BeamEvaluator
 			Matrix2x2::ATimesHermB(input, temp, gains);
 			pixelValues[0] = input[0].real(); pixelValues[1] = input[1].real();
 			pixelValues[2] = input[2].real(); pixelValues[3] = input[3].real();
+		}
+		
+		template<typename NumType>
+		void ApparentToAbs(double ra, double dec, std::complex<NumType>* data)
+		{
+			ApparentToAbs<NumType>(ra, dec, _frequency, data);
 		}
 		
 		template<typename NumType>

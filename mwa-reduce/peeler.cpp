@@ -53,7 +53,7 @@ void Peeler::Perform()
 	casa::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
 	casa::ArrayColumn<complex_t> dataColumn(_ms, _dataColumnName);
 	casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
+	casa::ArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
 	std::unique_ptr<casa::ROArrayColumn<complex_t>> modelColumn;
 	
 	casa::IPosition dataShape = dataColumn.shape(0);
@@ -313,10 +313,13 @@ void Peeler::Perform()
 			{
 				boost::mutex::scoped_lock lock(predicter->IOMutex());
 				dataColumn.get(rowIndex, data);
+				flagColumn.get(rowIndex, flags);
 				lock.unlock();
 				casa::Complex *dataPtr = data.cbegin();
+				bool *flagPtr = flags.cbegin();
 				
 				// Apply solutions to model and subtract from data
+				bool flagsWereChanged = false;
 				for(size_t ch=0; ch!=channelCount; ++ch)
 				{
 					std::complex<double> solutionsA[4], solutionsB[4];
@@ -335,10 +338,17 @@ void Peeler::Perform()
 						Matrix2x2::Subtract(doubleData, solutionsA);
 						Matrix2x2::Assign(dataPtr+ch*4, doubleData);
 					}
+					else {
+						for(size_t p=0; p!=4; ++p)
+							flagPtr[ch*4 + p] = true;
+						flagsWereChanged = true;
+					}
 				}
 				
 				lock.lock();
 				dataColumn.put(rowIndex, data);
+				if(flagsWereChanged)
+					flagColumn.put(rowIndex, flags);
 			}
 			
 			predicter->FinishRow(rowData);

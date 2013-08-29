@@ -17,7 +17,7 @@ class SolutionFile
     strcpy(_header.intro, "MWAOCAL");
     _header.fileType = 0; // Complex jones solutions
     _header.structureType = 0; // ordered real/imag, polarization, channel, antenna, time
-    _header.timestepCount = 1;
+    _header.intervalCount = 1;
   }
 
   ~SolutionFile() {
@@ -39,6 +39,11 @@ class SolutionFile
   void SetPolarizationCount(size_t polarizationCount) {
     _header.polarizationCount = polarizationCount;
   }
+  
+  size_t IntervalCount() const { return _header.intervalCount; }
+  void SetIntervalCount(size_t intervalCount) {
+		_header.intervalCount = intervalCount;
+	}
 
   void OpenForWriting(const char *filename)
   {
@@ -73,9 +78,9 @@ class SolutionFile
     _outputStream->write(reinterpret_cast<const char*>(&val), sizeof(val));
   }
 
-  void WriteSolution(const std::complex<double> &val, size_t antenna, size_t channel, size_t polarization)
+  void WriteSolution(const std::complex<double> &val, size_t interval, size_t antenna, size_t channel, size_t polarization)
   {
-		size_t index = (antenna * _header.channelCount + channel) * _header.polarizationCount + polarization;
+		size_t index = ((interval * _header.intervalCount + antenna) * _header.channelCount + channel) * _header.polarizationCount + polarization;
 		size_t offset = sizeof(_header) + sizeof(double)*2;
 		_outputStream->seekp(offset + sizeof(val) * index, std::ios::beg);
     _outputStream->write(reinterpret_cast<const char*>(&val), sizeof(val));
@@ -86,7 +91,7 @@ class SolutionFile
     char intro[8];
     uint32_t fileType;
     uint32_t structureType;
-    uint32_t timestepCount, antennaCount, channelCount, polarizationCount;
+    uint32_t intervalCount, antennaCount, channelCount, polarizationCount;
   } _header;
   std::ofstream *_outputStream;
   std::ifstream *_inputStream;
