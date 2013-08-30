@@ -45,6 +45,36 @@ source {
   }
 }
 source {
+  name "CasA"
+  component {
+    type point
+    position 23h23m27.9s 58d48m42s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 17693.9 0 0 17693.9
+    }
+    measurement {
+      frequency 152 MHz
+      fluxdensity Jy 13130 0 0 13130
+    }
+  }
+}
+source {
+  name "CenA"
+  component {
+    type point
+    position 13h25m27.6s -43d01m09s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 1582 0 0 1582
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 1104 0 0 1104
+    }
+  }
+}
+source {
   name "Crab SNR"
   component {
     type point
@@ -71,6 +101,21 @@ source {
     measurement {
       frequency 178 MHz
       fluxdensity Jy 8700 0 0 8700
+    }
+  }
+}
+source {
+  name "Fornax A"
+  component {
+    type point
+    position 03h22m41.7s -37d12m30s
+    measurement {
+      frequency 145 MHz
+      fluxdensity Jy 123.9 0 0 123.9
+    }
+    measurement {
+      frequency 408 MHz
+      fluxdensity Jy 176.8 0 0 176.8
     }
   }
 }

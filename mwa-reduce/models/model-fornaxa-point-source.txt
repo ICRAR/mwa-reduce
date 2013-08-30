@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "Fornax A"
+  component {
+    type point
+    position 03h22m41.7s -37d12m30s
+    measurement {
+      frequency 145 MHz
+      fluxdensity Jy 123.9 0 0 123.9
+    }
+    measurement {
+      frequency 408 MHz
+      fluxdensity Jy 176.8 0 0 176.8
+    }
+  }
+}
+
