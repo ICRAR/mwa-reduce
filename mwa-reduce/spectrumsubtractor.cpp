@@ -265,7 +265,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 			++count;
 		}
 	}
-	std::cout << "Flux: " << (2.0*totalFlux/count) << ',' << count << '\n';
+	std::cout << "Flux: " << (2.0*totalFlux/count) << "\tWeight:" << count << '\n';
 	
 	casa::ArrayColumn<casa::Complex> dataColumn(_ms, _dataColumn);
 	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));

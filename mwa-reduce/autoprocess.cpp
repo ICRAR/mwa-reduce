@@ -136,9 +136,9 @@ int main(int argc, char* argv[])
 	std::cout << "\nTasks:\n";
 	
 	if(calibrateSources.empty())
-		std::cout << "- No self-calibration (no obvious strong sources close to the centre).\n";
+		std::cout << "- No self-calibration (no strong sources close to the centre).\n";
 	else
-		std::cout << "- Self-calibrate using " << sourceList(calibrateSources) << '\n';
+		std::cout << "- Self-calibrate using " << sourceList(calibrateSources) << " and subtract " << ((calibrateSources.size()>1) ? "these sources.\n" : "this source.\n");
 	
 	if(peelSources.empty())
 		std::cout << "- No peeling.\n";
