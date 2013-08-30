@@ -57,7 +57,7 @@ public:
 		_rhsSolutionFile = rhsSolutionFile;
 	}
 	
-	void SetDataColumName(const std::string& dataColumnName)
+	void SetDataColumnName(const std::string& dataColumnName)
 	{
 		_dataColumnName = dataColumnName;
 	}

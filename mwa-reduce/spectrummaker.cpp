@@ -271,7 +271,7 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 			double lambda = _bandData.ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
 			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
-			double visSample[4];
+			double visSample[4] = { 0.0, 0.0, 0.0, 0.0 };
 			bool sampleGood = true;
 			double weightScalar = 0.0;
 			for(size_t p=0; p!=4; ++p)

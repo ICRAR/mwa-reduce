@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
 			}
 			calibrator.SetNIter(1000);
 			calibrator.SetModel(calModel);
-			calibrator.SetDataColumName(dataColumn);
+			calibrator.SetDataColumnName(dataColumn);
 			calibrator.SetSolutionInterval(0);
 			calibrator.SetApplyBeam(true);
 			calibrator.SetVerbose(true);
@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
 			peeler.SetNIter(1000);
 			peeler.SetLimit(0.001);
 			peeler.SetModel(peelModel);
-			peeler.SetDataColumName(dataColumn);
+			peeler.SetDataColumnName(dataColumn);
 			peeler.SetSolutionInterval(8);
 			
 			peeler.Perform();
@@ -239,6 +239,7 @@ int main(int argc, char* argv[])
 			
 			SpectrumSubtractor subtractor(ms, subtractModel);
 			subtractor.SetFittingInterval(4);
+			subtractor.SetDataColumn(dataColumn);
 			subtractor.Perform();
 		}
 		
