@@ -8,6 +8,7 @@
 #include "calibrator.h"
 #include "solutionapplier.h"
 #include "subtractor.h"
+#include "spectrumsubtractor.h"
 
 std::string sourceList(const std::vector<ModelSource*>& sources)
 {
@@ -109,7 +110,7 @@ int main(int argc, char* argv[])
 		// Determine what to do with it
 		if(src.first >= peelThreshold)
 		{
-			if(distanceDeg <= maxCalibrateDist)
+			if(distanceDeg <= maxCalibrateDist && peelSources.empty())
 			{
 				calibrateSources.push_back(src.second);
 			}
@@ -198,6 +199,8 @@ int main(int argc, char* argv[])
 			{
 				restorationModel.AddSource(**i);
 				ModelSource peelSource = **i;
+				// Correct for the beam; this is not necessarily as gains are fitted, but give (a)
+				// better initial conditions and (b) the reported gains are true differential gains.
 				std::complex<double> beamMatrix[4], beamGain[4];
 				beamEvaluator.EvaluateAbsToApparentGain(peelSource.PosRA(), peelSource.PosDec(), beamMatrix);
 				Matrix2x2::ATimesHermB(beamGain, beamMatrix, beamMatrix);
@@ -215,6 +218,28 @@ int main(int argc, char* argv[])
 			peeler.SetSolutionInterval(8);
 			
 			peeler.Perform();
+		}
+		
+		if(!subtractSources.empty())
+		{
+			std::cout << "Spectrally subtracting " << sourceList(subtractSources) << "...\n";
+			
+			Model subtractModel;
+			for(std::vector<ModelSource*>::const_iterator i=subtractSources.begin(); i!=subtractSources.end(); ++i)
+			{
+				restorationModel.AddSource(**i);
+				ModelSource subtractSource = **i;
+				std::complex<double> beamMatrix[4], beamGain[4];
+				beamEvaluator.EvaluateAbsToApparentGain(subtractSource.PosRA(), subtractSource.PosDec(), beamMatrix);
+				Matrix2x2::ATimesHermB(beamGain, beamMatrix, beamMatrix);
+				double gain = (beamGain[0].real() + beamGain[3].real()) * 0.5;
+				subtractSource.SED() *= gain;
+				subtractModel.AddSource(subtractSource);
+			}
+			
+			SpectrumSubtractor subtractor(ms, subtractModel);
+			subtractor.SetFittingInterval(4);
+			subtractor.Perform();
 		}
 		
 		restorationModel.Save("model-restore.txt");
