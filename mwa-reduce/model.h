@@ -59,7 +59,7 @@ class Model
 		{
 			double flux = 0.0;
 			for(const_iterator i=begin(); i!=end(); ++i)
-				flux += i->SED().IntegratedFlux(frequencyStartHz, frequencyEndHz, polarizationIndex);
+				flux += i->TotalFlux(frequencyStartHz, frequencyEndHz, polarizationIndex);
 			
 			return flux;
 		}
@@ -68,7 +68,7 @@ class Model
 		{
 			double flux = 0.0;
 			for(const_iterator i=begin(); i!=end(); ++i)
-				flux += i->SED().FluxAtFrequency(frequency, polarizationIndex);
+				flux += i->TotalFlux(frequency, polarizationIndex);
 			
 			return flux;
 		}
@@ -79,21 +79,24 @@ class Model
 		{
 			for(iterator sourcePtr = begin(); sourcePtr!=end(); ++sourcePtr)
 			{
-				SpectralEnergyDistribution &sed = sourcePtr->SED();
-				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr != sourcePtr->end(); ++compPtr)
 				{
-					long double totalFlux = 0.0;
-					for(size_t p=0; p!=4; ++p)
+					SpectralEnergyDistribution &sed = compPtr->SED();
+					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 					{
-						long double f = m->second.FluxDensity(p);
-						if(std::isfinite(f))
-							totalFlux += f;
+						long double totalFlux = 0.0;
+						for(size_t p=0; p!=4; ++p)
+						{
+							long double f = m->second.FluxDensity(p);
+							if(std::isfinite(f))
+								totalFlux += f;
+						}
+						totalFlux /= 2.0;
+						m->second.SetFluxDensity(0, totalFlux);
+						m->second.SetFluxDensity(1, 0.0);
+						m->second.SetFluxDensity(2, 0.0);
+						m->second.SetFluxDensity(3, totalFlux);
 					}
-					totalFlux /= 2.0;
-					m->second.SetFluxDensity(0, totalFlux);
-					m->second.SetFluxDensity(1, 0.0);
-					m->second.SetFluxDensity(2, 0.0);
-					m->second.SetFluxDensity(3, totalFlux);
 				}
 			}
 		}
@@ -106,6 +109,13 @@ class Model
 				for(const_iterator i = model.begin(); i!=model.end(); ++i)
 					combineMeasurements(*i);
 			}
+		}
+		
+		size_t ComponentCount() const {
+			size_t count = 0;
+			for(const_iterator i = begin(); i!=end(); ++i)
+				count += i->ComponentCount();
+			return count;
 		}
 	private:
 		enum PolarizationType _polarizationType;

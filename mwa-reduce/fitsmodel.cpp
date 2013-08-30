@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 				{
 					const ModelSource &source2 = model.Source(j);
 					double distance = 
-						ImageCoordinates::AngularDistance(refSource.PosRA(), refSource.PosDec(), source2.PosRA(), source2.PosDec());
+						ImageCoordinates::AngularDistance(refSource.Peak().PosRA(), refSource.Peak().PosDec(), source2.Peak().PosRA(), source2.Peak().PosDec());
 					if(distance <= mergeDistance)
 					{
 						sourcesToRemove.insert(j);
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 			for(size_t i=model.SourceCount(); i>0; --i)
 			{
 				size_t sIndex = model.SourceCount() - 1;
-				if(model.Source(sIndex).SED().FluxAtLowestFrequency() < limit)
+				if(model.Source(sIndex).Peak().SED().FluxAtLowestFrequency() < limit)
 					model.RemoveSource(i);
 			}
 		}
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 			
 			SkyArea area;
 			SkyAreaElement element;
-			element.SetToCircle(mergeDistance, source.PosRA(), source.PosDec());
+			element.SetToCircle(mergeDistance, source.Peak().PosRA(), source.Peak().PosDec());
 			area.AddElement(element);
 			area.SetName(source.Name());
 			areaSet.AddArea(area);

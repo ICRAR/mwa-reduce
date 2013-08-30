@@ -20,46 +20,49 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 	int boundingBoxSize = ceil(beamSize * 5.0 / (0.5 * (_pixelScaleL + _pixelScaleM)));
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
-		long double
-			posRA = src->PosRA(),
-			posDec = src->PosDec(),
-			sourceL, sourceM;
-		ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
-		const SpectralEnergyDistribution &sed = src->SED();
-		const long double intFlux = sed.IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
-		
-		//std::cout << "Source: " << src->PosRA() << "," << src->PosDec() << " Phase centre: " << _phaseCentreRA << "," << _phaseCentreDec << " beamsize: " << beamSize << "\n";
-			
-		int sourceX, sourceY;
-		ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
-		//std::cout << "Adding source " << src->Name() << " at " << sourceX << "," << sourceY << " of "
-		//	<< intFlux << " Jy ("
-		//	<< startFrequency/1000000.0 << "-" << endFrequency/1000000.0 << " MHz).\n";
-		int
-			xLeft = sourceX - boundingBoxSize,
-			xRight = sourceX + boundingBoxSize,
-			yTop = sourceY - boundingBoxSize,
-			yBottom = sourceY + boundingBoxSize;
-		if(xLeft < 0) xLeft = 0;
-		if(xLeft > (int) imageWidth) xLeft = (int) imageWidth;
-		if(xRight < 0) xRight = 0;
-		if(xRight > (int) imageWidth) xRight = (int) imageWidth;
-		if(yTop < 0) yTop = 0;
-		if(yTop > (int) imageHeight) yTop = (int) imageHeight;
-		if(yBottom < 0) yBottom = 0;
-		if(yBottom > (int) imageHeight) yBottom = (int) imageHeight;
-		
-		for(int y=yTop; y!=yBottom; ++y)
+		for(ModelSource::const_iterator comp=src->begin(); comp!=src->end(); ++comp)
 		{
-			NumType *imageDataPtr = imageData + y*imageWidth+xLeft;
-			for(int x=xLeft; x!=xRight; ++x)
+			long double
+				posRA = comp->PosRA(),
+				posDec = comp->PosDec(),
+				sourceL, sourceM;
+			ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
+			const SpectralEnergyDistribution &sed = comp->SED();
+			const long double intFlux = sed.IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
+			
+			//std::cout << "Source: " << comp->PosRA() << "," << comp->PosDec() << " Phase centre: " << _phaseCentreRA << "," << _phaseCentreDec << " beamsize: " << beamSize << "\n";
+				
+			int sourceX, sourceY;
+			ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
+			//std::cout << "Adding source " << comp->Name() << " at " << sourceX << "," << sourceY << " of "
+			//	<< intFlux << " Jy ("
+			//	<< startFrequency/1000000.0 << "-" << endFrequency/1000000.0 << " MHz).\n";
+			int
+				xLeft = sourceX - boundingBoxSize,
+				xRight = sourceX + boundingBoxSize,
+				yTop = sourceY - boundingBoxSize,
+				yBottom = sourceY + boundingBoxSize;
+			if(xLeft < 0) xLeft = 0;
+			if(xLeft > (int) imageWidth) xLeft = (int) imageWidth;
+			if(xRight < 0) xRight = 0;
+			if(xRight > (int) imageWidth) xRight = (int) imageWidth;
+			if(yTop < 0) yTop = 0;
+			if(yTop > (int) imageHeight) yTop = (int) imageHeight;
+			if(yBottom < 0) yBottom = 0;
+			if(yBottom > (int) imageHeight) yBottom = (int) imageHeight;
+			
+			for(int y=yTop; y!=yBottom; ++y)
 			{
-				long double l, m;
-				ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, l, m);
-				long double dist = sqrt((l-sourceL)*(l-sourceL) + (m-sourceM)*(m-sourceM));
-				long double g = gaus(dist, beamSize);
-				(*imageDataPtr) += NumType(g * g * intFlux);
-				++imageDataPtr;
+				NumType *imageDataPtr = imageData + y*imageWidth+xLeft;
+				for(int x=xLeft; x!=xRight; ++x)
+				{
+					long double l, m;
+					ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, l, m);
+					long double dist = sqrt((l-sourceL)*(l-sourceL) + (m-sourceM)*(m-sourceM));
+					long double g = gaus(dist, beamSize);
+					(*imageDataPtr) += NumType(g * g * intFlux);
+					++imageDataPtr;
+				}
 			}
 		}
 	}
@@ -72,21 +75,24 @@ void ModelRenderer::RenderModel(NumType* imageData, size_t imageWidth, size_t im
 {
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
-		long double
-			posRA = src->PosRA(),
-			posDec = src->PosDec(),
-			sourceL, sourceM;
-		int sourceX, sourceY;
-		ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
-		ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
-		
-		const long double intFlux = src->SED().IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
-		
-		if(sourceX >= 0 && sourceX < (int) imageWidth && sourceY >= 0 && sourceY < (int) imageHeight)
+		std::cout << "Rendering " << src->Name() << '\n';
+		for(ModelSource::const_iterator comp=src->begin(); comp!=src->end(); ++comp)
 		{
-			std::cout << "Rendering " << src->Name() << '\n';
-			NumType *imageDataPtr = imageData + sourceY*imageWidth + sourceX;
-			(*imageDataPtr) += NumType(intFlux);
+			long double
+				posRA = comp->PosRA(),
+				posDec = comp->PosDec(),
+				sourceL, sourceM;
+			int sourceX, sourceY;
+			ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
+			ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
+			
+			const long double intFlux = comp->SED().IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
+			
+			if(sourceX >= 0 && sourceX < (int) imageWidth && sourceY >= 0 && sourceY < (int) imageHeight)
+			{
+				NumType *imageDataPtr = imageData + sourceY*imageWidth + sourceX;
+				(*imageDataPtr) += NumType(intFlux);
+			}
 		}
 	}
 }

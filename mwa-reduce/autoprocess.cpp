@@ -86,8 +86,8 @@ int main(int argc, char* argv[])
 		ModelSource& source = *srcIter;
 		std::complex<double> fluxMatrix[4];
 		for(size_t p=0; p!=4; ++p)
-			fluxMatrix[p] = source.SED().IntegratedFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
-		beamEvaluator.AbsToApparent(source.PosRA(), source.PosDec(), fluxMatrix);
+			fluxMatrix[p] = source.TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
+		beamEvaluator.AbsToApparent(source.Peak().PosRA(), source.Peak().PosDec(), fluxMatrix);
 		double fluxStokesI = (fluxMatrix[0].real() + fluxMatrix[3].real()) * 0.5;
 		sources.push_back(std::make_pair(fluxStokesI, &source));
 	}
@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
 	{
 		std::pair<double, ModelSource*>& src = sources[i];
 		double distanceDeg = (180.0 / M_PI) *
-			ImageCoordinates::AngularDistance(phaseCentreRA, phaseCentreDec, src.second->PosRA(), src.second->PosDec());
+			ImageCoordinates::AngularDistance(phaseCentreRA, phaseCentreDec, src.second->Peak().PosRA(), src.second->Peak().PosDec());
 		double
 			distanceNice = round(distanceDeg*10.0)*0.1,
 			fluxNice = round(src.first*10.0)*0.1;
@@ -199,13 +199,16 @@ int main(int argc, char* argv[])
 			{
 				restorationModel.AddSource(**i);
 				ModelSource peelSource = **i;
-				// Correct for the beam; this is not necessarily as gains are fitted, but give (a)
-				// better initial conditions and (b) the reported gains are true differential gains.
-				std::complex<double> beamMatrix[4], beamGain[4];
-				beamEvaluator.EvaluateAbsToApparentGain(peelSource.PosRA(), peelSource.PosDec(), beamMatrix);
-				Matrix2x2::ATimesHermB(beamGain, beamMatrix, beamMatrix);
-				double gain = (beamGain[0].real() + beamGain[3].real()) * 0.5;
-				peelSource.SED() *= gain;
+				// Correct for the beam; this is not necessarily as gains are fitted, but will (a)
+				// give better initial conditions and (b) the reported gains are true differential gains.
+				for(ModelSource::iterator i=peelSource.begin(); i!=peelSource.end(); ++i)
+				{
+					std::complex<double> beamMatrix[4], beamGain[4];
+					beamEvaluator.EvaluateAbsToApparentGain(i->PosRA(), i->PosDec(), beamMatrix);
+					Matrix2x2::ATimesHermB(beamGain, beamMatrix, beamMatrix);
+					double gain = (beamGain[0].real() + beamGain[3].real()) * 0.5;
+					i->SED() *= gain;
+				}
 				peelModel.AddSource(peelSource);
 			}
 			
@@ -229,11 +232,14 @@ int main(int argc, char* argv[])
 			{
 				restorationModel.AddSource(**i);
 				ModelSource subtractSource = **i;
-				std::complex<double> beamMatrix[4], beamGain[4];
-				beamEvaluator.EvaluateAbsToApparentGain(subtractSource.PosRA(), subtractSource.PosDec(), beamMatrix);
-				Matrix2x2::ATimesHermB(beamGain, beamMatrix, beamMatrix);
-				double gain = (beamGain[0].real() + beamGain[3].real()) * 0.5;
-				subtractSource.SED() *= gain;
+				for(ModelSource::iterator i=subtractSource.begin(); i!=subtractSource.end(); ++i)
+				{
+					std::complex<double> beamMatrix[4], beamGain[4];
+					beamEvaluator.EvaluateAbsToApparentGain(i->PosRA(), i->PosDec(), beamMatrix);
+					Matrix2x2::ATimesHermB(beamGain, beamMatrix, beamMatrix);
+					double gain = (beamGain[0].real() + beamGain[3].real()) * 0.5;
+					i->SED() *= gain;
+				}
 				subtractModel.AddSource(subtractSource);
 			}
 			

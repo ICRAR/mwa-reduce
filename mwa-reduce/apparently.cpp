@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 		{
 			ModelSource source = *s;
 			long double l, m;
-			ImageCoordinates::RaDecToLM<long double>(source.PosRA(), source.PosDec(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), l, m);
+			ImageCoordinates::RaDecToLM<long double>(source.Peak().PosRA(), source.Peak().PosDec(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), l, m);
 			double
 				x = l / fitsReader.PixelSizeX() + fitsReader.ImageWidth()/2,
 				y = m / fitsReader.PixelSizeY() + fitsReader.ImageHeight()/2;
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 			}
 			else {
 				if(value > 0.0) {
-					source.SetSED(SpectralEnergyDistribution(value, 1.0));
+					source.Peak().SetSED(SpectralEnergyDistribution(value, 1.0));
 					std::cout << source.ToString() << '\n';
 				}
 			}

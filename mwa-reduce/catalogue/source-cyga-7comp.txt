@@ -1,0 +1,88 @@
+skymodel fileformat 1.0
+source {
+  name "CygA"
+  component {
+    type point
+    position 19h59m28.4s 40d44m02s
+    measurement {
+      frequency 154.227 MHz
+      fluxdensity Jy 831.216 0 0 831.216
+    }
+    measurement {
+      frequency 169.227 MHz
+      fluxdensity Jy 771.732 0 0 771.732
+    }
+  }
+  component {
+    type point
+    position 19h59m32.3s 40d44m02s
+    measurement {
+      frequency 154.227 MHz
+      fluxdensity Jy 263.337 0 0 263.337
+    }
+    measurement {
+      frequency 169.227 MHz
+      fluxdensity Jy 244.492 0 0 244.492
+    }
+  }
+  component {
+    type point
+    position 19h59m24.4s 40d44m02s
+    measurement {
+      frequency 154.227 MHz
+      fluxdensity Jy 185.84 0 0 185.84
+    }
+    measurement {
+      frequency 169.227 MHz
+      fluxdensity Jy 172.541 0 0 172.541
+    }
+  }
+  component {
+    type point
+    position 19h59m20.4s 40d44m47s
+    measurement {
+      frequency 154.227 MHz
+      fluxdensity Jy 111.59 0 0 111.59
+    }
+    measurement {
+      frequency 169.227 MHz
+      fluxdensity Jy 103.605 0 0 103.605
+    }
+  }
+  component {
+    type point
+    position 19h59m36.3s 40d43m17s
+    measurement {
+      frequency 154.227 MHz
+      fluxdensity Jy 74.424 0 0 74.424
+    }
+    measurement {
+      frequency 169.227 MHz
+      fluxdensity Jy 69.098 0 0 69.098
+    }
+  }
+  component {
+    type point
+    position 19h59m20.4s 40d44m02s
+    measurement {
+      frequency 154.227 MHz
+      fluxdensity Jy 29.2604 0 0 29.2604
+    }
+    measurement {
+      frequency 169.227 MHz
+      fluxdensity Jy 27.1664 0 0 27.1664
+    }
+  }
+  component {
+    type point
+    position 19h59m32.3s 40d43m17s
+    measurement {
+      frequency 154.227 MHz
+      fluxdensity Jy 22.3857 0 0 22.3857
+    }
+    measurement {
+      frequency 169.227 MHz
+      fluxdensity Jy 20.7837 0 0 20.7837
+    }
+  }
+}

@@ -126,8 +126,8 @@ int main(int argc, char *argv[])
 		Model temp;
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			const SpectralEnergyDistribution &sed = sourcePtr->SED();
-			if(sed.IntegratedFlux(sed.LowestFrequency(), sed.HighestFrequency(), 0) >= threshold)
+			const SpectralEnergyDistribution& sed = sourcePtr->Peak().SED();
+			if(sourcePtr->TotalFlux(sed.LowestFrequency(), sed.HighestFrequency(), 0) >= threshold)
 				temp.AddSource(*sourcePtr);
 		}
 		model = temp;
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 		{
 			for(size_t i = 0; i!=model.SourceCount(); ++i)
 			{
-				SpectralEnergyDistribution &sed = model.Source(i).SED();
+				SpectralEnergyDistribution &sed = model.Source(i).Peak().SED();
 				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 				{
 					long double flux = m->second.FluxDensity(p);
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 		for(size_t i = model.SourceCount(); i>0; --i)
 		{
 			ModelSource& source = model.Source(i-1);
-			double dist = ImageCoordinates::AngularDistance(source.PosRA(), source.PosDec(), nearFilterRA, nearFilterDec);
+			double dist = ImageCoordinates::AngularDistance(source.Peak().PosRA(), source.Peak().PosDec(), nearFilterRA, nearFilterDec);
 			if(dist > nearFilterDist)
 				model.RemoveSource(i-1);
 		}
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 	
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 	{
-		const SpectralEnergyDistribution &sed = sourcePtr->SED();
+		const SpectralEnergyDistribution &sed = sourcePtr->Peak().SED();
 		const long double startFreq = sed.LowestFrequency();
 		const long double endFreq = sed.HighestFrequency();
 		if(powerlaw)
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 			}
 			newSED.AddMeasurement(m1);
 			newSED.AddMeasurement(m2);
-			sourcePtr->SetSED(newSED);
+			sourcePtr->Peak().SetSED(newSED);
 		}
 		else if(resample)
 		{
@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
 				newSED.AddMeasurement(flux, (chStartFreq+chEndFreq)*0.5);
 			}
 			
-			sourcePtr->SetSED(newSED);
+			sourcePtr->Peak().SetSED(newSED);
 		}
 	}
 	
@@ -214,10 +214,13 @@ int main(int argc, char *argv[])
 		{
 			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 			{
-				SpectralEnergyDistribution &sed = sourcePtr->SED();
-				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 				{
-					m->second.SetFluxDensity(p, setPolFlux[p]);
+					SpectralEnergyDistribution &sed = compPtr->SED();
+					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+					{
+						m->second.SetFluxDensity(p, setPolFlux[p]);
+					}
 				}
 			}
 		}
@@ -225,10 +228,13 @@ int main(int argc, char *argv[])
 		{
 			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 			{
-				SpectralEnergyDistribution &sed = sourcePtr->SED();
-				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 				{
-					m->second.SetFluxDensity(p, m->second.FluxDensity(p) * scale);
+					SpectralEnergyDistribution &sed = compPtr->SED();
+					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+					{
+						m->second.SetFluxDensity(p, m->second.FluxDensity(p) * scale);
+					}
 				}
 			}
 		}
@@ -265,43 +271,48 @@ int main(int argc, char *argv[])
 			"set ylabel \"Flux (Jy)\"\n"
 			"plot \\\n";
 
-		for(size_t sourceIndex = 0; sourceIndex!=model.SourceCount(); ++sourceIndex)
+		size_t sourceIndex = 0;
+		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			std::ostringstream dataStreamName;
-			dataStreamName << "spectrum" << sourceIndex << ".txt";
-			std::ofstream dataStream(dataStreamName.str().c_str());
-			plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 2.0 title \"\",\\\n";
-			plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with lines lw 2.0 title \"\",\\\n";
-			plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with lines lw 2.0 title \"\",\\\n";
-			plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with lines lw 2.0 title \"\"";
-			
-			plotIStream << "\"" << dataStreamName.str() << "\" using 1:((column(2)+column(5))*0.5) with lines lw 2.0 title \"\",\\\n";
-			
-			const SpectralEnergyDistribution &sed = model.Source(sourceIndex).SED();
-			long double e1, e2, f1, f2;
-			sed.FitPowerlaw(f1, e1, 0);
-			sed.FitPowerlaw(f2, e2, 3);
-			plotIStream << (f1/2.0) << " * (x*1000000)**" << e1 << " + " << (f2/2.0) << " * (x*1000000)**" << e2 << " with lines lw 1.0 title \"\"";
-			
-			if(sourceIndex != model.SourceCount()-1)
+			for(ModelSource::const_iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 			{
-				plotStream << ",\\";
-				plotIStream << ",\\";
-			}
-			plotStream << "\n";
-			plotIStream << "\n";
-			
-			std::vector<Measurement> measurements;
-			sed.GetMeasurements(measurements);
-			
-			for(std::vector<Measurement>::const_iterator i=measurements.begin(); i!=measurements.end(); ++i)
-			{
-				dataStream
-					<< i->FrequencyHz()/1000000.0 << '\t'
-					<< i->FluxDensity(0) << '\t'
-					<< i->FluxDensity(1) << '\t'
-					<< i->FluxDensity(2) << '\t'
-					<< i->FluxDensity(3) << '\n';
+				std::ostringstream dataStreamName;
+				dataStreamName << "spectrum" << sourceIndex << ".txt";
+				std::ofstream dataStream(dataStreamName.str().c_str());
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 2.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with lines lw 2.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with lines lw 2.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with lines lw 2.0 title \"\"";
+				
+				plotIStream << "\"" << dataStreamName.str() << "\" using 1:((column(2)+column(5))*0.5) with lines lw 2.0 title \"\",\\\n";
+				
+				const SpectralEnergyDistribution &sed = compPtr->SED();
+				long double e1, e2, f1, f2;
+				sed.FitPowerlaw(f1, e1, 0);
+				sed.FitPowerlaw(f2, e2, 3);
+				plotIStream << (f1/2.0) << " * (x*1000000)**" << e1 << " + " << (f2/2.0) << " * (x*1000000)**" << e2 << " with lines lw 1.0 title \"\"";
+				
+				if(sourceIndex != model.ComponentCount()-1)
+				{
+					plotStream << ",\\";
+					plotIStream << ",\\";
+				}
+				plotStream << "\n";
+				plotIStream << "\n";
+				
+				std::vector<Measurement> measurements;
+				sed.GetMeasurements(measurements);
+				
+				for(std::vector<Measurement>::const_iterator i=measurements.begin(); i!=measurements.end(); ++i)
+				{
+					dataStream
+						<< i->FrequencyHz()/1000000.0 << '\t'
+						<< i->FluxDensity(0) << '\t'
+						<< i->FluxDensity(1) << '\t'
+						<< i->FluxDensity(2) << '\t'
+						<< i->FluxDensity(3) << '\n';
+				}
+				++sourceIndex;
 			}
 		}
 	}

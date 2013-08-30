@@ -40,9 +40,9 @@ void Model::add(const ModelSource& source)
 {
 	for(iterator i = begin(); i!=end(); ++i)
 	{
-		if(source.PosDec() == i->PosDec() && source.PosRA() == i->PosRA())
+		if(source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
 		{
-			i->SED() += source.SED();
+			(*i) += source;
 			return;
 		}
 	}
@@ -53,7 +53,7 @@ void Model::addOptimized(const ModelSource& source)
 {
 	for(iterator i = begin(); i!=end(); ++i)
 	{
-		if(source.PosDec() == i->PosDec() && source.PosRA() == i->PosRA())
+		if(source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
 		{
 			/* merge */
 			return;
@@ -66,9 +66,9 @@ void Model::combineMeasurements(const ModelSource& source)
 {
 	for(iterator i = begin(); i!=end(); ++i)
 	{
-		if(source.PosDec() == i->PosDec() && source.PosRA() == i->PosRA())
+		if(source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
 		{
-			i->SED().CombineMeasurements(source.SED());
+			i->CombineMeasurements(source);
 			return;
 		}
 	}

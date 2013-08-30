@@ -246,7 +246,7 @@ void SpectrumSubtractor::initSources()
 	for(Model::iterator sourceIter=_model.begin(); sourceIter!=_model.end(); ++sourceIter)
 	{
 		ModelSource newSource = *sourceIter;
-		newSource.SetSED(SpectralEnergyDistribution(1.0, 1.0));
+		newSource.MakeUnitFlux();
 		_sources.push_back(newSource);
 	}
 }

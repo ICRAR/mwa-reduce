@@ -28,13 +28,16 @@ int main(int argc, char *argv[])
 	std::cout << "Calculating beam for " << model.SourceCount() << " sources...\n";
 	for(Model::iterator sourceIter=model.begin(); sourceIter!=model.end(); ++sourceIter)
 	{
-		double ra = sourceIter->PosRA();
-		double dec = sourceIter->PosDec();
-		SpectralEnergyDistribution &sed = sourceIter->SED();
-		
-		std::complex<double> gains[4];
-		beamEval.EvaluateAbsToApparentGain(ra, dec, gains);
-		sed.SetConstantBeam(std::abs(gains[0]), std::abs(gains[1]), std::abs(gains[2]), std::abs(gains[3]));
+		for(ModelSource::iterator compIter=sourceIter->begin(); compIter!=sourceIter->end(); ++compIter)
+		{
+			double ra = compIter->PosRA();
+			double dec = compIter->PosDec();
+			SpectralEnergyDistribution &sed = compIter->SED();
+			
+			std::complex<double> gains[4];
+			beamEval.EvaluateAbsToApparentGain(ra, dec, gains);
+			sed.SetConstantBeam(std::abs(gains[0]), std::abs(gains[1]), std::abs(gains[2]), std::abs(gains[3]));
+		}
 	}
 	
 	model.Save(argv[3]);

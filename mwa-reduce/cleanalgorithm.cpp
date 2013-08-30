@@ -251,15 +251,18 @@ void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t
 				long double l, m;
 				ImageCoordinates::XYToLM<long double>(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
 			
-				ModelSource source;
+				ModelComponent component;
 				long double ra, dec;
 				ImageCoordinates::LMToRaDec<long double>(l, m, phaseCentreRA, phaseCentreDec, ra, dec);
 				std::stringstream nameStr;
 				nameStr << "component" << model.SourceCount();
+				component.SetSED(SpectralEnergyDistribution(value, refFreq, spectralIndex));
+				component.SetPosRA(ra);
+				component.SetPosDec(dec);
+				
+				ModelSource source;
 				source.SetName(nameStr.str());
-				source.SetSED(SpectralEnergyDistribution(value, refFreq, spectralIndex));
-				source.SetPosRA(ra);
-				source.SetPosDec(dec);
+				source.AddComponent(component);
 				model.AddSource(source);
 			}
 		}

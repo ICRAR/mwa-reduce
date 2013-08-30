@@ -37,12 +37,12 @@ int main(int argc, char **argv)
 		while(catalogue.ReadNext(source))
 		{
 			long double l, m;
-			ImageCoordinates::RaDecToLM<long double>(source.PosRA(), source.PosDec(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), l, m);
+			ImageCoordinates::RaDecToLM<long double>(source.Peak().PosRA(), source.Peak().PosDec(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), l, m);
 			double
 				x = l / fitsReader.PixelSizeX() + fitsReader.ImageWidth()/2,
 				y = m / fitsReader.PixelSizeY() + fitsReader.ImageHeight()/2;
 			//std::cout << x << ',' << y << '\n';
-			bool aboveThreshold = (source.SED().FluxAtFrequency(refFreq, 0) > threshold);
+			bool aboveThreshold = (source.Peak().SED().FluxAtFrequency(refFreq, 0) > threshold);
 			if(aboveThreshold && x > 0.0 && y > 0.0 && x < fitsReader.ImageWidth() && y < fitsReader.ImageHeight())
 			{
 				double value = 0.0;
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 					if(yi < fitsReader.ImageHeight())
 						value = std::max(value, image[yi*fitsReader.ImageWidth() + xi]);
 					
-					source.SetSED(SpectralEnergyDistribution(value, 1.0));
+					source.Peak().SetSED(SpectralEnergyDistribution(value, 1.0));
 				}
 				
 				std::cout << source.ToString() << '\n';

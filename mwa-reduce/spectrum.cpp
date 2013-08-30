@@ -88,8 +88,10 @@ int main(int argc, char **argv)
 				
 				++chIter1; ++chIter2; ++chIter3;
 			}
-			ModelSource source = model.Source(sourceIndex);
-			source.SetSED(sed);
+			ModelComponent component = model.Source(sourceIndex).Peak();
+			component.SetSED(sed);
+			ModelSource source;
+			source.AddComponent(component);
 			outputModel.AddSource(source);
 		}
 		outputModel.Save(modelFilename);

@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "CenA"
+  component {
+    type point
+    position 13h25m27.6s -43d01m09s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 1582 0 0 1582
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 1104.0 0 0 1104.0
+    }
+  }
+}
+

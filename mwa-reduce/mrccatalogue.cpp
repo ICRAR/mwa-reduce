@@ -71,17 +71,18 @@ bool MRCCatalogue::ReadNext(ModelSource& source)
 	MrcEntry entry;
 	_file.read(reinterpret_cast<char*>(&entry), sizeof(entry));
 	
+	ModelComponent component;
 	int raHrs = (entry.raHours[0]-'0')*10 + (entry.raHours[1]-'0');
 	int raMins = (entry.raMins[0]-'0')*10 + (entry.raMins[1]-'0');
 	long double raSec = (entry.raSec[0]-'0')*10 + (entry.raSec[1]-'0') +
 		(entry.raSec[3]-'0')*0.1;
-	source.SetPosRA(raHrs*(M_PI/12.0) + raMins*(M_PI/(12.0*60.0)) + raSec*(M_PI/(12.0*60.0*60.0)));
+	component.SetPosRA(raHrs*(M_PI/12.0) + raMins*(M_PI/(12.0*60.0)) + raSec*(M_PI/(12.0*60.0*60.0)));
 	
 	long double decSign = (entry.decSign == '-') ? -1.0 : 1.0;
 	int decHrs = (entry.decDeg[0]-'0')*10 + (entry.decDeg[1]-'0');
 	int decMins = (entry.decMin[0]-'0')*10 + (entry.decMin[1]-'0');
 	int decSec = (entry.decSec[0]-'0')*10 + (entry.decSec[1]-'0');
-	source.SetPosDec((decHrs*(M_PI/180.0) + decMins*(M_PI/(180.0*60.0)) + decSec*(M_PI/(180.0*60.0*60.0))) * decSign);
+	component.SetPosDec((decHrs*(M_PI/180.0) + decMins*(M_PI/(180.0*60.0)) + decSec*(M_PI/(180.0*60.0*60.0))) * decSign);
 	
 	long double fluxDensity =
 		digToVal(entry.fluxDensity[0])*1000.0 +
@@ -90,8 +91,11 @@ bool MRCCatalogue::ReadNext(ModelSource& source)
 		digToVal(entry.fluxDensity[3])*1.0 +
 		digToVal(entry.fluxDensity[5])*0.1 +
 		digToVal(entry.fluxDensity[6])*0.01;
-	source.SetSED(SpectralEnergyDistribution(fluxDensity, 408.0));
+	component.SetSED(SpectralEnergyDistribution(fluxDensity, 408.0));
 	entry.name[10] = 0;
+	
 	source.SetName(entry.name);
+	source.AddComponent(component);
+	
 	return true;
 }

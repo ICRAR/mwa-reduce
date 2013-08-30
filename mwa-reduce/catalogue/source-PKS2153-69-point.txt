@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "PKS2153-69"
+  component {
+    type point
+    position 21h57m06.0s -69d41m24s
+    measurement {
+      frequency 145 MHz
+      fluxdensity Jy 131.4 0 0 131.4 
+    }
+    measurement {
+      frequency 468 MHz
+      fluxdensity Jy 68.31 0 0 68.31
+    }
+  }
+}
+
