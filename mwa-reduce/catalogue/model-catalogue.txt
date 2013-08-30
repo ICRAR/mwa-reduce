@@ -95,84 +95,84 @@ source {
     type point
     position 19h59m28.4s 40d44m02s
     measurement {
-      frequency 154.227 MHz
-      fluxdensity Jy 831.216 0 0 831.216
+      frequency 74 MHz
+      fluxdensity Jy 9420.71 0 0 9420.71
     }
     measurement {
-      frequency 169.227 MHz
-      fluxdensity Jy 771.732 0 0 771.732
+      frequency 178 MHz
+      fluxdensity Jy 4763.72 0 0 4763.72
     }
   }
   component {
     type point
     position 19h59m32.3s 40d44m02s
     measurement {
-      frequency 154.227 MHz
-      fluxdensity Jy 263.337 0 0 263.337
+      frequency 74 MHz
+      fluxdensity Jy 2984.56 0 0 2984.56
     }
     measurement {
-      frequency 169.227 MHz
-      fluxdensity Jy 244.492 0 0 244.492
+      frequency 178 MHz
+      fluxdensity Jy 1509.19 0 0 1509.19
     }
   }
   component {
     type point
     position 19h59m24.4s 40d44m02s
     measurement {
-      frequency 154.227 MHz
-      fluxdensity Jy 185.84 0 0 185.84
+      frequency 74 MHz
+      fluxdensity Jy 2106.23 0 0 2106.23
     }
     measurement {
-      frequency 169.227 MHz
-      fluxdensity Jy 172.541 0 0 172.541
+      frequency 178 MHz
+      fluxdensity Jy 1065.05 0 0 1065.05
     }
   }
   component {
     type point
     position 19h59m20.4s 40d44m47s
     measurement {
-      frequency 154.227 MHz
-      fluxdensity Jy 111.59 0 0 111.59
+      frequency 74 MHz
+      fluxdensity Jy 1264.66 0 0 1264.66
     }
     measurement {
-      frequency 169.227 MHz
-      fluxdensity Jy 103.605 0 0 103.605
+      frequency 178 MHz
+      fluxdensity Jy 639.531 0 0 639.531
     }
   }
   component {
     type point
     position 19h59m36.3s 40d43m17s
     measurement {
-      frequency 154.227 MHz
-      fluxdensity Jy 74.424 0 0 74.424
+      frequency 74 MHz
+      fluxdensity Jy 843.498 0 0 843.498
     }
     measurement {
-      frequency 169.227 MHz
-      fluxdensity Jy 69.098 0 0 69.098
+      frequency 178 MHz
+      fluxdensity Jy 426.525 0 0 426.525
     }
   }
   component {
     type point
     position 19h59m20.4s 40d44m02s
     measurement {
-      frequency 154.227 MHz
-      fluxdensity Jy 29.2604 0 0 29.2604
+      frequency 74 MHz
+      fluxdensity Jy 331.632 0 0 331.632
     }
     measurement {
-      frequency 169.227 MHz
-      fluxdensity Jy 27.1664 0 0 27.1664
+      frequency 178 MHz
+      fluxdensity Jy 167.691 0 0 167.691
     }
   }
   component {
     type point
     position 19h59m32.3s 40d43m17s
     measurement {
-      frequency 154.227 MHz
-      fluxdensity Jy 22.3857 0 0 22.3857
+      frequency 74 MHz
+      fluxdensity Jy 253.714 0 0 253.714
     }
     measurement {
-      frequency 169.227 MHz
-      fluxdensity Jy 20.7837 0 0 20.7837
+      frequency 178 MHz
+      fluxdensity Jy 128.293 0 0 128.293
     }
   }
 }
