@@ -215,10 +215,10 @@ int main(int argc, char* argv[])
 			Peeler peeler(ms);
 			
 			peeler.SetNIter(1000);
-			peeler.SetLimit(0.001);
+			peeler.SetLimit(0.0001);
 			peeler.SetModel(peelModel);
 			peeler.SetDataColumnName(dataColumn);
-			peeler.SetSolutionInterval(8);
+			peeler.SetSolutionInterval(4);
 			
 			peeler.Perform();
 		}
