@@ -91,8 +91,6 @@ private:
 		boost::mutex *mutex;
 		std::queue<size_t> *tasks;
 		std::vector<class CalibrationMethod*> *calMethods;
-		double limit;
-		size_t nIter;
 	};
 	struct SubtractThreadInfo
 	{

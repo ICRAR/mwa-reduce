@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 		Peeler peeler(ms);
 		
 		peeler.SetNIter(niter);
-		peeler.SetAccuracy(limit);
+		peeler.SetAccuracy(minAccuracy, stopAccuracy);
 		peeler.SetModelFilename(modelFile);
 		peeler.SetMinUVW(minUVW);
 		peeler.SetApplyBeam(applyBeam);

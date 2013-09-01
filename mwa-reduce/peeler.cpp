@@ -244,8 +244,6 @@ void Peeler::Perform()
 			threadData.mutex = &mutex;
 			threadData.tasks = &tasks;
 			threadData.calMethods = &calMethods;
-			threadData.limit = _limit;
-			threadData.nIter = _nIter;
 			threadGroup.add_thread(new boost::thread(&Peeler::calibrateThreadFunction, this, threadData));
 		}
 		threadGroup.join_all();
