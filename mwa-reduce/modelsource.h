@@ -227,11 +227,7 @@ class ModelSource
 		
 		void SetConstantTotalFlux(const double* newFluxes, double frequency)
 		{
-			double totalFlux = 0.0;
-			for(iterator i=begin(); i!=end(); ++i)
-			{
-				totalFlux += fabs(TotalFlux(frequency, 0)) + fabs(TotalFlux(frequency, 3));
-			}
+			double totalFlux = fabs(TotalFlux(frequency, 0)) + fabs(TotalFlux(frequency, 3));
 			
 			if(totalFlux == 0.0)
 			{
@@ -257,9 +253,9 @@ class ModelSource
 				{
 					Measurement m;
 					m.SetFrequencyHz(frequency);
+					double thisFlux = 0.5*(i->SED().FluxAtFrequency(frequency, 0) + i->SED().FluxAtFrequency(frequency, 3));
 					for(size_t p=0; p!=4; ++p)
 					{
-						double thisFlux = i->SED().FluxAtFrequency(frequency, p);
 						m.SetFluxDensity(p, thisFlux * scaleFactor[p]);
 					}
 					SpectralEnergyDistribution sed;
