@@ -319,13 +319,13 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 	startSubtractionThreads();
 	std::cout << "Threads started\n";
 	
+	SubtractThreadInfo info;
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
 		size_t a1 = (*_antenna1Column)(row), a2 = (*_antenna2Column)(row);
 		if(a1 != a2)
 		{
-			SubtractThreadInfo info;
-			_subtractAvailableBufferLane.read(info);
+			//_subtractAvailableBufferLane.read(info);
 			if(info.readyForWrite)
 			{
 				_dataColumn->put(info.rowIndex, *info.data);
@@ -348,7 +348,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 			//std::cout << 'W' << _subtractWorkLane.size() << 'F' << _subtractAvailableBufferLane.size() << std::flush;
 		}
 	}
-	
+	/*
 	std::cout << "Stopping subtracting threads\n";
 	stopSubtractionThreads();
 	std::cout << "Threads stopped\n";
@@ -361,7 +361,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 		{
 			_dataColumn->put(info.rowIndex, *info.data);
 		}
-	}
+	}*/
 
 	_spectrumSums.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
 	_spectrumWeights.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
