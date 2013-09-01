@@ -321,6 +321,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 	
 	SubtractThreadInfo info;
 	info.readyForWrite = false;
+	info.data = _dataBuffers[0];
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
 		size_t a1 = (*_antenna1Column)(row), a2 = (*_antenna2Column)(row);
