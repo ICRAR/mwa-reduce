@@ -239,7 +239,6 @@ class ModelSource
 			}
 			for(iterator i=begin(); i!=end(); ++i)
 			{
-				SpectralEnergyDistribution sed;
 				Measurement m;
 				m.SetFrequencyHz(frequency);
 				for(size_t p=0; p!=4; ++p)
@@ -247,6 +246,8 @@ class ModelSource
 					double thisFlux = i->SED().FluxAtFrequency(frequency, p);
 					m.SetFluxDensity(p, thisFlux * scaleFactor[p]);
 				}
+				SpectralEnergyDistribution sed;
+				sed.AddMeasurement(m);
 				i->SetSED(sed);
 			}
 		}
