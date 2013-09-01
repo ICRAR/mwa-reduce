@@ -316,9 +316,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 		_subtractAvailableLane.write(info);
 	}
 	
-	std::cout << "Starting subtracting threads\n";
 	startSubtractionThreads();
-	std::cout << "Threads started\n";
 	
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
@@ -347,9 +345,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 		}
 	}
 	
-	std::cout << "Stopping subtracting threads\n";
 	stopSubtractionThreads();
-	std::cout << "Threads stopped\n";
 	
 	_spectrumSums.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
 	_spectrumWeights.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
