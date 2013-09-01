@@ -227,28 +227,45 @@ class ModelSource
 		
 		void SetConstantTotalFlux(const double* newFluxes, double frequency)
 		{
-			double scaleFactor[4];
-			for(size_t p=0; p!=4; ++p)
-			{
-				double totalFlux = 0.0;
-				for(iterator i=begin(); i!=end(); ++i)
-				{
-					totalFlux += TotalFlux(frequency, p);
-				}
-				scaleFactor[p] = newFluxes[p] / totalFlux;
-			}
+			double totalFlux = 0.0;
 			for(iterator i=begin(); i!=end(); ++i)
 			{
-				Measurement m;
-				m.SetFrequencyHz(frequency);
-				for(size_t p=0; p!=4; ++p)
+				totalFlux += fabs(TotalFlux(frequency, 0)) + fabs(TotalFlux(frequency, 3));
+			}
+			
+			if(totalFlux == 0.0)
+			{
+				for(iterator i=begin(); i!=end(); ++i)
 				{
-					double thisFlux = i->SED().FluxAtFrequency(frequency, p);
-					m.SetFluxDensity(p, thisFlux * scaleFactor[p]);
+					Measurement m;
+					m.SetFrequencyHz(frequency);
+					for(size_t p=0; p!=4; ++p)
+						m.SetFluxDensity(p, newFluxes[p] / (double) ComponentCount());
+					SpectralEnergyDistribution sed;
+					sed.AddMeasurement(m);
+					i->SetSED(sed);
 				}
-				SpectralEnergyDistribution sed;
-				sed.AddMeasurement(m);
-				i->SetSED(sed);
+			}
+			else {
+				totalFlux *= 0.5;
+				double scaleFactor[4];
+			
+				for(size_t p=0; p!=4; ++p)
+					scaleFactor[p] = newFluxes[p] / totalFlux;
+				
+				for(iterator i=begin(); i!=end(); ++i)
+				{
+					Measurement m;
+					m.SetFrequencyHz(frequency);
+					for(size_t p=0; p!=4; ++p)
+					{
+						double thisFlux = i->SED().FluxAtFrequency(frequency, p);
+						m.SetFluxDensity(p, thisFlux * scaleFactor[p]);
+					}
+					SpectralEnergyDistribution sed;
+					sed.AddMeasurement(m);
+					i->SetSED(sed);
+				}
 			}
 		}
 	private:

@@ -26,6 +26,7 @@ SpectrumSubtractor::~SpectrumSubtractor()
 
 void SpectrumSubtractor::Perform()
 {
+	_ms.reopenRW();
 	_dataColumn.reset(new casa::ArrayColumn<casa::Complex>(_ms, _dataColumnName));
 	_antenna1Column.reset(new casa::ROScalarColumn<int> (_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1)));
 	_antenna2Column.reset(new casa::ROScalarColumn<int> (_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2)));
