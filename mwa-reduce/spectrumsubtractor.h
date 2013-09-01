@@ -59,6 +59,7 @@ class SpectrumSubtractor
 		void subtractionThreadFunc();
 		void startSubtractionThreads();
 		void stopSubtractionThreads();
+		void processWork(SubtractThreadInfo& work);
 		
 		std::unique_ptr<boost::thread_group> _threadGroup;
 		casa::MeasurementSet& _ms;

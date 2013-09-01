@@ -328,7 +328,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 			_subtractAvailableBufferLane.read(info);
 			if(info.readyForWrite)
 			{
-			//	_dataColumn->put(info.rowIndex, *info.data);
+				_dataColumn->put(info.rowIndex, *info.data);
 			}
 			
 			info.readyForWrite = false;
@@ -343,8 +343,9 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 			info.a1 = a1;
 			info.a2 = a2;
 			
-			_subtractWorkLane.write(info);
-			std::cout << 'W' << _subtractWorkLane.size() << 'F' << _subtractAvailableBufferLane.size() << std::flush;
+			//_subtractWorkLane.write(info);
+			processWork(info);
+			//std::cout << 'W' << _subtractWorkLane.size() << 'F' << _subtractAvailableBufferLane.size() << std::flush;
 		}
 	}
 	
@@ -368,48 +369,52 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 
 void SpectrumSubtractor::startSubtractionThreads()
 {
-	_threadGroup.reset(new boost::thread_group());
-	for(size_t i=0; i!=1/*_cpuCount*/; ++i)
-	{
-		_threadGroup->add_thread(new boost::thread(&SpectrumSubtractor::subtractionThreadFunc, this));
-	}
+	//_threadGroup.reset(new boost::thread_group());
+	//for(size_t i=0; i!=1/*_cpuCount*/; ++i)
+	//{
+	//	_threadGroup->add_thread(new boost::thread(&SpectrumSubtractor::subtractionThreadFunc, this));
+	//}
 }
 
 void SpectrumSubtractor::stopSubtractionThreads()
 {
-	_subtractWorkLane.write_end();
-	_threadGroup->join_all();
-	_threadGroup.reset();
+	//_subtractWorkLane.write_end();
+	//_threadGroup->join_all();
+	//_threadGroup.reset();
+}
+
+void SpectrumSubtractor::processWork(SubtractThreadInfo& info)
+{
+	const size_t channelCount = _bandData.ChannelCount();
+	casa::Complex *data = info.data->cbegin();
+	for(size_t ch=0; ch!=channelCount; ++ch)
+	{
+		double lambda = _bandData.ChannelWavelength(ch);
+		double u = info.u/lambda, v = info.v/lambda, w = info.w/lambda;
+		std::complex<double> predictSum[4];
+		for(size_t s=0; s!=_sources.size(); ++s)
+		{
+			Predicter &predicter = *_predicters[s];
+			Predicter::CNumType predicted[4];
+			predicter.Predict4(predicted, _sources[s], u, v, w, ch, info.a1, info.a2);
+			for(size_t p=0; p!=4; ++p)
+			{
+				predicted[p] *= _spectrumSums[(s*channelCount + ch)*4 + p];
+			}
+			Matrix2x2::Add(predictSum, predicted);
+		}
+		for(size_t p=0; p!=4; ++p)
+			data[ch*4 + p] -= casa::Complex(predictSum[p].real(), predictSum[p].imag());
+	}
+	info.readyForWrite = true;
 }
 
 void SpectrumSubtractor::subtractionThreadFunc()
 {
-	const size_t channelCount = _bandData.ChannelCount();
 	SubtractThreadInfo info;
 	while(_subtractWorkLane.read(info))
 	{
-		casa::Complex *data = info.data->cbegin();
-		for(size_t ch=0; ch!=channelCount; ++ch)
-		{
-			double lambda = _bandData.ChannelWavelength(ch);
-			double u = info.u/lambda, v = info.v/lambda, w = info.w/lambda;
-			std::complex<double> predictSum[4];
-			for(size_t s=0; s!=_sources.size(); ++s)
-			{
-				Predicter &predicter = *_predicters[s];
-				Predicter::CNumType predicted[4];
-				predicter.Predict4(predicted, _sources[s], u, v, w, ch, info.a1, info.a2);
-				for(size_t p=0; p!=4; ++p)
-				{
-					predicted[p] *= _spectrumSums[(s*channelCount + ch)*4 + p];
-				}
-				Matrix2x2::Add(predictSum, predicted);
-			}
-			for(size_t p=0; p!=4; ++p)
-				data[ch*4 + p] -= casa::Complex(predictSum[p].real(), predictSum[p].imag());
-		}
-		
-		info.readyForWrite = true;
+		processWork(info);
 		_subtractAvailableBufferLane.write(info);
 	}
 }
