@@ -9,6 +9,7 @@
 #include "solutionapplier.h"
 #include "subtractor.h"
 #include "spectrumsubtractor.h"
+#include "calibrationmethod.h"
 
 std::string sourceList(const std::vector<ModelSource*>& sources)
 {
@@ -33,6 +34,9 @@ int main(int argc, char* argv[])
 	}
 	int argi = 1;
 	bool doExecute = false, doPeel = true;
+	double
+		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
+		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
 	while(argv[argi][0] == '-')
 	{
 		std::string param(&argv[argi][1]);
@@ -43,6 +47,12 @@ int main(int argc, char* argv[])
 		else if(param == "nopeel")
 		{
 			doPeel = false;
+		}
+		else if(param == "a")
+		{
+			minAccuracy = atof(argv[argi+1]);
+			stopAccuracy = atof(argv[argi+2]);
+			argi+=2;
 		}
 		else throw std::runtime_error("Invalid parameter");
 		++argi;
@@ -175,6 +185,7 @@ int main(int argc, char* argv[])
 			calibrator.SetModel(calModel);
 			calibrator.SetDataColumnName(dataColumn);
 			calibrator.SetSolutionInterval(0);
+			calibrator.SetAccuracy(minAccuracy, stopAccuracy);
 			calibrator.SetApplyBeam(true);
 			calibrator.SetVerbose(true);
 			
@@ -217,6 +228,7 @@ int main(int argc, char* argv[])
 			peeler.SetModel(peelModel);
 			peeler.SetDataColumnName(dataColumn);
 			peeler.SetSolutionInterval(4);
+			peeler.SetAccuracy(minAccuracy, stopAccuracy);
 			
 			peeler.Perform();
 		}
