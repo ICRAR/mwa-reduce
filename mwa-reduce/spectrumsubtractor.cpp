@@ -49,8 +49,10 @@ void SpectrumSubtractor::Perform()
 	if(intervalCount == 0) intervalCount = 1;
 	std::cout << "Measuring spectra for " << intervalCount << " intervals...\n";
 	
-	_spectrumSums.resize(4 * _bandData.ChannelCount() * _model.SourceCount());
-	_spectrumWeights.resize(4 * _bandData.ChannelCount() * _model.SourceCount());
+	_spectrumSums.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
+	_spectrumWeights.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
+	_totalFluxPerSource.assign(4 * _model.SourceCount(), 0.0);
+	_totalFluxWeightPerSource.assign(4 * _model.SourceCount(), 0.0);
 	
 	_dataBuffers.resize(BUFFER_COUNT);
 	_weightBuffers.resize(BUFFER_COUNT);
@@ -124,6 +126,24 @@ void SpectrumSubtractor::Perform()
 	}
 	stopMeasureThreads();
 	performSubtraction(intervalStartRow, _ms.nrow());
+	
+	// Restore the model
+	std::cout << "Subtracted absolute fluxes:\n";
+	for(size_t s=0; s!=_model.SourceCount(); ++s)
+	{
+		ModelSource &source = _model.Source(s);
+		double flux[4];
+		std::cout << source.Name() << '\t';
+		for(size_t p=0; p!=4; ++p)
+		{
+			flux[p] = _totalFluxPerSource[s*4 + p] / _totalFluxWeightPerSource[s*4 + p];
+			if(p == 3)
+				std::cout << flux[p] << '\n';
+			else
+				std::cout << flux[p] << '\t';
+		}
+		source.SetConstantTotalFlux(flux, _bandData.CentreFrequency());
+	}
 }
 
 void SpectrumSubtractor::initMeasureThreadData()
@@ -175,6 +195,7 @@ void SpectrumSubtractor::countTimesteps(casa::ROScalarColumn<double>& timeColumn
 
 void SpectrumSubtractor::startMeasureThreads()
 {
+	std::cout << "Measuring.\n";
 	_threadGroup.reset(new boost::thread_group());
 	for(size_t i=0; i!=_cpuCount; ++i)
 	{
@@ -254,18 +275,29 @@ void SpectrumSubtractor::initSources()
 void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 {
 	// Normalize the spectrum
-	double totalFlux = 0.0;
-	size_t count = 0;
-	for(size_t i=0; i!=_bandData.ChannelCount()*4*_sources.size(); ++i)
+	double totalFlux = 0.0, totalWeight = 0.0;
+	for(size_t s=0; s!=_sources.size(); ++s)
 	{
-		_spectrumSums[i] /= _spectrumWeights[i];
-		if(std::isfinite(_spectrumSums[i]))
+		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 		{
-			totalFlux += _spectrumSums[i];
-			++count;
+			size_t chIndex = (s*_bandData.ChannelCount() + ch) * 4;
+			for(size_t p=0; p!=4; ++p)
+			{
+				size_t index = chIndex + p;
+				double sum = _spectrumSums[index], weight = _spectrumWeights[index];
+				if(std::isfinite(sum))
+				{
+					_totalFluxPerSource[s*4 + p] += sum;
+					_totalFluxWeightPerSource[s*4 + p] += weight;
+					
+					totalFlux += sum;
+					totalWeight += weight;
+				}
+				_spectrumSums[index] /= weight;
+			}
 		}
 	}
-	std::cout << "Flux: " << (2.0*totalFlux/count) << "\tWeight:" << count << '\n';
+	std::cout << "Flux: " << (2.0*totalFlux/totalWeight) << "\tWeight:" << totalWeight << '\n';
 	
 	casa::ArrayColumn<casa::Complex> dataColumn(_ms, _dataColumn);
 	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
@@ -332,7 +364,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 void SpectrumSubtractor::startSubtractionThreads()
 {
 	_threadGroup.reset(new boost::thread_group());
-	for(size_t i=0; i!=_cpuCount; ++i)
+	for(size_t i=0; i!=1/*_cpuCount*/; ++i)
 	{
 		_threadGroup->add_thread(new boost::thread(&SpectrumSubtractor::subtractionThreadFunc, this));
 	}

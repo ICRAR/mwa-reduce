@@ -44,6 +44,7 @@ class SpectrumSubtractor
 		void Perform();
 		void SetDataColumn(const std::string &dataColumn) { _dataColumn = dataColumn; }
 		void SetFittingInterval(size_t fittingInterval) { _fittingInterval = fittingInterval; }
+		const Model& RestorationModel() const { return _model; }
 	private:
 		void initMeasureThreadData();
 		void initPredictors();
@@ -61,7 +62,7 @@ class SpectrumSubtractor
 		
 		std::unique_ptr<boost::thread_group> _threadGroup;
 		casa::MeasurementSet& _ms;
-		Model& _model;
+		Model _model;
 		std::vector<ModelSource> _sources;
 		BandData _bandData;
 		std::vector<lane<MeasureThreadInfo>*> _taskLanes;
@@ -80,6 +81,7 @@ class SpectrumSubtractor
 		static const size_t BUFFER_COUNT;
 		std::string _dataColumn;
 		size_t _timestepCount, _fittingInterval;
+		std::vector<double> _totalFluxPerSource, _totalFluxWeightPerSource;
 };
 
 #endif

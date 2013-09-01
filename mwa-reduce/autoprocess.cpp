@@ -226,10 +226,9 @@ int main(int argc, char* argv[])
 			std::cout << "Spectrally subtracting " << sourceList(subtractSources) << "...\n";
 			
 			Model subtractModel;
-			for(std::vector<ModelSource*>::const_iterator i=subtractSources.begin(); i!=subtractSources.end(); ++i)
+			for(std::vector<ModelSource*>::const_iterator src=subtractSources.begin(); src!=subtractSources.end(); ++src)
 			{
-				restorationModel.AddSource(**i);
-				ModelSource subtractSource = **i;
+				ModelSource subtractSource = **src;
 				for(ModelSource::iterator i=subtractSource.begin(); i!=subtractSource.end(); ++i)
 				{
 					std::complex<double> beamMatrix[4], beamGain[4];
@@ -245,6 +244,13 @@ int main(int argc, char* argv[])
 			subtractor.SetFittingInterval(4);
 			subtractor.SetDataColumn(dataColumn);
 			subtractor.Perform();
+			
+			// Add the fitted sources to the restoration model
+			const Model& fittedModel = subtractor.RestorationModel();
+			for(Model::const_iterator src=fittedModel.begin(); src!=fittedModel.end(); ++src)
+			{
+				restorationModel.AddSource(*src);
+			}
 		}
 		
 		restorationModel.Save("model-restore.txt");
