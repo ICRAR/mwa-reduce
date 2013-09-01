@@ -344,7 +344,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 			info.a2 = a2;
 			
 			_subtractWorkLane.write(info);
-			std::cout << '.' << std::flush;
+			std::cout << 'W' << _subtractWorkLane.size() << 'F' << _subtractAvailableBufferLane.size() << std::flush;
 		}
 	}
 	
