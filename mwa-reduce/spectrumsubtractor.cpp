@@ -328,7 +328,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 			_subtractAvailableBufferLane.read(info);
 			if(info.readyForWrite)
 			{
-				_dataColumn->put(info.rowIndex, *info.data);
+			//	_dataColumn->put(info.rowIndex, *info.data);
 			}
 			
 			info.readyForWrite = false;
