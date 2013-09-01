@@ -86,7 +86,7 @@ class CalibrationMethod
 		bool OnlySolveRotation() const { return _onlySolveRotation; }
 		
 		static double DefaultMinAccuracy() { return 0.00001; }
-		static double DefaultStoppingAccuracy() { return 0.00000001; }
+		static double DefaultStoppingAccuracy() { return 0.0000001; }
 	private:
 		void calculateNextIter(size_t ant, std::complex<double> *nextJones);
 		
