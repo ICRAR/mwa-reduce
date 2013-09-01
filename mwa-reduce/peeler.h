@@ -67,9 +67,10 @@ public:
 		_nIter = nIter;
 	}
 	
-	void SetLimit(double limit)
+	void SetAccuracy(double minAccuracy, double stoppingAccuracy)
 	{
-		_limit = limit;
+		_minAccuracy = minAccuracy;
+		_stoppingAccuracy = stoppingAccuracy;
 	}
 	
 	void SetMinUVW(double minUVW)
@@ -118,7 +119,7 @@ private:
 		_rhsSolutionFile,
 		_dataColumnName;
 	size_t _nIter;
-	double _limit, _minUVW;
+	double _minAccuracy, _stoppingAccuracy, _minUVW;
 	size_t _solutionInterval;
 	Model _model;
 };
