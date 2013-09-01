@@ -215,7 +215,7 @@ void SpectrumMaker::recalculateBeamWeights(size_t beamWeightIndex)
 			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			{
 				info.weights = beamWeightPtr;
-				_beamEvaluator->EvaluateAbsToApparentGain(info.source->PosRA(), info.source->PosDec(), _bandData.ChannelFrequency(ch), info.weights);
+				_beamEvaluator->EvaluateAbsToApparentGain(info.source->Peak().PosRA(), info.source->Peak().PosDec(), _bandData.ChannelFrequency(ch), info.weights);
 				beamWeightPtr += 4;
 			}
 		}
@@ -241,7 +241,7 @@ void SpectrumMaker::recalculateBeamWeightsThreadFunc(lane<BeamEvalTaskInfo> *tas
 		const ModelSource& src = *info.source;
 		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 		{
-			_beamEvaluator->EvaluateAbsToApparentGain(src.PosRA(), src.PosDec(), _bandData.ChannelFrequency(ch), weights);
+			_beamEvaluator->EvaluateAbsToApparentGain(src.Peak().PosRA(), src.Peak().PosDec(), _bandData.ChannelFrequency(ch), weights);
 			weights += 4;
 		}
 	}
@@ -271,7 +271,7 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 			double lambda = _bandData.ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
 			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
-			double visSample[4];
+			double visSample[4] = { 0.0, 0.0, 0.0, 0.0 };
 			bool sampleGood = true;
 			double weightScalar = 0.0;
 			for(size_t p=0; p!=4; ++p)

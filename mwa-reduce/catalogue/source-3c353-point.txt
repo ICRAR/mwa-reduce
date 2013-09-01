@@ -1,0 +1,16 @@
+skymodel fileformat 1.0
+source {
+  name "3C353"
+  component {
+    type point
+    position 17h20m28.1s -00d58m47s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 388 0 0 388
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 276.0 0 0 276.0
+    }
+  }
+}

@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 		peeler.SetOnlyDiag(onlyDiag);
 		peeler.SetOnlyRotation(onlyRotation);
 		peeler.SetRHSSolutionFile(rhsSolutionFile);
-		peeler.SetDataColumName(dataColumnName);
+		peeler.SetDataColumnName(dataColumnName);
 		peeler.SetSolutionInterval(solutionInterval);
 		
 		peeler.Perform();

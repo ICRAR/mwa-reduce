@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "PKS2356-61"
+  component {
+    type point
+    position 23h59m04.3s -60d54m59s
+    measurement {
+      frequency 145 MHz
+      fluxdensity Jy 123.8 0 0 123.8
+    }
+    measurement {
+      frequency 408 MHz
+      fluxdensity Jy 57.00 0 0 57.00
+    }
+  }
+}
+

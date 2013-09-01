@@ -171,14 +171,14 @@ void Calibrator::Perform()
 				{
 					if(_model.SourceCount() != 1)
 						std::cout << "Warning: To correct for the beam, there should be exactly one source in the model";
-					const ModelSource& source = _model.Source(0);
+					const ModelComponent& component = _model.Source(0).Peak();
 					std::cout << "Predicting beam... " << std::flush;
 					beamValues.resize(partChannelCount*4);
 					double beamSum[4] = {0.0, 0.0, 0.0, 0.0};
 					for(size_t ch=0; ch!=partChannelCount; ++ch)
 					{
 						double frequency = partBandData.ChannelFrequency(ch);
-						beamEvaluator->EvaluateApparentToAbsGain(source.PosRA(), source.PosDec(), frequency, &beamValues[ch*4]);
+						beamEvaluator->EvaluateApparentToAbsGain(component.PosRA(), component.PosDec(), frequency, &beamValues[ch*4]);
 						for(size_t p=0; p!=4; ++p)
 							beamSum[p] += std::abs(beamValues[ch*4+p]);
 					}

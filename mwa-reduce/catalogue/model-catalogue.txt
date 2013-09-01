@@ -45,6 +45,36 @@ source {
   }
 }
 source {
+  name "CasA"
+  component {
+    type point
+    position 23h23m27.9s 58d48m42s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 17693.9 0 0 17693.9
+    }
+    measurement {
+      frequency 152 MHz
+      fluxdensity Jy 13130 0 0 13130
+    }
+  }
+}
+source {
+  name "CenA"
+  component {
+    type point
+    position 13h25m27.6s -43d01m09s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 1582 0 0 1582
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 1104 0 0 1104
+    }
+  }
+}
+source {
   name "Crab SNR"
   component {
     type point
@@ -63,14 +93,101 @@ source {
   name "CygA"
   component {
     type point
-    position 19h59m28.3s 40d44m02s
+    position 19h59m28.4s 40d44m02s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 17205 0 0 17205
+      fluxdensity Jy 9420.71 0 0 9420.71
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 8700 0 0 8700
+      fluxdensity Jy 4763.72 0 0 4763.72
+    }
+  }
+  component {
+    type point
+    position 19h59m32.3s 40d44m02s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 2984.56 0 0 2984.56
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 1509.19 0 0 1509.19
+    }
+  }
+  component {
+    type point
+    position 19h59m24.4s 40d44m02s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 2106.23 0 0 2106.23
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 1065.05 0 0 1065.05
+    }
+  }
+  component {
+    type point
+    position 19h59m20.4s 40d44m47s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 1264.66 0 0 1264.66
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 639.531 0 0 639.531
+    }
+  }
+  component {
+    type point
+    position 19h59m36.3s 40d43m17s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 843.498 0 0 843.498
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 426.525 0 0 426.525
+    }
+  }
+  component {
+    type point
+    position 19h59m20.4s 40d44m02s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 331.632 0 0 331.632
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 167.691 0 0 167.691
+    }
+  }
+  component {
+    type point
+    position 19h59m32.3s 40d43m17s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 253.714 0 0 253.714
+    }
+    measurement {
+      frequency 178 MHz
+      fluxdensity Jy 128.293 0 0 128.293
+    }
+  }
+}
+source {
+  name "Fornax A"
+  component {
+    type point
+    position 03h22m41.7s -37d12m30s
+    measurement {
+      frequency 145 MHz
+      fluxdensity Jy 123.9 0 0 123.9
+    }
+    measurement {
+      frequency 408 MHz
+      fluxdensity Jy 176.8 0 0 176.8
     }
   }
 }
@@ -146,6 +263,21 @@ source {
     measurement {
       frequency 408 MHz
       fluxdensity Jy 57 0 0 57
+    }
+  }
+}
+source {
+  name "VirA"
+  component {
+    type point
+    position 12h30m49.4s 12d23m28s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 1651 0 0 1651
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 566 0 0 566
     }
   }
 }

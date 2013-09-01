@@ -1,0 +1,16 @@
+skymodel fileformat 1.0
+source {
+  name "VirA"
+  component {
+    type point
+    position 12h30m49.4s +12d23m28s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 1651 0 0 1651
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 566 0 0 566
+    }
+  }
+}

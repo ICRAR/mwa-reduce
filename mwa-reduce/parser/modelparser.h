@@ -50,12 +50,16 @@ class ModelParser : private Tokenizer
 			while(getToken(token) && token != "}")
 			{
 				if(token == "name") source.SetName(getString());
-				else if(token == "component") parseComponent(source);
+				else if(token == "component") {
+					ModelComponent component;
+					parseComponent(component);
+					source.AddComponent(component);
+				}
 				else throw std::runtime_error("Unknown token");
 			}
 		}
 		
-		void parseComponent(ModelSource &source)
+		void parseComponent(ModelComponent &component)
 		{
 			std::string token;
 			getToken(token);
@@ -71,14 +75,14 @@ class ModelParser : private Tokenizer
 				else if(token == "position")
 				{
 					getToken(token);
-					source.SetPosRA(RaDecCoord::ParseRA(token));
+					component.SetPosRA(RaDecCoord::ParseRA(token));
 					getToken(token);
-					source.SetPosDec(RaDecCoord::ParseDec(token));
+					component.SetPosDec(RaDecCoord::ParseDec(token));
 				}
 				else if(token == "measurement") {
 					Measurement measurement;
 					parseMeasurement(measurement);
-					source.SED().AddMeasurement(measurement);
+					component.SED().AddMeasurement(measurement);
 				}
 			}
 		}

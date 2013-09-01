@@ -225,7 +225,7 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	double groundPlane;
 	
   // make sure we filter out the bottom hemisphere
-	if(zenithAngle > M_PI)
+	if(zenithAngle > M_PI*0.5 || zenithAngle < -M_PI*0.5)
 		groundPlane = 0.0;
 	else
 		groundPlane = 2.0 * sin(twoPiOverLambda * _dipoleSize * cosZenith);

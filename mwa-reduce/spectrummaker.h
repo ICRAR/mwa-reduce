@@ -71,7 +71,7 @@ public:
 		_spectrumPerSource.resize(_sources.size());
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
-			_sources[s].SetSED(SpectralEnergyDistribution(1.0, 1.0));
+			_sources[s].MakeUnitFlux();
 			_spectrumPerSource[s].Clear();
 		}
 		

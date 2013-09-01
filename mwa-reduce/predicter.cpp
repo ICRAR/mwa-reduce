@@ -4,12 +4,12 @@
 #include "beamevaluator.h"
 #include "solutionfile.h"
 
-void Predicter::initialize(ModelSource& source)
+void Predicter::initialize(ModelComponent& component)
 {
 	SourceParameters *parameters = new SourceParameters();
-	source.SetUserData(parameters);
+	component.SetUserData(parameters);
 	NumType l, m;
-	ImageCoordinates::RaDecToLM<NumType>(source.PosRA(), source.PosDec(), _ra0, _dec0, l, m);
+	ImageCoordinates::RaDecToLM<NumType>(component.PosRA(), component.PosDec(), _ra0, _dec0, l, m);
 	parameters->l = l;
 	parameters->m = m;
 	parameters->brightness = new NumType[_channelCount*4];
@@ -19,11 +19,11 @@ void Predicter::initialize(ModelSource& source)
 		for(size_t p=0; p!=4; ++p)
 		{
 			parameters->brightness[ch*4+p] =
-				source.SED().FluxAtChannel(ch, _channelCount, _startFrequency, _endFrequency, p);
+				component.SED().FluxAtChannel(ch, _channelCount, _startFrequency, _endFrequency, p);
 		}
 	}
 
-	updateBeam(source);
+	updateBeam(component);
 	
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
@@ -39,28 +39,32 @@ void Predicter::initialize(ModelSource& source)
 void Predicter::Initialize(ModelSource& source, BeamEvaluator *beamEvaluator)
 {
 	_beamEvaluator = beamEvaluator;
-	initialize(source);
+	for(ModelSource::iterator i=source.begin(); i!=source.end(); ++i)
+		initialize(*i);
 }
 
 void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEvaluator *beamEvaluator)
 {
 	_beamEvaluator = beamEvaluator;
 	
-	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
-		initialize(*i);
+	for(Model::iterator src=model.begin(); src!=model.end(); ++src)
+	{
+		for(ModelSource::iterator i=src->begin(); i!=src->end(); ++i)
+			initialize(*i);
+	}
 	if(!solutionFile.empty())
 		readSolutions(solutionFile);
 }
 
-void Predicter::updateBeam(ModelSource& source)
+void Predicter::updateBeam(ModelComponent& component)
 {
-	SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
+	SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
 		if(_beamEvaluator != 0)
 		{
 			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
-			_beamEvaluator->EvaluateAbsToApparentGain(source.PosRA(), source.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
+			_beamEvaluator->EvaluateAbsToApparentGain(component.PosRA(), component.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
 		}
 		else {
 			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
@@ -71,8 +75,11 @@ void Predicter::updateBeam(ModelSource& source)
 
 void Predicter::UpdateBeam(Model& model)
 {
-	for(Model::iterator i=model.begin(); i!=model.end(); ++i)
-		updateBeam(*i);
+	for(Model::iterator src=model.begin(); src!=model.end(); ++src)
+	{
+		for(ModelSource::iterator i=src->begin(); i!=src->end(); ++i)
+			updateBeam(*i);
+	}
 }
 
 void Predicter::ReportSources(Model& model)
@@ -90,13 +97,13 @@ void Predicter::ReportSources(Model& model)
 	std::cout << "], app at low freq: " << model.TotalFlux(_startFrequency, 0) << ", app at high freq: " << model.TotalFlux(_endFrequency, 0) << ")\n";
 }
 
-void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
+void Predicter::predict4(CNumType *dest, const ModelComponent& component, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
 {
-	switch(source.Type())
+	switch(component.Type())
 	{
-		case ModelSource::PointSource:
+		case ModelComponent::PointSource:
 		{
-			SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
+			SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
 			NumType l = parameters->l, m = parameters->m;
 			NumType lmsqrt = parameters->lmsqrt;
 			NumType angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
@@ -121,7 +128,7 @@ void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, N
 	}
 	if(_beamEvaluator != 0)
 	{
-		SourceParameters *parameters = reinterpret_cast<SourceParameters *>(source.UserData());
+		SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
 		Matrix2x2::ATimesB(temp, &parameters->beamValues[channelIndex*4], dest);
 		Matrix2x2::ATimesHermB(dest, temp, &parameters->beamValues[channelIndex*4]);
 	}
@@ -129,7 +136,15 @@ void Predicter::predict4(CNumType *dest, const ModelSource& source, NumType u, N
 
 void Predicter::Predict4(Predicter::CNumType* dest, const ModelSource& source, Predicter::NumType u, Predicter::NumType v, Predicter::NumType w, size_t channelIndex, size_t a1, size_t a2)
 {
-	predict4(dest, source, u, v, w, channelIndex, a1, a2);
+	for(size_t p=0; p!=4; ++p)
+		dest[p] = 0.0;
+	for(ModelSource::const_iterator i=source.begin(); i!=source.end(); ++i)
+	{
+		CNumType temp[4];
+		predict4(dest, *i, u, v, w, channelIndex, a1, a2);
+		for(size_t p=0; p!=4; ++p)
+			dest[p] += temp[p];
+	}
 }
 
 void Predicter::Predict4(CNumType *dest, const Model& model, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
@@ -138,10 +153,13 @@ void Predicter::Predict4(CNumType *dest, const Model& model, NumType u, NumType 
 		dest[p] = 0.0;
 	for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
 	{
-		CNumType temp[4];
-		predict4(temp, *i, u, v, w, channelIndex, a1, a2);
-		for(size_t p=0; p!=4; ++p)
-			dest[p] += temp[p];
+		for(ModelSource::const_iterator j=i->begin(); j!=i->end(); ++j)
+		{
+			CNumType temp[4];
+			predict4(temp, *j, u, v, w, channelIndex, a1, a2);
+			for(size_t p=0; p!=4; ++p)
+				dest[p] += temp[p];
+		}
 	}
 }
 

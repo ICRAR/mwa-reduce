@@ -54,11 +54,13 @@ int main(int argc, char *argv[])
 		double l, m, ra, dec;
 		ImageCoordinates::XYToLM(componentX, componentY, inpReader.PixelSizeX(), inpReader.PixelSizeY(), width, height, l, m);
 		ImageCoordinates::LMToRaDec(l, m, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), ra, dec);
+		ModelComponent component;
+		component.SetPosRA(ra);
+		component.SetPosDec(dec);
+		component.SetSED(SpectralEnergyDistribution(peak, 1.0));
 		ModelSource source;
 		source.SetName("clcomp");
-		source.SetPosRA(ra);
-		source.SetPosDec(dec);
-		source.SetSED(SpectralEnergyDistribution(peak, 1.0));
+		source.AddComponent(component);
 		Model outputModel;
 		outputModel.AddSource(source);
 		outputModel.Save(std::cout);

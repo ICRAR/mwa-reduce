@@ -1,0 +1,18 @@
+skymodel fileformat 1.0
+// polarisation full-xy
+source {
+  name "3C444"
+  component {
+    type point
+    position 22h14m25.7s -17d01m36s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 146.0 0 0 146.0
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 79.6 0 0 79.6
+    }
+  }
+}
+

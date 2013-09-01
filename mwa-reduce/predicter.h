@@ -35,10 +35,10 @@ class Predicter
 		
 		NumType TotalFlux(size_t p) { return std::fabs(_totalFlux[p]); }
 	private:
-		void initialize(class ModelSource &source);
-		void updateBeam(class ModelSource &source);
+		void initialize(class ModelComponent &source);
+		void updateBeam(class ModelComponent &source);
 		
-		void predict4(CNumType *dest, const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);
+		void predict4(CNumType *dest, const class ModelComponent& component, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);
 		struct SourceParameters
 		{
 			NumType l, m, lmsqrt, *brightness;
