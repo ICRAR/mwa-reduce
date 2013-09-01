@@ -22,8 +22,8 @@
 Calibrator::Calibrator(casa::MeasurementSet& ms) :
 	_ms(ms),
 	_dataColumnName("DATA"),
-	_minAccuracy(0.0001),
-	_stoppingAccuracy(0.000001),
+	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
+	_stoppingAccuracy(CalibrationMethod::DefaultStoppingAccuracy()),
 	_nIter(1000),
 	_solutionInterval(0),
 	_onlyScalar(false),

@@ -1,6 +1,8 @@
 #include <iostream>
 #include <stdexcept>
+
 #include "peeler.h"
+#include "calibrationmethod.h"
 
 int main(int argc, char *argv[])
 {
@@ -17,7 +19,10 @@ int main(int argc, char *argv[])
 		std::string modelFile, rhsSolutionFile;
 		std::string dataColumnName = "DATA";
 		size_t niter = 25, solutionInterval = 1;
-		double minAccuracy = 0.0001, stopAccuracy = 0.000001, minUVW = 0.0;
+		double
+			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
+			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
+			minUVW = 0.0;
 		
 		while(argv[argi][0] == '-')
 		{

@@ -214,8 +214,6 @@ int main(int argc, char* argv[])
 			
 			Peeler peeler(ms);
 			
-			peeler.SetNIter(1000);
-			peeler.SetAccuracy(0.0001, 0.000001);
 			peeler.SetModel(peelModel);
 			peeler.SetDataColumnName(dataColumn);
 			peeler.SetSolutionInterval(4);

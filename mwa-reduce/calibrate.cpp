@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include "calibrator.h"
+#include "calibrationmethod.h"
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +19,10 @@ int main(int argc, char *argv[])
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
 		size_t niter = 1000, solutionInterval = 0;
-		double minAccuracy = 0.0001, stopAccuracy = 0.000001, minUVW = 0.0;
+		double
+			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
+			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
+			minUVW = 0.0;
 		
 		while(argv[argi][0] == '-')
 		{
