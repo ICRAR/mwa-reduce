@@ -314,7 +314,9 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 		_subtractAvailableBufferLane.write(info);
 	}
 	
+	std::cout << "Starting subtracting threads\n";
 	startSubtractionThreads();
+	std::cout << "Threads started\n";
 	
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
@@ -344,7 +346,9 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 		}
 	}
 	
+	std::cout << "Stopping subtracting threads\n";
 	stopSubtractionThreads();
+	std::cout << "Threads stopped\n";
 	
 	while(!_subtractAvailableBufferLane.empty())
 	{
@@ -363,7 +367,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 void SpectrumSubtractor::startSubtractionThreads()
 {
 	_threadGroup.reset(new boost::thread_group());
-	for(size_t i=0; i!=_cpuCount; ++i)
+	for(size_t i=0; i!=1/*_cpuCount*/; ++i)
 	{
 		_threadGroup->add_thread(new boost::thread(&SpectrumSubtractor::subtractionThreadFunc, this));
 	}
