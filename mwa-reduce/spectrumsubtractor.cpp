@@ -320,6 +320,7 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 	std::cout << "Threads started\n";
 	
 	SubtractThreadInfo info;
+	info.readyForWrite = false;
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
 		size_t a1 = (*_antenna1Column)(row), a2 = (*_antenna2Column)(row);
