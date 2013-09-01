@@ -13,7 +13,8 @@ SpectrumSubtractor::SpectrumSubtractor(casa::MeasurementSet& ms, Model& model) :
 	_model(model),
 	_bandData(ms.spectralWindow()),
 	_subtractWorkLane(BUFFER_COUNT),
-	_subtractAvailableBufferLane(BUFFER_COUNT),
+	_subtractWriteLane(BUFFER_COUNT),
+	_subtractAvailableLane(BUFFER_COUNT),
 	_timestepCount(0),
 	_fittingInterval(1)
 {
@@ -305,84 +306,73 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 	std::cout << "Flux: " << (2.0*totalFlux/totalWeight) << "\tWeight:" << totalWeight << '\n';
 	
 	_subtractWorkLane.clear();
-	_subtractAvailableBufferLane.clear();
+	_subtractAvailableLane.clear();
+	_subtractWriteLane.clear();
 	
 	for(size_t i=0; i!=BUFFER_COUNT; ++i)
 	{
 		SubtractThreadInfo info;
-		info.readyForWrite = false;
 		info.data = _dataBuffers[i];
-		_subtractAvailableBufferLane.write(info);
+		_subtractAvailableLane.write(info);
 	}
 	
 	std::cout << "Starting subtracting threads\n";
 	startSubtractionThreads();
 	std::cout << "Threads started\n";
 	
-	SubtractThreadInfo info;
-	info.readyForWrite = false;
-	info.data = _dataBuffers[0];
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
+		boost::mutex::scoped_lock lock(_subtractIOMutex);
 		size_t a1 = (*_antenna1Column)(row), a2 = (*_antenna2Column)(row);
+		lock.unlock();
 		if(a1 != a2)
 		{
-			//_subtractAvailableBufferLane.read(info);
-			if(info.readyForWrite)
-			{
-				_dataColumn->put(info.rowIndex, *info.data);
-			}
+			SubtractThreadInfo info;
+			_subtractAvailableLane.read(info);
 			
-			info.readyForWrite = false;
 			info.rowIndex = row;
-			_dataColumn->get(row, *info.data);
+			info.a1 = a1;
+			info.a2 = a2;
 			
+			lock.lock();
+			_dataColumn->get(row, *info.data);
 			casa::Array<double> uvwArray = (*_uvwColumn)(row);
 			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 			info.u = *uvwI; ++uvwI;
 			info.v = *uvwI; ++uvwI;
 			info.w = *uvwI;
-			info.a1 = a1;
-			info.a2 = a2;
+			lock.unlock();
 			
-			//_subtractWorkLane.write(info);
-			processWork(info);
-			//std::cout << 'W' << _subtractWorkLane.size() << 'F' << _subtractAvailableBufferLane.size() << std::flush;
+			_subtractWorkLane.write(info);
 		}
 	}
-	/*
+	
 	std::cout << "Stopping subtracting threads\n";
 	stopSubtractionThreads();
 	std::cout << "Threads stopped\n";
 	
-	while(!_subtractAvailableBufferLane.empty())
-	{
-		SubtractThreadInfo info;
-		_subtractAvailableBufferLane.read(info);
-		if(info.readyForWrite)
-		{
-			_dataColumn->put(info.rowIndex, *info.data);
-		}
-	}*/
-
 	_spectrumSums.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
 	_spectrumWeights.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
 }
 
 void SpectrumSubtractor::startSubtractionThreads()
 {
-	//_threadGroup.reset(new boost::thread_group());
-	//for(size_t i=0; i!=1/*_cpuCount*/; ++i)
-	//{
-	//	_threadGroup->add_thread(new boost::thread(&SpectrumSubtractor::subtractionThreadFunc, this));
-	//}
+	_threadGroup.reset(new boost::thread_group());
+	for(size_t i=0; i!=_cpuCount; ++i)
+	{
+		_threadGroup->add_thread(new boost::thread(&SpectrumSubtractor::subtractionThreadFunc, this));
+	}
+	_subtractWriteThread.reset(new boost::thread(&SpectrumSubtractor::subtractionWriteThreadFunc, this));
 }
 
 void SpectrumSubtractor::stopSubtractionThreads()
 {
-	//_subtractWorkLane.write_end();
-	//_threadGroup->join_all();
-	//_threadGroup.reset();
+	_subtractWorkLane.write_end();
+	_threadGroup->join_all();
+	_threadGroup.reset();
+	_subtractWriteLane.write_end();
+	_subtractWriteThread->join();
+	_subtractWriteThread.reset();
 }
 
 void SpectrumSubtractor::processWork(SubtractThreadInfo& info)
@@ -408,7 +398,6 @@ void SpectrumSubtractor::processWork(SubtractThreadInfo& info)
 		for(size_t p=0; p!=4; ++p)
 			data[ch*4 + p] -= casa::Complex(predictSum[p].real(), predictSum[p].imag());
 	}
-	info.readyForWrite = true;
 }
 
 void SpectrumSubtractor::subtractionThreadFunc()
@@ -417,6 +406,19 @@ void SpectrumSubtractor::subtractionThreadFunc()
 	while(_subtractWorkLane.read(info))
 	{
 		processWork(info);
-		_subtractAvailableBufferLane.write(info);
+		_subtractWriteLane.write(info);
+	}
+}
+
+void SpectrumSubtractor::subtractionWriteThreadFunc()
+{
+	SubtractThreadInfo info;
+	while(_subtractWriteLane.read(info))
+	{
+		boost::mutex::scoped_lock lock(_subtractIOMutex);
+		_dataColumn->put(info.rowIndex, *info.data);
+		lock.unlock();
+		
+		_subtractAvailableLane.write(info);
 	}
 }

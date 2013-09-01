@@ -32,7 +32,6 @@ class SpectrumSubtractor
 		{
 			size_t rowIndex;
 			casa::Array<casa::Complex> *data;
-			bool readyForWrite;
 			double u, v, w;
 			size_t a1, a2;
 		};
@@ -57,6 +56,7 @@ class SpectrumSubtractor
 		
 		void performSubtraction(size_t startRow, size_t endRow);
 		void subtractionThreadFunc();
+		void subtractionWriteThreadFunc();
 		void startSubtractionThreads();
 		void stopSubtractionThreads();
 		void processWork(SubtractThreadInfo& work);
@@ -76,8 +76,9 @@ class SpectrumSubtractor
 	
 		std::vector<double> _spectrumSums, _spectrumWeights;
 
-		lane<SubtractThreadInfo> _subtractWorkLane;
-		lane<SubtractThreadInfo> _subtractAvailableBufferLane;
+		boost::mutex _subtractIOMutex;
+		lane<SubtractThreadInfo> _subtractWorkLane, _subtractWriteLane, _subtractAvailableLane;
+		std::unique_ptr<boost::thread> _subtractWriteThread;
 		
 		static const size_t BUFFER_COUNT;
 		std::string _dataColumnName;
