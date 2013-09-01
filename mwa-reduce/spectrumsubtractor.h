@@ -42,7 +42,7 @@ class SpectrumSubtractor
 		~SpectrumSubtractor();
 		
 		void Perform();
-		void SetDataColumn(const std::string &dataColumn) { _dataColumn = dataColumn; }
+		void SetDataColumnName(const std::string &dataColumnName) { _dataColumnName = dataColumnName; }
 		void SetFittingInterval(size_t fittingInterval) { _fittingInterval = fittingInterval; }
 		const Model& RestorationModel() const { return _model; }
 	private:
@@ -79,9 +79,14 @@ class SpectrumSubtractor
 		lane<SubtractThreadInfo> _subtractAvailableBufferLane;
 		
 		static const size_t BUFFER_COUNT;
-		std::string _dataColumn;
+		std::string _dataColumnName;
 		size_t _timestepCount, _fittingInterval;
 		std::vector<double> _totalFluxPerSource, _totalFluxWeightPerSource;
+		
+		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _dataColumn;
+		std::unique_ptr<casa::ROScalarColumn<int>> _antenna1Column;
+		std::unique_ptr<casa::ROScalarColumn<int>> _antenna2Column;
+		std::unique_ptr<casa::ROArrayColumn<double>> _uvwColumn;
 };
 
 #endif

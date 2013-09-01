@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 	Model model(argv[argi]);
 	casa::MeasurementSet ms(argv[argi+1], casa::MeasurementSet::Update);
 	SpectrumSubtractor subtractor(ms, model);
-	subtractor.SetDataColumn(dataColumn);
+	subtractor.SetDataColumnName(dataColumn);
 	subtractor.SetFittingInterval(fittingInterval);
 	subtractor.Perform();
 }

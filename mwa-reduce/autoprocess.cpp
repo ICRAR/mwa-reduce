@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
 			
 			SpectrumSubtractor subtractor(ms, subtractModel);
 			subtractor.SetFittingInterval(4);
-			subtractor.SetDataColumn(dataColumn);
+			subtractor.SetDataColumnName(dataColumn);
 			subtractor.Perform();
 			
 			// Add the fitted sources to the restoration model
