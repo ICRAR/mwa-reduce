@@ -128,7 +128,7 @@ void WSInversion::countSamplesPerLayer(MSData& msData)
 	
 	std::vector<size_t> sampleCount(WGridSize());
 	msData.matchingRows = 0;
-	for(size_t row=0; row!=ms.nrow(); ++row)
+	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
 		if(ant1Column(row) != ant2Column(row))
 		{
