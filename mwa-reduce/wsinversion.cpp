@@ -92,6 +92,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 					msData.rowEnd = row;
 					break;
 				}
+				time = timeColumn(row).getValue();
 			}
 		}
 		std::cout << "DONE (" << msData.rowStart << '-' << msData.rowEnd << ")\n";
