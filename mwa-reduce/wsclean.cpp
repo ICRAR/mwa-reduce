@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
 		{
 			intervalStart = atoi(argv[argi+1]);
 			intervalStop = atoi(argv[argi+2]);
+			argi += 2;
 		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
