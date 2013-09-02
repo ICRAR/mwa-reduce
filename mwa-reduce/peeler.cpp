@@ -25,7 +25,7 @@ Peeler::Peeler(casa::MeasurementSet& ms) :
 	_onlyDiag(false),
 	_onlyRotation(false),
 	_dataColumnName("DATA"),
-	_nIter(100),
+	_nIter(CalibrationMethod::DefaultNIter()),
 	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
 	_stoppingAccuracy(CalibrationMethod::DefaultStoppingAccuracy()),
 	_minUVW(0.0),

@@ -44,6 +44,7 @@ class SpectrumSubtractor
 		void SetDataColumnName(const std::string &dataColumnName) { _dataColumnName = dataColumnName; }
 		void SetFittingInterval(size_t fittingInterval) { _fittingInterval = fittingInterval; }
 		const Model& RestorationModel() const { return _model; }
+		void SetApplyBeamOnRestorationModel(bool applyBeam) { _applyBeam = applyBeam; }
 	private:
 		void initMeasureThreadData();
 		void initPredictors();
@@ -84,6 +85,7 @@ class SpectrumSubtractor
 		std::string _dataColumnName;
 		size_t _timestepCount, _fittingInterval;
 		std::vector<double> _totalFluxPerSource, _totalFluxWeightPerSource;
+		bool _applyBeam;
 		
 		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _dataColumn;
 		std::unique_ptr<casa::ROScalarColumn<int>> _antenna1Column;

@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 			savePlotFiles = false, saveFaradayPlotFiles = false, saveCrossTermsPlotFile = false, beamOnSource = false, applyBeam = false,
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
-		size_t niter = 1000, solutionInterval = 0;
+		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 0;
 		double
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
 		calibrator.SetRHSSolutionFile(rhsSolutionFile);
 		calibrator.SetOnlyRotation(onlyRotation);
 		calibrator.SetSolutionOutputFilename(outName);
+		calibrator.SetVerbose(true);
 		calibrator.Perform();
 	}
 }

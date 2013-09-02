@@ -72,13 +72,36 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	_phaseCentreRA = j2000Val[0];
 	_phaseCentreDec = j2000Val[1];
 	std::cout << " DONE\n";
+
+	msData.rowStart = 0;
+	msData.rowEnd = ms.nrow();
+	if(HasInterval())
+	{
+		std::cout << "Determining first and last row index... " << std::flush;
+		casa::MEpoch time = timeColumn(0);
+		size_t timestepIndex = 0;
+		for(size_t row = 0; row!=ms.nrow(); ++row)
+		{
+			if(time.getValue() != timeColumn(row).getValue())
+			{
+				++timestepIndex;
+				if(timestepIndex == IntervalStart())
+					msData.rowStart = row;
+				if(timestepIndex == IntervalStop())
+				{
+					msData.rowEnd = row;
+					break;
+				}
+			}
+		}
+	}
 	
 	// Determine min and max w
 	std::cout << "Determining min and max w... " << std::flush;
 	msData.maxW= -1e100;
 	msData.minW = 1e100;
 	double maxBaseline = 0.0;
-	for(size_t row=0;row!=ms.nrow();++row)
+	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
 		if(ant1Column(row) != ant2Column(row))
 		{
@@ -150,7 +173,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	casa::Array<float> weights(dataShape);
 	casa::Array<bool> flags(dataShape);
 	size_t rowsRead = 0;
-	for(size_t row=0; row!=ms.nrow(); ++row)
+	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
 		if(ant1Column(row) != ant2Column(row))
 		{
@@ -256,7 +279,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	 * from this thread during further processing */
 	std::vector<double> us, vs, ws;
 	std::vector<size_t> rowIndices;
-	for(size_t row=0; row!=ms.nrow(); ++row)
+	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
 		if(ant1Column(row) != ant2Column(row))
 		{

@@ -119,6 +119,12 @@ class SpectralEnergyDistribution
 			AddMeasurement(fluxDensityJy, frequencyHz);
 		}
 		
+		template<typename T>
+		SpectralEnergyDistribution(const T* fluxDensityJy, long double frequencyHz)
+		{
+			AddMeasurement(fluxDensityJy, frequencyHz);
+		}
+		
 		SpectralEnergyDistribution(long double fluxDensityJy, long double frequencyHz, long double spectralIndex)
 		{
 			AddMeasurement(fluxDensityJy, frequencyHz, spectralIndex);
@@ -189,6 +195,16 @@ class SpectralEnergyDistribution
 			measurement.SetFluxDensity(1, 0.0);
 			measurement.SetFluxDensity(2, 0.0);
 			measurement.SetFluxDensity(3, fluxDensityJy);
+			measurement.SetFrequencyHz(frequencyHz);
+			_measurements.insert(std::pair<long double, Measurement>(frequencyHz, measurement));
+		}
+		
+		template<typename T>
+		void AddMeasurement(const T* fluxDensityJyPerPol, long double frequencyHz)
+		{
+			Measurement measurement;
+			for(size_t p=0; p!=4; ++p)
+				measurement.SetFluxDensity(p, fluxDensityJyPerPol[p]);
 			measurement.SetFrequencyHz(frequencyHz);
 			_measurements.insert(std::pair<long double, Measurement>(frequencyHz, measurement));
 		}

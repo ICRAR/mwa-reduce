@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
 			"\t-negative\n"
 			"\t   Allow negative components during cleaning\n"
+			"\t-interval <start-index> <stop-index>\n"
+			"\t   Only image the given interval. Indices specify the timesteps, stop is exclusive.\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
@@ -50,7 +52,7 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
-	size_t nWLayers = 64, nIter = 500;
+	size_t nWLayers = 64, nIter = 500, intervalStart = 0, intervalStop = 0;
 	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
@@ -157,6 +159,11 @@ int main(int argc, char *argv[])
 		{
 			smallPSF = true;
 		}
+		else if(param == "interval")
+		{
+			intervalStart = atoi(argv[argi+1]);
+			intervalStop = atoi(argv[argi+2]);
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -180,6 +187,10 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetWGridSize(nWLayers);
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
+	if(intervalStop != 0)
+	{
+		inversionAlgorithm->SetInterval(intervalStart, intervalStop);
+	}
 	
 	double
 		ra, dec,

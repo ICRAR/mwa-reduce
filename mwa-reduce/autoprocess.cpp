@@ -37,6 +37,7 @@ int main(int argc, char* argv[])
 	double
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
+	size_t nIter = CalibrationMethod::DefaultNIter();
 	while(argv[argi][0] == '-')
 	{
 		std::string param(&argv[argi][1]);
@@ -47,6 +48,11 @@ int main(int argc, char* argv[])
 		else if(param == "nopeel")
 		{
 			doPeel = false;
+		}
+		else if(param == "niter")
+		{
+			++argi;
+			nIter = atoi(argv[argi]);
 		}
 		else if(param == "a")
 		{
@@ -181,12 +187,12 @@ int main(int argc, char* argv[])
 				calModel.AddSource(**i);
 				restorationModel.AddSource(**i);
 			}
-			calibrator.SetNIter(1000);
 			calibrator.SetModel(calModel);
 			calibrator.SetDataColumnName(dataColumn);
 			calibrator.SetSolutionInterval(0);
 			calibrator.SetAccuracy(minAccuracy, stopAccuracy);
 			calibrator.SetApplyBeam(true);
+			calibrator.SetNIter(nIter);
 			calibrator.SetVerbose(true);
 			
 			calibrator.Perform();
@@ -229,6 +235,7 @@ int main(int argc, char* argv[])
 			peeler.SetDataColumnName(dataColumn);
 			peeler.SetSolutionInterval(4);
 			peeler.SetAccuracy(minAccuracy, stopAccuracy);
+			peeler.SetNIter(nIter);
 			
 			peeler.Perform();
 		}

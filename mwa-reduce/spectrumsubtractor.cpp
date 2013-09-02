@@ -3,6 +3,7 @@
 #include "model.h"
 #include "predicter.h"
 #include "matrix2x2.h"
+#include "beamevaluator.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -16,7 +17,8 @@ SpectrumSubtractor::SpectrumSubtractor(casa::MeasurementSet& ms, Model& model) :
 	_subtractWriteLane(BUFFER_COUNT),
 	_subtractAvailableLane(BUFFER_COUNT),
 	_timestepCount(0),
-	_fittingInterval(1)
+	_fittingInterval(1),
+	_applyBeam(false)
 {
 	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -130,21 +132,39 @@ void SpectrumSubtractor::Perform()
 	performSubtraction(intervalStartRow, _ms.nrow());
 	
 	// Restore the model
-	std::cout << "Subtracted absolute fluxes:\n";
+	std::cout << "Subtracted fluxes:\n";
+	std::unique_ptr<BeamEvaluator> beamEval;
+	if(_applyBeam)
+		beamEval.reset(new BeamEvaluator(_ms, false));
 	for(size_t s=0; s!=_model.SourceCount(); ++s)
 	{
 		ModelSource &source = _model.Source(s);
+		
 		double flux[4];
+		for(size_t p=0; p!=4; ++p)
+			flux[p] = _totalFluxPerSource[s*4 + p] / _totalFluxWeightPerSource[s*4 + p];
+		
+		source.SetConstantTotalFlux(flux, _bandData.CentreFrequency());
+		if(_applyBeam)
+		{
+			for(ModelSource::iterator comp=source.begin(); comp!=source.end(); ++comp)
+			{
+				for(size_t p=0; p!=4; ++p)
+					flux[p] = comp->SED().FluxAtFrequency(_bandData.CentreFrequency(), p);
+				beamEval->ApparentToAbs(comp->PosRA(), comp->PosDec(), flux);
+				comp->SED() = SpectralEnergyDistribution(flux, _bandData.CentreFrequency());
+			}
+		}
+		
 		std::cout << source.Name() << '\t';
 		for(size_t p=0; p!=4; ++p)
 		{
-			flux[p] = _totalFluxPerSource[s*4 + p] / _totalFluxWeightPerSource[s*4 + p];
+			std::cout << source.TotalFlux(_bandData.CentreFrequency(), p);
 			if(p == 3)
-				std::cout << flux[p] << '\n';
+				std::cout << '\n';
 			else
-				std::cout << flux[p] << '\t';
+				std::cout << '\t';
 		}
-		source.SetConstantTotalFlux(flux, _bandData.CentreFrequency());
 	}
 	
 	_dataColumn.reset();

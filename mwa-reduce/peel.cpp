@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string modelFile, rhsSolutionFile;
 		std::string dataColumnName = "DATA";
-		size_t niter = 25, solutionInterval = 1;
+		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 1;
 		double
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),

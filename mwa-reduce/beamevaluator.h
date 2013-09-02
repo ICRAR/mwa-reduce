@@ -76,9 +76,14 @@ class BeamEvaluator
 			std::complex<double> gains[4], temp[4];
 			EvaluateApparentToAbsGain(ra, dec, frequency, gains);
 			
-			// Calculate A^1 D A^1^H
 			Matrix2x2::ATimesB(temp, gains, data);
 			Matrix2x2::ATimesHermB(data, temp, gains);
+		}
+		
+		template<typename NumType>
+		void ApparentToAbs(double ra, double dec, NumType* pixelValues)
+		{
+			ApparentToAbs<NumType>(ra, dec, _frequency, pixelValues);
 		}
 		
 		template<typename NumType>

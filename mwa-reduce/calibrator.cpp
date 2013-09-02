@@ -106,6 +106,7 @@ void Calibrator::Perform()
 
 	for(size_t intervalIndex=0; intervalIndex!=intervalCount; ++intervalIndex)
 	{
+		std::cout << " >>> INTERVAL " << (intervalIndex+1) << " <<<\n";
 		size_t
 			intervalTimestepStart = (intervalIndex*timestepCount) / intervalCount,
 			intervalTimestepEnd = ((intervalIndex+1)*timestepCount) / intervalCount,
@@ -426,13 +427,13 @@ void Calibrator::threadFunction(ThreadData data)
 			limit = _stoppingAccuracy;
 			(*(data.calMethods))[taskIndex]->Execute(limit, iters);
 
-			if((iters >= _nIter && limit < _minAccuracy) || !std::isfinite(limit))
+			if((iters >= _nIter && limit > _minAccuracy) || !std::isfinite(limit))
 			{
 				std::cout << "Channel " << taskIndex << " did not converge (accuracy=" << limit << "), setting gains to NaN.\n";
 				(*(data.calMethods))[taskIndex]->InitSolutionsToNaN();
 			}
 			else {
-				if(iters >= _nIter && limit < _stoppingAccuracy)
+				if(iters >= _nIter && limit > _stoppingAccuracy)
 				{
 					std::cout << "Channel " << taskIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
 				}
