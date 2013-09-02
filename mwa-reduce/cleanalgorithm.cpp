@@ -131,6 +131,42 @@ void CleanAlgorithm::partialSubtractImage(double *image, const double *psf, size
 	}
 }
 
+void CleanAlgorithm::partialSubtractImage(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY)
+{
+	size_t startX, endX;
+	int offsetX = (int) x - psfWidth/2, offsetY = (int) y - psfHeight/2;
+	
+	if(offsetX > 0)
+		startX = offsetX;
+	else
+		startX = 0;
+	
+	if(offsetY > (int) startY)
+		startY = offsetY;
+	
+	endX = std::min(x + psfWidth/2, imgWidth);
+	
+	bool isAligned = ((endX - startX) % 2) == 0;
+	if(!isAligned) --endX;
+	
+	endY = std::min(y + psfHeight/2, endY);
+	
+	for(size_t ypos = startY; ypos < endY; ++ypos)
+	{
+		double *imageIter = image + ypos * imgWidth + startX;
+		const double *psfIter = psf + (ypos - offsetY) * psfWidth + startX - offsetX;
+		for(size_t xpos = startX; xpos != endX; xpos+=2)
+		{
+			*imageIter = *imageIter - (*psfIter * factor);
+			*(imageIter+1) = *(imageIter+1) - (*(psfIter+1) * factor);
+			imageIter+=2;
+			psfIter+=2;
+		}
+		if(!isAligned)
+			*imageIter -= *psfIter * factor;
+	}
+}
+
 void CleanAlgorithm::ExecuteMajorIterationST(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height)
 {
 	size_t componentX, componentY;
@@ -151,6 +187,23 @@ void CleanAlgorithm::ExecuteMajorIterationST(double *dataImage, double *modelIma
 
 void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain)
 {
+	std::vector<double> resizedPsf;
+	size_t psfWidth, psfHeight;
+	if(_resizePSF)
+	{
+		CalculateFastCleanPSFSize(psfWidth, psfHeight, width, height);
+		if(psfWidth != width || psfHeight != height)
+		{
+			resizedPsf.resize(psfWidth * psfHeight);
+			ResizeImage(&resizedPsf[0], psfWidth, psfHeight, psfImage, width, height);
+			psfImage = &resizedPsf[0];
+		}
+	}
+	else {
+		psfWidth = width;
+		psfHeight = height;
+	}
+	
 	size_t componentX, componentY;
 	double peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
 	std::cout << "Initial peak: " << peak << '\n';
@@ -173,9 +226,11 @@ void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage
 		taskLanes[i] = new lane<CleanTask>(1);
 		resultLanes[i] = new lane<CleanResult>(1);
 		CleanThreadData cleanThreadData;
-		cleanThreadData.width = width;
-		cleanThreadData.height = height;
+		cleanThreadData.imgWidth = width;
+		cleanThreadData.imgHeight = height;
 		cleanThreadData.dataImage = dataImage;
+		cleanThreadData.psfWidth = psfWidth;
+		cleanThreadData.psfHeight = psfHeight;
 		cleanThreadData.psfImage = psfImage;
 		cleanThreadData.startY = (height*i)/cpuCount;
 		cleanThreadData.endY = height*(i+1)/cpuCount;
@@ -227,13 +282,13 @@ void CleanAlgorithm::cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult
 	CleanTask task;
 	while(taskLane->read(task))
 	{
-		partialSubtractImage(cleanData.dataImage, cleanData.psfImage, cleanData.width, cleanData.height, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakLevel, cleanData.startY, cleanData.endY);
+		partialSubtractImage(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, cleanData.psfImage, cleanData.psfWidth, cleanData.psfHeight, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakLevel, cleanData.startY, cleanData.endY);
 		
 		CleanResult result;
 		if(_cleanAreas == 0)
-			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.width, cleanData.height, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY);
+			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY);
 		else
-			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.width, cleanData.height, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY, *_cleanAreas);
+			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY, *_cleanAreas);
 		
 		resultLane->write(result);
 	}
@@ -269,7 +324,18 @@ void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t
 	}
 }
 
-void CleanAlgorithm::PreparePSF(double* psf, size_t width, size_t height)
+void CleanAlgorithm::ResizeImage(double* dest, size_t newWidth, size_t newHeight, const double* source, size_t width, size_t height)
+{
+	size_t srcStartX = (width - newWidth) / 2, srcStartY = (height - newHeight) / 2;
+	for(size_t y=0; y!=newHeight; ++y)
+	{
+		double* destPtr = dest + y * newWidth;
+		const double* srcPtr = source + (y + srcStartY) * width + srcStartX;
+		memcpy(destPtr, srcPtr, newWidth * sizeof(double));
+	}
+}
+
+void CleanAlgorithm::RemoveNaNsInPSF(double* psf, size_t width, size_t height)
 {
 	double* endPtr = psf + width*height;
 	while(psf != endPtr)
@@ -279,3 +345,20 @@ void CleanAlgorithm::PreparePSF(double* psf, size_t width, size_t height)
 	}
 }
 
+void CleanAlgorithm::CalculateFastCleanPSFSize(size_t& psfWidth, size_t& psfHeight, size_t imageWidth, size_t imageHeight)
+{
+	// With 2048 x 2048, the subtraction is already so quick that it is not really required to make the psf smaller
+	if(imageWidth <= 2048)
+		psfWidth = imageWidth;
+	else if(imageWidth <= 4096)
+		psfWidth = 2048;
+	else
+		psfWidth = imageWidth / 2;
+	
+	if(imageHeight <= 2048)
+		psfHeight = imageHeight;
+	else if(imageHeight <= 4096)
+		psfHeight = 2048;
+	else
+		psfHeight = imageHeight / 2;
+}

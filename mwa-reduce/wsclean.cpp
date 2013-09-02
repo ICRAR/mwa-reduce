@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
 			"\t-mgain <gain>\n"
 			"\t   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major\n"
 			"\t   iteration (default = 1.0, to use major iterations, 0.9 is a good value).\n"
+			"\t-smallpsf\n"
+			"\t   Resize the psf to speed up minor clean iterations.\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
 			"\t-negative\n"
 			"\t   Allow negative components during cleaning\n"
@@ -52,54 +54,54 @@ int main(int argc, char *argv[])
 	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
-	bool allowNegative = false;
+	bool allowNegative = false, smallPSF = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	
 	while(argi < argc && argv[argi][0] == '-')
 	{
-		const char *param = &argv[argi][1];
-		if(strcmp(param, "size") == 0)
+		const std::string param = &argv[argi][1];
+		if(param == "size")
 		{
 			imgWidth = atoi(argv[argi+1]);
 			imgHeight = atoi(argv[argi+2]);
 			argi += 2;
 		}
-		else if(strcmp(param, "scale") == 0)
+		else if(param == "scale")
 		{
 			++argi;
 			pixelScale = atof(argv[argi]) * M_PI / 180.0;
 		}
-		else if(strcmp(param, "nwlayers") == 0)
+		else if(param == "nwlayers")
 		{
 			++argi;
 			nWLayers = atoi(argv[argi]);
 		}
-		else if(strcmp(param, "gain") == 0)
+		else if(param == "gain")
 		{
 			++argi;
 			gain = atof(argv[argi]);
 		}
-		else if(strcmp(param, "mgain") == 0)
+		else if(param == "mgain")
 		{
 			++argi;
 			mGain = atof(argv[argi]);
 		}
-		else if(strcmp(param, "niter") == 0)
+		else if(param == "niter")
 		{
 			++argi;
 			nIter = atoi(argv[argi]);
 		}
-		else if(strcmp(param, "threshold") == 0)
+		else if(param == "threshold")
 		{
 			++argi;
 			threshold = atof(argv[argi]);
 		}
-		else if(strcmp(param, "datacolumn") == 0)
+		else if(param == "datacolumn")
 		{
 			++argi;
 			columnName = argv[argi];
 		}
-		else if(strcmp(param, "pol") == 0)
+		else if(param == "pol")
 		{
 			++argi;
 			std::string polStr = argv[argi];
@@ -115,31 +117,31 @@ int main(int argc, char *argv[])
 			else if(polStr == "stokesi")
 				polarization = InversionAlgorithm::StokesI;
 		}
-		else if(strcmp(param, "negative") == 0)
+		else if(param == "negative")
 		{
 			allowNegative = true;
 		}
-		else if(strcmp(param, "addmodel") == 0)
+		else if(param == "addmodel")
 		{
 			++argi;
 			addModelFilename = argv[argi];
 		}
-		else if(strcmp(param, "savemodel") == 0)
+		else if(param == "savemodel")
 		{
 			++argi;
 			saveModelFilename = argv[argi];
 		}
-		else if(strcmp(param, "cleanareas") == 0)
+		else if(param == "cleanareas")
 		{
 			++argi;
 			cleanAreasFilename = argv[argi];
 		}
-		else if(strcmp(param, "name") == 0)
+		else if(param == "name")
 		{
 			++argi;
 			prefixName = argv[argi];
 		}
-		else if(strcmp(param, "gridmode") == 0)
+		else if(param == "gridmode")
 		{
 			++argi;
 			std::string gridModeStr = argv[argi];
@@ -151,8 +153,12 @@ int main(int argc, char *argv[])
 			else
 				throw std::runtime_error("Invalid gridding mode: should be either kb (Kaiser-Bessel) or nn (NearestNeighbour)");
 		}
+		else if(param == "smallpsf")
+		{
+			smallPSF = true;
+		}
 		else {
-			throw std::runtime_error("Unknown parameter");
+			throw std::runtime_error("Unknown parameter: " + param);
 		}
 		
 		++argi;
@@ -204,7 +210,7 @@ int main(int argc, char *argv[])
 		psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 		std::cout << "DONE\n";
 		
-		CleanAlgorithm::PreparePSF(&psf[0], imgWidth, imgHeight);
+		CleanAlgorithm::RemoveNaNsInPSF(&psf[0], imgWidth, imgHeight);
 	
 		if(inversionAlgorithm->HasGriddingCorrectionImage())
 		{
@@ -249,6 +255,7 @@ int main(int argc, char *argv[])
 		cleanAlgorithm.SetSubtractionGain(gain);
 		cleanAlgorithm.SetStopGain(mGain);
 		cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
+		cleanAlgorithm.SetResizePSF(smallPSF);
 			
 		std::unique_ptr<AreaSet> cleanAreas;
 		if(!cleanAreasFilename.empty())
