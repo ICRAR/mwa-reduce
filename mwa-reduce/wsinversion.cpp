@@ -252,7 +252,12 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 		std::cout << "Adding model data column... " << std::flush;
 		casa::IPosition shape = dataColumn.shape(0);
 		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(ms.columnName(casa::MSMainEnums::MODEL_DATA), shape);
-		ms.addColumn(modelColumnDesc, "StandardStMan", true, true);
+		try {
+			ms.addColumn(modelColumnDesc, "StandardStMan", true, true);
+		} catch(std::exception& e)
+		{
+			ms.addColumn(modelColumnDesc, "StandardStMan", false, true);
+		}
 		
 		casa::Array<casa::Complex> zeroArray(shape);
 		for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
