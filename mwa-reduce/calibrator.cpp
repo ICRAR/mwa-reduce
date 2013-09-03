@@ -306,6 +306,7 @@ void Calibrator::Perform()
 			}
 			threadGroup.join_all();
 
+			// Save solutions
 			for(size_t ant=0; ant!=antennaCount; ++ant)
 			{
 				for(size_t ch=0; ch!=partChannelCount; ++ch)

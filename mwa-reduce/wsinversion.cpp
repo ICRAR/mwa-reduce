@@ -117,7 +117,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 		}
 	}
 	_beamSize = bandData.SmallestWavelength() / sqrt(maxBaseline);
-	std::cout << "DONE (w=[" << msData.minW << '-' << msData.maxW << "] lambdas)\n";
+	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
 }
 
 void WSInversion::countSamplesPerLayer(MSData& msData)

@@ -43,6 +43,7 @@ public:
 		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
+		casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 		casa::ArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
@@ -52,8 +53,22 @@ public:
 		unsigned polarizationCount = dataShape[0];
 		if(polarizationCount != 4)
 		  throw std::runtime_error("Should have 4 pols");
-		std::cout << " DONE\n";
 		
+		std::cout << "DONE\nCounting timesteps... " << std::flush;
+		double time = -1.0;
+		std::vector<size_t> timestepRows;
+		for(size_t rowIndex=0;rowIndex!=ms.nrow();++rowIndex)
+		{
+			if(timeColumn(rowIndex) != time)
+			{
+				timestepRows.push_back(rowIndex);
+				time = timeColumn(rowIndex);
+			}
+		}
+		size_t timestepCount = timestepRows.size();
+		timestepRows.push_back(ms.nrow());
+		std::cout << "DONE (" << timestepCount << " timesteps)\n";
+	
 		/**
 		 * Read the solutions file
 		 */
@@ -85,7 +100,6 @@ public:
 		 */
 		std::cout << "Applying solutions...\n";
 		casa::Array<complex_t> data(dataShape);
-		size_t rowIndex = 0;
 		for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 		{
 			// Read the solutions for this interval
@@ -100,7 +114,14 @@ public:
 				}
 			}
 			
-			for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
+			size_t
+				intervalTimestepStart = (interval*timestepCount) / solutionFile.IntervalCount(),
+				intervalTimestepEnd = ((interval+1)*timestepCount) / solutionFile.IntervalCount(),
+				intervalRowStart = timestepRows[intervalTimestepStart],
+				intervalRowEnd = timestepRows[intervalTimestepEnd];
+			std::cout << "- Interval " << (interval+1) << '/' << solutionFile.IntervalCount() << " (" << intervalRowStart << '-' << intervalRowEnd << ")\n";
+			std::cout << "  Antenna1: " << values[1][72*4] << "\n";
+			for(size_t rowIndex=intervalRowStart; rowIndex!=intervalRowEnd; ++rowIndex)
 			{
 				// Cross correlation?
 				size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
@@ -126,7 +147,6 @@ public:
 				}
 				dataColumn.put(rowIndex, data);
 			}
-			std::cout << "Finished interval " << (interval+1) << '/' << solutionFile.IntervalCount() << '\n';
 		}
 		
 		/**
