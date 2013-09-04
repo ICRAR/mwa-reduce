@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -24,8 +24,8 @@ int main(int argc, char *argv[])
 	long double scale = 1.0, threshold = 0.0, delNoisySourceLimit = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0;
-	std::string outputModel;
-	bool nearFilter = false, scalePeak = false, scaleSource = false;
+	std::string outputModel, collectName;
+	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
 	while(argv[argi][0]=='-')
@@ -42,6 +42,11 @@ int main(int argc, char *argv[])
 			++argi;
 			nearFilterDist = atof(argv[argi]) * (M_PI/180.0);
 			nearFilter = true;
+		} else if(strcmp(argv[argi], "-collect") == 0)
+		{
+			doCollect = true;
+			++argi;
+			collectName = argv[argi];
 		} else if(strcmp(argv[argi], "-m") == 0)
 		{
 			++argi;
@@ -111,6 +116,9 @@ int main(int argc, char *argv[])
 		} else if(strcmp(argv[argi], "-combine-diff-meas") == 0)
 		{
 			combineStrategy = DifferentFrequencies;
+		} else if(strcmp(argv[argi], "-sort") == 0)
+		{
+			doSort = true;
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: ") + argv[argi]);
 		}
@@ -135,6 +143,8 @@ int main(int argc, char *argv[])
 	
 	if(optimize)
 		model.Optimize();
+	if(doSort)
+		model.Sort();
 	
 	if(applyThreshold)
 	{
@@ -177,6 +187,21 @@ int main(int argc, char *argv[])
 			if(dist > nearFilterDist)
 				model.RemoveSource(i-1);
 		}
+	}
+	
+	if(doCollect)
+	{
+		ModelSource newSource;
+		newSource.SetName(collectName);
+		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			for(ModelSource::const_iterator compPtr = sourcePtr->begin(); compPtr != sourcePtr->end(); ++compPtr)
+			{
+				newSource.AddComponent(*compPtr);
+			}
+		}
+		model = Model();
+		model.AddSource(newSource);
 	}
 	
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
@@ -253,49 +278,55 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		if(scalePeak || scaleSource)
+	}
+	
+	if(scalePeak || scaleSource)
+	{
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+			long double factorA[4], factorB[4];
+			for(size_t p=0; p!=4; ++p)
 			{
-				long double factorA[4], factorB[4];
+				if(scalePeak)
+				{
+					long double
+						oldFluxA = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqA, p),
+						oldFluxB = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqB, p);
+					factorA[p] = oldFluxA==0.0 ? 0.0 : scalePeakA / oldFluxA;
+					factorB[p] = oldFluxB==0.0 ? 0.0 : scalePeakB / oldFluxB;
+				} else {
+					long double
+						oldFluxA = sourcePtr->TotalFlux(scaleFreqA, p),
+						oldFluxB = sourcePtr->TotalFlux(scaleFreqB, p);
+					factorA[p] = oldFluxA==0.0 ? 0.0 : scalePeakA / oldFluxA;
+					factorB[p] = oldFluxB==0.0 ? 0.0 : scalePeakB / oldFluxB;
+				}
+			}
+			std::cout << "Scale factor for " << sourcePtr->Name() << ": " << factorA[0];
+			for(size_t p=1; p!=4; ++p) std::cout << ',' << factorA[p];
+			std::cout << " - " << factorB[0];
+			for(size_t p=1; p!=4; ++p) std::cout << ',' << factorB[p];
+			std::cout << '\n';
+			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			{
+				Measurement measA, measB;
+				measA.SetFrequencyHz(scaleFreqA);
+				measB.SetFrequencyHz(scaleFreqB);
 				for(size_t p=0; p!=4; ++p)
 				{
-					if(scalePeak)
-					{
-						long double
-							oldFluxA = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqA, p),
-							oldFluxB = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqB, p);
-						factorA[p] = oldFluxA==0.0 ? 0.0 : scalePeakA / oldFluxA;
-						factorB[p] = oldFluxB==0.0 ? 0.0 : scalePeakB / oldFluxB;
-					} else {
-						long double
-							oldFluxA = sourcePtr->TotalFlux(scaleFreqA, p),
-							oldFluxB = sourcePtr->TotalFlux(scaleFreqB, p);
-						factorA[p] = oldFluxA==0.0 ? 0.0 : scalePeakA / oldFluxA;
-						factorB[p] = oldFluxB==0.0 ? 0.0 : scalePeakB / oldFluxB;
-					}
+					long double oldFluxA = compPtr->SED().FluxAtFrequency(scaleFreqA, p);
+					long double oldFluxB = compPtr->SED().FluxAtFrequency(scaleFreqB, p);
+					measA.SetFluxDensity(p, oldFluxA*factorA[p]);
+					measB.SetFluxDensity(p, oldFluxB*factorB[p]);
 				}
-				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
-				{
-					Measurement measA, measB;
-					measA.SetFrequencyHz(scaleFreqA);
-					measB.SetFrequencyHz(scaleFreqB);
-					for(size_t p=0; p!=4; ++p)
-					{
-						long double oldFluxA = compPtr->SED().FluxAtFrequency(scaleFreqA, p);
-						long double oldFluxB = compPtr->SED().FluxAtFrequency(scaleFreqB, p);
-						measA.SetFluxDensity(p, oldFluxA*factorA[p]);
-						measB.SetFluxDensity(p, oldFluxB*factorB[p]);
-					}
-					SpectralEnergyDistribution sed;
-					sed.AddMeasurement(measA);
-					sed.AddMeasurement(measB);
-					compPtr->SetSED(sed);
-				}
+				SpectralEnergyDistribution sed;
+				sed.AddMeasurement(measA);
+				sed.AddMeasurement(measB);
+				compPtr->SetSED(sed);
 			}
 		}
 	}
-	
+		
 	if(unpolarized)
 	{
 		model.SetUnpolarized();
