@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
 		if(addApparentModel)
 		{
 			casa::MeasurementSet ms(filenames[0]);
-			BeamEvaluator beamEval(ms);
+			BeamEvaluator beamEval(ms, false);
 			beamEval.AbsToApparent(model);
 		}
 	}
