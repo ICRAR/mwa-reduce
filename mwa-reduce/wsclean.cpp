@@ -6,6 +6,7 @@
 #include "model.h"
 #include "areaset.h"
 #include "parser/areaparser.h"
+#include "beamevaluator.h"
 
 #include <iostream>
 #include <memory>
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
 			"\t   Only image the given interval. Indices specify the timesteps, stop is exclusive.\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
+			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
 		return -1;
 	}
@@ -56,8 +58,9 @@ int main(int argc, char *argv[])
 	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
-	bool allowNegative = false, smallPSF = false;
+	bool allowNegative = false, smallPSF = false, addApparentModel = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
+	std::vector<std::string> filenames;
 	
 	while(argi < argc && argv[argi][0] == '-')
 	{
@@ -128,6 +131,12 @@ int main(int argc, char *argv[])
 			++argi;
 			addModelFilename = argv[argi];
 		}
+		else if(param == "addmodelapp")
+		{
+			++argi;
+			addModelFilename = argv[argi];
+			addApparentModel = true;
+		}
 		else if(param == "savemodel")
 		{
 			++argi;
@@ -178,8 +187,10 @@ int main(int argc, char *argv[])
 	std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion());
 	static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 	
-	for(int i=argi; i != argc; ++i)
+	for(int i=argi; i != argc; ++i) {
 		inversionAlgorithm->AddMeasurementSetPath(argv[i]);
+		filenames.push_back(argv[i]);
+	}
 	
 	inversionAlgorithm->SetImageWidth(imgWidth);
 	inversionAlgorithm->SetImageHeight(imgHeight);
@@ -339,6 +350,12 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "Reading model from " << addModelFilename << "... " << std::flush;
 		model = Model(addModelFilename.c_str());
+		if(addApparentModel)
+		{
+			casa::MeasurementSet ms(filenames[0]);
+			BeamEvaluator beamEval(ms);
+			beamEval.AbsToApparent(model);
+		}
 	}
 	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, 0.0, (freqHigh+freqLow)*0.5);
 	if(!saveModelFilename.empty())

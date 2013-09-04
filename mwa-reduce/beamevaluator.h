@@ -9,6 +9,8 @@
 
 #include "tilebeam.h"
 #include "matrix2x2.h"
+#include "modelsource.h"
+#include "model.h"
 
 class BeamEvaluator
 {
@@ -103,6 +105,34 @@ class BeamEvaluator
 		void SetTime(const casa::MEpoch& time) { _time = time; }
 		const casa::MEpoch& Time() { return _time; }
 		
+		void AbsToApparent(ModelSource& source, double frequency)
+		{
+			for(ModelSource::iterator i=source.begin(); i!=source.end(); ++i)
+			{
+				ModelComponent& comp = *i;
+				double vals[4];
+				for(size_t p=0; p!=4; ++p)
+					vals[p] = comp.SED().FluxAtFrequency(frequency, p);
+				AbsToApparent(comp.PosRA(), comp.PosDec(), frequency, vals);
+				comp.SetSED(SpectralEnergyDistribution(vals, frequency));
+			}
+		}
+		
+		void AbsToApparent(ModelSource& source)
+		{
+			AbsToApparent(source, _frequency);
+		}
+		
+		void AbsToApparent(Model& model, double frequency)
+		{
+			for(Model::iterator i=model.begin(); i!=model.end(); ++i)
+				AbsToApparent(*i, frequency);
+		}
+		
+		void AbsToApparent(Model& model)
+		{
+			AbsToApparent(model, _frequency);
+		}
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
 		casa::MPosition _ant1Pos;
