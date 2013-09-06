@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	int argi = 1;
-	bool doExecute = false, doPeel = true;
+	bool doExecute = false, doPeel = true, doSubtract = true;
 	double
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
@@ -48,6 +48,10 @@ int main(int argc, char* argv[])
 		else if(param == "nopeel")
 		{
 			doPeel = false;
+		}
+		else if(param == "nosubtract")
+		{
+			doSubtract = false;
 		}
 		else if(param == "niter")
 		{
@@ -158,13 +162,21 @@ int main(int argc, char* argv[])
 	
 	if(peelSources.empty())
 		std::cout << "- No peeling.\n";
-	else
-		std::cout << "- Peel out " << sourceList(peelSources) << '\n';
+	else {
+		if(doPeel)
+			std::cout << "- Peel out " << sourceList(peelSources) << '\n';
+		else
+			std::cout << "- Advice is to peel out " << sourceList(peelSources) << ", but peeling is disabled.\n";
+	}
 	
 	if(subtractSources.empty())
 		std::cout << "- No spectral source subtraction.\n";
-	else
-		std::cout << "- Spectrally subtract " << sourceList(subtractSources) << '\n';
+	else {
+		if(doSubtract)
+			std::cout << "- Spectrally subtract " << sourceList(subtractSources) << '\n';
+		else
+			std::cout << "- Advice is to subtract " << sourceList(peelSources) << ", but subtraction is disabled.\n";
+	}
 	
 	std::cout << '\n';	
 	if(calibrateSources.size() + peelSources.size() + subtractSources.size() == 0)
@@ -240,7 +252,7 @@ int main(int argc, char* argv[])
 			peeler.Perform();
 		}
 		
-		if(!subtractSources.empty())
+		if(!subtractSources.empty() && doSubtract)
 		{
 			std::cout << "Spectrally subtracting " << sourceList(subtractSources) << "...\n";
 			
