@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
 		if(doSubtract)
 			std::cout << "- Spectrally subtract " << sourceList(subtractSources) << '\n';
 		else
-			std::cout << "- Advice is to subtract " << sourceList(peelSources) << ", but subtraction is disabled.\n";
+			std::cout << "- Advice is to subtract " << sourceList(subtractSources) << ", but subtraction is disabled.\n";
 	}
 	
 	std::cout << '\n';	
