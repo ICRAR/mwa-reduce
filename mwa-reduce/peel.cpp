@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[])
 {
-	if(argc < 4)
+	if(argc < 3)
 	{
 		std::cout
 			<< "Usage: peel [-datacolumn <column>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t <solution interval timesteps>] <measurementset.ms>\n\n"
