@@ -173,7 +173,7 @@ void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection
 	double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
 	casa::MDirection azel = j2000ToAzelGeo(imageDir);
 	double azimuth = azel.getValue().get()[0];
-	//std::cout << "za=" << zenithDistance << ", az=" << azimuth << '\n';
+	//std::cout << "ha=" << ha*180.0/M_PI << '-' << haAntennaZenith*180.0/M_PI << ", za=" << zenithDistance*180.0/M_PI << ", az=" << azimuth*180.0/M_PI << '\n';
 	
 	AnalyticJones(zenithDistance, azimuth, frequencyHz, ha, decRad, haAntennaZenith, decAntennaZenith, gain);
 }
@@ -242,11 +242,14 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	sincos(dec, &sinDec, &cosDec);
 	sincos(ha - haAntennaZenith, &sinHa, &cosHa);
 	
+	// Notice that X and Y conventions are not equal to the RTS conventions.
+	// Here, X is assumed to be East-West aligned (sensitive to EM radiation with
+	// a East-West polarized vector).
 	double rot[4];
-	rot[0] =  cosDecAntennaZenith*cosDec + sinDecAntennaZenith*sinDec*cosHa;
-	rot[1] =  sinDecAntennaZenith*sinHa;
-	rot[2] = -sinDec*sinHa;
-	rot[3] =  cosHa;
+	rot[0] =  cosHa;
+	rot[1] = -sinDec*sinHa;
+	rot[2] =  sinDecAntennaZenith*sinHa;
+	rot[3] =  cosDecAntennaZenith*cosDec + sinDecAntennaZenith*sinDec*cosHa;
 	//std::cout << "rot[0]=" << rot[0] << " groundPlane=" << groundPlane << " arrayFactor=" << arrayFactor << '\n';
 	
 	arrayFactor *= groundPlane;
