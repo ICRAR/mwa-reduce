@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	int argi = 1;
-	bool doExecute = false, doPeel = true, doSubtract = true;
+	bool doExecute = false, doPeel = true, doSubtract = true, verboseOnPolarizations = false;
 	double
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
@@ -57,6 +57,10 @@ int main(int argc, char* argv[])
 		{
 			++argi;
 			nIter = atoi(argv[argi]);
+		}
+		else if(param == "vp")
+		{
+			verboseOnPolarizations = true;
 		}
 		else if(param == "a")
 		{
@@ -125,7 +129,19 @@ int main(int argc, char* argv[])
 		double
 			distanceNice = round(distanceDeg*10.0)*0.1,
 			fluxNice = round(src.first*10.0)*0.1;
+		
 		std::cout << src.second->Name() << " (" << fluxNice << " Jy/beam, distance=" << distanceNice << " deg)\n";
+		if(verboseOnPolarizations) {
+			std::complex<double> fluxMatrix[4];
+			const ModelSource& source = *src.second;
+			for(size_t p=0; p!=4; ++p)
+				fluxMatrix[p] = source.TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
+			beamEvaluator.AbsToApparent(source.Peak().PosRA(), source.Peak().PosDec(), fluxMatrix);
+			std::cout << round(fluxMatrix[0].real()*10.0)*0.1;
+			for(size_t p=1; p!=4; ++p)
+				std::cout << ' ' << round(fluxMatrix[p].real()*10.0)*0.1;
+			std::cout << '\n';
+		}
 		
 		// Determine what to do with it
 		if(src.first >= peelThreshold)

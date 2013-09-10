@@ -24,6 +24,7 @@ Peeler::Peeler(casa::MeasurementSet& ms) :
 	_onlyScalar(false),
 	_onlyDiag(false),
 	_onlyRotation(false),
+	_saveSolutionsFiles(false),
 	_dataColumnName("DATA"),
 	_nIter(CalibrationMethod::DefaultNIter()),
 	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
@@ -86,11 +87,14 @@ void Peeler::Perform()
 			std::cout << "DONE\n";
 	}
 
-	for(size_t ant=0; ant!=antennaCount; ++ant)
+	if(_saveSolutionsFiles)
 	{
-		std::ostringstream antFilename;
-		antFilename << "peel-sol-ant" << ant << ".txt";
-		std::ofstream(antFilename.str().c_str());
+		for(size_t ant=0; ant!=antennaCount; ++ant)
+		{
+			std::ostringstream antFilename;
+			antFilename << "peel-sol-ant" << ant << ".txt";
+			std::ofstream(antFilename.str().c_str());
+		}
 	}
 		
 	for(size_t pass=0; pass!=passCount; ++pass)
@@ -248,47 +252,50 @@ void Peeler::Perform()
 		}
 		threadGroup.join_all();
 
-		double refPhaseXX = 0.0, refPhaseYY = 0.0;
-		for(size_t ant=0; ant!=antennaCount; ++ant)
+		if(_saveSolutionsFiles)
 		{
-			std::ostringstream antFilename;
-			antFilename << "peel-sol-ant" << ant << ".txt";
-			std::ofstream antFile(antFilename.str().c_str(), std::ios_base::app);
-			double sumPhaseXX = 0.0, sumPhaseYY = 0.0, sumGainXX = 0.0, sumGainYY = 0.0;
-			size_t sumCount = 0;
-			for(size_t ch=0; ch!=channelCount; ++ch)
+			double refPhaseXX = 0.0, refPhaseYY = 0.0;
+			for(size_t ant=0; ant!=antennaCount; ++ant)
 			{
-				std::complex<double> val[4];
-				for(size_t p=0; p!=4; ++p)
-					val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
-				Matrix2x2::Invert(val);
-				if(std::isfinite(val[0].real()) && std::isfinite(val[3].real()) &&
-					std::isfinite(val[0].imag()) && std::isfinite(val[3].imag()))
+				std::ostringstream antFilename;
+				antFilename << "peel-sol-ant" << ant << ".txt";
+				std::ofstream antFile(antFilename.str().c_str(), std::ios_base::app);
+				double sumPhaseXX = 0.0, sumPhaseYY = 0.0, sumGainXX = 0.0, sumGainYY = 0.0;
+				size_t sumCount = 0;
+				for(size_t ch=0; ch!=channelCount; ++ch)
 				{
-					sumGainXX += std::abs(val[0]);
-					sumGainYY += std::abs(val[3]); 
-					sumPhaseXX += std::arg(val[0]);
-					sumPhaseYY += std::arg(val[3]);
-					++sumCount;
+					std::complex<double> val[4];
+					for(size_t p=0; p!=4; ++p)
+						val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+					Matrix2x2::Invert(val);
+					if(std::isfinite(val[0].real()) && std::isfinite(val[3].real()) &&
+						std::isfinite(val[0].imag()) && std::isfinite(val[3].imag()))
+					{
+						sumGainXX += std::abs(val[0]);
+						sumGainYY += std::abs(val[3]); 
+						sumPhaseXX += std::arg(val[0]);
+						sumPhaseYY += std::arg(val[3]);
+						++sumCount;
+					}
 				}
-			}
-			if(ant==0)
-			{
-				refPhaseXX = sumPhaseXX/sumCount;
-				refPhaseYY = sumPhaseYY/sumCount;
-			}
-			sumPhaseXX = (sumPhaseXX/sumCount - refPhaseXX) * (180.0 / M_PI);
-			sumPhaseYY = (sumPhaseYY/sumCount - refPhaseYY) * (180.0 / M_PI);
-			
-			antFile << startTimestep
-				<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
-				<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
-			if(ant == 1)
-				std::cout << startTimestep
+				if(ant==0)
+				{
+					refPhaseXX = sumPhaseXX/sumCount;
+					refPhaseYY = sumPhaseYY/sumCount;
+				}
+				sumPhaseXX = (sumPhaseXX/sumCount - refPhaseXX) * (180.0 / M_PI);
+				sumPhaseYY = (sumPhaseYY/sumCount - refPhaseYY) * (180.0 / M_PI);
+				
+				antFile << startTimestep
 					<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
 					<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
+				if(ant == 1)
+					std::cout << startTimestep
+						<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
+						<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
+			}
 		}
-		
+			
 		/**
 		 * Do the subtraction
 		 */

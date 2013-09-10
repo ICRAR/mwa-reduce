@@ -83,6 +83,11 @@ public:
 		_solutionInterval = solutionInterval;
 	}
 	
+	void SetSaveSolutionFiles(bool saveSolutionFiles)
+	{
+		_saveSolutionsFiles = saveSolutionFiles;
+	}
+	
 private:
 	struct ThreadData
 	{
@@ -111,7 +116,8 @@ private:
 		_applyBeam,
 		_onlyScalar,
 		_onlyDiag,
-		_onlyRotation;
+		_onlyRotation,
+		_saveSolutionsFiles;
 	std::string
 		_modelFilename,
 		_rhsSolutionFile,
