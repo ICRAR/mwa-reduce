@@ -15,6 +15,8 @@
 class BeamEvaluator
 {
 	public:
+		typedef TileBeam::PrecalcPosInfo PrecalcPosInfo;
+		
 		BeamEvaluator(casa::MeasurementSet& ms, bool reportDelays = true);
 		
 		void EvaluateApparentToAbsGain(double ra, double dec, std::complex<double> *gains)
@@ -105,6 +107,22 @@ class BeamEvaluator
 		void SetTime(const casa::MEpoch& time) { _time = time; }
 		const casa::MEpoch& Time() { return _time; }
 		
+		void PrecalculatePositionInfo(PrecalcPosInfo& posInfo, double raRad, double decRad)
+		{
+			_tileBeam->PrecalculatePositionInfo(posInfo, _time, _ant1Pos, raRad, decRad);
+		}
+		
+		void EvaluateApparentToAbsGain(const PrecalcPosInfo& posInfo, double frequency, std::complex<double> *gains)
+		{
+			EvaluateAbsToApparentGain(posInfo, frequency, gains);
+			Matrix2x2::Invert(gains);
+		}
+		
+		void EvaluateAbsToApparentGain(const PrecalcPosInfo& posInfo, double frequency, std::complex<double> *gains)
+		{
+			_tileBeam->AnalyticJones(posInfo, frequency, gains);
+		}
+	
 		void AbsToApparent(ModelSource& source, double frequency)
 		{
 			for(ModelSource::iterator i=source.begin(); i!=source.end(); ++i)

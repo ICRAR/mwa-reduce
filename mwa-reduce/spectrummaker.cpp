@@ -210,12 +210,12 @@ void SpectrumMaker::recalculateBeamWeights(size_t beamWeightIndex)
 	{
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
-			BeamEvalTaskInfo info;
-			info.source = &_sources[s];
+			const ModelSource& source = _sources[s];
+			BeamEvaluator::PrecalcPosInfo posInfo;
+			_beamEvaluator->PrecalculatePositionInfo(posInfo, source.Peak().PosRA(), source.Peak().PosDec());
 			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			{
-				info.weights = beamWeightPtr;
-				_beamEvaluator->EvaluateAbsToApparentGain(info.source->Peak().PosRA(), info.source->Peak().PosDec(), _bandData.ChannelFrequency(ch), info.weights);
+				_beamEvaluator->EvaluateAbsToApparentGain(posInfo, _bandData.ChannelFrequency(ch), beamWeightPtr);
 				beamWeightPtr += 4;
 			}
 		}
