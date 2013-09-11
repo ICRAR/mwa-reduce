@@ -247,8 +247,8 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	// a East-West polarized vector).
 	double rot[4];
 	rot[0] =  cosHa;
-	rot[1] = -sinDec*sinHa;
-	rot[2] =  sinDecAntennaZenith*sinHa;
+	rot[1] =  sinDec*sinHa;
+	rot[2] = -sinDecAntennaZenith*sinHa;
 	rot[3] =  cosDecAntennaZenith*cosDec + sinDecAntennaZenith*sinDec*cosHa;
 	//std::cout << "rot[0]=" << rot[0] << " groundPlane=" << groundPlane << " arrayFactor=" << arrayFactor << '\n';
 	
