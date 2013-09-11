@@ -114,8 +114,10 @@ private:
 			// Where sum(W*W) is in variable weights, and W*FW in flux.
 			if(Matrix2x2::Invert(weights))
 			{
+				std::cout << flux[0] << '\t' << flux[3] << '\t' << weights[0] << '\t' << weights[3] << '\n';
 				std::complex<double> temp[4];
-				Matrix2x2::ATimesB(temp, flux, weights);
+				Matrix2x2::ATimesB(temp, weights, flux);
+				//Matrix2x2::ATimesHermB(flux, temp, weights);
 				Matrix2x2::Assign(flux, temp);
 				weights[0] = 0.0; weights[1] = 0.0;
 				weights[2] = 0.0; weights[3] = 0.0;

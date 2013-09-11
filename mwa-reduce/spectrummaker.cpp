@@ -220,7 +220,7 @@ void SpectrumMaker::recalculateBeamWeights(size_t beamWeightIndex)
 			}
 		}
 	} else {
-	for(size_t s=0; s!=_sources.size(); ++s)
+		for(size_t s=0; s!=_sources.size(); ++s)
 		{
 			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			{
@@ -296,7 +296,7 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 			
 			if(sampleGood)
 			{
-				weightScalar = 0.25 * weightScalar;
+				weightScalar = 1.0;//0.25 * weightScalar;
 			
 				// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
 				// w = data weight, B = beam weight, V = vis
@@ -304,14 +304,20 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 				Matrix2x2::HermATimesB(temp, beamWeightPtr, visSample);
 				Matrix2x2::ScalarMultiply(temp, weightScalar);
 				Matrix2x2::PlusATimesB(measFluxIter, temp, beamWeightPtr);
+				//Matrix2x2::MultiplyAdd(measFluxIter, visSample, weightScalar);
 				
 				// Calculate Weight += w B* B
 				Matrix2x2::HermATimesB(temp, beamWeightPtr, beamWeightPtr);
-				Matrix2x2::MultiplyAdd(measWeightIter, temp, weightScalar);
+				std::complex<double> temp2[4];
+				Matrix2x2::HermATimesB(temp2, temp, temp);
+				//temp2[0] = 1.0; temp2[1] = 0.0; temp[2] = 0.0; temp[3] = 1.0;
+				//Matrix2x2::MultiplyAdd(measWeightIter, temp2, weightScalar);
+				Matrix2x2::MultiplyAdd(measWeightIter, temp2, weightScalar);
 			}
 			
 			measFluxIter += 4;
 			measWeightIter += 4;
+			beamWeightPtr += 4;
 		}
 	}
 }
