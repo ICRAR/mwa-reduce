@@ -288,14 +288,16 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 			}
 			
 			std::complex<double> visSample[4];
-			if(sampleGood)
+			if(sampleGood) {
 				Matrix2x2::ATimesHermB(visSample, dataPtr, predicted);
+				Matrix2x2::PlusHermATimesB(visSample, dataPtr, predicted);
+			}
 			
 			dataPtr += 4;
 			
 			if(sampleGood)
 			{
-				weightScalar = 1.0;//0.25 * weightScalar;
+				weightScalar = 0.25 * weightScalar;
 			
 				// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
 				// w = data weight, B = beam weight, V = vis
