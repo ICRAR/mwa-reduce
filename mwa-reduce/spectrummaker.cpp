@@ -271,7 +271,6 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 			double lambda = _bandData.ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
 			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
-			double visSample[4] = { 0.0, 0.0, 0.0, 0.0 };
 			bool sampleGood = true;
 			double weightScalar = 0.0;
 			for(size_t p=0; p!=4; ++p)
@@ -279,20 +278,20 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 				double 
 					real = dataPtr->real(),
 					imag = dataPtr->imag();
-				if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
-				{
-					// TODO should this not actually be a conjugate transpose of predicted to not mess up XY/YX ?
-					// add real(data * conj(predicted))
-					visSample[p] = real * predicted[0].real() + imag * predicted[0].imag();
-					weightScalar += *weightPtr;
-				}
-				else {
+				if(*flagPtr || !std::isfinite(real) || !std::isfinite(imag))
 					sampleGood = false;
-				}
-				++dataPtr;
+				else
+					weightScalar += *weightPtr;
+				
 				++weightPtr;
 				++flagPtr;
 			}
+			
+			std::complex<double> visSample[4];
+			if(sampleGood)
+				Matrix2x2::ATimesHermB(visSample, dataPtr, predicted);
+			
+			dataPtr += 4;
 			
 			if(sampleGood)
 			{
