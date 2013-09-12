@@ -92,7 +92,7 @@ class Model
 							totalFlux += xx;
 							++count;
 						}
-						long double yy = m->second.FluxDensity(0);
+						long double yy = m->second.FluxDensity(3);
 						if(std::isfinite(yy)) {
 							totalFlux += yy;
 							++count;

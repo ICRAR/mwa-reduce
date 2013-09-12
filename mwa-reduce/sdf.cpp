@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	std::string outputModel, collectName;
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
-	enum { AddFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
+	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
 	while(argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
@@ -116,6 +116,9 @@ int main(int argc, char *argv[])
 		} else if(strcmp(argv[argi], "-combine-diff-meas") == 0)
 		{
 			combineStrategy = DifferentFrequencies;
+		} else if(strcmp(argv[argi], "-combine-avg-meas") == 0)
+		{
+			combineStrategy = AverageFluxes;
 		} else if(strcmp(argv[argi], "-sort") == 0)
 		{
 			doSort = true;
@@ -128,6 +131,7 @@ int main(int argc, char *argv[])
 	switch(combineStrategy)
 	{
 		case AddFluxes:
+		case AverageFluxes:
 			for(int modelIndex=argi; modelIndex!=argc; ++modelIndex)
 			{
 				model += Model(argv[modelIndex]);
@@ -139,6 +143,22 @@ int main(int argc, char *argv[])
 				model.CombineMeasurements(Model(argv[modelIndex]));
 			}
 			break;
+	}
+	if(combineStrategy == AverageFluxes)
+	{
+		double fact = 1.0 / (argc - argi);
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			{
+				SpectralEnergyDistribution &sed = compPtr->SED();
+				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				{
+					for(size_t p=0; p!=4; ++p)
+						m->second.SetFluxDensity(p, m->second.FluxDensity(p) * fact);
+				}
+			}
+		}
 	}
 	
 	if(optimize)
@@ -349,7 +369,7 @@ int main(int argc, char *argv[])
 		std::ofstream plotIStream("spectrum-I.plt");
 		plotIStream <<
 			"set terminal postscript enhanced color\n"
-			"#set logscale xy\n"
+			"set logscale y\n"
 			"#set xrange [0.001:]\n"
 			"#set yrange [-8:2]\n"
 			"set output \"spectrum-I.ps\"\n"
