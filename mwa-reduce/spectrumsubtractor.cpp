@@ -3,6 +3,7 @@
 #include "model.h"
 #include "predicter.h"
 #include "matrix2x2.h"
+#include "beamevaluator.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -13,9 +14,11 @@ SpectrumSubtractor::SpectrumSubtractor(casa::MeasurementSet& ms, Model& model) :
 	_model(model),
 	_bandData(ms.spectralWindow()),
 	_subtractWorkLane(BUFFER_COUNT),
-	_subtractAvailableBufferLane(BUFFER_COUNT),
+	_subtractWriteLane(BUFFER_COUNT),
+	_subtractAvailableLane(BUFFER_COUNT),
 	_timestepCount(0),
-	_fittingInterval(1)
+	_fittingInterval(1),
+	_applyBeam(false)
 {
 	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -26,15 +29,16 @@ SpectrumSubtractor::~SpectrumSubtractor()
 
 void SpectrumSubtractor::Perform()
 {
-	casa::ROArrayColumn<casa::Complex> dataColumn(_ms, _dataColumn);
+	_ms.reopenRW();
+	_dataColumn.reset(new casa::ArrayColumn<casa::Complex>(_ms, _dataColumnName));
+	_antenna1Column.reset(new casa::ROScalarColumn<int> (_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1)));
+	_antenna2Column.reset(new casa::ROScalarColumn<int> (_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2)));
+	_uvwColumn.reset(new casa::ROArrayColumn<double> (_ms, _ms.columnName(casa::MSMainEnums::UVW)));
 	casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
 	
-	casa::IPosition dataShape = dataColumn.shape(0);
+	casa::IPosition dataShape = _dataColumn->shape(0);
 	unsigned polarizationCount = dataShape[0];
 	if(polarizationCount != 4)
 		throw std::runtime_error("Need 4 polarizations");
@@ -49,8 +53,10 @@ void SpectrumSubtractor::Perform()
 	if(intervalCount == 0) intervalCount = 1;
 	std::cout << "Measuring spectra for " << intervalCount << " intervals...\n";
 	
-	_spectrumSums.resize(4 * _bandData.ChannelCount() * _model.SourceCount());
-	_spectrumWeights.resize(4 * _bandData.ChannelCount() * _model.SourceCount());
+	_spectrumSums.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
+	_spectrumWeights.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
+	_totalFluxPerSource.assign(4 * _model.SourceCount(), 0.0);
+	_totalFluxWeightPerSource.assign(4 * _model.SourceCount(), 0.0);
 	
 	_dataBuffers.resize(BUFFER_COUNT);
 	_weightBuffers.resize(BUFFER_COUNT);
@@ -69,8 +75,8 @@ void SpectrumSubtractor::Perform()
 	for(size_t row=0; row!=_ms.nrow(); ++row)
 	{
 		size_t
-			a1 = ant1Column(row),
-			a2 = ant2Column(row);
+			a1 = (*_antenna1Column)(row),
+			a2 = (*_antenna2Column)(row);
 		if(a1 != a2)
 		{
 			double thisTime = timeColumn(row);
@@ -95,11 +101,11 @@ void SpectrumSubtractor::Perform()
 			casa::Array<float> &weightArray = *_weightBuffers[bufferIndex];
 			casa::Array<bool> &flagArray = *_flagBuffers[bufferIndex];
 				
-			dataColumn.get(row, dataArray);
+			_dataColumn->get(row, dataArray);
 			flagColumn.get(row, flagArray);
 			weightColumn.get(row, weightArray);
 			
-			casa::Array<double> uvwArray = uvwColumn(row);
+			casa::Array<double> uvwArray = (*_uvwColumn)(row);
 			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 			double u = *uvwI; ++uvwI;
 			double v = *uvwI; ++uvwI;
@@ -124,6 +130,47 @@ void SpectrumSubtractor::Perform()
 	}
 	stopMeasureThreads();
 	performSubtraction(intervalStartRow, _ms.nrow());
+	
+	// Restore the model
+	std::cout << "Subtracted fluxes:\n";
+	std::unique_ptr<BeamEvaluator> beamEval;
+	if(_applyBeam)
+		beamEval.reset(new BeamEvaluator(_ms, false));
+	for(size_t s=0; s!=_model.SourceCount(); ++s)
+	{
+		ModelSource &source = _model.Source(s);
+		
+		double flux[4];
+		for(size_t p=0; p!=4; ++p)
+			flux[p] = _totalFluxPerSource[s*4 + p] / _totalFluxWeightPerSource[s*4 + p];
+		
+		source.SetConstantTotalFlux(flux, _bandData.CentreFrequency());
+		if(_applyBeam)
+		{
+			for(ModelSource::iterator comp=source.begin(); comp!=source.end(); ++comp)
+			{
+				for(size_t p=0; p!=4; ++p)
+					flux[p] = comp->SED().FluxAtFrequency(_bandData.CentreFrequency(), p);
+				beamEval->ApparentToAbs(comp->PosRA(), comp->PosDec(), flux);
+				comp->SED() = SpectralEnergyDistribution(flux, _bandData.CentreFrequency());
+			}
+		}
+		
+		std::cout << source.Name() << '\t';
+		for(size_t p=0; p!=4; ++p)
+		{
+			std::cout << source.TotalFlux(_bandData.CentreFrequency(), p);
+			if(p == 3)
+				std::cout << '\n';
+			else
+				std::cout << '\t';
+		}
+	}
+	
+	_dataColumn.reset();
+	_antenna1Column.reset();
+	_antenna2Column.reset();
+	_uvwColumn.reset();
 }
 
 void SpectrumSubtractor::initMeasureThreadData()
@@ -254,60 +301,65 @@ void SpectrumSubtractor::initSources()
 void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 {
 	// Normalize the spectrum
-	double totalFlux = 0.0;
-	size_t count = 0;
-	for(size_t i=0; i!=_bandData.ChannelCount()*4*_sources.size(); ++i)
+	double totalFlux = 0.0, totalWeight = 0.0;
+	for(size_t s=0; s!=_sources.size(); ++s)
 	{
-		_spectrumSums[i] /= _spectrumWeights[i];
-		if(std::isfinite(_spectrumSums[i]))
+		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 		{
-			totalFlux += _spectrumSums[i];
-			++count;
+			size_t chIndex = (s*_bandData.ChannelCount() + ch) * 4;
+			for(size_t p=0; p!=4; ++p)
+			{
+				size_t index = chIndex + p;
+				double sum = _spectrumSums[index], weight = _spectrumWeights[index];
+				if(std::isfinite(sum))
+				{
+					_totalFluxPerSource[s*4 + p] += sum;
+					_totalFluxWeightPerSource[s*4 + p] += weight;
+					
+					totalFlux += sum;
+					totalWeight += weight;
+				}
+				_spectrumSums[index] /= weight;
+			}
 		}
 	}
-	std::cout << "Flux: " << (2.0*totalFlux/count) << "\tWeight:" << count << '\n';
-	
-	casa::ArrayColumn<casa::Complex> dataColumn(_ms, _dataColumn);
-	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
+	std::cout << "Flux: " << (2.0*totalFlux/totalWeight) << "\tWeight:" << totalWeight << '\n';
 	
 	_subtractWorkLane.clear();
-	_subtractAvailableBufferLane.clear();
+	_subtractAvailableLane.clear();
+	_subtractWriteLane.clear();
 	
 	for(size_t i=0; i!=BUFFER_COUNT; ++i)
 	{
 		SubtractThreadInfo info;
-		info.readyForWrite = false;
 		info.data = _dataBuffers[i];
-		_subtractAvailableBufferLane.write(info);
+		_subtractAvailableLane.write(info);
 	}
 	
 	startSubtractionThreads();
 	
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
-		size_t a1 = ant1Column(row), a2 = ant2Column(row);
+		boost::mutex::scoped_lock lock(_subtractIOMutex);
+		size_t a1 = (*_antenna1Column)(row), a2 = (*_antenna2Column)(row);
+		lock.unlock();
 		if(a1 != a2)
 		{
 			SubtractThreadInfo info;
-			_subtractAvailableBufferLane.read(info);
-			if(info.readyForWrite)
-			{
-				dataColumn.put(info.rowIndex, *info.data);
-			}
+			_subtractAvailableLane.read(info);
 			
-			info.readyForWrite = false;
 			info.rowIndex = row;
-			dataColumn.get(row, *info.data);
+			info.a1 = a1;
+			info.a2 = a2;
 			
-			casa::Array<double> uvwArray = uvwColumn(row);
+			lock.lock();
+			_dataColumn->get(row, *info.data);
+			casa::Array<double> uvwArray = (*_uvwColumn)(row);
 			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 			info.u = *uvwI; ++uvwI;
 			info.v = *uvwI; ++uvwI;
 			info.w = *uvwI;
-			info.a1 = a1;
-			info.a2 = a2;
+			lock.unlock();
 			
 			_subtractWorkLane.write(info);
 		}
@@ -315,16 +367,6 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 	
 	stopSubtractionThreads();
 	
-	while(!_subtractAvailableBufferLane.empty())
-	{
-		SubtractThreadInfo info;
-		_subtractAvailableBufferLane.read(info);
-		if(info.readyForWrite)
-		{
-			dataColumn.put(info.rowIndex, *info.data);
-		}
-	}
-
 	_spectrumSums.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
 	_spectrumWeights.assign(4 * _bandData.ChannelCount() * _model.SourceCount(), 0.0);
 }
@@ -336,6 +378,7 @@ void SpectrumSubtractor::startSubtractionThreads()
 	{
 		_threadGroup->add_thread(new boost::thread(&SpectrumSubtractor::subtractionThreadFunc, this));
 	}
+	_subtractWriteThread.reset(new boost::thread(&SpectrumSubtractor::subtractionWriteThreadFunc, this));
 }
 
 void SpectrumSubtractor::stopSubtractionThreads()
@@ -343,36 +386,55 @@ void SpectrumSubtractor::stopSubtractionThreads()
 	_subtractWorkLane.write_end();
 	_threadGroup->join_all();
 	_threadGroup.reset();
+	_subtractWriteLane.write_end();
+	_subtractWriteThread->join();
+	_subtractWriteThread.reset();
+}
+
+void SpectrumSubtractor::processWork(SubtractThreadInfo& info)
+{
+	const size_t channelCount = _bandData.ChannelCount();
+	casa::Complex *data = info.data->cbegin();
+	for(size_t ch=0; ch!=channelCount; ++ch)
+	{
+		double lambda = _bandData.ChannelWavelength(ch);
+		double u = info.u/lambda, v = info.v/lambda, w = info.w/lambda;
+		std::complex<double> predictSum[4];
+		for(size_t s=0; s!=_sources.size(); ++s)
+		{
+			Predicter &predicter = *_predicters[s];
+			Predicter::CNumType predicted[4];
+			predicter.Predict4(predicted, _sources[s], u, v, w, ch, info.a1, info.a2);
+			for(size_t p=0; p!=4; ++p)
+			{
+				predicted[p] *= _spectrumSums[(s*channelCount + ch)*4 + p];
+			}
+			Matrix2x2::Add(predictSum, predicted);
+		}
+		for(size_t p=0; p!=4; ++p)
+			data[ch*4 + p] -= casa::Complex(predictSum[p].real(), predictSum[p].imag());
+	}
 }
 
 void SpectrumSubtractor::subtractionThreadFunc()
 {
-	const size_t channelCount = _bandData.ChannelCount();
 	SubtractThreadInfo info;
 	while(_subtractWorkLane.read(info))
 	{
-		casa::Complex *data = info.data->cbegin();
-		for(size_t ch=0; ch!=channelCount; ++ch)
-		{
-			double lambda = _bandData.ChannelWavelength(ch);
-			double u = info.u/lambda, v = info.v/lambda, w = info.w/lambda;
-			std::complex<double> predictSum[4];
-			for(size_t s=0; s!=_sources.size(); ++s)
-			{
-				Predicter &predicter = *_predicters[s];
-				Predicter::CNumType predicted[4];
-				predicter.Predict4(predicted, _sources[s], u, v, w, ch, info.a1, info.a2);
-				for(size_t p=0; p!=4; ++p)
-				{
-					predicted[p] *= _spectrumSums[(s*channelCount + ch)*4 + p];
-				}
-				Matrix2x2::Add(predictSum, predicted);
-			}
-			for(size_t p=0; p!=4; ++p)
-				data[ch*4 + p] -= casa::Complex(predictSum[p].real(), predictSum[p].imag());
-		}
+		processWork(info);
+		_subtractWriteLane.write(info);
+	}
+}
+
+void SpectrumSubtractor::subtractionWriteThreadFunc()
+{
+	SubtractThreadInfo info;
+	while(_subtractWriteLane.read(info))
+	{
+		boost::mutex::scoped_lock lock(_subtractIOMutex);
+		_dataColumn->put(info.rowIndex, *info.data);
+		lock.unlock();
 		
-		info.readyForWrite = true;
-		_subtractAvailableBufferLane.write(info);
+		_subtractAvailableLane.write(info);
 	}
 }

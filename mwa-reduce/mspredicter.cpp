@@ -38,7 +38,10 @@ void MSPredicter::Start(bool reportSources)
 	casa::Array<double>::const_iterator refDirIter = refDir.begin();
 	long double phaseCentreRA = *refDirIter; ++refDirIter;
 	long double phaseCentreDec = *refDirIter;
-	
+	// By setting the time beforehand, we don't waste time calculating a time step we don't need.
+	casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
+	casa::MEpoch startTime = timeColumn(_startRow);
+	_beamEvaluator.SetTime(startTime);
 	_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
 	if(_applyBeam)
 		_predicter->Initialize(_model, _solutionFile, &_beamEvaluator);

@@ -24,9 +24,11 @@ Peeler::Peeler(casa::MeasurementSet& ms) :
 	_onlyScalar(false),
 	_onlyDiag(false),
 	_onlyRotation(false),
+	_saveSolutionsFiles(false),
 	_dataColumnName("DATA"),
-	_nIter(100),
-	_limit(0.0001),
+	_nIter(CalibrationMethod::DefaultNIter()),
+	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
+	_stoppingAccuracy(CalibrationMethod::DefaultStoppingAccuracy()),
 	_minUVW(0.0),
 	_solutionInterval(1)
 {
@@ -85,11 +87,14 @@ void Peeler::Perform()
 			std::cout << "DONE\n";
 	}
 
-	for(size_t ant=0; ant!=antennaCount; ++ant)
+	if(_saveSolutionsFiles)
 	{
-		std::ostringstream antFilename;
-		antFilename << "peel-sol-ant" << ant << ".txt";
-		std::ofstream(antFilename.str().c_str());
+		for(size_t ant=0; ant!=antennaCount; ++ant)
+		{
+			std::ostringstream antFilename;
+			antFilename << "peel-sol-ant" << ant << ".txt";
+			std::ofstream(antFilename.str().c_str());
+		}
 	}
 		
 	for(size_t pass=0; pass!=passCount; ++pass)
@@ -243,53 +248,54 @@ void Peeler::Perform()
 			threadData.mutex = &mutex;
 			threadData.tasks = &tasks;
 			threadData.calMethods = &calMethods;
-			threadData.limit = _limit;
-			threadData.nIter = _nIter;
 			threadGroup.add_thread(new boost::thread(&Peeler::calibrateThreadFunction, this, threadData));
 		}
 		threadGroup.join_all();
 
-		double refPhaseXX = 0.0, refPhaseYY = 0.0;
-		for(size_t ant=0; ant!=antennaCount; ++ant)
+		if(_saveSolutionsFiles)
 		{
-			std::ostringstream antFilename;
-			antFilename << "peel-sol-ant" << ant << ".txt";
-			std::ofstream antFile(antFilename.str().c_str(), std::ios_base::app);
-			double sumPhaseXX = 0.0, sumPhaseYY = 0.0, sumGainXX = 0.0, sumGainYY = 0.0;
-			size_t sumCount = 0;
-			for(size_t ch=0; ch!=channelCount; ++ch)
+			double refPhaseXX = 0.0, refPhaseYY = 0.0;
+			for(size_t ant=0; ant!=antennaCount; ++ant)
 			{
-				std::complex<double> val[4];
-				for(size_t p=0; p!=4; ++p)
-					val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
-				Matrix2x2::Invert(val);
-				if(std::isfinite(val[0].real()) && std::isfinite(val[3].real()) &&
-					std::isfinite(val[0].imag()) && std::isfinite(val[3].imag()))
+				std::ostringstream antFilename;
+				antFilename << "peel-sol-ant" << ant << ".txt";
+				std::ofstream antFile(antFilename.str().c_str(), std::ios_base::app);
+				double sumPhaseXX = 0.0, sumPhaseYY = 0.0, sumGainXX = 0.0, sumGainYY = 0.0;
+				size_t sumCount = 0;
+				for(size_t ch=0; ch!=channelCount; ++ch)
 				{
-					sumGainXX += std::abs(val[0]);
-					sumGainYY += std::abs(val[3]); 
-					sumPhaseXX += std::arg(val[0]);
-					sumPhaseYY += std::arg(val[3]);
-					++sumCount;
+					std::complex<double> val[4];
+					for(size_t p=0; p!=4; ++p)
+						val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+					Matrix2x2::Invert(val);
+					if(std::isfinite(val[0].real()) && std::isfinite(val[3].real()) &&
+						std::isfinite(val[0].imag()) && std::isfinite(val[3].imag()))
+					{
+						sumGainXX += std::abs(val[0]);
+						sumGainYY += std::abs(val[3]); 
+						sumPhaseXX += std::arg(val[0]);
+						sumPhaseYY += std::arg(val[3]);
+						++sumCount;
+					}
 				}
-			}
-			if(ant==0)
-			{
-				refPhaseXX = sumPhaseXX/sumCount;
-				refPhaseYY = sumPhaseYY/sumCount;
-			}
-			sumPhaseXX = (sumPhaseXX/sumCount - refPhaseXX) * (180.0 / M_PI);
-			sumPhaseYY = (sumPhaseYY/sumCount - refPhaseYY) * (180.0 / M_PI);
-			
-			antFile << startTimestep
-				<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
-				<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
-			if(ant == 1)
-				std::cout << startTimestep
+				if(ant==0)
+				{
+					refPhaseXX = sumPhaseXX/sumCount;
+					refPhaseYY = sumPhaseYY/sumCount;
+				}
+				sumPhaseXX = (sumPhaseXX/sumCount - refPhaseXX) * (180.0 / M_PI);
+				sumPhaseYY = (sumPhaseYY/sumCount - refPhaseYY) * (180.0 / M_PI);
+				
+				antFile << startTimestep
 					<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
 					<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
+				if(ant == 1)
+					std::cout << startTimestep
+						<< '\t' << (sumGainXX/sumCount) << '\t' << sumPhaseXX << '\t'
+						<< '\t' << (sumGainYY/sumCount) << '\t' << sumPhaseYY << '\n';
+			}
 		}
-		
+			
 		/**
 		 * Do the subtraction
 		 */
@@ -358,34 +364,39 @@ void Peeler::Perform()
 void Peeler::calibrateThreadFunction(Peeler::ThreadData data)
 {
 	boost::mutex::scoped_lock lock(*data.mutex);
-	size_t lastTaskIndex = data.tasks->front();
+	size_t lastSuccessfulChannel = data.tasks->front();
 	while(!data.tasks->empty()) {
 		size_t taskIndex = data.tasks->front();
 		data.tasks->pop();
 		lock.unlock();
-		if(lastTaskIndex != taskIndex)
-			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastTaskIndex]);
-		size_t iters = data.nIter;
-		double limit = data.limit;
+		if(lastSuccessfulChannel != taskIndex)
+			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastSuccessfulChannel]);
+		size_t iters = _nIter;
+		double limit = _stoppingAccuracy;
 		(*(data.calMethods))[taskIndex]->Execute(limit, iters);
-		if((iters >= data.nIter || !std::isfinite(limit)) && !(*(data.calMethods))[taskIndex]->OnlySolveRotation())
+		if((iters >= _nIter || !std::isfinite(limit)) && !(*(data.calMethods))[taskIndex]->OnlySolveRotation())
 		{
-			std::cout << "Recalculating channel " << taskIndex << " (precision=" << limit << ").\n";
+			std::cout << "Recalculating channel " << taskIndex << " (accuracy=" << limit << ").\n";
 			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
-			iters = data.nIter;
-			limit = data.limit;
+			iters = _nIter;
+			limit = _stoppingAccuracy;
 			(*(data.calMethods))[taskIndex]->Execute(limit, iters);
-			if(iters >= data.nIter || !std::isfinite(limit))
+
+			if((iters >= _nIter && limit > _minAccuracy) || !std::isfinite(limit))
 			{
-				std::cout << "Channel " << taskIndex << " did not converge, setting gains to NaN.\n";
+				std::cout << "Channel " << taskIndex << " did not converge (accuracy=" << limit << "), setting gains to NaN.\n";
 				(*(data.calMethods))[taskIndex]->InitSolutionsToNaN();
 			}
 			else {
-				lastTaskIndex = taskIndex;
+				if(iters >= _nIter && limit > _stoppingAccuracy)
+				{
+					std::cout << "Channel " << taskIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
+				}
+				lastSuccessfulChannel = taskIndex;
 			}
 		}
 		else {
-			lastTaskIndex = taskIndex;
+			lastSuccessfulChannel = taskIndex;
 		}
 		lock.lock();
 	}

@@ -9,6 +9,7 @@
 #include "solutionapplier.h"
 #include "subtractor.h"
 #include "spectrumsubtractor.h"
+#include "calibrationmethod.h"
 
 std::string sourceList(const std::vector<ModelSource*>& sources)
 {
@@ -32,7 +33,11 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	int argi = 1;
-	bool doExecute = false, doPeel = true;
+	bool doExecute = false, doPeel = true, doSubtract = true, verboseOnPolarizations = false;
+	double
+		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
+		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
+	size_t nIter = CalibrationMethod::DefaultNIter();
 	while(argv[argi][0] == '-')
 	{
 		std::string param(&argv[argi][1]);
@@ -43,6 +48,25 @@ int main(int argc, char* argv[])
 		else if(param == "nopeel")
 		{
 			doPeel = false;
+		}
+		else if(param == "nosubtract")
+		{
+			doSubtract = false;
+		}
+		else if(param == "niter")
+		{
+			++argi;
+			nIter = atoi(argv[argi]);
+		}
+		else if(param == "vp")
+		{
+			verboseOnPolarizations = true;
+		}
+		else if(param == "a")
+		{
+			minAccuracy = atof(argv[argi+1]);
+			stopAccuracy = atof(argv[argi+2]);
+			argi+=2;
 		}
 		else throw std::runtime_error("Invalid parameter");
 		++argi;
@@ -105,7 +129,19 @@ int main(int argc, char* argv[])
 		double
 			distanceNice = round(distanceDeg*10.0)*0.1,
 			fluxNice = round(src.first*10.0)*0.1;
+		
 		std::cout << src.second->Name() << " (" << fluxNice << " Jy/beam, distance=" << distanceNice << " deg)\n";
+		if(verboseOnPolarizations) {
+			std::complex<double> fluxMatrix[4];
+			const ModelSource& source = *src.second;
+			for(size_t p=0; p!=4; ++p)
+				fluxMatrix[p] = source.TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
+			beamEvaluator.AbsToApparent(source.Peak().PosRA(), source.Peak().PosDec(), fluxMatrix);
+			std::cout << round(fluxMatrix[0].real()*10.0)*0.1;
+			for(size_t p=1; p!=4; ++p)
+				std::cout << ' ' << round(fluxMatrix[p].real()*10.0)*0.1;
+			std::cout << '\n';
+		}
 		
 		// Determine what to do with it
 		if(src.first >= peelThreshold)
@@ -142,13 +178,21 @@ int main(int argc, char* argv[])
 	
 	if(peelSources.empty())
 		std::cout << "- No peeling.\n";
-	else
-		std::cout << "- Peel out " << sourceList(peelSources) << '\n';
+	else {
+		if(doPeel)
+			std::cout << "- Peel out " << sourceList(peelSources) << '\n';
+		else
+			std::cout << "- Advice is to peel out " << sourceList(peelSources) << ", but peeling is disabled.\n";
+	}
 	
 	if(subtractSources.empty())
 		std::cout << "- No spectral source subtraction.\n";
-	else
-		std::cout << "- Spectrally subtract " << sourceList(subtractSources) << '\n';
+	else {
+		if(doSubtract)
+			std::cout << "- Spectrally subtract " << sourceList(subtractSources) << '\n';
+		else
+			std::cout << "- Advice is to subtract " << sourceList(subtractSources) << ", but subtraction is disabled.\n";
+	}
 	
 	std::cout << '\n';	
 	if(calibrateSources.size() + peelSources.size() + subtractSources.size() == 0)
@@ -171,11 +215,12 @@ int main(int argc, char* argv[])
 				calModel.AddSource(**i);
 				restorationModel.AddSource(**i);
 			}
-			calibrator.SetNIter(1000);
 			calibrator.SetModel(calModel);
 			calibrator.SetDataColumnName(dataColumn);
 			calibrator.SetSolutionInterval(0);
+			calibrator.SetAccuracy(minAccuracy, stopAccuracy);
 			calibrator.SetApplyBeam(true);
+			calibrator.SetNIter(nIter);
 			calibrator.SetVerbose(true);
 			
 			calibrator.Perform();
@@ -214,24 +259,23 @@ int main(int argc, char* argv[])
 			
 			Peeler peeler(ms);
 			
-			peeler.SetNIter(1000);
-			peeler.SetLimit(0.0001);
 			peeler.SetModel(peelModel);
 			peeler.SetDataColumnName(dataColumn);
 			peeler.SetSolutionInterval(4);
+			peeler.SetAccuracy(minAccuracy, stopAccuracy);
+			peeler.SetNIter(nIter);
 			
 			peeler.Perform();
 		}
 		
-		if(!subtractSources.empty())
+		if(!subtractSources.empty() && doSubtract)
 		{
 			std::cout << "Spectrally subtracting " << sourceList(subtractSources) << "...\n";
 			
 			Model subtractModel;
-			for(std::vector<ModelSource*>::const_iterator i=subtractSources.begin(); i!=subtractSources.end(); ++i)
+			for(std::vector<ModelSource*>::const_iterator src=subtractSources.begin(); src!=subtractSources.end(); ++src)
 			{
-				restorationModel.AddSource(**i);
-				ModelSource subtractSource = **i;
+				ModelSource subtractSource = **src;
 				for(ModelSource::iterator i=subtractSource.begin(); i!=subtractSource.end(); ++i)
 				{
 					std::complex<double> beamMatrix[4], beamGain[4];
@@ -245,8 +289,15 @@ int main(int argc, char* argv[])
 			
 			SpectrumSubtractor subtractor(ms, subtractModel);
 			subtractor.SetFittingInterval(4);
-			subtractor.SetDataColumn(dataColumn);
+			subtractor.SetDataColumnName(dataColumn);
 			subtractor.Perform();
+			
+			// Add the fitted sources to the restoration model
+			const Model& fittedModel = subtractor.RestorationModel();
+			for(Model::const_iterator src=fittedModel.begin(); src!=fittedModel.end(); ++src)
+			{
+				restorationModel.AddSource(*src);
+			}
 		}
 		
 		restorationModel.Save("model-restore.txt");

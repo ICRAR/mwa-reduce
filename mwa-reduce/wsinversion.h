@@ -62,6 +62,7 @@ class WSInversion : public InversionAlgorithm
 				std::unique_ptr<casa::MeasurementSet> ms;
 				size_t channelCount, polarizationCount, matchingRows, totalRowsProcessed;
 				double minW, maxW;
+				size_t rowStart, rowEnd;
 			
 			private:
 				MSData(const MSData &source);

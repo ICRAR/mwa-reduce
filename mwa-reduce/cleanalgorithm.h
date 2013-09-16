@@ -64,11 +64,17 @@ class CleanAlgorithm
 		
 		void SetAllowNegativeComponents(bool allowNegativeComponents) { _allowNegativeComponents = allowNegativeComponents; }
 		
+		void SetResizePSF(bool resizePSF) { _resizePSF = resizePSF; }
+		
+		static void ResizeImage(double* dest, size_t newWidth, size_t newHeight, const double* source, size_t width, size_t height);
+		
 		static void GetModelFromImage(class Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq);
 
 		void SetCleanAreas(const class AreaSet& cleanAreas) { _cleanAreas = &cleanAreas; }
 		
-		static void PreparePSF(double* psf, size_t width, size_t height);
+		static void RemoveNaNsInPSF(double* psf, size_t width, size_t height);
+		
+		static void CalculateFastCleanPSFSize(size_t& psfWidth, size_t& psfHeight, size_t imageWidth, size_t imageHeight);
 	private:
 		struct CleanTask
 		{
@@ -83,13 +89,16 @@ class CleanAlgorithm
 		struct CleanThreadData
 		{
 			size_t startY, endY;
-			size_t width, height;
 			double *dataImage;
+			size_t imgWidth, imgHeight;
 			const double *psfImage;
+			size_t psfWidth, psfHeight;
 		};
-		void cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult> *resultLane, CleanThreadData cleanData);
+		void cleanThreadFunc(lane<CleanTask>* taskLane, lane<CleanResult>* resultLane, CleanThreadData cleanData);
 		
 		static void partialSubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor, size_t startY, size_t endY);
+		static void partialSubtractImage(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY);
+		
 		static double partialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
 		{
 			double peakLevel = FindPeak(image + (width * startY), width, endY-startY, x, y, allowNegativeComponents);
@@ -100,7 +109,7 @@ class CleanAlgorithm
 		
 		double _threshold, _subtractionGain, _stopGain;
 		size_t _maxIter, _iterationNumber;
-		bool _allowNegativeComponents;
+		bool _allowNegativeComponents, _resizePSF;
 		const class AreaSet *_cleanAreas;
 };
 

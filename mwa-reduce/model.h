@@ -1,6 +1,7 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include <algorithm>
 #include <vector>
 
 #include "modelsource.h"
@@ -85,13 +86,18 @@ class Model
 					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 					{
 						long double totalFlux = 0.0;
-						for(size_t p=0; p!=4; ++p)
-						{
-							long double f = m->second.FluxDensity(p);
-							if(std::isfinite(f))
-								totalFlux += f;
+						long double xx = m->second.FluxDensity(0);
+						size_t count = 0;
+						if(std::isfinite(xx)) {
+							totalFlux += xx;
+							++count;
 						}
-						totalFlux /= 2.0;
+						long double yy = m->second.FluxDensity(3);
+						if(std::isfinite(yy)) {
+							totalFlux += yy;
+							++count;
+						}
+						totalFlux /= count;
 						m->second.SetFluxDensity(0, totalFlux);
 						m->second.SetFluxDensity(1, 0.0);
 						m->second.SetFluxDensity(2, 0.0);
@@ -116,6 +122,10 @@ class Model
 			for(const_iterator i = begin(); i!=end(); ++i)
 				count += i->ComponentCount();
 			return count;
+		}
+		
+		void Sort() {
+			std::sort(_sources.rbegin(), _sources.rend());
 		}
 	private:
 		enum PolarizationType _polarizationType;

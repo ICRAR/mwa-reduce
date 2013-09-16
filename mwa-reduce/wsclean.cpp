@@ -6,6 +6,7 @@
 #include "model.h"
 #include "areaset.h"
 #include "parser/areaparser.h"
+#include "beamevaluator.h"
 
 #include <iostream>
 #include <memory>
@@ -36,11 +37,16 @@ int main(int argc, char *argv[])
 			"\t-mgain <gain>\n"
 			"\t   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major\n"
 			"\t   iteration (default = 1.0, to use major iterations, 0.9 is a good value).\n"
+			"\t-smallpsf\n"
+			"\t   Resize the psf to speed up minor clean iterations.\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
 			"\t-negative\n"
 			"\t   Allow negative components during cleaning\n"
+			"\t-interval <start-index> <stop-index>\n"
+			"\t   Only image the given interval. Indices specify the timesteps, stop is exclusive.\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
+			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
 		return -1;
 	}
@@ -48,58 +54,59 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
-	size_t nWLayers = 64, nIter = 500;
+	size_t nWLayers = 64, nIter = 500, intervalStart = 0, intervalStop = 0;
 	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	std::string prefixName = "wsclean";
-	bool allowNegative = false;
+	bool allowNegative = false, smallPSF = false, addApparentModel = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
+	std::vector<std::string> filenames;
 	
 	while(argi < argc && argv[argi][0] == '-')
 	{
-		const char *param = &argv[argi][1];
-		if(strcmp(param, "size") == 0)
+		const std::string param = &argv[argi][1];
+		if(param == "size")
 		{
 			imgWidth = atoi(argv[argi+1]);
 			imgHeight = atoi(argv[argi+2]);
 			argi += 2;
 		}
-		else if(strcmp(param, "scale") == 0)
+		else if(param == "scale")
 		{
 			++argi;
 			pixelScale = atof(argv[argi]) * M_PI / 180.0;
 		}
-		else if(strcmp(param, "nwlayers") == 0)
+		else if(param == "nwlayers")
 		{
 			++argi;
 			nWLayers = atoi(argv[argi]);
 		}
-		else if(strcmp(param, "gain") == 0)
+		else if(param == "gain")
 		{
 			++argi;
 			gain = atof(argv[argi]);
 		}
-		else if(strcmp(param, "mgain") == 0)
+		else if(param == "mgain")
 		{
 			++argi;
 			mGain = atof(argv[argi]);
 		}
-		else if(strcmp(param, "niter") == 0)
+		else if(param == "niter")
 		{
 			++argi;
 			nIter = atoi(argv[argi]);
 		}
-		else if(strcmp(param, "threshold") == 0)
+		else if(param == "threshold")
 		{
 			++argi;
 			threshold = atof(argv[argi]);
 		}
-		else if(strcmp(param, "datacolumn") == 0)
+		else if(param == "datacolumn")
 		{
 			++argi;
 			columnName = argv[argi];
 		}
-		else if(strcmp(param, "pol") == 0)
+		else if(param == "pol")
 		{
 			++argi;
 			std::string polStr = argv[argi];
@@ -115,31 +122,37 @@ int main(int argc, char *argv[])
 			else if(polStr == "stokesi")
 				polarization = InversionAlgorithm::StokesI;
 		}
-		else if(strcmp(param, "negative") == 0)
+		else if(param == "negative")
 		{
 			allowNegative = true;
 		}
-		else if(strcmp(param, "addmodel") == 0)
+		else if(param == "addmodel")
 		{
 			++argi;
 			addModelFilename = argv[argi];
 		}
-		else if(strcmp(param, "savemodel") == 0)
+		else if(param == "addmodelapp")
+		{
+			++argi;
+			addModelFilename = argv[argi];
+			addApparentModel = true;
+		}
+		else if(param == "savemodel")
 		{
 			++argi;
 			saveModelFilename = argv[argi];
 		}
-		else if(strcmp(param, "cleanareas") == 0)
+		else if(param == "cleanareas")
 		{
 			++argi;
 			cleanAreasFilename = argv[argi];
 		}
-		else if(strcmp(param, "name") == 0)
+		else if(param == "name")
 		{
 			++argi;
 			prefixName = argv[argi];
 		}
-		else if(strcmp(param, "gridmode") == 0)
+		else if(param == "gridmode")
 		{
 			++argi;
 			std::string gridModeStr = argv[argi];
@@ -151,8 +164,18 @@ int main(int argc, char *argv[])
 			else
 				throw std::runtime_error("Invalid gridding mode: should be either kb (Kaiser-Bessel) or nn (NearestNeighbour)");
 		}
+		else if(param == "smallpsf")
+		{
+			smallPSF = true;
+		}
+		else if(param == "interval")
+		{
+			intervalStart = atoi(argv[argi+1]);
+			intervalStop = atoi(argv[argi+2]);
+			argi += 2;
+		}
 		else {
-			throw std::runtime_error("Unknown parameter");
+			throw std::runtime_error("Unknown parameter: " + param);
 		}
 		
 		++argi;
@@ -164,8 +187,10 @@ int main(int argc, char *argv[])
 	std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion());
 	static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 	
-	for(int i=argi; i != argc; ++i)
+	for(int i=argi; i != argc; ++i) {
 		inversionAlgorithm->AddMeasurementSetPath(argv[i]);
+		filenames.push_back(argv[i]);
+	}
 	
 	inversionAlgorithm->SetImageWidth(imgWidth);
 	inversionAlgorithm->SetImageHeight(imgHeight);
@@ -174,6 +199,10 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetWGridSize(nWLayers);
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
+	if(intervalStop != 0)
+	{
+		inversionAlgorithm->SetInterval(intervalStart, intervalStop);
+	}
 	
 	double
 		ra, dec,
@@ -204,7 +233,7 @@ int main(int argc, char *argv[])
 		psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 		std::cout << "DONE\n";
 		
-		CleanAlgorithm::PreparePSF(&psf[0], imgWidth, imgHeight);
+		CleanAlgorithm::RemoveNaNsInPSF(&psf[0], imgWidth, imgHeight);
 	
 		if(inversionAlgorithm->HasGriddingCorrectionImage())
 		{
@@ -249,6 +278,7 @@ int main(int argc, char *argv[])
 		cleanAlgorithm.SetSubtractionGain(gain);
 		cleanAlgorithm.SetStopGain(mGain);
 		cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
+		cleanAlgorithm.SetResizePSF(smallPSF);
 			
 		std::unique_ptr<AreaSet> cleanAreas;
 		if(!cleanAreasFilename.empty())
@@ -320,6 +350,12 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "Reading model from " << addModelFilename << "... " << std::flush;
 		model = Model(addModelFilename.c_str());
+		if(addApparentModel)
+		{
+			casa::MeasurementSet ms(filenames[0]);
+			BeamEvaluator beamEval(ms, false);
+			beamEval.AbsToApparent(model);
+		}
 	}
 	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, 0.0, (freqHigh+freqLow)*0.5);
 	if(!saveModelFilename.empty())

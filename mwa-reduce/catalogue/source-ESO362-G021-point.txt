@@ -1,17 +1,16 @@
 skymodel fileformat 1.0
 source {
-  name "HerA"
+  name "ESO362-G021"
   component {
     type point
-    position 16h51m08.1s 04d59m33s
+    position 05h22m58.0s -36d27m31s
     measurement {
       frequency 80 MHz
-      fluxdensity Jy 838 0 0 838
+      fluxdensity Jy 99 0 0 99
     }
     measurement {
       frequency 160 MHz
-      fluxdensity Jy 378.0 0 0 378.0
+      fluxdensity Jy 72.0 0 0 72.0
     }
   }
 }
-

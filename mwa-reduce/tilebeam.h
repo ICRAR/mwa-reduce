@@ -15,19 +15,45 @@ namespace casa
 class TileBeam
 {
 public:
+	struct PrecalcPosInfo
+	{
+		double zenithAngle;
+		double azimuth;
+		double ha;
+		double dec;
+		double haAntennaZenith;
+		double decAntennaZenith;
+	};
+	
 	TileBeam(const double *delays);
 	
 	void AnalyticGain(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y);
 	
-	void AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double latitude, double frequencyHz, double &x, double &y);
+	void AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &j2000Ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double latitude, double frequencyHz, double &x, double &y);
 	
 	void AnalyticGain(double zenithAngle, double azimuth, double frequencyHz, double &x, double &y);
 	
 	void AnalyticJones(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain);
 	
-	void AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain);
+	void AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &j2000Ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain);
 	
-	void AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haZenith, double decZenith, std::complex<double> *gain);
+	void AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain);
+	
+	void PrecalculatePositionInfo(PrecalcPosInfo& posInfo, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad);
+	
+	void AnalyticJones(const PrecalcPosInfo& posInfo, double frequencyHz, std::complex<double> *gain)
+	{
+		AnalyticJones(
+			posInfo.zenithAngle,
+			posInfo.azimuth,
+			frequencyHz,
+			posInfo.ha,
+			posInfo.dec,
+			posInfo.haAntennaZenith,
+			posInfo.decAntennaZenith,
+			gain
+		);
+	}
 	
 	const static double MWA_LATTITUDE; // Array latitude. degrees North
 	const static double MWA_LONGITUDE; // Array longitude. degrees East

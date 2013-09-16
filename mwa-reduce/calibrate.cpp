@@ -3,13 +3,14 @@
 #include <iostream>
 #include <stdexcept>
 #include "calibrator.h"
+#include "calibrationmethod.h"
 
 int main(int argc, char *argv[])
 {
 	if(argc < 4)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
@@ -17,8 +18,11 @@ int main(int argc, char *argv[])
 			savePlotFiles = false, saveFaradayPlotFiles = false, saveCrossTermsPlotFile = false, beamOnSource = false, applyBeam = false,
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
-		size_t niter = 100, solutionInterval = 0;
-		double limit = 0.0001, minUVW = 0.0;
+		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 0;
+		double
+			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
+			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
+			minUVW = 0.0;
 		
 		while(argv[argi][0] == '-')
 		{
@@ -46,10 +50,11 @@ int main(int argc, char *argv[])
 				niter = atoi(argv[argi+1]);
 				argi += 2;
 			}
-			else if(strcmp(argv[argi], "-l") == 0)
+			else if(strcmp(argv[argi], "-a") == 0)
 			{
-				limit = atof(argv[argi+1]);
-				argi += 2;
+				minAccuracy = atof(argv[argi+1]);
+				stopAccuracy = atof(argv[argi+2]);
+				argi += 3;
 			}
 			else if(strcmp(argv[argi], "-m") == 0)
 			{
@@ -107,7 +112,7 @@ int main(int argc, char *argv[])
 		
 		Calibrator calibrator(ms);
 		calibrator.SetNIter(niter);
-		calibrator.SetLimit(limit);
+		calibrator.SetAccuracy(minAccuracy, stopAccuracy);
 		calibrator.SetModelFilename(modelFile);
 		calibrator.SetSolutionInterval(solutionInterval);
 		calibrator.SetMinUVW(minUVW);
@@ -118,6 +123,7 @@ int main(int argc, char *argv[])
 		calibrator.SetRHSSolutionFile(rhsSolutionFile);
 		calibrator.SetOnlyRotation(onlyRotation);
 		calibrator.SetSolutionOutputFilename(outName);
+		calibrator.SetVerbose(true);
 		calibrator.Perform();
 	}
 }

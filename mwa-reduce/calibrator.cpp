@@ -22,8 +22,9 @@
 Calibrator::Calibrator(casa::MeasurementSet& ms) :
 	_ms(ms),
 	_dataColumnName("DATA"),
-	_limit(0.0001),
-	_nIter(100),
+	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
+	_stoppingAccuracy(CalibrationMethod::DefaultStoppingAccuracy()),
+	_nIter(1000),
 	_solutionInterval(0),
 	_onlyScalar(false),
 	_onlyDiag(false),
@@ -105,6 +106,7 @@ void Calibrator::Perform()
 
 	for(size_t intervalIndex=0; intervalIndex!=intervalCount; ++intervalIndex)
 	{
+		std::cout << " >>> INTERVAL " << (intervalIndex+1) << " <<<\n";
 		size_t
 			intervalTimestepStart = (intervalIndex*timestepCount) / intervalCount,
 			intervalTimestepEnd = ((intervalIndex+1)*timestepCount) / intervalCount,
@@ -300,12 +302,11 @@ void Calibrator::Perform()
 				threadData.mutex = &mutex;
 				threadData.tasks = &tasks;
 				threadData.calMethods = &calMethods;
-				threadData.limit = _limit;
-				threadData.nIter = _nIter;
 				threadGroup.add_thread(new boost::thread(&Calibrator::threadFunction, this, threadData));
 			}
 			threadGroup.join_all();
 
+			// Save solutions
 			for(size_t ant=0; ant!=antennaCount; ++ant)
 			{
 				for(size_t ch=0; ch!=partChannelCount; ++ch)
@@ -409,34 +410,39 @@ void Calibrator::Perform()
 void Calibrator::threadFunction(ThreadData data)
 {
 	boost::mutex::scoped_lock lock(*data.mutex);
-	size_t lastTaskIndex = data.tasks->front();
+	size_t lastSuccessfulChannel = data.tasks->front();
 	while(!data.tasks->empty()) {
 		size_t taskIndex = data.tasks->front();
 		data.tasks->pop();
 		lock.unlock();
-		if(lastTaskIndex != taskIndex)
-			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastTaskIndex]);
-		size_t iters = data.nIter;
-		double limit = data.limit;
+		if(lastSuccessfulChannel != taskIndex)
+			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastSuccessfulChannel]);
+		size_t iters = _nIter;
+		double limit = _stoppingAccuracy;
 		(*(data.calMethods))[taskIndex]->Execute(limit, iters);
-		if((iters >= data.nIter || !std::isfinite(limit)) && !(*(data.calMethods))[taskIndex]->OnlySolveRotation())
+		if((iters >= _nIter || !std::isfinite(limit)) && !(*(data.calMethods))[taskIndex]->OnlySolveRotation())
 		{
-			std::cout << "Recalculating channel " << taskIndex << " (precision=" << limit << ").\n";
+			std::cout << "Recalculating channel " << taskIndex << " (accuracy=" << limit << ").\n";
 			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
-			iters = data.nIter;
-			limit = data.limit;
+			iters = _nIter;
+			limit = _stoppingAccuracy;
 			(*(data.calMethods))[taskIndex]->Execute(limit, iters);
-			if(iters >= data.nIter || !std::isfinite(limit))
+
+			if((iters >= _nIter && limit > _minAccuracy) || !std::isfinite(limit))
 			{
-				std::cout << "Channel " << taskIndex << " did not converge, setting gains to NaN.\n";
+				std::cout << "Channel " << taskIndex << " did not converge (accuracy=" << limit << "), setting gains to NaN.\n";
 				(*(data.calMethods))[taskIndex]->InitSolutionsToNaN();
 			}
 			else {
-				lastTaskIndex = taskIndex;
+				if(iters >= _nIter && limit > _stoppingAccuracy)
+				{
+					std::cout << "Channel " << taskIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
+				}
+				lastSuccessfulChannel = taskIndex;
 			}
 		}
 		else {
-			lastTaskIndex = taskIndex;
+			lastSuccessfulChannel = taskIndex;
 		}
 		lock.lock();
 		if(taskIndex<=16)

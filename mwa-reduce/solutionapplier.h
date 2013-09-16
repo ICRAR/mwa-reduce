@@ -43,6 +43,7 @@ public:
 		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
+		casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 		casa::ArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
@@ -52,8 +53,22 @@ public:
 		unsigned polarizationCount = dataShape[0];
 		if(polarizationCount != 4)
 		  throw std::runtime_error("Should have 4 pols");
-		std::cout << " DONE\n";
 		
+		std::cout << "DONE\nCounting timesteps... " << std::flush;
+		double time = -1.0;
+		std::vector<size_t> timestepRows;
+		for(size_t rowIndex=0;rowIndex!=ms.nrow();++rowIndex)
+		{
+			if(timeColumn(rowIndex) != time)
+			{
+				timestepRows.push_back(rowIndex);
+				time = timeColumn(rowIndex);
+			}
+		}
+		size_t timestepCount = timestepRows.size();
+		timestepRows.push_back(ms.nrow());
+		std::cout << "DONE (" << timestepCount << " timesteps)\n";
+	
 		/**
 		 * Read the solutions file
 		 */
@@ -73,51 +88,65 @@ public:
 			}
 		}
 		else {
-			std::cout << "Reading solutions file..." << std::flush;
+			std::cout << "Checking solutions file..." << std::flush;
 			if(solutionFile.AntennaCount() != antennaCount) throw std::runtime_error("Antenna counts do not match");
 			if(solutionFile.PolarizationCount() != polarizationCount) throw std::runtime_error("Polarization counts do not match");
 			if(channelCount%solutionFile.ChannelCount()!=0) throw std::runtime_error("Channel counts do not match");
-			
-			for(size_t a = 0; a!=antennaCount; ++a) {
-				for(size_t ch = 0; ch!=channelCount; ++ch) {
-					for(size_t p = 0; p!=4; ++p) {
-						values[a][ch*4+p] = solutionFile.ReadNextSolution();
-					}
-				}		  
-			}
 			std::cout << " DONE\n";
 		}
 		
 		/**
 		 * Apply corrections
 		 */
-		std::cout << "Applying solutions..." << std::flush;
+		std::cout << "Applying solutions...\n";
 		casa::Array<complex_t> data(dataShape);
-		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
+		for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 		{
-			// Cross correlation?
-			size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
-			if(a1 != a2) {
-				dataColumn.get(rowIndex, data);
-				casa::Array<complex_t>::contiter dataPtr = data.cbegin();
-				for(size_t ch=0; ch!=channelCount; ++ch)
-				{
-					size_t chFileIndex = ch * 4;
-					std::complex<double>
-					*solA = &values[a1][chFileIndex],
-					*solB = &values[a2][chFileIndex];
-					std::complex<double> dataVals[4] = {
-						dataPtr[0], dataPtr[1], dataPtr[2], dataPtr[3]
-					};
-					applySolution(dataVals, solA, solB);
-					dataPtr[0] = dataVals[0];
-					dataPtr[1] = dataVals[1];
-					dataPtr[2] = dataVals[2];
-					dataPtr[3] = dataVals[3];
-					dataPtr += 4;
+			// Read the solutions for this interval
+			if(!_preset)
+			{
+				for(size_t a = 0; a!=antennaCount; ++a) {
+					for(size_t ch = 0; ch!=channelCount; ++ch) {
+						for(size_t p = 0; p!=4; ++p) {
+							values[a][ch*4+p] = solutionFile.ReadNextSolution();
+						}
+					}
 				}
 			}
-		  dataColumn.put(rowIndex, data);
+			
+			size_t
+				intervalTimestepStart = (interval*timestepCount) / solutionFile.IntervalCount(),
+				intervalTimestepEnd = ((interval+1)*timestepCount) / solutionFile.IntervalCount(),
+				intervalRowStart = timestepRows[intervalTimestepStart],
+				intervalRowEnd = timestepRows[intervalTimestepEnd];
+			std::cout << "- Interval " << (interval+1) << '/' << solutionFile.IntervalCount() << " (" << intervalRowStart << '-' << intervalRowEnd << ")\n";
+			std::cout << "  Antenna1: " << values[1][72*4] << "\n";
+			for(size_t rowIndex=intervalRowStart; rowIndex!=intervalRowEnd; ++rowIndex)
+			{
+				// Cross correlation?
+				size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
+				if(a1 != a2) {
+					dataColumn.get(rowIndex, data);
+					casa::Array<complex_t>::contiter dataPtr = data.cbegin();
+					for(size_t ch=0; ch!=channelCount; ++ch)
+					{
+						size_t chFileIndex = ch * 4;
+						std::complex<double>
+						*solA = &values[a1][chFileIndex],
+						*solB = &values[a2][chFileIndex];
+						std::complex<double> dataVals[4] = {
+							dataPtr[0], dataPtr[1], dataPtr[2], dataPtr[3]
+						};
+						applySolution(dataVals, solA, solB);
+						dataPtr[0] = dataVals[0];
+						dataPtr[1] = dataVals[1];
+						dataPtr[2] = dataVals[2];
+						dataPtr[3] = dataVals[3];
+						dataPtr += 4;
+					}
+				}
+				dataColumn.put(rowIndex, data);
+			}
 		}
 		
 		/**
@@ -127,8 +156,6 @@ public:
 		{
 		  delete[] values[a];
 		}
-		
-		std::cout << " DONE\n";
 	}
 private:
 	void applySolution(std::complex<double> *dataVal, const std::complex<double> *solA, const std::complex<double> *solB)

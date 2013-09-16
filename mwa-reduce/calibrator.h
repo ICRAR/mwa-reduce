@@ -72,9 +72,10 @@ public:
 		_nIter = nIter;
 	}
 	
-	void SetLimit(double limit)
+	void SetAccuracy(double minAccuracy, double stoppingAccuracy)
 	{
-		_limit = limit;
+		_minAccuracy = minAccuracy;
+		_stoppingAccuracy = stoppingAccuracy;
 	}
 	
 	void SetMinUVW(double minUVW)
@@ -103,8 +104,6 @@ private:
 		boost::mutex *mutex;
 		std::queue<size_t> *tasks;
 		std::vector<class CalibrationMethod*> *calMethods;
-		double limit;
-		size_t nIter;
 	};
 	
 	void threadFunction(ThreadData data);
@@ -113,7 +112,7 @@ private:
 	SolutionFile _solutionFile;
 	std::string _modelFilename, _solutionFilename, _rhsSolutionFilename, _dataColumnName;
 	Model _model;
-	double _limit;
+	double _minAccuracy, _stoppingAccuracy;
 	size_t _nIter, _solutionInterval;
 	bool _onlyScalar, _onlyDiag, _onlyRotation;
 	bool _beamOnSource, _applyBeam;

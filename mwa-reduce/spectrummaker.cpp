@@ -210,17 +210,17 @@ void SpectrumMaker::recalculateBeamWeights(size_t beamWeightIndex)
 	{
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
-			BeamEvalTaskInfo info;
-			info.source = &_sources[s];
+			const ModelSource& source = _sources[s];
+			BeamEvaluator::PrecalcPosInfo posInfo;
+			_beamEvaluator->PrecalculatePositionInfo(posInfo, source.Peak().PosRA(), source.Peak().PosDec());
 			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			{
-				info.weights = beamWeightPtr;
-				_beamEvaluator->EvaluateAbsToApparentGain(info.source->Peak().PosRA(), info.source->Peak().PosDec(), _bandData.ChannelFrequency(ch), info.weights);
+				_beamEvaluator->EvaluateAbsToApparentGain(posInfo, _bandData.ChannelFrequency(ch), beamWeightPtr);
 				beamWeightPtr += 4;
 			}
 		}
 	} else {
-	for(size_t s=0; s!=_sources.size(); ++s)
+		for(size_t s=0; s!=_sources.size(); ++s)
 		{
 			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			{
@@ -271,7 +271,6 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 			double lambda = _bandData.ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
 			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
-			double visSample[4] = { 0.0, 0.0, 0.0, 0.0 };
 			bool sampleGood = true;
 			double weightScalar = 0.0;
 			for(size_t p=0; p!=4; ++p)
@@ -279,20 +278,22 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 				double 
 					real = dataPtr->real(),
 					imag = dataPtr->imag();
-				if(!(*flagPtr) && std::isfinite(real) && std::isfinite(imag))
-				{
-					// TODO should this not actually be a conjugate transpose of predicted to not mess up XY/YX ?
-					// add real(data * conj(predicted))
-					visSample[p] = real * predicted[0].real() + imag * predicted[0].imag();
-					weightScalar += *weightPtr;
-				}
-				else {
+				if(*flagPtr || !std::isfinite(real) || !std::isfinite(imag))
 					sampleGood = false;
-				}
-				++dataPtr;
+				else
+					weightScalar += *weightPtr;
+				
 				++weightPtr;
 				++flagPtr;
 			}
+			
+			std::complex<double> visSample[4];
+			if(sampleGood) {
+				Matrix2x2::ATimesHermB(visSample, dataPtr, predicted);
+				Matrix2x2::PlusHermATimesB(visSample, dataPtr, predicted);
+			}
+			
+			dataPtr += 4;
 			
 			if(sampleGood)
 			{
@@ -302,16 +303,22 @@ void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskL
 				// w = data weight, B = beam weight, V = vis
 				std::complex<double> temp[4];
 				Matrix2x2::HermATimesB(temp, beamWeightPtr, visSample);
-				Matrix2x2::ScalarMultiply(temp, weightScalar);
+				Matrix2x2::ScalarMultiply(temp, weightScalar * 0.5); // Divide factor of 2 because we add both normal and conjugate at once
 				Matrix2x2::PlusATimesB(measFluxIter, temp, beamWeightPtr);
+				//Matrix2x2::MultiplyAdd(measFluxIter, visSample, weightScalar);
 				
 				// Calculate Weight += w B* B
 				Matrix2x2::HermATimesB(temp, beamWeightPtr, beamWeightPtr);
-				Matrix2x2::MultiplyAdd(measWeightIter, temp, weightScalar);
+				std::complex<double> temp2[4];
+				Matrix2x2::HermATimesB(temp2, temp, temp);
+				//temp2[0] = 1.0; temp2[1] = 0.0; temp[2] = 0.0; temp[3] = 1.0;
+				//Matrix2x2::MultiplyAdd(measWeightIter, temp2, weightScalar);
+				Matrix2x2::MultiplyAdd(measWeightIter, temp2, weightScalar);
 			}
 			
 			measFluxIter += 4;
 			measWeightIter += 4;
+			beamWeightPtr += 4;
 		}
 	}
 }

@@ -9,10 +9,14 @@
 
 #include "tilebeam.h"
 #include "matrix2x2.h"
+#include "modelsource.h"
+#include "model.h"
 
 class BeamEvaluator
 {
 	public:
+		typedef TileBeam::PrecalcPosInfo PrecalcPosInfo;
+		
 		BeamEvaluator(casa::MeasurementSet& ms, bool reportDelays = true);
 		
 		void EvaluateApparentToAbsGain(double ra, double dec, std::complex<double> *gains)
@@ -76,9 +80,14 @@ class BeamEvaluator
 			std::complex<double> gains[4], temp[4];
 			EvaluateApparentToAbsGain(ra, dec, frequency, gains);
 			
-			// Calculate A^1 D A^1^H
 			Matrix2x2::ATimesB(temp, gains, data);
 			Matrix2x2::ATimesHermB(data, temp, gains);
+		}
+		
+		template<typename NumType>
+		void ApparentToAbs(double ra, double dec, NumType* pixelValues)
+		{
+			ApparentToAbs<NumType>(ra, dec, _frequency, pixelValues);
 		}
 		
 		template<typename NumType>
@@ -98,6 +107,50 @@ class BeamEvaluator
 		void SetTime(const casa::MEpoch& time) { _time = time; }
 		const casa::MEpoch& Time() { return _time; }
 		
+		void PrecalculatePositionInfo(PrecalcPosInfo& posInfo, double raRad, double decRad)
+		{
+			_tileBeam->PrecalculatePositionInfo(posInfo, _time, _ant1Pos, raRad, decRad);
+		}
+		
+		void EvaluateApparentToAbsGain(const PrecalcPosInfo& posInfo, double frequency, std::complex<double> *gains)
+		{
+			EvaluateAbsToApparentGain(posInfo, frequency, gains);
+			Matrix2x2::Invert(gains);
+		}
+		
+		void EvaluateAbsToApparentGain(const PrecalcPosInfo& posInfo, double frequency, std::complex<double> *gains)
+		{
+			_tileBeam->AnalyticJones(posInfo, frequency, gains);
+		}
+	
+		void AbsToApparent(ModelSource& source, double frequency)
+		{
+			for(ModelSource::iterator i=source.begin(); i!=source.end(); ++i)
+			{
+				ModelComponent& comp = *i;
+				double vals[4];
+				for(size_t p=0; p!=4; ++p)
+					vals[p] = comp.SED().FluxAtFrequency(frequency, p);
+				AbsToApparent(comp.PosRA(), comp.PosDec(), frequency, vals);
+				comp.SetSED(SpectralEnergyDistribution(vals, frequency));
+			}
+		}
+		
+		void AbsToApparent(ModelSource& source)
+		{
+			AbsToApparent(source, _frequency);
+		}
+		
+		void AbsToApparent(Model& model, double frequency)
+		{
+			for(Model::iterator i=model.begin(); i!=model.end(); ++i)
+				AbsToApparent(*i, frequency);
+		}
+		
+		void AbsToApparent(Model& model)
+		{
+			AbsToApparent(model, _frequency);
+		}
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
 		casa::MPosition _ant1Pos;

@@ -67,9 +67,10 @@ public:
 		_nIter = nIter;
 	}
 	
-	void SetLimit(double limit)
+	void SetAccuracy(double minAccuracy, double stoppingAccuracy)
 	{
-		_limit = limit;
+		_minAccuracy = minAccuracy;
+		_stoppingAccuracy = stoppingAccuracy;
 	}
 	
 	void SetMinUVW(double minUVW)
@@ -82,6 +83,11 @@ public:
 		_solutionInterval = solutionInterval;
 	}
 	
+	void SetSaveSolutionFiles(bool saveSolutionFiles)
+	{
+		_saveSolutionsFiles = saveSolutionFiles;
+	}
+	
 private:
 	struct ThreadData
 	{
@@ -90,8 +96,6 @@ private:
 		boost::mutex *mutex;
 		std::queue<size_t> *tasks;
 		std::vector<class CalibrationMethod*> *calMethods;
-		double limit;
-		size_t nIter;
 	};
 	struct SubtractThreadInfo
 	{
@@ -112,13 +116,14 @@ private:
 		_applyBeam,
 		_onlyScalar,
 		_onlyDiag,
-		_onlyRotation;
+		_onlyRotation,
+		_saveSolutionsFiles;
 	std::string
 		_modelFilename,
 		_rhsSolutionFile,
 		_dataColumnName;
 	size_t _nIter;
-	double _limit, _minUVW;
+	double _minAccuracy, _stoppingAccuracy, _minUVW;
 	size_t _solutionInterval;
 	Model _model;
 };

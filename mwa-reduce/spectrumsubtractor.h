@@ -32,7 +32,6 @@ class SpectrumSubtractor
 		{
 			size_t rowIndex;
 			casa::Array<casa::Complex> *data;
-			bool readyForWrite;
 			double u, v, w;
 			size_t a1, a2;
 		};
@@ -42,8 +41,10 @@ class SpectrumSubtractor
 		~SpectrumSubtractor();
 		
 		void Perform();
-		void SetDataColumn(const std::string &dataColumn) { _dataColumn = dataColumn; }
+		void SetDataColumnName(const std::string &dataColumnName) { _dataColumnName = dataColumnName; }
 		void SetFittingInterval(size_t fittingInterval) { _fittingInterval = fittingInterval; }
+		const Model& RestorationModel() const { return _model; }
+		void SetApplyBeamOnRestorationModel(bool applyBeam) { _applyBeam = applyBeam; }
 	private:
 		void initMeasureThreadData();
 		void initPredictors();
@@ -56,12 +57,14 @@ class SpectrumSubtractor
 		
 		void performSubtraction(size_t startRow, size_t endRow);
 		void subtractionThreadFunc();
+		void subtractionWriteThreadFunc();
 		void startSubtractionThreads();
 		void stopSubtractionThreads();
+		void processWork(SubtractThreadInfo& work);
 		
 		std::unique_ptr<boost::thread_group> _threadGroup;
 		casa::MeasurementSet& _ms;
-		Model& _model;
+		Model _model;
 		std::vector<ModelSource> _sources;
 		BandData _bandData;
 		std::vector<lane<MeasureThreadInfo>*> _taskLanes;
@@ -74,12 +77,20 @@ class SpectrumSubtractor
 	
 		std::vector<double> _spectrumSums, _spectrumWeights;
 
-		lane<SubtractThreadInfo> _subtractWorkLane;
-		lane<SubtractThreadInfo> _subtractAvailableBufferLane;
+		boost::mutex _subtractIOMutex;
+		lane<SubtractThreadInfo> _subtractWorkLane, _subtractWriteLane, _subtractAvailableLane;
+		std::unique_ptr<boost::thread> _subtractWriteThread;
 		
 		static const size_t BUFFER_COUNT;
-		std::string _dataColumn;
+		std::string _dataColumnName;
 		size_t _timestepCount, _fittingInterval;
+		std::vector<double> _totalFluxPerSource, _totalFluxWeightPerSource;
+		bool _applyBeam;
+		
+		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _dataColumn;
+		std::unique_ptr<casa::ROScalarColumn<int>> _antenna1Column;
+		std::unique_ptr<casa::ROScalarColumn<int>> _antenna2Column;
+		std::unique_ptr<casa::ROArrayColumn<double>> _uvwColumn;
 };
 
 #endif

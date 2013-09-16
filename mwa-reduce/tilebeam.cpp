@@ -154,13 +154,13 @@ void TileBeam::AnalyticJones(casa::MEpoch &time, casa::MPosition &arrayPos, doub
 	AnalyticJones(raRad, decRad, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, arrLatitude, zenithHa, zenithDec, frequencyHz, gain);
 }
 
-void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haAntennaZenith, double decAntennaZenith, double frequencyHz, std::complex<double>* gain)
+void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &j2000Ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haAntennaZenith, double decAntennaZenith, double frequencyHz, std::complex<double>* gain)
 {
 	static const casa::Unit radUnit("rad");
 	casa::MDirection imageDir(casa::MVDirection(
 		casa::Quantity(raRad, radUnit),     // RA
 		casa::Quantity(decRad,radUnit)),  // DEC
-		ref);
+		j2000Ref);
 	
 	// convert ra, dec to ha
 	casa::MDirection hadec = j2000ToHaDec(imageDir);
@@ -173,9 +173,43 @@ void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection
 	double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
 	casa::MDirection azel = j2000ToAzelGeo(imageDir);
 	double azimuth = azel.getValue().get()[0];
-	//std::cout << "za=" << zenithDistance << ", az=" << azimuth << '\n';
+	//std::cout << "ha=" << ha*180.0/M_PI << '-' << haAntennaZenith*180.0/M_PI << ", za=" << zenithDistance*180.0/M_PI << ", az=" << azimuth*180.0/M_PI << '\n';
 	
 	AnalyticJones(zenithDistance, azimuth, frequencyHz, ha, decRad, haAntennaZenith, decAntennaZenith, gain);
+}
+
+void TileBeam::PrecalculatePositionInfo(TileBeam::PrecalcPosInfo& posInfo, casa::MEpoch& time, casa::MPosition& arrayPos, double raRad, double decRad)
+{
+	casa::MeasFrame frame(arrayPos, time);
+	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
+	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
+	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
+	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
+	double arrLatitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
+	
+	casa::MDirection::Convert
+		j2000ToHaDec(j2000Ref, hadecRef),
+		j2000ToAzelGeo(j2000Ref, azelgeoRef);
+		
+	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
+	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
+	posInfo.haAntennaZenith = zenithHaDec.getAngle().getValue()[0];
+	posInfo.decAntennaZenith = zenithHaDec.getAngle().getValue()[1];
+	
+	casa::MDirection imageDir(casa::MVDirection(raRad, decRad), j2000Ref);
+	
+	// convert ra, dec to ha
+	casa::MDirection hadec = j2000ToHaDec(imageDir);
+	posInfo.ha = hadec.getValue().get()[0];
+	posInfo.dec = decRad;
+	double sinLat, cosLat;
+	sincos(arrLatitude, &sinLat, &cosLat);
+	double sinDec, cosDec;
+	sincos(decRad, &sinDec, &cosDec);
+	double cosHA = cos(posInfo.ha);
+	posInfo.zenithAngle = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
+	casa::MDirection azel = j2000ToAzelGeo(imageDir);
+	posInfo.azimuth = azel.getValue().get()[0];
 }
 
 void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
@@ -242,11 +276,14 @@ void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequenc
 	sincos(dec, &sinDec, &cosDec);
 	sincos(ha - haAntennaZenith, &sinHa, &cosHa);
 	
+	// Notice that X and Y conventions are not equal to the RTS conventions.
+	// Here, X is assumed to be East-West aligned (sensitive to EM radiation with
+	// a East-West polarized vector).
 	double rot[4];
-	rot[0] =  cosDecAntennaZenith*cosDec + sinDecAntennaZenith*sinDec*cosHa;
-	rot[1] =  sinDecAntennaZenith*sinHa;
-	rot[2] = -sinDec*sinHa;
-	rot[3] =  cosHa;
+	rot[0] =  cosHa;
+	rot[1] =  sinDec*sinHa;
+	rot[2] = -sinDecAntennaZenith*sinHa;
+	rot[3] =  cosDecAntennaZenith*cosDec + sinDecAntennaZenith*sinDec*cosHa;
 	//std::cout << "rot[0]=" << rot[0] << " groundPlane=" << groundPlane << " arrayFactor=" << arrayFactor << '\n';
 	
 	arrayFactor *= groundPlane;

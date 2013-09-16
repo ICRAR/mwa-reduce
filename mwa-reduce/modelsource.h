@@ -195,7 +195,8 @@ class ModelSource
 		void *UserData() const { return _userdata; }
 		void SetUserData(void *userData) { _userdata = userData; }
 		
-		void MakeUnitFlux() {
+		void MakeUnitFlux()
+		{
 			double totalFlux = 0.0;
 			double freq = (Peak().SED().LowestFrequency() + Peak().SED().HighestFrequency()) * 0.5;
 			for(iterator i=begin(); i!=end(); ++i)
@@ -206,6 +207,61 @@ class ModelSource
 			{
 				double thisFlux = i->SED().FluxAtFrequency(freq, 0) + i->SED().FluxAtFrequency(freq, 3);
 				i->SetSED(SpectralEnergyDistribution(thisFlux / totalFlux, freq));
+			}
+		}
+		
+		void SetConstantTotalFlux(double newFlux, double frequency)
+		{
+			double totalFlux = 0.0;
+			for(iterator i=begin(); i!=end(); ++i)
+			{
+				totalFlux += TotalFlux(frequency, 0) + TotalFlux(frequency, 3);
+			}
+			double scaleFactor = newFlux / totalFlux;
+			for(iterator i=begin(); i!=end(); ++i)
+			{
+				double thisFlux = i->SED().FluxAtFrequency(frequency, 0) + i->SED().FluxAtFrequency(frequency, 3);
+				i->SetSED(SpectralEnergyDistribution(thisFlux * scaleFactor, frequency));
+			}
+		}
+		
+		void SetConstantTotalFlux(const double* newFluxes, double frequency)
+		{
+			double totalFlux = fabs(TotalFlux(frequency, 0)) + fabs(TotalFlux(frequency, 3));
+			
+			if(totalFlux == 0.0)
+			{
+				for(iterator i=begin(); i!=end(); ++i)
+				{
+					Measurement m;
+					m.SetFrequencyHz(frequency);
+					for(size_t p=0; p!=4; ++p)
+						m.SetFluxDensity(p, newFluxes[p] / (double) ComponentCount());
+					SpectralEnergyDistribution sed;
+					sed.AddMeasurement(m);
+					i->SetSED(sed);
+				}
+			}
+			else {
+				totalFlux *= 0.5;
+				double scaleFactor[4];
+			
+				for(size_t p=0; p!=4; ++p)
+					scaleFactor[p] = newFluxes[p] / totalFlux;
+				
+				for(iterator i=begin(); i!=end(); ++i)
+				{
+					Measurement m;
+					m.SetFrequencyHz(frequency);
+					double thisFlux = 0.5*(i->SED().FluxAtFrequency(frequency, 0) + i->SED().FluxAtFrequency(frequency, 3));
+					for(size_t p=0; p!=4; ++p)
+					{
+						m.SetFluxDensity(p, thisFlux * scaleFactor[p]);
+					}
+					SpectralEnergyDistribution sed;
+					sed.AddMeasurement(m);
+					i->SetSED(sed);
+				}
 			}
 		}
 	private:

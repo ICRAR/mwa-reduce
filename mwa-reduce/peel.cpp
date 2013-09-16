@@ -1,13 +1,15 @@
 #include <iostream>
 #include <stdexcept>
+
 #include "peeler.h"
+#include "calibrationmethod.h"
 
 int main(int argc, char *argv[])
 {
-	if(argc < 4)
+	if(argc < 3)
 	{
 		std::cout
-			<< "Usage: peel [-datacolumn <column>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-l <precision>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t <solution interval timesteps>] <measurementset.ms>\n\n"
+			<< "Usage: peel [-datacolumn <column>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t <solution interval timesteps>] <measurementset.ms>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
@@ -16,8 +18,11 @@ int main(int argc, char *argv[])
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string modelFile, rhsSolutionFile;
 		std::string dataColumnName = "DATA";
-		size_t niter = 25, solutionInterval = 1;
-		double limit = 0.0001, minUVW = 0.0;
+		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 1;
+		double
+			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
+			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
+			minUVW = 0.0;
 		
 		while(argv[argi][0] == '-')
 		{
@@ -26,10 +31,11 @@ int main(int argc, char *argv[])
 				niter = atoi(argv[argi+1]);
 				argi += 2;
 			}
-			else if(strcmp(argv[argi], "-l") == 0)
+			else if(strcmp(argv[argi], "-a") == 0)
 			{
-				limit = atof(argv[argi+1]);
-				argi += 2;
+				minAccuracy = atof(argv[argi+1]);
+				stopAccuracy = atof(argv[argi+2]);
+				argi += 3;
 			}
 			else if(strcmp(argv[argi], "-m") == 0)
 			{
@@ -93,7 +99,7 @@ int main(int argc, char *argv[])
 		Peeler peeler(ms);
 		
 		peeler.SetNIter(niter);
-		peeler.SetLimit(limit);
+		peeler.SetAccuracy(minAccuracy, stopAccuracy);
 		peeler.SetModelFilename(modelFile);
 		peeler.SetMinUVW(minUVW);
 		peeler.SetApplyBeam(applyBeam);
