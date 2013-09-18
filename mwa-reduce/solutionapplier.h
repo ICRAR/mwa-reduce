@@ -9,6 +9,7 @@
 
 #include "banddata.h"
 #include "solutionfile.h"
+#include "matrix2x2.h"
 
 class SolutionApplier
 {
@@ -161,15 +162,8 @@ private:
 	void applySolution(std::complex<double> *dataVal, const std::complex<double> *solA, const std::complex<double> *solB)
 	{
 		std::complex<double> solATimesData[4];
-		solATimesData[0] = solA[0] * dataVal[0] + solA[1] * dataVal[2];
-		solATimesData[1] = solA[0] * dataVal[1] + solA[1] * dataVal[3];
-		solATimesData[2] = solA[2] * dataVal[0] + solA[3] * dataVal[2];
-		solATimesData[3] = solA[2] * dataVal[1] + solA[3] * dataVal[3];
-
-		dataVal[0] = solATimesData[0] * std::conj(solB[0]) + solATimesData[1] * std::conj(solB[1]);
-		dataVal[1] = solATimesData[0] * std::conj(solB[2]) + solATimesData[1] * std::conj(solB[3]);
-		dataVal[2] = solATimesData[2] * std::conj(solB[0]) + solATimesData[3] * std::conj(solB[1]);
-		dataVal[3] = solATimesData[2] * std::conj(solB[2]) + solATimesData[3] * std::conj(solB[3]);
+		Matrix2x2::ATimesB(solATimesData, solA, dataVal);
+		Matrix2x2::ATimesHermB(dataVal, solATimesData, solB);
 	}
 
 	bool _preset;
