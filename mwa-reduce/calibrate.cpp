@@ -124,6 +124,11 @@ int main(int argc, char *argv[])
 		calibrator.SetOnlyRotation(onlyRotation);
 		calibrator.SetSolutionOutputFilename(outName);
 		calibrator.SetVerbose(true);
+		calibrator.SetSavePlotFiles(savePlotFiles);
+		if(savePlotFiles)
+		{
+			calibrator.SetPlotFilenames(plotPhaseFile, plotGainFile);
+		}
 		calibrator.Perform();
 	}
 }

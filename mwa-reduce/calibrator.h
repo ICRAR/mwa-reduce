@@ -93,6 +93,17 @@ public:
 		_verbose = verbose;
 	}
 	
+	void SetSavePlotFiles(bool savePlotFiles)
+	{
+		_savePlotFiles = savePlotFiles;
+	}
+	
+	void SetPlotFilenames(const std::string& phasePlotFilename, const std::string& gainPlotFilename)
+	{
+		_phasePlotFilename = phasePlotFilename;
+		_gainPlotFilename = gainPlotFilename;
+	}
+	
 	SolutionFile& GetSolutionFile() {
 		return _solutionFile;
 	}

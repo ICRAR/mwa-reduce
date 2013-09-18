@@ -21,7 +21,7 @@ const double TileBeam::MWA_HEIGHT = 377.0;         // Array altitude. meters abo
 // Optimized 2012-11-17 by Offringa.
 
 TileBeam::TileBeam(const double *delays) :
-	_dipoleSize(0.278), /* Seems to be 0.3 in the RTS, 0278 in beam script */
+	_dipoleSize(0.278), /* Seems to be 0.3 in the RTS, 0.278 in beam script */
 	_dipoleSeparations(1.100),
 	_delayStep(435.0e-12),
 	_zenithNorm(true)
