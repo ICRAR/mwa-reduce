@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "PKS2331-41"
+  component {
+    type point
+    position 23h34m26.2s -41d25m24s
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 31.3 0 0 31.1
+    }
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 51 0 0 51
+    }
+  }
+}
+
