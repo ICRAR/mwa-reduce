@@ -486,7 +486,7 @@ class SpectralEnergyDistribution
 						++n;
 					}
 				}
-				double eTemp, fTemp;
+				double eTemp = 0.0, fTemp = 1.0;
 				fitter.Fit(eTemp, fTemp);
 				if(n == 0)
 					std::cout << "No valid data in power law fit\n";
