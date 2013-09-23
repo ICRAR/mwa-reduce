@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 			"\t-interval <start-index> <stop-index>\n"
 			"\t   Only image the given interval. Indices specify the timesteps, stop is exclusive.\n"
 			"\t-weight <weightmode>\n"
-			"\t   weightmode can be: natural, mwa, uniformish\n"
+			"\t   weightmode can be: natural, mwa, uniform\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
@@ -190,8 +190,8 @@ int main(int argc, char *argv[])
 				weightMode = InversionAlgorithm::NaturalWeighted;
 			else if(weightArg == "mwa")
 				weightMode = InversionAlgorithm::DistanceWeighted;
-			else if(weightArg == "uniformish")
-				weightMode = InversionAlgorithm::UniformishWeighted;
+			else if(weightArg == "uniform")
+				weightMode = InversionAlgorithm::UniformWeighted;
 		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
