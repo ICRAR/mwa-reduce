@@ -1,52 +1,32 @@
 #include "imageweights.h"
+#include "banddata.h"
 
 #include <cmath>
 #include <iostream>
 #include <cstring>
 
-ImageWeights::ImageWeights(size_t imageSize, size_t channelCount, double pixelScale, double lowestFrequency, double frequencyStep) : 
-	_imageSize(imageSize),
+ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, size_t channelCount, double pixelScale, double lowestFrequency, double frequencyStep) : 
+	_imageWidth(imageWidth),
+	_imageHeight(imageHeight),
 	_channelCount(channelCount),
 	_pixelScale(pixelScale),
 	_lowestFrequency(lowestFrequency),
-	_frequencyStep(frequencyStep)
+	_frequencyStep(frequencyStep),
+	_sum(_imageWidth*_imageHeight/2)
 {
-	_counts = new int[_imageSize*_imageSize];
-	_sum = new double[_imageSize*_imageSize];
-	_sumSq = new double[_imageSize*_imageSize];
-	memset(_counts, 0, _imageSize*_imageSize);
-}
-
-double ImageWeights::GetCountWeight(double u, double v)
-{
-	double x = round(u*_imageSize*_pixelScale + _imageSize/2);
-	double y = round(v*_imageSize*_pixelScale + _imageSize/2);
-	if(x >= 0.0 && x < _imageSize && y >= 0.0 && y < _imageSize)
-		return 1.0 / (double) _counts[(size_t) x + (size_t) y*_imageSize];
-	else {
-		std::cout << "Weights did not fit in grid.\n";
-		return 0.0;
-	}
 }
 
 double ImageWeights::GetUniformWeight(double u, double v)
 {
-	double x = round(u*_imageSize*_pixelScale + _imageSize/2);
-	double y = round(v*_imageSize*_pixelScale + _imageSize/2);
-	if(x >= 0.0 && x <= _imageSize && y >= 0.0 && y <= _imageSize)
-	{
-		size_t index = (size_t) x + (size_t) y*_imageSize;
-		double countFact = 1.0 / _counts[index];
-		double sum = _sum[index];
-		double sumSq = _sumSq[index];
-		double sumMeanSquared = sum * sum * countFact;
-		double variance = (sumSq - sumMeanSquared) * countFact;
-		if(variance!=0.0)
-			return 1.0 / variance;
-		else
-			return 1.0;
-	} else {
-		std::cout << "Weights did not fit in grid.\n";
+	if(v < 0.0) {
+		u = -u;
+		v = -v;
+	}
+	double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
+	double y = round(v*_imageHeight*_pixelScale);
+	if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+		return 1.0 / (double) _sum[(size_t) x + (size_t) y*_imageWidth];
+	else {
 		return 0.0;
 	}
 }
@@ -72,21 +52,87 @@ double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, 
 	return weightSum / _channelCount;
 }
 
+void ImageWeights::Grid(casa::MeasurementSet& ms)
+{
+	const BandData bandData(ms.spectralWindow());
+	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
+	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
+	casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
+	casa::ROArrayColumn<casa::Complex> dataColumn(ms, casa::MS::columnName(casa::MSMainEnums::DATA));
+	casa::ROArrayColumn<float> weightColumn(ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
+	casa::ROArrayColumn<bool> flagColumn(ms, casa::MS::columnName(casa::MSMainEnums::FLAG));
+	
+	const casa::IPosition shape(flagColumn.shape(0));
+	const size_t polarizationCount = shape[0];
+	
+	casa::Array<casa::Complex> dataArr(shape);
+	casa::Array<bool> flagArr(shape);
+	casa::Array<float> weightArr(shape);
+	
+	for(size_t row=0; row!=ms.nrow(); ++row)
+	{
+		const int a1 = antenna1Column(row), a2 = antenna2Column(row);
+		if(a1 != a2)
+		{
+			flagColumn.get(row, flagArr);
+			weightColumn.get(row, weightArr);
+			const casa::Vector<double> uvw = uvwColumn(row);
+			
+			bool* flagIter = flagArr.cbegin();
+			float* weightIter = weightArr.cbegin();
+			
+			double uInM = uvw(0), vInM = uvw(1);
+			if(vInM < 0.0)
+			{
+				uInM = -uInM;
+				vInM = -vInM;
+			}
+			
+			for(size_t ch=0; ch!=bandData.ChannelCount(); ++ch)
+			{
+				double
+					u = uInM / bandData.ChannelWavelength(ch),
+					v = vInM / bandData.ChannelWavelength(ch);
+				double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
+				double y = round(v*_imageHeight*_pixelScale);
+					
+				if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+				{
+					for(size_t p=0; p!=polarizationCount; ++p)
+					{
+						if(!*flagIter)
+						{
+								size_t index = (size_t) x + (size_t) y*_imageWidth;
+								_sum[index] += *weightIter;
+						}
+						++flagIter;
+						++weightIter;
+					}
+				}
+			}
+		}
+	}
+}
+
 void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda)
 {
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
 		if(!flags[ch])
 		{
-			double wavelength = frequencyToWavelength(_lowestFrequency + _frequencyStep*ch);
-			double x = round(uTimesLambda*_imageSize*_pixelScale/wavelength + _imageSize/2);
-			double y = round(vTimesLambda*_imageSize*_pixelScale/wavelength + _imageSize/2);
-			if(x >= 0.0 && x < _imageSize && y >= 0.0 && y < _imageSize)
+			if(vTimesLambda < 0.0)
 			{
-				size_t index = (size_t) x + (size_t) y*_imageSize;
-				_counts[index] += 2;
-				_sum[index] += data[ch].real() + data[ch].imag();
-				_sumSq[index] += data[ch].real()*data[ch].real() + data[ch].imag()*data[ch].imag();
+				uTimesLambda = -uTimesLambda;
+				vTimesLambda = -vTimesLambda;
+			}
+			
+			double wavelength = frequencyToWavelength(_lowestFrequency + _frequencyStep*ch);
+			double x = round(uTimesLambda*_imageWidth*_pixelScale/wavelength + _imageWidth/2);
+			double y = round(vTimesLambda*_imageHeight*_pixelScale/wavelength);
+			if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+			{
+				size_t index = (size_t) x + (size_t) y*_imageWidth;
+				_sum[index] += 1.0;
 			}
 		}
 	}

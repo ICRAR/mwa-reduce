@@ -1,5 +1,6 @@
 #include "wsinversion.h"
 #include "uvwdistribution.h"
+#include "imageweights.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <measures/Measures/MDirection.h>
@@ -128,9 +129,14 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	
 	if(Weighting() == UniformishWeighted)
 	{
-		std::cout << "Establishing uvw distribution for uniform weighting... " << std::flush;
+		/*std::cout << "Establishing uvw distribution for uniform weighting... " << std::flush;
 		msData.uvwDistribution.reset(new UvwDistribution());
 		msData.uvwDistribution->Calculate(ms);
+		std::cout << "DONE\n";*/
+		std::cout << "Gridding weights for uniform weighting... " << std::flush;
+		msData.imageWeights.reset(
+			new ImageWeights(ImageWidth(), ImageHeight(), bandData.ChannelCount(), PixelSizeX(), bandData.LowestFrequency(), bandData.FrequencyStep()));
+		msData.imageWeights->Grid(ms);
 		std::cout << "DONE\n";
 	}
 }
@@ -215,6 +221,20 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				{
 					case UniformishWeighted:
 					{
+						float* weightIter = weights.cbegin();
+						for(size_t ch=0; ch!=bandData.ChannelCount(); ++ch)
+						{
+							double
+								u = newItem.u / bandData.ChannelWavelength(ch),
+								v = newItem.v / bandData.ChannelWavelength(ch),
+								weight = msData.imageWeights->GetUniformWeight(u, v);
+							for(size_t p=0; p!=msData.polarizationCount; ++p)
+							{
+								*weightIter *= weight;
+								++weightIter;
+							}
+						}
+						/*
 						rowWeight = 1.0;
 						double uvwDistInM = sqrt(newItem.u*newItem.u + newItem.v*newItem.v + newItem.w*newItem.w);
 						float* weightIter = weights.cbegin();
@@ -227,7 +247,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 								*weightIter *= weight;
 								++weightIter;
 							}
-						}
+						}*/
 					} break;
 					case NaturalWeighted:
 						rowWeight = 1.0;

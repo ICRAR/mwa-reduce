@@ -61,7 +61,7 @@ class WSInversion : public InversionAlgorithm
 				MSData();
 				~MSData();
 				std::unique_ptr<casa::MeasurementSet> ms;
-				std::unique_ptr<class UvwDistribution> uvwDistribution;
+				std::unique_ptr<class ImageWeights> imageWeights;
 				size_t channelCount, polarizationCount, matchingRows, totalRowsProcessed;
 				double minW, maxW;
 				size_t rowStart, rowEnd;
