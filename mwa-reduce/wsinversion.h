@@ -58,8 +58,10 @@ class WSInversion : public InversionAlgorithm
 		struct MSData
 		{
 			public:
-				MSData() : matchingRows(0), totalRowsProcessed(0) { }
+				MSData();
+				~MSData();
 				std::unique_ptr<casa::MeasurementSet> ms;
+				std::unique_ptr<class UvwDistribution> uvwDistribution;
 				size_t channelCount, polarizationCount, matchingRows, totalRowsProcessed;
 				double minW, maxW;
 				size_t rowStart, rowEnd;

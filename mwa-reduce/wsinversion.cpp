@@ -1,4 +1,5 @@
 #include "wsinversion.h"
+#include "uvwdistribution.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <measures/Measures/MDirection.h>
@@ -14,6 +15,12 @@
 #include <stdexcept>
 
 #include <boost/thread/thread.hpp>
+
+WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
+{ }
+
+WSInversion::MSData::~MSData()
+{ }
 
 void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInversion::MSData& msData)
 {
@@ -118,6 +125,14 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	}
 	_beamSize = bandData.SmallestWavelength() / sqrt(maxBaseline);
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
+	
+	if(Weighting() == UniformishWeighted)
+	{
+		std::cout << "Establishing uvw distribution for uniform weighting... " << std::flush;
+		msData.uvwDistribution.reset(new UvwDistribution());
+		msData.uvwDistribution->Calculate(ms);
+		std::cout << "DONE\n";
+	}
 }
 
 void WSInversion::countSamplesPerLayer(MSData& msData)
@@ -195,10 +210,25 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				weightColumn.get(row, weights);
 				flagColumn.get(row, flags);
 				
-				double rowWeight;
+				double rowWeight = 1.0;
 				switch(Weighting())
 				{
-					default:
+					case UniformishWeighted:
+					{
+						rowWeight = 1.0;
+						double uvwDistInM = sqrt(newItem.u*newItem.u + newItem.v*newItem.v + newItem.w*newItem.w);
+						float* weightIter = weights.cbegin();
+						for(size_t ch=0; ch!=bandData.ChannelCount(); ++ch)
+						{
+							double dist = uvwDistInM / bandData.ChannelWavelength(ch); // bandData.CentreWavelength();//
+							double weight = msData.uvwDistribution->WeightFromFit(dist);
+							for(size_t p=0; p!=msData.polarizationCount; ++p)
+							{
+								*weightIter *= weight;
+								++weightIter;
+							}
+						}
+					} break;
 					case NaturalWeighted:
 						rowWeight = 1.0;
 						break;

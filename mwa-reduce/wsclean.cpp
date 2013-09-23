@@ -49,6 +49,8 @@ int main(int argc, char *argv[])
 			"\t   Allow negative components during cleaning\n"
 			"\t-interval <start-index> <stop-index>\n"
 			"\t   Only image the given interval. Indices specify the timesteps, stop is exclusive.\n"
+			"\t-weight <weightmode>\n"
+			"\t   weightmode can be: natural, mwa, uniformish\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
@@ -62,6 +64,7 @@ int main(int argc, char *argv[])
 	size_t nWLayers = 64, nIter = 500, intervalStart = 0, intervalStop = 0;
 	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
+	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
 	std::string prefixName = "wsclean";
 	bool allowNegative = false, smallPSF = false, addApparentModel = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
@@ -179,6 +182,17 @@ int main(int argc, char *argv[])
 			intervalStop = atoi(argv[argi+2]);
 			argi += 2;
 		}
+		else if(param == "weight")
+		{
+			++argi;
+			std::string weightArg = argv[argi];
+			if(weightArg == "natural")
+				weightMode = InversionAlgorithm::NaturalWeighted;
+			else if(weightArg == "mwa")
+				weightMode = InversionAlgorithm::DistanceWeighted;
+			else if(weightArg == "uniformish")
+				weightMode = InversionAlgorithm::UniformishWeighted;
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -204,6 +218,7 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetWGridSize(nWLayers);
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
+	inversionAlgorithm->SetWeighting(weightMode);
 	if(intervalStop != 0)
 	{
 		inversionAlgorithm->SetInterval(intervalStart, intervalStop);

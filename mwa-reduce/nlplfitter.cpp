@@ -1,5 +1,8 @@
 #include "nlplfitter.h"
+
 #include <stdexcept>
+#include <cmath>
+#include <limits>
 
 #ifdef HAVE_GSL
 
@@ -136,3 +139,48 @@ void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 }
 
 #endif
+
+void NonLinearPowerLawFitter::FastFit(double& exponent, double& factor)
+{
+	double sumxy = 0.0, sumx = 0.0, sumy = 0.0, sumxx = 0.0;
+	size_t n = 0;
+	bool requireNonLinear = false;
+	
+	for(NLPLFitterData::PointVec::const_iterator i=_data->points.begin(); i!=_data->points.end(); ++i)
+	{
+		double x = i->first, y = i->second;
+		if(y <= 0)
+		{
+			requireNonLinear = true;
+			break;
+		}
+		if(x > 0 && y > 0)
+		{
+			long double
+				logx = std::log(x),
+				logy = std::log(y);
+			sumxy += logx * logy;
+			sumx += logx;
+			sumy += logy;
+			sumxx += logx * logx;
+			++n;
+		}
+	}
+	if(requireNonLinear)
+	{
+		exponent = 0.0;
+		factor = 1.0;
+		Fit(exponent, factor);
+	}
+	else {
+		if(n == 0)
+		{
+			exponent = std::numeric_limits<double>::quiet_NaN();
+			factor = std::numeric_limits<double>::quiet_NaN();
+		}
+		else {
+			exponent = (n * sumxy - sumx * sumy) / (n * sumxx - sumx * sumx);
+			factor = std::exp((sumy - exponent * sumx) / n);
+		}
+	}
+}

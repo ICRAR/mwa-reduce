@@ -22,6 +22,8 @@ public:
 	
 	void Fit(double& exponent, double& factor);
 	
+	void FastFit(double& exponent, double& factor);
+	
 private:
 	std::unique_ptr<class NLPLFitterData> _data;
 };

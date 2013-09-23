@@ -98,6 +98,10 @@ class BandData
 		{
 			return (HighestFrequency() + LowestFrequency()) * 0.5;
 		}
+		double CentreWavelength() const
+		{
+			return 299792458.0L / ((HighestFrequency() + LowestFrequency()) * 0.5);
+		}
 		double FrequencyStep() const
 		{
 		  if(_channelCount > 1)
