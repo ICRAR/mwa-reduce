@@ -24,6 +24,7 @@ class InversionAlgorithm
 			_doImagePSF(false),
 			_doSubtractModel(false),
 			_addToModel(false),
+			_precalculatedWeightInfo(0),
 			_polarization(StokesI),
 			_weighting(DistanceWeighted)
 		{
@@ -45,6 +46,7 @@ class InversionAlgorithm
 		bool AddToModel() const { return _addToModel; }
 		PolarizationEnum Polarization() const { return _polarization; }
 		WeightingEnum Weighting() const { return _weighting; }
+		class ImageWeights* PrecalculatedWeightInfo() const { return _precalculatedWeightInfo; }
 		bool HasInterval() const { return _intervalStop != 0; }
 		size_t IntervalStart() const { return _intervalStart; }
 		size_t IntervalStop() const { return _intervalStop; }
@@ -97,6 +99,10 @@ class InversionAlgorithm
 		{
 			_addToModel = addToModel;
 		}
+		void SetPrecalculatedWeightInfo(class ImageWeights* precalculatedWeightInfo)
+		{ 
+			_precalculatedWeightInfo = precalculatedWeightInfo;
+		}
 		void SetInterval(size_t intervalStart, size_t intervalStop)
 		{
 			_intervalStart = intervalStart;
@@ -126,6 +132,7 @@ class InversionAlgorithm
 		std::vector<std::string> _measurementSetPaths;
 		std::string _dataColumnName;
 		bool _doImagePSF, _doSubtractModel, _addToModel;
+		class ImageWeights *_precalculatedWeightInfo;
 		enum PolarizationEnum _polarization;
 		enum WeightingEnum _weighting;
 };
