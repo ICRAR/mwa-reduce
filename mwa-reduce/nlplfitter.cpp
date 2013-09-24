@@ -5,15 +5,16 @@
 #include <limits>
 
 #ifdef HAVE_GSL
-
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multifit_nlin.h>
+#endif
 
 class NLPLFitterData
 {
 public:
 	typedef std::vector<std::pair<double, double>> PointVec;
 	PointVec points;
+#ifdef HAVE_GSL
 	gsl_multifit_fdfsolver *solver;
 	
 	static int fitting_func(const gsl_vector *xvec, void *data, gsl_vector *f)
@@ -62,8 +63,10 @@ public:
 		fitting_func_deriv(x, data, J);
 		return GSL_SUCCESS;
 	}
+#endif
 };
 
+#ifdef HAVE_GSL
 void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 {
 	const gsl_multifit_fdfsolver_type *T = gsl_multifit_fdfsolver_lmsder;
@@ -102,12 +105,6 @@ void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 
 #else
 #warning "No GSL found: can not do non-linear power law fitting!"
-
-class NLPLFitterData
-{
-	typedef std::vector<std::pair<double, double>> PointVec;
-	PointVec points;
-};
 
 void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 {
