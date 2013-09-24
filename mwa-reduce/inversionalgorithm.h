@@ -9,7 +9,7 @@ class InversionAlgorithm
 {
 	public:
 		enum PolarizationEnum { XX, XY, YX, YY, StokesI };
-		enum WeightingEnum { NaturalWeighted, DistanceWeighted, UniformishWeighted };
+		enum WeightingEnum { NaturalWeighted, DistanceWeighted, UniformWeighted };
 		
 		InversionAlgorithm() :
 			_imageWidth(1024),

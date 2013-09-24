@@ -127,7 +127,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	_beamSize = bandData.SmallestWavelength() / sqrt(maxBaseline);
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
 	
-	if(Weighting() == UniformishWeighted)
+	if(Weighting() == UniformWeighted)
 	{
 		/*std::cout << "Establishing uvw distribution for uniform weighting... " << std::flush;
 		msData.uvwDistribution.reset(new UvwDistribution());
@@ -219,7 +219,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				double rowWeight = 1.0;
 				switch(Weighting())
 				{
-					case UniformishWeighted:
+					case UniformWeighted:
 					{
 						float* weightIter = weights.cbegin();
 						for(size_t ch=0; ch!=bandData.ChannelCount(); ++ch)
