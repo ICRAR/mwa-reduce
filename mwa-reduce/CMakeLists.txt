@@ -28,6 +28,15 @@ include_directories(${FFTW3_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
 
+set(CMAKE_REQUIRED_FLAGS "-std=c++0x")
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles(
+"#include \"${CMAKE_CURRENT_SOURCE_DIR}/bits/uvector.h\"
+int main(int argc, char* argv[])
+{
+return 0;
+}" UVECTOR_COMPILES)
+
 # The following stuff will set the "rpath" correctly, so that
 # LD_LIBRARY_PATH doesn't have to be set.
 
@@ -137,5 +146,9 @@ if(GSL_LIB AND CBLAS_LIB)
   target_link_libraries(wsclean ${GSL_LIB} ${CBLAS_LIB})
   target_link_libraries(wsimager ${GSL_LIB} ${CBLAS_LIB})
 endif(GSL_LIB AND CBLAS_LIB)
+
+if(UVECTOR_COMPILES)
+  add_definitions(-DHAVE_UVECTOR)
+endif(UVECTOR_COMPILES)
 
 target_link_libraries(aoimage ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
