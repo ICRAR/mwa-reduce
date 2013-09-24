@@ -126,19 +126,6 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	}
 	_beamSize = bandData.SmallestWavelength() / sqrt(maxBaseline);
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
-	
-	if(Weighting() == UniformWeighted)
-	{
-		/*std::cout << "Establishing uvw distribution for uniform weighting... " << std::flush;
-		msData.uvwDistribution.reset(new UvwDistribution());
-		msData.uvwDistribution->Calculate(ms);
-		std::cout << "DONE\n";*/
-		std::cout << "Gridding weights for uniform weighting... " << std::flush;
-		msData.imageWeights.reset(
-			new ImageWeights(ImageWidth(), ImageHeight(), bandData.ChannelCount(), PixelSizeX(), bandData.LowestFrequency(), bandData.FrequencyStep()));
-		msData.imageWeights->Grid(ms);
-		std::cout << "DONE\n";
-	}
 }
 
 void WSInversion::countSamplesPerLayer(MSData& msData)
@@ -227,7 +214,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 							double
 								u = newItem.u / bandData.ChannelWavelength(ch),
 								v = newItem.v / bandData.ChannelWavelength(ch),
-								weight = msData.imageWeights->GetUniformWeight(u, v);
+								weight = PrecalculatedWeightInfo()->GetUniformWeight(u, v);
 							for(size_t p=0; p!=msData.polarizationCount; ++p)
 							{
 								*weightIter *= weight;

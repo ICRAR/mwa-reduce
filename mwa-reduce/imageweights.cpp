@@ -5,13 +5,10 @@
 #include <iostream>
 #include <cstring>
 
-ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, size_t channelCount, double pixelScale, double lowestFrequency, double frequencyStep) : 
+ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale) : 
 	_imageWidth(imageWidth),
 	_imageHeight(imageHeight),
-	_channelCount(channelCount),
 	_pixelScale(pixelScale),
-	_lowestFrequency(lowestFrequency),
-	_frequencyStep(frequencyStep),
 	_sum(_imageWidth*_imageHeight/2)
 {
 }
@@ -31,17 +28,17 @@ double ImageWeights::GetUniformWeight(double u, double v)
 	}
 }
 
-double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda)
+double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep)
 {
 	double weightSum = 0.0;
-	for(size_t ch=0;ch!=_channelCount;++ch)
+	for(size_t ch=0;ch!=channelCount;++ch)
 	{
 		if(flags[ch])
 		{
 			data[ch] = 0.0;
 		} else
 		{
-			double wavelength = frequencyToWavelength(_lowestFrequency + _frequencyStep*ch);
+			double wavelength = frequencyToWavelength(lowestFrequency + frequencyStep*ch);
 			double u = uTimesLambda/wavelength;
 			double v = vTimesLambda/wavelength;
 			double weight = GetWeight(u, v);
@@ -49,7 +46,7 @@ double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, 
 			data[ch] *= weight;
 		}
 	}
-	return weightSum / _channelCount;
+	return weightSum / channelCount;
 }
 
 void ImageWeights::Grid(casa::MeasurementSet& ms)
@@ -114,9 +111,9 @@ void ImageWeights::Grid(casa::MeasurementSet& ms)
 	}
 }
 
-void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda)
+void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep)
 {
-	for(size_t ch=0;ch!=_channelCount;++ch)
+	for(size_t ch=0;ch!=channelCount;++ch)
 	{
 		if(!flags[ch])
 		{
@@ -126,7 +123,7 @@ void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, doub
 				vTimesLambda = -vTimesLambda;
 			}
 			
-			double wavelength = frequencyToWavelength(_lowestFrequency + _frequencyStep*ch);
+			double wavelength = frequencyToWavelength(lowestFrequency + frequencyStep*ch);
 			double x = round(uTimesLambda*_imageWidth*_pixelScale/wavelength + _imageWidth/2);
 			double y = round(vTimesLambda*_imageHeight*_pixelScale/wavelength);
 			if(x >= 0.0 && x < _imageWidth && y < _imageHeight)

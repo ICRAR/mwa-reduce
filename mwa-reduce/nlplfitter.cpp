@@ -5,16 +5,17 @@
 #include <limits>
 
 #ifdef HAVE_GSL
-
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multifit_nlin.h>
+#endif
 
 class NLPLFitterData
 {
 public:
 	typedef std::vector<std::pair<double, double>> PointVec;
-	gsl_multifit_fdfsolver *solver;
 	PointVec points;
+#ifdef HAVE_GSL
+	gsl_multifit_fdfsolver *solver;
 	
 	static int fitting_func(const gsl_vector *xvec, void *data, gsl_vector *f)
 	{
@@ -62,17 +63,10 @@ public:
 		fitting_func_deriv(x, data, J);
 		return GSL_SUCCESS;
 	}
+#endif
 };
 
-NonLinearPowerLawFitter::NonLinearPowerLawFitter() :
-	_data(new NLPLFitterData())
-{
-}
-
-NonLinearPowerLawFitter::~NonLinearPowerLawFitter()
-{
-}
-
+#ifdef HAVE_GSL
 void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 {
 	const gsl_multifit_fdfsolver_type *T = gsl_multifit_fdfsolver_lmsder;
@@ -109,21 +103,19 @@ void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 	gsl_multifit_fdfsolver_free(_data->solver);
 }
 
-void NonLinearPowerLawFitter::AddDataPoint(double x, double y)
-{
-	_data->points.push_back(std::make_pair(x, y));
-}
-
 #else
 #warning "No GSL found: can not do non-linear power law fitting!"
 
-class NLPLFitterData
-{
-};
-
-NonLinearPowerLawFitter::NonLinearPowerLawFitter()
+void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
 {
 	throw std::runtime_error("Non-linear power law fitter was invoked, but GSL was not found during compilation, and is required for this");
+}
+
+#endif
+
+NonLinearPowerLawFitter::NonLinearPowerLawFitter() :
+	_data(new NLPLFitterData())
+{
 }
 
 NonLinearPowerLawFitter::~NonLinearPowerLawFitter()
@@ -132,13 +124,8 @@ NonLinearPowerLawFitter::~NonLinearPowerLawFitter()
 
 void NonLinearPowerLawFitter::AddDataPoint(double x, double y)
 {
+	_data->points.push_back(std::make_pair(x, y));
 }
-
-void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
-{
-}
-
-#endif
 
 void NonLinearPowerLawFitter::FastFit(double& exponent, double& factor)
 {

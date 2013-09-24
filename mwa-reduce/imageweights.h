@@ -11,7 +11,7 @@
 class ImageWeights
 {
 	public:
-		ImageWeights(size_t imageWidth, size_t imageHeight, size_t channelCount, double pixelScale, double lowestFrequency, double frequencyStep);
+		ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale);
 		
 		double GetWeight(double u, double v)
 		{
@@ -32,9 +32,9 @@ class ImageWeights
 
 		void Grid(casa::MeasurementSet& ms);
 		
-		double ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda);
+		double ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 
-		void Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda);
+		void Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 
 	private:
 		template<typename T>
@@ -46,8 +46,8 @@ class ImageWeights
 		{
 			return 299792458.0L;
 		}
-		std::size_t _imageWidth, _imageHeight, _channelCount;
-		double _pixelScale, _lowestFrequency, _frequencyStep;
+		std::size_t _imageWidth, _imageHeight;
+		double _pixelScale;
 		
 		uvector<double> _sum, _weight;
 };

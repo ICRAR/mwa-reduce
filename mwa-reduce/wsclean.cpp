@@ -7,6 +7,7 @@
 #include "areaset.h"
 #include "parser/areaparser.h"
 #include "beamevaluator.h"
+#include "imageweights.h"
 
 #include <iostream>
 #include <memory>
@@ -209,6 +210,22 @@ int main(int argc, char *argv[])
 	for(int i=argi; i != argc; ++i) {
 		inversionAlgorithm->AddMeasurementSetPath(argv[i]);
 		filenames.push_back(argv[i]);
+	}
+	
+	std::unique_ptr<ImageWeights> imageWeights;
+	if(weightMode == InversionAlgorithm::UniformWeighted)
+	{
+		std::cout << "Precalculating weights for uniform weighting... " << std::flush;
+		imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale));
+		for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
+		{
+			casa::MeasurementSet ms(inversionAlgorithm->MeasurementSetPath(i));
+			imageWeights->Grid(ms);
+			if(inversionAlgorithm->MeasurementSetCount() > 1)
+				std::cout << i << ' ' << std::flush;
+		}
+		std::cout << "DONE\n";
+		inversionAlgorithm->SetPrecalculatedWeightInfo(imageWeights.get());
 	}
 	
 	inversionAlgorithm->SetImageWidth(imgWidth);
