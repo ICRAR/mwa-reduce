@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
 	size_t nWLayers = 64, nIter = 500, intervalStart = 0, intervalStop = 0;
-	std::string columnName = "DATA", addModelFilename, saveModelFilename, cleanAreasFilename;
+	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
 	std::string prefixName = "wsclean";
@@ -212,6 +212,7 @@ int main(int argc, char *argv[])
 		filenames.push_back(argv[i]);
 	}
 	
+	// If uniform weighted; initialize weight grid.
 	std::unique_ptr<ImageWeights> imageWeights;
 	if(weightMode == InversionAlgorithm::UniformWeighted)
 	{
@@ -226,6 +227,21 @@ int main(int argc, char *argv[])
 		}
 		std::cout << "DONE\n";
 		inversionAlgorithm->SetPrecalculatedWeightInfo(imageWeights.get());
+	}
+	
+	// If no column specified, determine column to use
+	if(columnName.empty())
+	{
+		casa::MeasurementSet ms(inversionAlgorithm->MeasurementSetPath(0));
+		bool hasCorrected = ms.tableDesc().isColumn("CORRECTED_DATA");
+		std::string dataColumn;
+		if(hasCorrected) {
+			std::cout << "First measurement set has corrected data: tasks will be applied on the corrected data column.\n";
+			columnName = "CORRECTED_DATA";
+		} else {
+			std::cout << "No corrected data in first measurement set: tasks will be applied on the data column.\n";
+			columnName= "DATA";
+		}
 	}
 	
 	inversionAlgorithm->SetImageWidth(imgWidth);

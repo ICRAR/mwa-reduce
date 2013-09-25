@@ -106,7 +106,6 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 		std::cout << "DONE (" << msData.rowStart << '-' << msData.rowEnd << ")\n";
 	}
 	
-	// Determine min and max w
 	std::cout << "Determining min and max w... " << std::flush;
 	msData.maxW= -1e100;
 	msData.minW = 1e100;
