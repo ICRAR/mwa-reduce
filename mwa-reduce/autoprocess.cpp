@@ -33,7 +33,8 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	int argi = 1;
-	bool doExecute = false, doPeel = true, doSubtract = true, verboseOnPolarizations = false;
+	bool doExecute = false, doSelfCal = true, doPeel = true, doSubtract = true, verboseOnPolarizations = false,
+		noPeelingRunnerupCheck = false;
 	double
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
@@ -45,6 +46,10 @@ int main(int argc, char* argv[])
 		{
 			doExecute = true;
 		}
+		else if(param == "noselfcal")
+		{
+			doSelfCal = false;
+		}
 		else if(param == "nopeel")
 		{
 			doPeel = false;
@@ -52,6 +57,10 @@ int main(int argc, char* argv[])
 		else if(param == "nosubtract")
 		{
 			doSubtract = false;
+		}
+		else if(param == "peel-with-runnerups")
+		{
+			noPeelingRunnerupCheck = true;
 		}
 		else if(param == "niter")
 		{
@@ -119,6 +128,7 @@ int main(int argc, char* argv[])
 	std::sort(sources.rbegin(), sources.rend());
 
 	std::vector<ModelSource*> calibrateSources, peelSources, subtractSources;
+	bool peelingSourceSkipped = false;
 	
 	std::cout << "Strongest apparent sources:\n";
 	for(size_t i=0; i!=sources.size(); ++i)
@@ -144,9 +154,9 @@ int main(int argc, char* argv[])
 		}
 		
 		// Determine what to do with it
-		if(src.first >= peelThreshold)
+		if(src.first >= peelThreshold && !peelingSourceSkipped)
 		{
-			if(distanceDeg <= maxCalibrateDist && peelSources.empty())
+			if(distanceDeg <= maxCalibrateDist && peelSources.empty() && doSelfCal)
 			{
 				calibrateSources.push_back(src.second);
 			}
@@ -154,9 +164,10 @@ int main(int argc, char* argv[])
 				double runnerUpFlux = 0.0;
 				if(i+1 < sources.size())
 					runnerUpFlux = sources[i+1].first;
-				if(runnerUpFlux * peelMinRunnerUpFactor > src.first)
+				if(runnerUpFlux * peelMinRunnerUpFactor > src.first && !noPeelingRunnerupCheck)
 				{
 					std::cout << " -> Runner-up source " << sources[i+1].second->Name() << " is too bright for automated peeling of this source.\n";
+					peelingSourceSkipped = true;
 				}
 				else {
 					peelSources.push_back(src.second);
@@ -239,11 +250,12 @@ int main(int argc, char* argv[])
 		{
 			std::cout << "Peeling " << sourceList(peelSources) << "...\n";
 			
-			Model peelModel;
 			for(std::vector<ModelSource*>::const_iterator i=peelSources.begin(); i!=peelSources.end(); ++i)
 			{
+				Model peelModel;
 				restorationModel.AddSource(**i);
 				ModelSource peelSource = **i;
+				std::cout << "- Source " << peelSource.Name() << "\n";
 				// Correct for the beam; this is not necessarily as gains are fitted, but will (a)
 				// give better initial conditions and (b) the reported gains are true differential gains.
 				for(ModelSource::iterator i=peelSource.begin(); i!=peelSource.end(); ++i)
@@ -255,17 +267,17 @@ int main(int argc, char* argv[])
 					i->SED() *= gain;
 				}
 				peelModel.AddSource(peelSource);
+				
+				Peeler peeler(ms);
+				
+				peeler.SetModel(peelModel);
+				peeler.SetDataColumnName(dataColumn);
+				peeler.SetSolutionInterval(4);
+				peeler.SetAccuracy(minAccuracy, stopAccuracy);
+				peeler.SetNIter(nIter);
+				
+				peeler.Perform();
 			}
-			
-			Peeler peeler(ms);
-			
-			peeler.SetModel(peelModel);
-			peeler.SetDataColumnName(dataColumn);
-			peeler.SetSolutionInterval(4);
-			peeler.SetAccuracy(minAccuracy, stopAccuracy);
-			peeler.SetNIter(nIter);
-			
-			peeler.Perform();
 		}
 		
 		if(!subtractSources.empty() && doSubtract)
