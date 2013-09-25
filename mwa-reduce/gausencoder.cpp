@@ -1,14 +1,21 @@
 #include "gausencoder.h"
 
+#ifdef HAS_GSL
 #include <gsl/gsl_sf_erf.h>
+#endif
 
+#include <stdexcept>
 #include <limits>
 #include <cmath>
 
 template<typename ValueType>
 inline typename GausEncoder<ValueType>::num_t GausEncoder<ValueType>::cumulative(num_t x)
 {
+#ifdef HAS_GSL
 	return num_t(0.5) + num_t(0.5) * gsl_sf_erf(x/num_t(M_SQRT2l));
+#else
+	throw std::runtime_error("GausEncoder was compiled without GSL: can't calculate cumulative distribution without GSL");
+#endif
 }
 
 template<typename ValueType>
