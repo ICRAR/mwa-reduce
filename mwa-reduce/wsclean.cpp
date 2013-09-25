@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 	
 	if(nIter > 0)
 	{
-		std::cout << " == Constructing PSF ==\n";
+		std::cout << std::flush << " == Constructing PSF ==\n";
 		inversionAlgorithm->SetDoImagePSF(true);
 		inversionAlgorithm->Invert();
 		psf.resize(imgWidth * imgHeight);
@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-	std::cout << " == Constructing image ==\n";
+	std::cout << std::flush << " == Constructing image ==\n";
 	inversionAlgorithm->SetDoImagePSF(false);
 	inversionAlgorithm->Invert();
 	
@@ -348,7 +348,7 @@ int main(int argc, char *argv[])
 		size_t majorIterationNr = 1;
 		bool reachedMajorThreshold = false;
 		do {
-			std::cout << " == Cleaning (" << majorIterationNr << ") ==\n";
+			std::cout << std::flush << " == Cleaning (" << majorIterationNr << ") ==\n";
 			cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
 			
 			if(majorIterationNr == 1)
@@ -369,11 +369,11 @@ int main(int argc, char *argv[])
 			
 			if(mGain != 1.0)
 			{
-				std::cout << " == Converting model image to visibilities ==\n";
+				std::cout << std::flush << " == Converting model image to visibilities ==\n";
 				inversionAlgorithm->SetAddToModel(false);
 				inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
 				
-				std::cout << " == Constructing image ==\n";
+				std::cout << std::flush << " == Constructing image ==\n";
 				inversionAlgorithm->SetDoSubtractModel(true);
 				inversionAlgorithm->Invert();
 				
