@@ -59,12 +59,16 @@ void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEv
 void Predicter::updateBeam(ModelComponent& component)
 {
 	SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
+	BeamEvaluator::PrecalcPosInfo posInfo;
+	if(_beamEvaluator != 0) {
+		_beamEvaluator->PrecalculatePositionInfo(posInfo, component.PosRA(), component.PosDec());
+	}
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
 		if(_beamEvaluator != 0)
 		{
-			double centreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
-			_beamEvaluator->EvaluateAbsToApparentGain(component.PosRA(), component.PosDec(), centreFreq, &parameters->beamValues[ch*4]);
+			double chCentreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
+			_beamEvaluator->EvaluateAbsToApparentGain(posInfo, chCentreFreq, &parameters->beamValues[ch*4]);
 		}
 		else {
 			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
