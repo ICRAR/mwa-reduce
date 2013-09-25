@@ -30,7 +30,7 @@ public:
 	void SetToModel(bool setToModel) { _setToModel = setToModel; }
 	void SetAddNoise(bool addNoise) { _addNoise = addNoise; }
 	void SetApplyBeam(bool applyBeam) { _applyBeam = applyBeam; }
-	void SetNoiseSigma(bool noiseSigma) { _noiseSigma = noiseSigma; }
+	void SetNoiseSigma(double noiseSigma) { _noiseSigma = noiseSigma; }
 	
 	void Subtract(casa::MeasurementSet& ms, const Model& model)
 	{
@@ -54,6 +54,9 @@ public:
 		MSPredicter predicter(ms, model);
 		predicter.SetApplyBeam(_applyBeam);
 		predicter.Start(true);
+		
+		if(_addNoise)
+			std::cout << "Adding noise of " << _noiseSigma << " Jy.\n";
 		
 		/**
 		 * Subtract
