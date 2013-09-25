@@ -334,13 +334,12 @@ class SpectralEnergyDistribution
 					return 0.0;
 				else if(_measurements.size()==1)
 					return _measurements.begin()->second.FluxDensity(polarizationIndex);
-				else if(_measurements.size()==2) {
+				else { // _measurements.size()==2
 					long double
 						freqA = _measurements.begin()->first,
 						fluxA = _measurements.begin()->second.FluxDensity(polarizationIndex),
 						freqB = _measurements.rbegin()->first,
 						fluxB = _measurements.rbegin()->second.FluxDensity(polarizationIndex);
-					
 					return IntegratedFlux(fluxA, freqA, fluxB, freqB, startFrequency, endFrequency);
 				}
 			}
@@ -436,14 +435,22 @@ class SpectralEnergyDistribution
 					endFrequency*endFrequency - startFrequency*startFrequency) /
 					(endFrequency - startFrequency)
 					+ (fluxDensityAJy - slope * referenceFrequencyAHz);
-			} else {
+			}
+			else {
 				long double si =
 					log(fluxDensityBJy/fluxDensityAJy) /
 					log(referenceFrequencyBHz/referenceFrequencyAHz);
-				return fluxDensityAJy * (
-					std::pow(endFrequency/referenceFrequencyAHz, si) * endFrequency -
-					std::pow(startFrequency/referenceFrequencyAHz, si) * startFrequency) /
-					( (si+1.0) * (endFrequency - startFrequency) );
+				if(si == -1.0)
+				{
+					return (log(endFrequency) - log(startFrequency)) *
+						(referenceFrequencyAHz * fluxDensityAJy) / (endFrequency - startFrequency);
+				}
+				else {
+					return fluxDensityAJy * (
+						std::pow(endFrequency/referenceFrequencyAHz, si) * endFrequency -
+						std::pow(startFrequency/referenceFrequencyAHz, si) * startFrequency) /
+						( (si+1.0) * (endFrequency - startFrequency) );
+				}
 			}
 		}
 		
