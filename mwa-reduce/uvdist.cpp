@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
 	}
 	else {
 		casa::MeasurementSet ms(argv[1]);
-		UvwDistribution uvwDist;
+		UvwDistribution uvwDist(1000);
 		uvwDist.Calculate(ms);
 		
 		std::cout << "Min uvw dist: " << uvwDist.MinUvw() << ", max uvw dist: " << uvwDist.MaxUvw() << "\n";
@@ -25,6 +25,15 @@ int main(int argc, char* argv[])
 			double distance = (double(i)*0.1 * uvwRange / double(uvwDist.BinCount()) + minUvw);
 			//file << distance << '\t' << uvwDist.CountWithInterpolation(distance) << '\n';
 			file << distance << '\t' << uvwDist.WeightFromFit(distance) << '\n';
+		}
+		
+		std::ofstream file2("baseline-dist-data.txt");
+		const double minDist = uvwDist.MinBaseline(), maxDist = uvwDist.MaxBaseline();
+		const double distRange = maxDist - minDist;
+		for(size_t i=0; i!=uvwDist.BinCount()*10; ++i)
+		{
+			double distance = (double(i)*0.1 * distRange / double(uvwDist.BinCount()) + minDist);
+			file2 << distance << '\t' << uvwDist.CumulativeCount(distance) << '\n';
 		}
 		
 		double e, f;
@@ -42,5 +51,15 @@ int main(int argc, char* argv[])
 			"set ylabel \"Count\"\n"
 			"plot \"uvw-dist-data.txt\" using 1:2 with lines lw 2.0 title \"\",\\\n"
 			"2.718281**((" << f << ")*(x**" << e << ")) with lines lw 2.0 title \"\"\n";
+			
+		std::ofstream plotFile2("baseline-dist.plt");
+		plotFile2 <<
+			"set terminal postscript enhanced color\n"
+			"set xrange [" << minDist << ':' << maxDist << "]\n"
+			"set output \"baseline-dist.ps\"\n"
+			"set key bottom left\n"
+			"set xlabel \"Baseline distance (m)\"\n"
+			"set ylabel \"N (Count)\"\n"
+			"plot \"baseline-dist-data.txt\" using 1:2 with lines lw 2.0 title \"\"\n";
 	}
 }
