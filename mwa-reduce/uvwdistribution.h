@@ -11,7 +11,7 @@
 class UvwDistribution
 {
 private:
-	typedef uvector<std::pair<double, double>> WeightMap;
+	typedef ao::uvector<std::pair<double, double>> WeightMap;
 public:
 	UvwDistribution(size_t binCount = 100) : _binCount(binCount)
 	{
@@ -71,7 +71,7 @@ public:
 			uvwRange = _maxUVW - _minUVW,
 			baselineRange = _maxBaseline - _minBaseline;
 			
-		uvector<size_t> uvwHist(_binCount, 0), baselineLengthHist(_binCount, 0);
+		ao::uvector<size_t> uvwHist(_binCount, 0), baselineLengthHist(_binCount, 0);
 		for(size_t row=0; row!=ms.nrow(); ++row)
 		{
 			if(startTime != timeColumn(row))
@@ -186,8 +186,8 @@ private:
 	double _minBaseline, _maxBaseline;
 	double _normalizationFactor;
 	double _plFactor, _plExp;
-	uvector<std::pair<double, double>> _weightMap;
-	uvector<std::pair<double, double>> _baselineLengthMap;
+	ao::uvector<std::pair<double, double>> _weightMap;
+	ao::uvector<std::pair<double, double>> _baselineLengthMap;
 	
 	double distSq(casa::Vector<double>& uvwVec)
 	{

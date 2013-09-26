@@ -49,7 +49,7 @@ class ImageWeights
 		std::size_t _imageWidth, _imageHeight;
 		double _pixelScale;
 		
-		uvector<double> _sum, _weight;
+		ao::uvector<double> _sum, _weight;
 };
 
 #endif

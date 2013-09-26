@@ -14,7 +14,7 @@ void assert(bool test, const char* descr)
 }
 
 template<typename Tp>
-typename uvector<Tp>::iterator insert_uninitialized(uvector<Tp>& vec, typename uvector<Tp>::const_iterator i, size_t count)
+typename ao::uvector<Tp>::iterator insert_uninitialized(ao::uvector<Tp>& vec, typename ao::uvector<Tp>::const_iterator i, size_t count)
 {
 	return vec.insert_uninitialized(i, count);
 }
@@ -411,7 +411,7 @@ void testBadAllocs()
 		assert(true, "constructor throws");
 	}
 	
-	uvector<int> goodVec;
+	ao::uvector<int> goodVec;
 	
 	Vec vec(FailingAllocator<int>(false));
 	vec.assign({6, 7, 8, 9});
@@ -575,17 +575,17 @@ int main(int argc, char **argv) {
 	std::cout << "== std::vector<int> ==\n";
 	test<std::vector<int>>();
 	std::cout << "\n== uvector<int> ==\n";
-	test<uvector<int>>();
+	test<ao::uvector<int>>();
 	std::cout << "\n== uvector<long int> ==\n";
-	test<uvector<long int>>();
+	test<ao::uvector<long int>>();
 	std::cout << "\n== std::vector<int> allocator ==\n";
 	testBadAllocs<std::vector<int,FailingAllocator<int>>>();
 	testAllocater<std::vector<int, IdAllocater<int>>>();
 	std::cout << "\n== uvector<int> allocator ==\n";
-	testBadAllocs<uvector<int,FailingAllocator<int>>>();
-	testAllocater<uvector<int, IdAllocater<int>>>();
+	testBadAllocs<ao::uvector<int,FailingAllocator<int>>>();
+	testAllocater<ao::uvector<int, IdAllocater<int>>>();
 	
-	testExtensions<uvector<int>>();
+	testExtensions<ao::uvector<int>>();
 	
 	return 0;
 }

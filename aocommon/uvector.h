@@ -12,7 +12,11 @@
  * Header file for uvector and its relational and swap function.
  * @author André Offringa
  * @copyright André Offringa, 2013, distributed under the GPL license version 3.
- * 
+ */
+
+namespace ao {
+
+/**
  * @defgroup uvector Class uvector and related functions.
  * @{
  */
@@ -1269,5 +1273,6 @@ inline void swap(uvector<Tp,Alloc>& x, uvector<Tp,Alloc>& y)
 
 /** @} */
 
+} // end of namespace ao
 
 #endif // STDEXT_UVECTOR_H

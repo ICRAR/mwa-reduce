@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
     
-project(uvector)
+project(aocommon)
 
 add_executable(uvector main.cpp)
 set_target_properties(uvector PROPERTIES COMPILE_FLAGS "-std=c++11 -Wall -pedantic -O3 -march=native")
