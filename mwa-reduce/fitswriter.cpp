@@ -46,6 +46,18 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	fits_write_key(fptr, TFLOAT, "BSCALE", (void*) &one, "", &status); checkStatus(status);
 	fits_write_key(fptr, TFLOAT, "BZERO", (void*) &zero, "", &status); checkStatus(status);
 	fits_write_key(fptr, TSTRING, "BUNIT", (void*) "JY/BEAM", "Units are in Jansky per beam", &status); checkStatus(status);
+	
+	if(_hasBeam)
+	{
+		float
+			majDeg = _beamMajorAxisRad * 180.0 / M_PI,
+			minDeg = _beamMinorAxisRad * 180.0 / M_PI, 
+			posAngle = _beamPositionAngle * 180.0 / M_PI;
+		fits_write_key(fptr, TFLOAT, "BMAJ", (void*) &majDeg, "", &status); checkStatus(status);
+		fits_write_key(fptr, TFLOAT, "BMIN", (void*) &minDeg, "", &status); checkStatus(status);
+		fits_write_key(fptr, TFLOAT, "BPA", (void*) &posAngle, "", &status); checkStatus(status);
+	}
+	
 	fits_write_key(fptr, TFLOAT, "EQUINOX", (void*) &equinox, "J2000", &status); checkStatus(status);
 	fits_write_key(fptr, TSTRING, "BTYPE", (void*) "Intensity", "", &status); checkStatus(status);
 	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) "AO/WSImager", "Imager written by Andre Offringa", &status); checkStatus(status);
