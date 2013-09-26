@@ -11,11 +11,7 @@
 
 #include <vector>
 
-namespace ao
-{
-	template<typename Tp, typename Alloc = std::allocator<Tp> >
-	class uvector : public std::vector<Tp> { };
-}
+#define ao::uvector = std::vector
 
 #endif
 
