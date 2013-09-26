@@ -280,9 +280,11 @@ int main(int argc, char *argv[])
 		bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
 		beamSize = inversionAlgorithm->ImageBeamSize(),
 		dateObs = inversionAlgorithm->ImageStartTime();
+		std::cout << "Beam size is " << beamSize*(180.0*60.0/M_PI) << " arcmin.\n";
 		
 		std::cout << "Writing psf image... " << std::flush;
 		FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
+		psfWriter.SetBeamInfo(beamSize);
 		psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 		std::cout << "DONE\n";
 		
@@ -320,6 +322,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing dirty image... " << std::flush;
 	FitsWriter dirtyWriter(std::string(prefixName) + "-dirty.fits");
+	dirtyWriter.SetBeamInfo(beamSize);
 	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
@@ -355,6 +358,7 @@ int main(int argc, char *argv[])
 			{
 				std::cout << "Writing residual image... " << std::flush;
 				FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
+				resWriter.SetBeamInfo(beamSize);
 				resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 				std::cout << "DONE\n";
 			}
@@ -363,6 +367,7 @@ int main(int argc, char *argv[])
 			{
 				std::cout << "Writing model image... " << std::flush;
 				FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
+				modelWriter.SetBeamInfo(beamSize);
 				modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 				std::cout << "DONE\n";
 			}
@@ -386,12 +391,13 @@ int main(int argc, char *argv[])
 					
 					std::cout << "Writing residual image... " << std::flush;
 					FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
+					resWriter.SetBeamInfo(beamSize);
 					resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 					std::cout << "DONE\n";
 				}
+				
+				++majorIterationNr;
 			}
-			
-			++majorIterationNr;
 			
 		} while(reachedMajorThreshold);
 		
@@ -433,6 +439,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing restored image... " << std::flush;
 	FitsWriter restoredWriter(std::string(prefixName) + "-image.fits");
+	restoredWriter.SetBeamInfo(beamSize);
 	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
