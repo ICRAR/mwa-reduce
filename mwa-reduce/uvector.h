@@ -3,7 +3,7 @@
 
 //#ifdef HAVE_UVECTOR
 
-#include "aocommon/uvector.h"
+//#include "aocommon/uvector.h"
 
 //#else
 
@@ -12,8 +12,10 @@
 #include <vector>
 #include <memory>
 
+namespace ao {
 template<typename Tp, typename Alloc = std::allocator<Tp> >
 using uvector = std::vector<Tp, Alloc>;
+}
 
 //#endif
 
