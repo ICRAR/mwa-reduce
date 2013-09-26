@@ -1,11 +1,11 @@
 #ifndef UVECTOR_WRAPPER_H
 #define UVECTOR_WRAPPER_H
 
-//#ifdef HAVE_UVECTOR
+#ifdef HAVE_UVECTOR
 
-//#include "aocommon/uvector.h"
+#include "aocommon/uvector.h"
 
-//#else
+#else
 
 #warning "uvector does not work on this platform: using slower std::vector instead"
 
@@ -13,10 +13,10 @@
 #include <memory>
 
 namespace ao {
-template<typename Tp, typename Alloc = std::allocator<Tp> >
-using uvector = std::vector<Tp, Alloc>;
+	using std::vector;
 }
+#define uvector vector
 
-//#endif
+#endif
 
 #endif
