@@ -46,8 +46,12 @@ int main(int argc, char *argv[])
 			"\t-smallpsf\n"
 			"\t   Resize the psf to speed up minor clean iterations.\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
+			"\t-nonegative\n"
+			"\t   Do not allow negative components during cleaning.\n"
 			"\t-negative\n"
-			"\t   Allow negative components during cleaning\n"
+			"\t   Default on: opposite of -nonegative.\n"
+			"\t-stopnegative\n"
+			"\t   Stop on negative components.\n"
 			"\t-interval <start-index> <stop-index>\n"
 			"\t   Only image the given interval. Indices specify the timesteps, stop is exclusive.\n"
 			"\t-weight <weightmode>\n"
@@ -67,7 +71,7 @@ int main(int argc, char *argv[])
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
 	std::string prefixName = "wsclean";
-	bool allowNegative = false, smallPSF = false, addApparentModel = false;
+	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	std::vector<std::string> filenames;
 	
@@ -135,6 +139,14 @@ int main(int argc, char *argv[])
 		{
 			allowNegative = true;
 		}
+		else if(param == "nonegative")
+		{
+			allowNegative = false;
+		}
+		else if(param == "stopnegative")
+		{
+			stopOnNegative = true;
+		}
 		else if(param == "addmodel")
 		{
 			++argi;
@@ -193,6 +205,7 @@ int main(int argc, char *argv[])
 				weightMode = InversionAlgorithm::DistanceWeighted;
 			else if(weightArg == "uniform")
 				weightMode = InversionAlgorithm::UniformWeighted;
+			else throw std::runtime_error("Unknown weighting mode specified");
 		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
@@ -334,6 +347,7 @@ int main(int argc, char *argv[])
 		cleanAlgorithm.SetSubtractionGain(gain);
 		cleanAlgorithm.SetStopGain(mGain);
 		cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
+		cleanAlgorithm.SetStopOnNegativeComponents(stopOnNegative);
 		cleanAlgorithm.SetResizePSF(smallPSF);
 			
 		std::unique_ptr<AreaSet> cleanAreas;
