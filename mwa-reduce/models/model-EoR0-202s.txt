@@ -1,0 +1,3031 @@
+skymodel fileformat 1.0
+source {
+  name ""
+  component {
+    type point
+    position 00h25m46.0s -26d02m04s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 20.4564 0 0 20.4564
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 22.2106 0 0 22.2106
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h03m02.3s -34d45m19s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 27.4998 0 0 27.4998
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 19.7488 0 0 19.7488
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h24m27.2s -29d28m27s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 18.9037 0 0 18.9037
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 16.3001 0 0 16.3001
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h09m12.8s -24d56m54s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 11.8674 0 0 11.8674
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 9.6423 0 0 9.6423
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h23m06.1s -25d02m17s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 12.8016 0 0 12.8016
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 9.78418 0 0 9.78418
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h03m53.0s -30d59m47s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 5.85551 0 0 5.85551
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 5.08231 0 0 5.08231
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h23m14.8s -34d43m57s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 10.6564 0 0 10.6564
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 8.31209 0 0 8.31209
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h18m17.1s -35d06m01s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 11.1936 0 0 11.1936
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 10.4458 0 0 10.4458
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h12m16.0s -33d21m35s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 7.26897 0 0 7.26897
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 6.51666 0 0 6.51666
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h25m28.8s -33d03m12s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 9.61723 0 0 9.61723
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 7.79498 0 0 7.79498
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h15m07.1s -30d40m57s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.2837 0 0 3.2837
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.20397 0 0 3.20397
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h03m09.7s -35d56m11s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 8.01565 0 0 8.01565
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 5.79553 0 0 5.79553
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h01m40.8s -30d57m34s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.75602 0 0 3.75602
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.92617 0 0 2.92617
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h02m42.6s -30d28m13s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.67233 0 0 3.67233
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.2593 0 0 3.2593
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h06m09.8s -23d11m26s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.9252 0 0 2.9252
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.25538 0 0 3.25538
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h08m34.3s -23d17m10s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.34582 0 0 3.34582
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.91799 0 0 2.91799
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h26m19.8s -30d57m58s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 5.69672 0 0 5.69672
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 5.35629 0 0 5.35629
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h00m39.6s -34d23m46s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 5.29887 0 0 5.29887
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.8073 0 0 2.8073
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h03m46.1s -23d29m40s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.69729 0 0 3.69729
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.43055 0 0 3.43055
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h03m21.1s -31d49m18s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.26533 0 0 2.26533
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.45744 0 0 2.45744
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h14m16.2s -24d02m33s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 4.46886 0 0 4.46886
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.63314 0 0 3.63314
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h20m08.0s -33d09m54s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 4.95822 0 0 4.95822
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 4.05304 0 0 4.05304
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h04m08.4s -30d00m43s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.51736 0 0 2.51736
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.52618 0 0 2.52618
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h19m11.7s -28d48m29s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.10502 0 0 3.10502
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.88749 0 0 2.88749
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h16m10.2s -31d23m14s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.66777 0 0 3.66777
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.64681 0 0 2.64681
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h22m09.6s -34d54m44s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.76939 0 0 3.76939
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.44321 0 0 3.44321
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h17m14.8s -30d54m23s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.75135 0 0 2.75135
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.01621 0 0 2.01621
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h25m31.9s -33d45m04s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 5.30387 0 0 5.30387
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.74174 0 0 3.74174
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h36m34.7s -30d58m04s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 4.15884 0 0 4.15884
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.06418 0 0 3.06418
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h23m00.1s -32d40m47s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 4.71141 0 0 4.71141
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.64346 0 0 3.64346
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h09m22.5s -31d46m19s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 4.06626 0 0 4.06626
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.84866 0 0 2.84866
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h17m24.7s -31d59m40s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.13008 0 0 2.13008
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.8045 0 0 1.8045
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m00.1s -23d06m56s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.77552 0 0 3.77552
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.88898 0 0 2.88898
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h15m49.6s -24d07m39s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.52775 0 0 2.52775
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.5368 0 0 2.5368
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h09m54.4s -28d29m18s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.23744 0 0 2.23744
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.04455 0 0 2.04455
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h00m43.2s -27d22m59s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.21647 0 0 1.21647
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.43632 0 0 1.43632
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h31m27.6s -32d59m29s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.57427 0 0 2.57427
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.06516 0 0 3.06516
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h32m43.7s -29d30m51s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.28115 0 0 3.28115
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.76635 0 0 2.76635
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h12m20.7s -28d08m21s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 6.21038 0 0 6.21038
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.89444 0 0 3.89444
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h11m50.9s -32d14m54s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.28862 0 0 2.28862
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.05162 0 0 2.05162
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h14m01.0s -23d38m31s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.71911 0 0 2.71911
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.04041 0 0 2.04041
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h31m46.7s -26d52m23s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.88631 0 0 2.88631
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.47445 0 0 2.47445
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h05m56.6s -27d58m59s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.86918 0 0 0.86918
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.2363 0 0 1.2363
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h16m24.4s -30d08m40s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.8182 0 0 1.8182
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.00968 0 0 2.00968
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h11m11.5s -31d50m36s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.33295 0 0 3.33295
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.79127 0 0 2.79127
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h24m26.9s -34d33m31s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.9388 0 0 3.9388
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.02915 0 0 3.02915
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h27m27.2s -27d31m16s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.85136 0 0 3.85136
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 3.01414 0 0 3.01414
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h21m55.1s -26d19m12s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.88387 0 0 2.88387
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.99953 0 0 1.99953
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h28m26.5s -29d34m35s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.73709 0 0 1.73709
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.01951 0 0 2.01951
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h20m05.3s -32d06m55s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.16801 0 0 2.16801
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.59925 0 0 1.59925
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h07m03.2s -29d55m27s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.11123 0 0 1.11123
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.26515 0 0 1.26515
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m09.4s -34d31m15s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.65785 0 0 2.65785
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.6138 0 0 1.6138
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h04m35.8s -24d12m32s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.05858 0 0 1.05858
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.41693 0 0 1.41693
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h11m10.8s -31d44m21s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.41316 0 0 2.41316
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.747 0 0 2.747
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h17m46.0s -26d49m03s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.687423 0 0 0.687423
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.65098 0 0 1.65098
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h20m49.6s -33d00m51s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.46775 0 0 3.46775
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.56717 0 0 2.56717
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h27m17.0s -33d46m42s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.59787 0 0 2.59787
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.22979 0 0 2.22979
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h10m16.9s -29d20m34s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.71654 0 0 1.71654
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.54447 0 0 1.54447
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h10m34.8s -32d24m54s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.08094 0 0 3.08094
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.22065 0 0 2.22065
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h16m06.2s -31d39m07s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.86135 0 0 1.86135
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.2954 0 0 1.2954
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h09m20.9s -28d21m46s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.09275 0 0 1.09275
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.01478 0 0 1.01478
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h17m38.7s -30d49m52s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.17958 0 0 2.17958
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.73132 0 0 1.73132
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h13m37.0s -32d24m51s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.40736 0 0 1.40736
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.30684 0 0 1.30684
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h27m14.0s -31d37m13s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.62388 0 0 3.62388
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.85922 0 0 2.85922
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h13m11.9s -30d16m44s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.20464 0 0 1.20464
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.27402 0 0 1.27402
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h02m16.3s -25d39m02s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.02793 0 0 1.02793
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.4577 0 0 1.4577
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h00m16.0s -33d03m56s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.26831 0 0 2.26831
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.4657 0 0 1.4657
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h23m12.9s -27d03m07s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.43033 0 0 2.43033
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.82082 0 0 1.82082
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h05m21.3s -23d01m54s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.30747 0 0 2.30747
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.86569 0 0 1.86569
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h22m35.3s -26d15m53s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.77643 0 0 0.77643
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.2396 0 0 1.2396
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h24m31.9s -33d05m46s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.11254 0 0 3.11254
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.64876 0 0 1.64876
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h15m28.6s -30d35m59s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.973252 0 0 0.973252
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.05191 0 0 1.05191
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h15m03.0s -33d01m47s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.29444 0 0 1.29444
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.45957 0 0 1.45957
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h14m31.8s -36d26m50s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.44792 0 0 1.44792
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.32006 0 0 1.32006
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h19m50.7s -31d20m26s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.4152 0 0 1.4152
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.16342 0 0 1.16342
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m15.1s -22d12m41s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.09892 0 0 2.09892
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.39493 0 0 1.39493
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h08m07.1s -27d58m33s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.194769 0 0 0.194769
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.656003 0 0 0.656003
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h31m50.5s -31d14m39s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.772534 0 0 0.772534
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.02925 0 0 1.02925
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h16m44.7s -29d43m32s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.17809 0 0 1.17809
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.51699 0 0 1.51699
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h10m02.2s -23d16m46s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.86107 0 0 1.86107
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.48135 0 0 1.48135
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h15m22.3s -33d33m24s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.56141 0 0 1.56141
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.01843 0 0 1.01843
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h21m32.4s -33d34m37s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.52472 0 0 1.52472
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.54689 0 0 1.54689
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h13m42.4s -25d37m18s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.84298 0 0 1.84298
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.66358 0 0 1.66358
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h09m32.4s -32d16m32s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.67135 0 0 1.67135
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.38415 0 0 1.38415
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h23m42.3s -24d39m40s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.957767 0 0 0.957767
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.48541 0 0 1.48541
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h05m50.9s -35d22m06s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.04811 0 0 2.04811
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.943492 0 0 0.943492
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h22m33.6s -35d55m20s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.83292 0 0 1.83292
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.81967 0 0 1.81967
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h15m11.3s -27d41m16s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.07653 0 0 1.07653
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.08221 0 0 1.08221
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h13m37.6s -30d09m22s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.761205 0 0 0.761205
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.601323 0 0 0.601323
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h11m57.9s -31d24m25s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.48392 0 0 1.48392
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.55486 0 0 1.55486
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h19m14.9s -24d39m38s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.87331 0 0 2.87331
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.53181 0 0 1.53181
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h03m37.1s -32d50m17s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.88617 0 0 1.88617
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.1091 0 0 1.1091
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h10m45.3s -25d12m21s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.44672 0 0 1.44672
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.10846 0 0 1.10846
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h19m02.7s -28d35m06s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.82098 0 0 1.82098
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.63857 0 0 1.63857
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h15m04.4s -26d50m21s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.585702 0 0 0.585702
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.41129 0 0 1.41129
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h19m43.8s -36d01m46s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.18273 0 0 1.18273
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.24362 0 0 1.24362
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h11m07.6s -31d17m29s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.68676 0 0 1.68676
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.4702 0 0 1.4702
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h22m17.8s -33d39m57s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.46764 0 0 1.46764
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.41227 0 0 1.41227
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h18m41.6s -24d00m51s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.75873 0 0 1.75873
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.886446 0 0 0.886446
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h29m28.4s -30d47m49s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.80714 0 0 1.80714
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.76746 0 0 1.76746
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h15m52.2s -28d51m35s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.422225 0 0 0.422225
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.619287 0 0 0.619287
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h25m13.6s -32d50m22s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.44756 0 0 2.44756
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.27197 0 0 1.27197
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h14m34.0s -24d28m58s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.90549 0 0 1.90549
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.36936 0 0 1.36936
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h35m56.6s -30d23m05s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.77876 0 0 2.77876
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.73267 0 0 1.73267
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h24m24.1s -28d00m01s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.56682 0 0 1.56682
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.987661 0 0 0.987661
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h02m15.9s -33d31m16s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.99485 0 0 1.99485
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.928432 0 0 0.928432
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h22m44.1s -32d31m48s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.44485 0 0 2.44485
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.99894 0 0 1.99894
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h24m08.0s -25d55m33s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 5.93762 0 0 5.93762
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.78075 0 0 2.78075
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h33m57.2s -29d10m55s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.6301 0 0 1.6301
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.11662 0 0 1.11662
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h20m56.5s -24d51m09s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.101 0 0 3.101
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.03461 0 0 2.03461
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h11m35.9s -23d59m15s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.0641 0 0 2.0641
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.34647 0 0 1.34647
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m18.2s -28d40m32s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0900098 0 0 0.0900098
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.255796 0 0 0.255796
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h03m47.3s -25d20m36s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.2643 0 0 1.2643
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.04424 0 0 1.04424
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h17m36.3s -35d13m06s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.991302 0 0 0.991302
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.736107 0 0 0.736107
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h28m04.3s -34d24m12s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.28674 0 0 1.28674
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.07862 0 0 1.07862
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h17m16.7s -29d10m37s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.904231 0 0 0.904231
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.30901 0 0 1.30901
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h27m19.5s -27d44m22s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.78996 0 0 0.78996
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.3663 0 0 1.3663
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h23m55.2s -32d58m00s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.68819 0 0 2.68819
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 2.17979 0 0 2.17979
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h25m32.7s -25d00m02s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.43156 0 0 3.43156
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.56188 0 0 1.56188
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h04m35.5s -33d57m59s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.50644 0 0 2.50644
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.939787 0 0 0.939787
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h07m05.7s -25d33m04s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.658865 0 0 0.658865
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.21933 0 0 1.21933
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h24m56.8s -31d16m16s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.02707 0 0 2.02707
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.26506 0 0 1.26506
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h12m50.6s -23d27m24s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.93328 0 0 1.93328
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.47681 0 0 1.47681
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h06m32.6s -23d07m58s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.78195 0 0 1.78195
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.56102 0 0 1.56102
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h10m52.0s -32d54m08s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.11339 0 0 2.11339
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.927073 0 0 0.927073
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h35m32.6s -28d25m03s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.70038 0 0 1.70038
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.67838 0 0 1.67838
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h05m36.3s -23d59m21s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.122371 0 0 0.122371
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.433256 0 0 0.433256
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h19m43.8s -33d35m09s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.81853 0 0 1.81853
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.1733 0 0 1.1733
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h11m31.3s -26d10m22s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.111956 0 0 0.111956
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.39712 0 0 0.39712
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h19m42.4s -24d52m23s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.02033 0 0 2.02033
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.44759 0 0 1.44759
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h00m47.6s -36d16m06s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.84268 0 0 1.84268
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.677997 0 0 0.677997
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h32m56.5s -33d44m57s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.56664 0 0 1.56664
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.99818 0 0 1.99818
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h23m44.5s -25d56m19s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.258324 0 0 0.258324
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.569906 0 0 0.569906
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h06m41.7s -27d13m41s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0493358 0 0 0.0493358
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.297421 0 0 0.297421
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h33m54.0s -28d20m26s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.71404 0 0 1.71404
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.54409 0 0 1.54409
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h08m26.2s -30d07m38s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.976499 0 0 0.976499
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.06224 0 0 1.06224
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h15m22.1s -31d59m38s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.992168 0 0 0.992168
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.592484 0 0 0.592484
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h31m43.5s -26d25m27s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.42973 0 0 2.42973
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.92742 0 0 1.92742
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h03m58.4s -26d37m34s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0634529 0 0 0.0634529
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.343694 0 0 0.343694
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h09m20.1s -31d22m47s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.63076 0 0 1.63076
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.947958 0 0 0.947958
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h03m31.4s -32d22m26s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.41161 0 0 1.41161
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.899146 0 0 0.899146
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h29m59.3s -34d11m07s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.39165 0 0 1.39165
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.09509 0 0 1.09509
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h02m07.4s -25d14m29s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0745995 0 0 0.0745995
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.274652 0 0 0.274652
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h14m54.4s -30d31m26s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.20138 0 0 1.20138
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.61326 0 0 1.61326
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h10m24.8s -34d31m28s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.169 0 0 1.169
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.765201 0 0 0.765201
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h28m07.0s -32d38m37s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.940978 0 0 0.940978
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.35488 0 0 1.35488
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h16m20.0s -31d02m01s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.19824 0 0 1.19824
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.26615 0 0 1.26615
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h03m13.4s -29d08m01s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0212636 0 0 0.0212636
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.224353 0 0 0.224353
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h12m32.9s -34d45m15s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.39367 0 0 1.39367
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.811861 0 0 0.811861
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h01m50.3s -31d25m24s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.874721 0 0 0.874721
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.790129 0 0 0.790129
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h21m45.9s -25d53m18s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.34966 0 0 3.34966
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.69486 0 0 1.69486
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h26m18.1s -35d35m01s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.3669 0 0 1.3669
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.20133 0 0 1.20133
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h22m59.2s -29d41m27s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.27038 0 0 2.27038
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.81973 0 0 1.81973
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h07m37.1s -33d16m36s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.43367 0 0 1.43367
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.878511 0 0 0.878511
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h09m10.2s -28d49m40s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.587337 0 0 0.587337
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.671355 0 0 0.671355
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h10m42.2s -29d51m10s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.30523 0 0 1.30523
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.14775 0 0 1.14775
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h10m12.1s -29d59m58s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.00077 0 0 1.00077
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.05148 0 0 1.05148
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h21m44.2s -33d17m10s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.91114 0 0 2.91114
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.44978 0 0 1.44978
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h00m49.8s -35d54m52s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.22034 0 0 2.22034
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.11129 0 0 1.11129
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h21m23.9s -26d13m17s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.200895 0 0 0.200895
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.493659 0 0 0.493659
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h05m35.0s -25d06m23s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.122868 0 0 0.122868
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.533999 0 0 0.533999
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h35m46.7s -32d01m59s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.7448 0 0 1.7448
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.787162 0 0 0.787162
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h21m29.1s -34d52m43s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.953512 0 0 0.953512
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.599153 0 0 0.599153
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h32m36.9s -32d53m10s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.18623 0 0 1.18623
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.85187 0 0 1.85187
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h14m09.2s -34d33m35s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.728691 0 0 0.728691
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.619233 0 0 0.619233
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h00m25.7s -34d52m11s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.55476 0 0 2.55476
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.01772 0 0 1.01772
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m03.8s -25d03m43s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.951353 0 0 0.951353
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.96418 0 0 0.96418
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h00m57.2s -25d05m23s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.156597 0 0 0.156597
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.377659 0 0 0.377659
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h23m56.8s -32d30m04s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.48878 0 0 2.48878
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.65432 0 0 1.65432
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h19m01.1s -23d21m02s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.3024 0 0 1.3024
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.931218 0 0 0.931218
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h25m48.1s -27d17m38s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.87108 0 0 1.87108
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.37531 0 0 1.37531
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h12m10.8s -27d38m37s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.777709 0 0 0.777709
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.805968 0 0 0.805968
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h03m37.4s -31d04m08s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.13808 0 0 2.13808
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.33412 0 0 1.33412
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h14m26.9s -22d47m33s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.135546 0 0 0.135546
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.612929 0 0 0.612929
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h06m45.1s -37d13m02s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.93922 0 0 1.93922
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.44069 0 0 1.44069
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h02m54.4s -22d21m04s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.537234 0 0 0.537234
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.256077 0 0 0.256077
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h33m35.1s -30d10m57s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.8779 0 0 1.8779
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.27789 0 0 1.27789
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h15m22.4s -33d20m53s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.05019 0 0 1.05019
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.08481 0 0 1.08481
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m09.6s -33d01m46s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.0713 0 0 1.0713
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.433874 0 0 0.433874
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h00m13.9s -34d10m18s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.95306 0 0 2.95306
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.709704 0 0 0.709704
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m24.7s -31d07m54s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.77868 0 0 1.77868
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.33494 0 0 1.33494
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h01m00.6s -23d16m49s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.667797 0 0 0.667797
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.763517 0 0 0.763517
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h02m07.8s -34d17m56s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 3.52026 0 0 3.52026
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.19127 0 0 1.19127
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h28m59.3s -30d40m59s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.26911 0 0 1.26911
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.374 0 0 1.374
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m56.6s -37d13m48s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.44773 0 0 0.44773
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.554526 0 0 0.554526
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h28m23.0s -28d01m19s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.54904 0 0 1.54904
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.928427 0 0 0.928427
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h02m04.6s -30d20m06s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.28004 0 0 1.28004
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.03975 0 0 1.03975
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h08m12.2s -36d52m55s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.52073 0 0 1.52073
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.806794 0 0 0.806794
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h07m15.4s -31d39m36s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0744518 0 0 0.0744518
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.499771 0 0 0.499771
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h17m35.8s -36d46m49s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.401722 0 0 0.401722
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.390678 0 0 0.390678
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h04m52.8s -34d56m12s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 2.05568 0 0 2.05568
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.484036 0 0 0.484036
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h09m56.7s -26d55m07s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0415679 0 0 0.0415679
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.327947 0 0 0.327947
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h02m59.8s -31d18m07s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.46478 0 0 1.46478
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.05962 0 0 1.05962
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h09m57.8s -26d19m02s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.127436 0 0 0.127436
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.572279 0 0 0.572279
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h13m39.4s -30d21m51s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.469718 0 0 0.469718
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.139823 0 0 0.139823
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h07m39.9s -36d42m23s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.32663 0 0 1.32663
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 1.09512 0 0 1.09512
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h14m35.3s -33d28m25s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.04534 0 0 1.04534
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.982313 0 0 0.982313
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h06m14.9s -30d37m51s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.0687911 0 0 0.0687911
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.491303 0 0 0.491303
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h08m15.1s -25d20m46s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.481045 0 0 0.481045
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.424905 0 0 0.424905
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position 00h00m25.3s -33d19m47s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.60967 0 0 1.60967
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.581099 0 0 0.581099
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h06m33.0s -33d19m12s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 1.14814 0 0 1.14814
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.813562 0 0 0.813562
+    }
+  }
+}
+source {
+  name ""
+  component {
+    type point
+    position -00h28m43.5s -25d48m36s
+    measurement {
+      frequency 138.91 MHz
+      fluxdensity Jy 0.68828 0 0 0.68828
+    }
+    measurement {
+      frequency 200.31 MHz
+      fluxdensity Jy 0.985949 0 0 0.985949
+    }
+  }
+}
