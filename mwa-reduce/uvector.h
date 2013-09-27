@@ -10,7 +10,6 @@
 #warning "uvector does not work on this platform: using slower std::vector instead"
 
 #include <vector>
-#include <memory>
 
 namespace ao {
 	using std::vector;
