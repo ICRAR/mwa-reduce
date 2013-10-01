@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
-	size_t nWLayers = 64, nIter = 500, intervalStart = 0, intervalStop = 0;
+	size_t nWLayers = 64, nIter = 0, intervalStart = 0, intervalStop = 0;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
