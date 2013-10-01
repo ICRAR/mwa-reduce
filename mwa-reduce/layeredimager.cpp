@@ -564,7 +564,7 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 	std::vector<double>::const_iterator sqrtLMIter = _sqrtLMLookupTable.begin();
 	for(size_t y=0;y!=_height;++y)
 	{
-		size_t ySrc = (_height - 1 - y) + _height / 2;
+		size_t ySrc = (_height - y) + _height / 2;
 		if(ySrc >= _height) ySrc -= _height;
 		
 		for(size_t x=0;x!=_width;++x)
