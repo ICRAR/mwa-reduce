@@ -93,7 +93,6 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	fits_write_key(fptr, TSTRING, "SPECSYS", (void*) "TOPOCENT", "", &status); checkStatus(status);
 	
   int year, month, day, hour, min, sec, deciSec;
-	std::cout << "Date obs= " << dateObs << '\n';
 	julianDateToYMD(dateObs + 2400000.5, year, month, day);
 	mjdToHMS(dateObs, hour, min, sec, deciSec);
 	char dateStr[40];
