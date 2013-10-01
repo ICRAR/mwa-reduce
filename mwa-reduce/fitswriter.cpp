@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
+#include <iostream>
 
 void FitsWriter::checkStatus(int status) 
 {
@@ -91,10 +92,12 @@ void FitsWriter::Write(const NumType *image, size_t width, size_t height, double
 	// RESTFRQ ?
 	fits_write_key(fptr, TSTRING, "SPECSYS", (void*) "TOPOCENT", "", &status); checkStatus(status);
 	
-  int year, month, day;
+  int year, month, day, hour, min, sec, deciSec;
+	std::cout << "Date obs= " << dateObs << '\n';
 	julianDateToYMD(dateObs + 2400000.5, year, month, day);
+	mjdToHMS(dateObs, hour, min, sec, deciSec);
 	char dateStr[40];
-  std::sprintf(dateStr, "%d-%02d-%02dT00:00:00.0", year, month, day);
+  std::sprintf(dateStr, "%d-%02d-%02dT%02d:%02d:%02d.%01d", year, month, day, hour, min, sec, deciSec);
 	fits_write_key(fptr, TSTRING, "DATE-OBS", (void*) dateStr, "", &status); checkStatus(status);
 	
 	long firstpixel[4];
@@ -142,4 +145,12 @@ void FitsWriter::julianDateToYMD(double jd, int &year, int &month, int &day)
   while (e-1 > 12) e-=12;
   month = e-1;
   year = c-4715-((e-1)>2?1:0);
+}
+
+void FitsWriter::mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec)
+{
+	hour = int(fmod(mjd * 24.0, 24.0));
+	minutes = int(fmod(mjd*60.0 * 24.0, 60.0));
+	seconds = int(fmod(mjd*3600.0 * 24.0, 60.0));
+	deciSec = int(fmod(mjd*36000.0 * 24.0, 10.0));
 }

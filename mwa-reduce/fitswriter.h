@@ -27,6 +27,7 @@ class FitsWriter
 		
 		void checkStatus(int status);
 		void julianDateToYMD(double jd, int &year, int &month, int &day);
+		void mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec);
 };
 
 #endif
