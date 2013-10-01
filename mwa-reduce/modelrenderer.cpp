@@ -17,7 +17,10 @@ template void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_
 template<typename NumType>
 void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex)
 {
-	int boundingBoxSize = ceil(beamSize * 5.0 / (0.5 * (_pixelScaleL + _pixelScaleM)));
+	// Using the FWHM formula for a Gaussian:
+	long double sigma = beamSize / (2.0L * sqrtl(2.0L * logl(2.0L)));
+	
+	int boundingBoxSize = ceil(sigma * 20.0 / std::min(_pixelScaleL, _pixelScaleM));
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
 		for(ModelSource::const_iterator comp=src->begin(); comp!=src->end(); ++comp)
@@ -59,8 +62,8 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 					long double l, m;
 					ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, l, m);
 					long double dist = sqrt((l-sourceL)*(l-sourceL) + (m-sourceM)*(m-sourceM));
-					long double g = gaus(dist, beamSize);
-					(*imageDataPtr) += NumType(g * g * intFlux);
+					long double g = gaus(dist, sigma);
+					(*imageDataPtr) += NumType(g * intFlux);
 					++imageDataPtr;
 				}
 			}
