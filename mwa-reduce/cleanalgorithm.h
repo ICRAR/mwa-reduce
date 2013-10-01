@@ -14,9 +14,13 @@ class CleanAlgorithm
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents)
 		{
 			double peakMax = std::fabs(*image);
-			const double *imgIter = image, *endPtr = image + width * height;
+			const double* imgIter = image;
+			const double* const endPtr = image + width * height;
 			size_t peakIndex = 0;
 			size_t index = 0;
+			
+			//TODO: this first loop ignores allowNegativeComponents and might set peakMax to the maximum negative
+			// value, in which case the returned value is negative even though allowNegativeComponents=false.
 			while(!std::isfinite(peakMax) && imgIter!=endPtr)
 			{
 				peakMax = std::fabs(*imgIter);
@@ -45,7 +49,20 @@ class CleanAlgorithm
 
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, const class AreaSet &cleanAreas);
 
+		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
+		{
+			double peakLevel = FindPeak(image + (width * startY), width, endY-startY, x, y, allowNegativeComponents);
+			y += startY;
+			return peakLevel;
+		}
+		
+		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas);
+		
 		static void SubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor);
+		
+		static void PartialSubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor, size_t startY, size_t endY);
+		
+		static void PartialSubtractImage(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY);
 		
 		/**
 		 * Single threaded implementation -- just for reference.
@@ -97,17 +114,6 @@ class CleanAlgorithm
 			size_t psfWidth, psfHeight;
 		};
 		void cleanThreadFunc(lane<CleanTask>* taskLane, lane<CleanResult>* resultLane, CleanThreadData cleanData);
-		
-		static void partialSubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor, size_t startY, size_t endY);
-		static void partialSubtractImage(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY);
-		
-		static double partialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
-		{
-			double peakLevel = FindPeak(image + (width * startY), width, endY-startY, x, y, allowNegativeComponents);
-			y += startY;
-			return peakLevel;
-		}
-		static double partialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas);
 		
 		double _threshold, _subtractionGain, _stopGain;
 		size_t _maxIter, _iterationNumber;

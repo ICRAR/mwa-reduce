@@ -23,7 +23,7 @@ CleanAlgorithm::CleanAlgorithm() :
 {
 }
 
-double CleanAlgorithm::partialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas)
+double CleanAlgorithm::PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas)
 {
 	double peakMax = std::numeric_limits<double>::min();
 	size_t index = 0;
@@ -95,7 +95,7 @@ void CleanAlgorithm::SubtractImage(double *image, const double *psf, size_t widt
 	}
 }
 
-void CleanAlgorithm::partialSubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor, size_t startY, size_t endY)
+void CleanAlgorithm::PartialSubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor, size_t startY, size_t endY)
 {
 	size_t startX, endX;
 	int offsetX = (int) x - width/2, offsetY = (int) y - height/2;
@@ -132,7 +132,7 @@ void CleanAlgorithm::partialSubtractImage(double *image, const double *psf, size
 	}
 }
 
-void CleanAlgorithm::partialSubtractImage(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY)
+void CleanAlgorithm::PartialSubtractImage(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY)
 {
 	size_t startX, endX;
 	int offsetX = (int) x - psfWidth/2, offsetY = (int) y - psfHeight/2;
@@ -288,13 +288,13 @@ void CleanAlgorithm::cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult
 	CleanTask task;
 	while(taskLane->read(task))
 	{
-		partialSubtractImage(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, cleanData.psfImage, cleanData.psfWidth, cleanData.psfHeight, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakLevel, cleanData.startY, cleanData.endY);
+		PartialSubtractImage(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, cleanData.psfImage, cleanData.psfWidth, cleanData.psfHeight, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakLevel, cleanData.startY, cleanData.endY);
 		
 		CleanResult result;
 		if(_cleanAreas == 0)
-			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY);
+			result.peakLevel = PartialFindPeak(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY);
 		else
-			result.peakLevel = partialFindPeak(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY, *_cleanAreas);
+			result.peakLevel = PartialFindPeak(cleanData.dataImage, cleanData.imgWidth, cleanData.imgHeight, result.nextPeakX, result.nextPeakY, _allowNegativeComponents, cleanData.startY, cleanData.endY, *_cleanAreas);
 		
 		resultLane->write(result);
 	}
