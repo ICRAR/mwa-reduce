@@ -64,6 +64,8 @@ class CleanAlgorithm
 		
 		void SetAllowNegativeComponents(bool allowNegativeComponents) { _allowNegativeComponents = allowNegativeComponents; }
 		
+		void SetStopOnNegativeComponents(bool stopOnNegative) { _stopOnNegativeComponent = stopOnNegative; }
+		
 		void SetResizePSF(bool resizePSF) { _resizePSF = resizePSF; }
 		
 		static void ResizeImage(double* dest, size_t newWidth, size_t newHeight, const double* source, size_t width, size_t height);
@@ -109,7 +111,7 @@ class CleanAlgorithm
 		
 		double _threshold, _subtractionGain, _stopGain;
 		size_t _maxIter, _iterationNumber;
-		bool _allowNegativeComponents, _resizePSF;
+		bool _allowNegativeComponents, _stopOnNegativeComponent, _resizePSF;
 		const class AreaSet *_cleanAreas;
 };
 

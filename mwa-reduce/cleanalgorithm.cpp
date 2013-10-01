@@ -17,7 +17,8 @@ CleanAlgorithm::CleanAlgorithm() :
 	_stopGain(1.0),
 	_maxIter(500),
 	_iterationNumber(0),
-	_allowNegativeComponents(false),
+	_allowNegativeComponents(true),
+	_stopOnNegativeComponent(false),
 	_cleanAreas(0)
 {
 }
@@ -203,6 +204,8 @@ void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage
 		psfWidth = width;
 		psfHeight = height;
 	}
+	if(_stopOnNegativeComponent)
+		_allowNegativeComponents = true;
 	
 	size_t componentX, componentY;
 	double peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
@@ -236,9 +239,12 @@ void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage
 		cleanThreadData.endY = height*(i+1)/cpuCount;
 		threadGroup.add_thread(new boost::thread(&CleanAlgorithm::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
-	while(fabs(peak) > firstThreshold && _iterationNumber < _maxIter)
+	while(fabs(peak) > firstThreshold && _iterationNumber < _maxIter && (peak >= 0.0 || !_stopOnNegativeComponent))
 	{
-		if(_iterationNumber % 10 == 0)
+		if(
+			(_iterationNumber <= 100 && _iterationNumber % 10 == 0) ||
+			(_iterationNumber <= 1000 && _iterationNumber % 100 == 0) ||
+			_iterationNumber % 1000 == 0)
 			std::cout << "Iteration " << _iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
 		
 		CleanTask task;
