@@ -244,9 +244,6 @@ double LayeredImager::bessel0(double x, double precision)
 
 void LayeredImager::AddData(const std::complex<float>* data, double uInM, double vInM, double wInM)
 {
- 	const size_t
-		layerOffset = layerRangeStart(_curLayerRangeIndex),
-		layerRangeEnd = layerRangeStart(_curLayerRangeIndex+1);
 	for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 	{
 		double
@@ -254,84 +251,91 @@ void LayeredImager::AddData(const std::complex<float>* data, double uInM, double
 			u = uInM / wavelength,
 			v = vInM / wavelength,
 			w = wInM / wavelength;
-		std::complex<float> sample = data[ch];
-		if(w < 0.0)
+		AddDataSample(data[ch], u, v, w);
+	}
+}
+
+void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, double vInLambda, double wInLambda)
+{
+ 	const size_t
+		layerOffset = layerRangeStart(_curLayerRangeIndex),
+		layerRangeEnd = layerRangeStart(_curLayerRangeIndex+1);
+	if(wInLambda < 0.0)
+	{
+		uInLambda = -uInLambda;
+		vInLambda = -vInLambda;
+		wInLambda = -wInLambda;
+		sample = std::conj(sample);
+	}
+	size_t
+		wLayer = WToLayer(wInLambda);
+	if(wLayer >= layerOffset && wLayer < layerRangeEnd)
+	{
+		size_t layerIndex = wLayer - layerOffset;
+		std::vector<std::complex<double>> &uvData = _layeredUVData[layerIndex];
+		if(_gridMode == KaiserBessel)
 		{
-			u = -u;
-			v = -v;
-			w = -w;
-			sample = std::conj(sample);
-		}
-		size_t
-			wLayer = WToLayer(w);
-		if(wLayer >= layerOffset && wLayer < layerRangeEnd)
-		{
-			size_t layerIndex = wLayer - layerOffset;
-			std::vector<std::complex<double>> &uvData = _layeredUVData[layerIndex];
-			if(_gridMode == KaiserBessel)
+			double
+				xExact = uInLambda * _pixelSizeX * _width,
+				yExact = vInLambda * _pixelSizeY * _height;
+			int
+				x = round(xExact),
+				y = round(yExact),
+				xKernel = round((xExact - double(x)) * _overSamplingFactor),
+				yKernel = round((yExact - double(y)) * _overSamplingFactor);
+			xKernel = (xKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
+			yKernel = (yKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
+			std::vector<double> &kernel = _griddingKernels[xKernel + yKernel*_overSamplingFactor];
+			int mid = _kernelSize / 2;
+			if(x < 0) x += _width;
+			if(y < 0) y += _height;
+			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
 			{
-				double
-					xExact = u * _pixelSizeX * _width,
-					yExact = v * _pixelSizeY * _height;
-				int
-					x = round(xExact),
-					y = round(yExact),
-					xKernel = round((xExact - double(x)) * _overSamplingFactor),
-					yKernel = round((yExact - double(y)) * _overSamplingFactor);
-				xKernel = (xKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
-				yKernel = (yKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
-				std::vector<double> &kernel = _griddingKernels[xKernel + yKernel*_overSamplingFactor];
-				int mid = _kernelSize / 2;
-				if(x < 0) x += _width;
-				if(y < 0) y += _height;
-				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+				// Are we on the edge?
+				if(x < mid || x+mid+1 >= int(_width) || y < mid || y+mid+1 >= int(_height))
 				{
-					// Are we on the edge?
-					if(x < mid || x+mid+1 >= int(_width) || y < mid || y+mid+1 >= int(_height))
+					std::vector<double>::iterator kernelIter = kernel.begin();
+					for(size_t j=0; j!=_kernelSize; ++j)
 					{
-						std::vector<double>::iterator kernelIter = kernel.begin();
-						for(size_t j=0; j!=_kernelSize; ++j)
+						size_t cy = ((y+j+_height-mid) % _height) * _width;
+						for(size_t i=0; i!=_kernelSize; ++i)
 						{
-							size_t cy = ((y+j+_height-mid) % _height) * _width;
-							for(size_t i=0; i!=_kernelSize; ++i)
-							{
-								size_t cx = (x+i+_width-mid) % _width;
-								std::complex<double> *uvRowPtr = &uvData[cx + cy];
-								*uvRowPtr += std::complex<double>(sample.real() * (*kernelIter), sample.imag() * (*kernelIter));
-								++kernelIter;
-							}
+							size_t cx = (x+i+_width-mid) % _width;
+							std::complex<double> *uvRowPtr = &uvData[cx + cy];
+							*uvRowPtr += std::complex<double>(sample.real() * (*kernelIter), sample.imag() * (*kernelIter));
+							++kernelIter;
 						}
 					}
-					else {
-						x -= mid;
-						y -= mid;
-						std::vector<double>::iterator kernelIter = kernel.begin();
-						for(size_t j=0; j!=_kernelSize; ++j)
+				}
+				else {
+					x -= mid;
+					y -= mid;
+					std::vector<double>::iterator kernelIter = kernel.begin();
+					for(size_t j=0; j!=_kernelSize; ++j)
+					{
+						std::complex<double> *uvRowPtr = &uvData[x + y*_width];
+						for(size_t i=0; i!=_kernelSize; ++i)
 						{
-							std::complex<double> *uvRowPtr = &uvData[x + y*_width];
-							for(size_t i=0; i!=_kernelSize; ++i)
-							{
-								*uvRowPtr += std::complex<double>(sample.real() * (*kernelIter), sample.imag() * (*kernelIter));
-								++uvRowPtr;
-								++kernelIter;
-							}
-							++y;
+							*uvRowPtr += std::complex<double>(sample.real() * (*kernelIter), sample.imag() * (*kernelIter));
+							++uvRowPtr;
+							++kernelIter;
 						}
+						++y;
 					}
 				}
 			}
-			else {
-				int
-					x = int(round(u * _pixelSizeX * _width)),
-					y = int(round(v * _pixelSizeY * _height));
-				if(x < 0) x += _width;
-				if(y < 0) y += _height;
-				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
-				{
-					uvData[x + y*_width] += sample;
-				} else {
-					//std::cout << "Sample fell off uv-plane (" << x << "," << y << ")\n";
-				}
+		}
+		else {
+			int
+				x = int(round(uInLambda * _pixelSizeX * _width)),
+				y = int(round(vInLambda * _pixelSizeY * _height));
+			if(x < 0) x += _width;
+			if(y < 0) y += _height;
+			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+			{
+				uvData[x + y*_width] += sample;
+			} else {
+				//std::cout << "Sample fell off uv-plane (" << x << "," << y << ")\n";
 			}
 		}
 	}

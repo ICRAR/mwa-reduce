@@ -19,9 +19,7 @@ namespace casa {
 class WSInversion : public InversionAlgorithm
 {
 	public:
-		WSInversion() : InversionAlgorithm(), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour)
-		{
-		}
+		WSInversion();
 	
 		virtual void Invert();
 		
@@ -47,6 +45,11 @@ class WSInversion : public InversionAlgorithm
 		{
 			double u, v, w;
 			std::complex<float> *data;
+		};
+		struct InversionWorkSample
+		{
+			double uInLambda, vInLambda, wInLambda;
+			std::complex<float> sample;
 		};
 		struct SamplingWorkItem
 		{
@@ -75,22 +78,29 @@ class WSInversion : public InversionAlgorithm
 		void gridMeasurementSet(MSData &msData);
 		void countSamplesPerLayer(MSData &msData);
 
-		void processWork(InversionWorkItem &work)
-		{
-			_imager->AddData(work.data, work.u, work.v, work.w);
-			delete[] work.data;
-		}
-
 		void sampleToMeasurementSet(MSData &msData);
 
-		void workThread()
+		void workThread(lane<InversionWorkItem>* workLane)
 		{
 			InversionWorkItem workItem;
-			while(_inversionWorkLane->read(workItem))
+			while(workLane->read(workItem))
 			{
-				processWork(workItem);
+				_imager->AddData(workItem.data, workItem.u, workItem.v, workItem.w);
+				delete[] workItem.data;
 			}
 		}
+		
+		void workThreadPerSample(lane<InversionWorkSample>* workLane)
+		{
+			InversionWorkSample sampleData;
+			while(workLane->read(sampleData))
+			{
+				_imager->AddDataSample(sampleData.sample, sampleData.uInLambda, sampleData.vInLambda, sampleData.wInLambda);
+			}
+		}
+		
+		void workThreadParallel(BandData* bandData);
+		
 		void visSampleThread();
 		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		void copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
@@ -105,7 +115,6 @@ class WSInversion : public InversionAlgorithm
 			}
 		}
 
-		
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<lane<InversionWorkItem>> _inversionWorkLane;
 		std::unique_ptr<lane<SamplingWorkItem>> _samplingWorkLane;
@@ -118,6 +127,7 @@ class WSInversion : public InversionAlgorithm
 		double _totalWeight;
 		double _startTime;
 		LayeredImager::GridModeEnum _gridMode;
+		size_t _cpuCount;
 };
 
 #endif

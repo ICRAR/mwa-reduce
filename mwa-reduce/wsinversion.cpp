@@ -23,6 +23,11 @@ WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
 WSInversion::MSData::~MSData()
 { }
 
+WSInversion::WSInversion() : InversionAlgorithm(), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour)
+{
+	_cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
+}
+		
 void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInversion::MSData& msData)
 {
 	std::cout << "Opening " << measurementSet << "... " << std::flush;
@@ -220,20 +225,6 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 								++weightIter;
 							}
 						}
-						/*
-						rowWeight = 1.0;
-						double uvwDistInM = sqrt(newItem.u*newItem.u + newItem.v*newItem.v + newItem.w*newItem.w);
-						float* weightIter = weights.cbegin();
-						for(size_t ch=0; ch!=bandData.ChannelCount(); ++ch)
-						{
-							double dist = uvwDistInM / bandData.ChannelWavelength(ch); // bandData.CentreWavelength();//
-							double weight = msData.uvwDistribution->WeightFromFit(dist);
-							for(size_t p=0; p!=msData.polarizationCount; ++p)
-							{
-								*weightIter *= weight;
-								++weightIter;
-							}
-						}*/
 					} break;
 					case NaturalWeighted:
 						rowWeight = 1.0;
@@ -270,6 +261,48 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	modelColumn.reset();
 	std::cout << "Rows that were required: " << rowsRead << '/' << msData.matchingRows << '\n';
 	msData.totalRowsProcessed += rowsRead;
+}
+
+void WSInversion::workThreadParallel(BandData* bandData)
+{
+	std::vector<lane<InversionWorkSample>> lanes(_cpuCount);
+	boost::thread_group group;
+	for(std::vector<lane<InversionWorkSample>>::iterator i=lanes.begin(); i!=lanes.end(); ++i)
+	{
+		i->resize(bandData->ChannelCount() * 16);
+		group.add_thread(new boost::thread(&WSInversion::workThreadPerSample, this, &*i));
+	}
+	
+	std::vector<InversionWorkSample> samples;
+	InversionWorkItem workItem;
+	while(_inversionWorkLane->read(workItem))
+	{
+		InversionWorkSample sampleData;
+		double firstWInLambda = workItem.w / bandData->ChannelWavelength(0);
+		size_t curCpu = _imager->WToLayer(firstWInLambda) % _cpuCount;
+		for(size_t ch=0; ch!=bandData->ChannelCount(); ++ch)
+		{
+			double wavelength = bandData->ChannelWavelength(ch);
+			sampleData.sample = workItem.data[ch];
+			sampleData.uInLambda = workItem.u / wavelength;
+			sampleData.vInLambda = workItem.v / wavelength;
+			sampleData.wInLambda = workItem.w / wavelength;
+			size_t cpu = _imager->WToLayer(sampleData.wInLambda) % _cpuCount;
+			if(cpu != curCpu)
+			{
+				lanes[curCpu].write(&samples[0], samples.size());
+				samples.clear();
+				curCpu = cpu;
+			}
+			samples.push_back(sampleData);
+		}
+		lanes[curCpu].write(&samples[0], samples.size());
+		samples.clear();
+		delete[] workItem.data;
+	}
+	for(std::vector<lane<InversionWorkSample>>::iterator i=lanes.begin(); i!=lanes.end(); ++i)
+		i->write_end();
+	group.join_all();
 }
 
 void WSInversion::sampleToMeasurementSet(MSData &msData)
@@ -438,8 +471,7 @@ void WSInversion::Invert()
 	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
 	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
 
-	long cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), cpuCount));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
 	_imager->SetGridMode(_gridMode);
 	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
 	
@@ -451,15 +483,23 @@ void WSInversion::Invert()
 	{
 		std::cout << "Starting gridding pass " << pass << ".\n";
 		_inversionWorkLane.reset(new lane<InversionWorkItem>(16));
-		boost::thread thread(&WSInversion::workThread, this);
 		
 		_imager->StartInversionPass(pass);
 		
 		for(size_t i=0; i!=MeasurementSetCount(); ++i)
-			gridMeasurementSet(msDataVector[i]);
+		{
+			MSData& msData = msDataVector[i];
+			
+			BandData bandData(msData.ms->spectralWindow());
+			
+			//boost::thread thread(&WSInversion::workThread, this, _inversionWorkLane.get());
+			boost::thread thread(&WSInversion::workThreadParallel, this, &bandData);
 		
-		_inversionWorkLane->write_end();
-		thread.join();
+			gridMeasurementSet(msData);
+			
+			_inversionWorkLane->write_end();
+			thread.join();
+		}
 		
 		std::cout << "Fourier transforming layers, w-term correction & summing in parallel...\n";
 		_imager->FinishInversionPass();
@@ -497,8 +537,7 @@ void WSInversion::InvertToVisibilities(const double *image)
 	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
 	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
 
-	long cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), cpuCount));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
 	_imager->SetGridMode(_gridMode);
 	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
 	

@@ -26,10 +26,11 @@ class LayeredImager
 			_bandData = bandData;
 		}
 		
-		size_t WToLayer(double w) const
+		size_t WToLayer(double wInLambda) const
 		{
-			return size_t(round((fabs(w) - _minW) * (_nWLayers-1) / (_maxW - _minW)));
+			return size_t(round((fabs(wInLambda) - _minW) * (_nWLayers-1) / (_maxW - _minW)));
 		}
+		
 		double LayerToW(size_t layer) const
 		{
 			return layer * (_maxW - _minW) / (_nWLayers-1) + _minW;
@@ -37,9 +38,9 @@ class LayeredImager
 		
 		size_t NWLayers() const { return _nWLayers; }
 		
-		bool IsInLayerRange(double w) const
+		bool IsInLayerRange(double wInLambda) const
 		{
-			size_t layer = WToLayer(w);
+			size_t layer = WToLayer(wInLambda);
 			return layer >= layerRangeStart(_curLayerRangeIndex) && layer < layerRangeStart(_curLayerRangeIndex+1);
 		}
 		
@@ -65,6 +66,8 @@ class LayeredImager
 		
 		// Inversion (uv to image) methods
 		void AddData(const std::complex<float>* data, double uInM, double vInM, double wInM);
+		
+		void AddDataSample(std::complex<float> sample, double uInLambda, double vInLambda, double wInLambda);
 		
 		void StartInversionPass(size_t passIndex);
 		

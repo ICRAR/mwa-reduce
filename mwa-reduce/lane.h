@@ -8,15 +8,23 @@
 #include <boost/thread/condition.hpp>
 
 template<typename T>
-class lane : public boost::noncopyable
+class lane
 {
 	public:
 		typedef T data_type;
 		
-		lane(size_t capacity)
-		:
-			_capacity(capacity),
+		lane() :
+			_buffer(0),
+			_capacity(0),
+			_write_position(0),
+			_free_write_space(0),
+			_status(status_normal)
+		{
+		}
+		
+		explicit lane(size_t capacity) :
 			_buffer(new T[capacity]),
+			_capacity(capacity),
 			_write_position(0),
 			_free_write_space(_capacity),
 			_status(status_normal)
@@ -55,7 +63,7 @@ class lane : public boost::noncopyable
 					elements += write_size;
 				
 					do {
-						_has_work_condition.wait(lock);
+						_has_changed_condition.wait(lock);
 					} while(_free_write_space == 0 && _status == status_normal);
 					
 					write_size = _free_write_space > n ? n : _free_write_space;
@@ -86,7 +94,7 @@ class lane : public boost::noncopyable
 				destinations += read_size;
 				
 				do {
-					_has_work_condition.wait(lock);
+					_has_changed_condition.wait(lock);
 				} while(free_read_space() == 0 && _status == status_normal);
 				
 				free_space = free_read_space();
@@ -101,7 +109,7 @@ class lane : public boost::noncopyable
 		{
 			boost::mutex::scoped_lock lock(_mutex);
 			_status = status_end;
-			_has_work_condition.notify_all();
+			_has_changed_condition.notify_all();
 		}
 		
 		size_t capacity() const
@@ -115,21 +123,43 @@ class lane : public boost::noncopyable
 			return _capacity - _free_write_space;
 		}
 		
-		bool empty() const { return size() == 0; }
-	private:
-		const size_t _capacity;
+		bool empty() const
+		{
+			boost::mutex::scoped_lock lock(_mutex);
+			return _capacity == _free_write_space;
+		}
 		
+		/**
+		 * Change the capacity of the lane. This will erase all data in the lane.
+		 */
+		void resize(size_t new_capacity)
+		{
+			T *new_buffer = new T[new_capacity];
+			delete[] _buffer;
+			_buffer = new_buffer;
+			_capacity = new_capacity;
+			_write_position = 0;
+			_free_write_space = new_capacity;
+			_status = status_normal;
+		}
+	private:
 		T *_buffer;
 		
-		mutable boost::mutex _mutex;
-		
-		boost::condition _has_work_condition;
+		size_t _capacity;
 		
 		size_t _write_position;
 		
 		size_t _free_write_space;
 		
 		enum { status_normal, status_end } _status;
+		
+		mutable boost::mutex _mutex;
+		
+		boost::condition _has_changed_condition;
+		
+		lane(const lane<T>& source) { }
+		
+		void operator=(const lane<T>& source) { }
 		
 		size_t read_position() const
 		{
@@ -171,7 +201,7 @@ class lane : public boost::noncopyable
 				
 				// Now that there is less free write space, there is more free read
 				// space and thus readers can possibly continue.
-				_has_work_condition.notify_all();
+				_has_changed_condition.notify_all();
 			}
 		}
 		
@@ -204,7 +234,7 @@ class lane : public boost::noncopyable
 				_free_write_space += n;
 				
 				// Now that there is more free write space, writers can possibly continue.
-				_has_work_condition.notify_all();
+				_has_changed_condition.notify_all();
 			}
 		}
 };
