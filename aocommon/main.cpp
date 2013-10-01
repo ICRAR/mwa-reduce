@@ -2,15 +2,15 @@
 
 #include "uvector.h"
 
+#include <fstream>
 #include <vector>
 
 void assert(bool test, const char* descr)
 {
-	std::cout << "Assert \"" << descr << "\" : " << std::flush;
 	if(test)
-		std::cout << "success\n";
+		std::cout << '.' << std::flush;
 	else
-		std::cout << "FAILURE!\n";
+		std::cout << "\nFAILURE: " << descr << "\n";
 }
 
 template<typename Tp>
@@ -490,10 +490,10 @@ public:
 		size_t allocId = *reinterpret_cast<size_t*>(mem);
 		if(allocId == _id)
 		{
-			std::cout << "Correct deallocation for allocator with id " << _id << "\n";
+			std::cout << '.' << std::flush;
 		}
 		else {
-			std::cout << "Deallocation error: Allocator id of allocation (" << allocId << ") is different from allocator id of deallocation (" << _id << ")\n";
+			std::cout << "\nDeallocation error: Allocator id of allocation (" << allocId << ") is different from allocator id of deallocation (" << _id << ")\n";
 		}
 		free(mem);
 	}
@@ -587,5 +587,32 @@ int main(int argc, char **argv) {
 	
 	testExtensions<ao::uvector<int>>();
 	
+	std::cout << "is_pod<int> = " << std::is_pod<int>() << '\n';
+	std::cout << "is_pod<std::pair<int,int> > = " << std::is_pod<std::pair<int,int> >() << '\n';
+	std::cout << "is_trivial<std::pair<int,int> > = " << std::is_trivial<std::pair<int,int> >() << '\n';
+	std::cout << "is_standard_layout<std::pair<int,int> > = " << std::is_standard_layout<std::pair<int,int> >() << '\n';
+	
 	return 0;
+}
+
+using namespace std;
+using namespace ao;
+
+void exampleA()
+{
+	size_t buffer_size = 1024;
+
+	// Open a file
+	ifstream file("myfile.bin");
+
+	// Construct a buffer for this file
+	uvector<char> buffer(buffer_size);
+
+	// Read some data into the buffer
+	file.read(buffer.data(), buffer_size);
+}
+
+void exampleB()
+{
+	char* buffer = new char[1024];
 }

@@ -9,7 +9,7 @@
 
 /**
  * @file uvector.h
- * Header file for uvector and its relational and swap function.
+ * Header file for uvector and its relational and swap functions.
  * @author André Offringa
  * @copyright André Offringa, 2013, distributed under the GPL license version 3.
  */
@@ -33,10 +33,10 @@ namespace ao {
  * 
  * @code
  * // Open a file
- * std::ifstream file("myfile.bin");
+ * ifstream file("myfile.bin");
  * 
  * // Construct a buffer for this file
- * uvector<unsigned char> buffer(buffer_size);
+ * uvector<char> buffer(buffer_size);
  * 
  * // Read some data into the buffer
  * file.read(&buffer[0], buffer_size);
@@ -45,33 +45,23 @@ namespace ao {
  * However, it has a few more use-cases with improved performance over std::vector. This is
  * true because of more strengent requirements on the element's type.
  * 
- * The container will behave correctly with any POD type, but will not work for almost
- * all non-POD types.
+ * The container will behave correctly with any trivial type, but will not work for almost
+ * all non-trivial types.
  * 
- * The element type must obey the following rules:
- * - The element type must be able to skip its constructor. This is the case for all integral
- *   types, such as @c char, @c int, pointers or structs or classes that are a POD themselves.
- *   Complex types that e.g. require their constructor to perform allocation, such as std::string or
- *   std::unique_ptr will not work. A uvector can therefore also not hold itself as element type.
- * - When an element is copied or assigned inside the container, there is no guarantee that the copy
- *   or move constructor or assignment operator are called. Instead, a byte-wise copy
- *   or displacement might be performed with @c memcpy or @c memmove.
- *   Finally, if a non-default copy or move
- *   constructor or assignment operator is defined, they are not allowed to throw.
- * 
- * Because of the use of @c memcpy and @c memmove, the @ref push_back() and @ref insert()
- * methods are a bit faster than the std::vector counterparts, at least on gcc 4.8. 
+ * The element type must be trivial. Because of the use of @c memcpy and @c memmove,
+ * the @ref push_back() and @ref insert() methods are a bit faster than the std::vector
+ * counterparts, at least on gcc 4.7. 
  * 
  * The methods with different semantics compared to std::vector are:
- * * @ref uvector(size_t)
- * * @ref resize(size_t)
+ * * @ref uvector(size_t n)
+ * * @ref resize(size_t n)
  * 
  * Also the following new members are introduced:
- * * @ref insert_uninitialized(const_iterator, size_t)
+ * * @ref insert_uninitialized(const_iterator position, size_t n)
  * * @ref push_back(InputIterator first, InputIterator last)
  * * @ref push_back(size_t n, const Tp& val)
  * * @ref push_back(std::initializer_list<Tp> initlist)
- * * @ref push_back_uninitialized(size_t)
+ * * @ref push_back_uninitialized(size_t n)
  * 
  * All other members work exactly like std::vector's members, although some are slightly faster because of
  * the stricter requirements on the element type.
@@ -151,7 +141,7 @@ public:
 		_end(_begin + n),
 		_endOfStorage(_end)
 	{
-		fill(_begin, _end, val);
+		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
 	}
 	
 	/** @brief Construct a vector by copying elements from a range.
@@ -319,11 +309,12 @@ public:
 	{
 		if(capacity() < n)
 		{
-			pointer newStorage = allocate(n);
+			size_t newSize = enlarge_size(n);
+			pointer newStorage = allocate(newSize);
 			memcpy(newStorage, _begin, size() * sizeof(Tp));
 			deallocate();
 			_begin = newStorage;
-			_endOfStorage = _begin + n;
+			_endOfStorage = _begin + newSize;
 		}
 		_end = _begin + n;
 	}
@@ -350,7 +341,7 @@ public:
 		}
 		_end = _begin + n;
 		if(oldSize < n)
-			fill(_begin + oldSize, _end, val);
+			std::uninitialized_fill<Tp*,Tp>(_begin + oldSize, _end, val);
 	}
 	
 	/** @brief Get the number of elements the container can currently hold without reallocating storage. */
@@ -478,7 +469,7 @@ public:
 			_endOfStorage = _begin + n;
 		}
 		_end = _begin + n;
-		fill(_begin, _end, val);
+		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
 	}
 	
 	/** @brief Assign this container to an initializer list.
@@ -511,7 +502,7 @@ public:
 	void push_back(const Tp& item)
 	{
 		if(_end == _endOfStorage)
-			enlarge();
+			enlarge(enlarge_size(1));
 		*_end = item;
 		++_end;
 	}
@@ -526,7 +517,7 @@ public:
 	void push_back(Tp&& item)
 	{
 		if(_end == _endOfStorage)
-			enlarge();
+			enlarge(enlarge_size(1));
 		*_end = std::move(item);
 		++_end;
 	}
@@ -575,14 +566,14 @@ public:
 		if(capacity() < size() + n)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(std::max(size() + n, enlarge_size()), index, n);
+			enlarge_for_insert(enlarge_size(n), index, n);
 			position = _begin + index;
 		}
 		else {
 			memmove(const_cast<iterator>(position)+n, position, (_end - position) * sizeof(Tp));
 			_end += n;
 		}
-		fill(const_cast<iterator>(position), const_cast<iterator>(position)+n, val);
+		std::uninitialized_fill_n<Tp*,Tp>(const_cast<iterator>(position), n, val);
 		return const_cast<iterator>(position);
 	}
 	
@@ -618,7 +609,7 @@ public:
 		if(_end == _endOfStorage)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(enlarge_size(), index, 1);
+			enlarge_for_insert(enlarge_size(1), index, 1);
 			position = _begin + index;
 		}
 		else {
@@ -642,7 +633,7 @@ public:
 		if(capacity() < size() + initlist.size())
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(std::max(size() + initlist.size(), enlarge_size()), index, initlist.size());
+			enlarge_for_insert(enlarge_size(initlist.size()), index, initlist.size());
 			position = _begin + index;
 		}
 		else {
@@ -722,7 +713,7 @@ public:
 		if(_end == _endOfStorage)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(enlarge_size(), index, 1);
+			enlarge_for_insert(enlarge_size(1), index, 1);
 			position = _begin + index;
 		}
 		else {
@@ -741,7 +732,7 @@ public:
 	void emplace_back(Args&&... args)
 	{
 		if(_end == _endOfStorage)
-			enlarge();
+			enlarge(enlarge_size(1));
 		*_end = Tp(std::forward<Args...>(args...));
 		++_end;
 	}
@@ -769,7 +760,7 @@ public:
 		if(capacity() < size() + n)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(std::max(size() + n, enlarge_size()), index, n);
+			enlarge_for_insert(enlarge_size(n), index, n);
 			position = _begin + index;
 		}
 		else {
@@ -803,9 +794,9 @@ public:
 	{
 		if(capacity() - size() < n)
 		{
-			enlarge(std::max(size() + n, enlarge_size()));
+			enlarge(enlarge_size(n));
 		}
-		std::fill(_end, _end+n, val);
+		std::uninitialized_fill_n<Tp*,Tp>(_end, n, val);
 		_end += n;
 	}
 	
@@ -819,7 +810,7 @@ public:
 	{
 		if(capacity() - size() < initlist.size())
 		{
-			enlarge(std::max(size() + initlist.size(), enlarge_size()));
+			enlarge(enlarge_size(initlist.size()));
 		}
 		for(typename std::initializer_list<Tp>::iterator i = initlist.begin(); i != initlist.end(); ++i)
 		{
@@ -869,7 +860,7 @@ private:
 		_begin = allocate(n);
 		_end = _begin + n;
 		_endOfStorage = _end;
-		fill(_begin, _end, val);
+		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
 	}
 	
 	template<typename InputIterator>
@@ -906,7 +897,7 @@ private:
 			_endOfStorage = _begin + n;
 		}
 		_end = _begin + n;
-		fill(_begin, _end, val);
+		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
 	}
 	
 	template<typename InputIterator>
@@ -942,14 +933,14 @@ private:
 		if(capacity() < size() + n)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(std::max(size() + n, enlarge_size()), index, n);
+			enlarge_for_insert(enlarge_size(n), index, n);
 			position = _begin + index;
 		}
 		else {
 			memmove(const_cast<iterator>(position)+n, position, (_end - position) * sizeof(Tp));
 			_end += n;
 		}
-		fill(const_cast<iterator>(position), const_cast<iterator>(position)+n, val);
+		std::uninitialized_fill_n<Tp*,Tp>(const_cast<iterator>(position), n, val);
 		return const_cast<iterator>(position);
 	}
 	
@@ -960,7 +951,7 @@ private:
 		if(capacity() < size() + n)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(std::max(size() + n, enlarge_size()), index, n);
+			enlarge_for_insert(enlarge_size(n), index, n);
 			position = _begin + index;
 		}
 		else {
@@ -982,15 +973,9 @@ private:
 			throw std::out_of_range("Access to element in uvector past end");
 	}
 	
-	size_t enlarge_size() const noexcept
+	size_t enlarge_size(size_t extra_space_needed) const noexcept
 	{
-		//return size() * 2 + 16;
-		return size() + std::max(size(), size_t(1));
-	}
-	
-	void enlarge()
-	{
-		enlarge(enlarge_size());
+		return size() + std::max(size(), extra_space_needed);
 	}
 	
 	void enlarge(size_t newSize)
@@ -1012,18 +997,6 @@ private:
 		_end = newStorage + size() + insert_count;
 		_begin = newStorage;
 		_endOfStorage = _begin + newSize;
-	}
-	
-	void fill(iterator begin, iterator end, const Tp& val)
-	{
-		if(sizeof(Tp) == 1)
-			memset(begin, (end-begin)*sizeof(Tp), val);
-		else {
-			while(begin != end) {
-				*begin = val;
-				++begin;
-			}
-		}
 	}
 	
 	// implementation of operator=() without propagate_on_container_copy_assignment
@@ -1133,20 +1106,7 @@ private:
 		 * of a call to a container’s swap function is undefined unless the objects being
 		 * swapped have allocators that compare equal or
 		 * allocator_traits<allocatortype>::propagate_on_container_swap::value is true."
-		 * 
-		 * Therefore, in this situation std::swap has undefined behaviour. I do wonder
-		 * though what's the use of propagate_on_container_swap is if it can never
-		 * be honoured....
-		 * 
-		 * It might be that the standard intends to classify
-		 * this situation as "should never occur", and allocators that
-		 * have a state are not allowed to set
-		 * propagate_on_container_swap to false. This however is not
-		 * clear to me.
-		 *   
-		 * @TODO Inconsistency with propagate_on_container_swap
 		 */
-		// std::swap(static_cast<Alloc&>(other), static_cast<Alloc&>(*this));
 	}
 	
 	template<typename InputIterator>
@@ -1162,9 +1122,9 @@ private:
 	{
 		if(capacity() - size() < size_t(n))
 		{
-			enlarge(std::max(size() + n, enlarge_size()));
+			enlarge(enlarge_size(n));
 		}
-		std::fill(_end, _end+n, val);
+		std::uninitialized_fill_n<Tp*,Tp>(_end, n, val);
 		_end += n;
 	}
 	
@@ -1174,7 +1134,7 @@ private:
 		size_t n = std::distance(first, last);
 		if(n > capacity() - size())
 		{
-			enlarge(std::max(size() + n, enlarge_size()));
+			enlarge(enlarge_size(n));
 		}
 		while(first != last)
 		{
