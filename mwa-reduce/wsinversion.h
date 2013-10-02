@@ -101,7 +101,8 @@ class WSInversion : public InversionAlgorithm
 		
 		void workThreadParallel(BandData* bandData);
 		
-		void visSampleThread();
+		void visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<SamplingWorkItem>* outputLane);
+		void visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane);
 		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		void copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
 		int polarizationIndex() const
@@ -117,7 +118,6 @@ class WSInversion : public InversionAlgorithm
 
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<lane<InversionWorkItem>> _inversionWorkLane;
-		std::unique_ptr<lane<SamplingWorkItem>> _samplingWorkLane;
 		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
 		double _phaseCentreRA, _phaseCentreDec;
 		bool _hasFrequencies;

@@ -353,8 +353,12 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	
 	size_t rowsProcessed = 0;
 	
-	_samplingWorkLane.reset(new lane<SamplingWorkItem>(16));
-	boost::thread thread(&WSInversion::visSampleThread, this);
+	lane<SamplingWorkItem> calcLane(16+_cpuCount), writeLane(16);
+	boost::thread writeThread(&WSInversion::visSampleWriteThread, this, &writeLane);
+	boost::thread_group calcThreads;
+	for(size_t i=0; i!=_cpuCount; ++i)
+		calcThreads.add_thread(new boost::thread(&WSInversion::visSampleCalcThread, this, &calcLane, &writeLane));
+
 		
 	/* Start by reading the u,v,ws in, so we don't need IO access
 	 * from this thread during further processing */
@@ -389,25 +393,36 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 		newItem.data = new std::complex<float>[msData.channelCount];
 		newItem.rowIndex = rowIndices[i];
 				
-		_imager->SampleData(newItem.data, newItem.u, newItem.v, newItem.w);
-		
-		_samplingWorkLane->write(newItem);
+		calcLane.write(newItem);
 	}
 	std::cout << "Rows that were required: " << rowsProcessed << '/' << msData.matchingRows << '\n';
 	msData.totalRowsProcessed += rowsProcessed;
 	
-	_samplingWorkLane->write_end();
-	thread.join();
+	calcLane.write_end();
+	calcThreads.join_all();
+	writeLane.write_end();
+	writeThread.join();
 		
 	_modelColumn.reset();
 }
 
-void WSInversion::visSampleThread()
+void WSInversion::visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<SamplingWorkItem>* outputLane)
+{
+	SamplingWorkItem item;
+	while(inputLane->read(item))
+	{
+		_imager->SampleData(item.data, item.u, item.v, item.w);
+		
+		outputLane->write(item);
+	}
+}
+
+void WSInversion::visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane)
 {
 	SamplingWorkItem workItem;
 	
 	// Read one, which makes sure other thread has initialized the ms
-	if(!_samplingWorkLane->read(workItem))
+	if(!samplingWorkLane->read(workItem))
 		return;
 	
 	casa::IPosition shape = _modelColumn->shape(0);
@@ -452,7 +467,7 @@ void WSInversion::visSampleThread()
 		}
 		_modelColumn->put(workItem.rowIndex, data);
 	}
-	while(_samplingWorkLane->read(workItem));
+	while(samplingWorkLane->read(workItem));
 }
 
 
