@@ -70,6 +70,7 @@ public:
 		_buffer(new Tp[buffer_size]),
 		_buffer_size(buffer_size),
 		_buffer_pos(0),
+		_buffer_fill_count(0),
 		_lane(lane)
 	{
 	}
