@@ -11,7 +11,8 @@ template<typename T>
 class lane
 {
 	public:
-		typedef T data_type;
+		typedef std::size_t size_type;
+		typedef T value_type;
 		
 		lane() :
 			_buffer(0),
@@ -44,12 +45,12 @@ class lane
 			_status = status_normal;
 		}
 		
-		void write(const data_type &element)
+		void write(const value_type &element)
 		{
 			write(&element, 1);
 		}
 		
-		void write(const data_type *elements, size_t n)
+		void write(const value_type *elements, size_t n)
 		{
 			boost::mutex::scoped_lock lock(_mutex);
 			
@@ -73,12 +74,12 @@ class lane
 			}
 		}
 		
-		bool read(data_type &destination)
+		bool read(value_type &destination)
 		{
 			return read(&destination, 1) == 1;
 		}
 		
-		size_t read(data_type *destinations, size_t n)
+		size_t read(value_type *destinations, size_t n)
 		{
 			size_t n_left = n;
 			
@@ -171,7 +172,7 @@ class lane
 			return _capacity - _free_write_space;
 		}
 		
-		void immediate_write(const data_type *elements, size_t n)
+		void immediate_write(const value_type *elements, size_t n)
 		{
 			// Split the writing in two ranges if needed. The first range fits in
 			// [_write_position, _capacity), the second range in [0, end). By doing
@@ -205,7 +206,7 @@ class lane
 			}
 		}
 		
-		void immediate_read(data_type *elements, size_t n)
+		void immediate_read(value_type *elements, size_t n)
 		{
 			// As with write, split in two ranges if needed. The first range fits in
 			// [read_position(), _capacity), the second range in [0, end).
