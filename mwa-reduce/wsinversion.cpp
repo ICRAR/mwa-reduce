@@ -265,14 +265,19 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 
 void WSInversion::workThreadParallel(BandData* bandData)
 {
-	std::vector<lane<InversionWorkSample>> lanes(_cpuCount);
+	std::unique_ptr<lane<InversionWorkSample>[]> lanes(new lane<InversionWorkSample>[_cpuCount]);
 	boost::thread_group group;
-	for(std::vector<lane<InversionWorkSample>>::iterator i=lanes.begin(); i!=lanes.end(); ++i)
+	for(size_t i=0; i!=_cpuCount; ++i)
 	{
-		i->resize(bandData->ChannelCount() * 16);
-		group.add_thread(new boost::thread(&WSInversion::workThreadPerSample, this, &*i));
+		lanes[i].resize(bandData->ChannelCount() * 16);
+		group.add_thread(new boost::thread(&WSInversion::workThreadPerSample, this, &lanes[i]));
 	}
 	
+	// Samples of the same w-layer are collected in the "samples" vector
+	// before they are written into the lane. This is done because writing
+	// to a lane is reasonably slow; it requires holding a mutex. Without
+	// this vector, writing the lane was a bottleneck and multithreading
+	// did not help.
 	std::vector<InversionWorkSample> samples;
 	InversionWorkItem workItem;
 	while(_inversionWorkLane->read(workItem))
@@ -300,8 +305,8 @@ void WSInversion::workThreadParallel(BandData* bandData)
 		samples.clear();
 		delete[] workItem.data;
 	}
-	for(std::vector<lane<InversionWorkSample>>::iterator i=lanes.begin(); i!=lanes.end(); ++i)
-		i->write_end();
+	for(size_t i=0; i!=_cpuCount; ++i)
+		lanes[i].write_end();
 	group.join_all();
 }
 
