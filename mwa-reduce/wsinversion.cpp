@@ -268,24 +268,25 @@ void WSInversion::workThreadParallel(BandData* bandData)
 {
 	std::unique_ptr<lane<InversionWorkSample>[]> lanes(new lane<InversionWorkSample>[_cpuCount]);
 	boost::thread_group group;
+	// Samples of the same w-layer are collected in a buffer
+	// before they are written into the lane. This is done because writing
+	// to a lane is reasonably slow; it requires holding a mutex. Without
+	// these buffers, writing the lane was a bottleneck and multithreading
+	// did not help.
+	std::unique_ptr<lane_write_buffer<InversionWorkSample>[]>
+		bufferedLanes(new lane_write_buffer<InversionWorkSample>[_cpuCount]);
 	for(size_t i=0; i!=_cpuCount; ++i)
 	{
 		lanes[i].resize(bandData->ChannelCount() * 16);
+		bufferedLanes[i].reset(&lanes[i], std::max<size_t>(bandData->ChannelCount(), 16));
+		
 		group.add_thread(new boost::thread(&WSInversion::workThreadPerSample, this, &lanes[i]));
 	}
 	
-	// Samples of the same w-layer are collected in the "samples" vector
-	// before they are written into the lane. This is done because writing
-	// to a lane is reasonably slow; it requires holding a mutex. Without
-	// this vector, writing the lane was a bottleneck and multithreading
-	// did not help.
-	std::vector<InversionWorkSample> samples;
 	InversionWorkItem workItem;
 	while(_inversionWorkLane->read(workItem))
 	{
 		InversionWorkSample sampleData;
-		double firstWInLambda = workItem.w / bandData->ChannelWavelength(0);
-		size_t curCpu = _imager->WToLayer(firstWInLambda) % _cpuCount;
 		for(size_t ch=0; ch!=bandData->ChannelCount(); ++ch)
 		{
 			double wavelength = bandData->ChannelWavelength(ch);
@@ -294,20 +295,12 @@ void WSInversion::workThreadParallel(BandData* bandData)
 			sampleData.vInLambda = workItem.v / wavelength;
 			sampleData.wInLambda = workItem.w / wavelength;
 			size_t cpu = _imager->WToLayer(sampleData.wInLambda) % _cpuCount;
-			if(cpu != curCpu)
-			{
-				lanes[curCpu].write(&samples[0], samples.size());
-				samples.clear();
-				curCpu = cpu;
-			}
-			samples.push_back(sampleData);
+			bufferedLanes[cpu].write(sampleData);
 		}
-		lanes[curCpu].write(&samples[0], samples.size());
-		samples.clear();
 		delete[] workItem.data;
 	}
 	for(size_t i=0; i!=_cpuCount; ++i)
-		lanes[i].write_end();
+		bufferedLanes[i].write_end();
 	group.join_all();
 }
 

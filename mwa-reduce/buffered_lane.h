@@ -12,19 +12,29 @@ public:
 	typedef typename lane<Tp>::size_type size_type;
 	typedef typename lane<Tp>::value_type value_type;
 	
-	lane_write_buffer(lane<Tp>& lane, size_type buffer_size) : _lane(lane), _buffer_size(buffer_size)
+	lane_write_buffer() : _buffer_size(0), _lane(0)
+	{ }
+	
+	lane_write_buffer(lane<Tp>* lane, size_type buffer_size) : _buffer_size(buffer_size), _lane(lane)
 	{
 		_buffer.reserve(buffer_size);
 	}
 	
 	~lane_write_buffer()
 	{
-		flush();
+	}
+	
+	void reset(lane<Tp>* lane, size_type buffer_size)
+	{
+		_buffer.clear();
+		_buffer.reserve(buffer_size);
+		_buffer_size = buffer_size;
+		_lane = lane;
 	}
 	
 	void clear()
 	{
-		lane<Tp>::clear();
+		_lane->clear();
 		_buffer.clear();
 	}
 		
@@ -38,18 +48,18 @@ public:
 	void write_end()
 	{
 		flush();
-		_lane.write_end();
+		_lane->write_end();
 	}
 		
 	void flush()
 	{
-		lane<Tp>::write(&_buffer[0], _buffer.size());
+		_lane->write(&_buffer[0], _buffer.size());
 		_buffer.clear();
 	}
 private:
 	size_type _buffer_size;
 	std::vector<value_type> _buffer;
-	lane<Tp>& _lane;
+	lane<Tp>* _lane;
 };
 
 #endif
