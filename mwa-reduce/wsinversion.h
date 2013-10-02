@@ -90,16 +90,8 @@ class WSInversion : public InversionAlgorithm
 			}
 		}
 		
-		void workThreadPerSample(lane<InversionWorkSample>* workLane)
-		{
-			InversionWorkSample sampleData;
-			while(workLane->read(sampleData))
-			{
-				_imager->AddDataSample(sampleData.sample, sampleData.uInLambda, sampleData.vInLambda, sampleData.wInLambda);
-			}
-		}
-		
 		void workThreadParallel(BandData* bandData);
+		void workThreadPerSample(lane<InversionWorkSample>* workLane);
 		
 		void visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<SamplingWorkItem>* outputLane);
 		void visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane);

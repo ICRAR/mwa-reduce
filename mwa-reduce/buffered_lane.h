@@ -62,4 +62,41 @@ private:
 	lane<Tp>* _lane;
 };
 
+template<typename Tp>
+class lane_read_buffer 
+{
+public:
+	lane_read_buffer(lane<Tp>* lane, size_t buffer_size) :
+		_buffer(new Tp[buffer_size]),
+		_buffer_size(buffer_size),
+		_buffer_pos(0),
+		_lane(lane)
+	{
+	}
+	
+	~lane_read_buffer()
+	{
+		delete[] _buffer;
+	}
+	
+	bool read(Tp& element)
+	{
+		if(_buffer_pos == _buffer_fill_count)
+		{
+			_buffer_fill_count = _lane->read(_buffer, _buffer_size);
+			_buffer_pos = 0;
+			if(_buffer_fill_count == 0)
+				return false;
+		}
+		element = _buffer[_buffer_pos];
+		++_buffer_pos;
+		return true;
+	}
+	
+private:
+	Tp* _buffer;
+	size_t _buffer_size, _buffer_pos, _buffer_fill_count;
+	lane<Tp>* _lane;
+};
+
 #endif

@@ -304,6 +304,17 @@ void WSInversion::workThreadParallel(BandData* bandData)
 	group.join_all();
 }
 
+void WSInversion::workThreadPerSample(lane<InversionWorkSample>* workLane)
+{
+	lane_read_buffer<InversionWorkSample> buffer(workLane, 256);
+	InversionWorkSample sampleData;
+	while(buffer.read(sampleData))
+	{
+		_imager->AddDataSample(sampleData.sample, sampleData.uInLambda, sampleData.vInLambda, sampleData.wInLambda);
+	}
+}
+
+
 void WSInversion::sampleToMeasurementSet(MSData &msData)
 {
 	casa::MeasurementSet &ms(*msData.ms);
