@@ -105,9 +105,9 @@ class WSInversion : public InversionAlgorithm
 			switch(Polarization())
 			{
 				default: return 0;
-				case XY: return 1;
-				case YX: return 2;
-				case YY: return 3;
+				case Polarization::XY: return 1;
+				case Polarization::YX: return 2;
+				case Polarization::YY: return 3;
 			}
 		}
 

@@ -57,8 +57,6 @@ void workFunction(const ThreadParameters parameters)
 	}
 }
 
-enum Polarization { StokesIPol, XXPol, YYPol, PsfPol };
-
 struct ImageInfo
 {
 	double phaseCentreRA, phaseCentreDec;
@@ -66,7 +64,8 @@ struct ImageInfo
 	bool onlyModel, haveTimeRange, haveUVRange;
 	size_t timeRangeStart, timeRangeStop;
 	size_t uvRangeStart, uvRangeStop;
-	enum Polarization polarization;
+	PolarizationEnum polarization;
+	bool psf;
 };
 
 size_t readDataStokesI(size_t channelCount, size_t polarizationCount,
@@ -296,26 +295,29 @@ size_t readDataWeights(size_t channelCount, size_t polarizationCount,
 	return sampleCount;
 }
 
-size_t readData(enum Polarization polarization,
+size_t readData(PolarizationEnum polarization,
+								bool psf,
 								size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
 								bool *outFlagPtr,
 								casa::Array<std::complex<float> >::const_iterator inPtr,
 								casa::Array<bool>::const_iterator flagPtr)
 {
+	if(psf)
+	{
+		return readDataWeights(channelCount, polarizationCount,
+			outPtr, outFlagPtr, inPtr, flagPtr);
+	}
 	switch(polarization)
 	{
-		case StokesIPol:
+		case Polarization::StokesI:
 			return readDataStokesI(channelCount, polarizationCount,
 				outPtr, outFlagPtr, inPtr, flagPtr);
-		case XXPol:
+		case Polarization::XX:
 			return readDataXX(channelCount, polarizationCount,
 				outPtr, outFlagPtr, inPtr, flagPtr);
-		case YYPol:
+		case Polarization::YY:
 			return readDataYY(channelCount, polarizationCount,
-				outPtr, outFlagPtr, inPtr, flagPtr);
-		case PsfPol:
-			return readDataWeights(channelCount, polarizationCount,
 				outPtr, outFlagPtr, inPtr, flagPtr);
 	}
 	throw std::runtime_error("Unsupported polarization");
@@ -394,7 +396,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 			{
 				dataColumn.get(row, data);
 				flagColumn.get(row, flags);
-				readData(info.polarization, channelCount, polarizationCount, formattedData, formattedFlags, data.begin(), flags.begin());
+				readData(info.polarization, info.psf, channelCount, polarizationCount, formattedData, formattedFlags, data.begin(), flags.begin());
 				weights.Grid(formattedData, formattedFlags, u, v, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
 			}
 		}
@@ -517,7 +519,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					casa::Array<std::complex<float> >::const_iterator inPtr = data.begin();
 					casa::Array<bool>::const_iterator flagPtr = flags.begin();
 					
-					size_t sampleCount = readData(info.polarization, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
+					size_t sampleCount = readData(info.polarization, info.psf, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
 					
 					if(avgFactor != 1)
 					{
@@ -575,7 +577,8 @@ int main(int argc, char *argv[])
 	NumType pixelScale = 0.1*(M_PI/180.0); // '0.05 deg'
 	const char *columnName = "DATA", *modelFilename = 0;
 	bool onlyModel = false;
-	enum Polarization pol = StokesIPol;
+	PolarizationEnum pol = Polarization::StokesI;
+	bool psf = false;
 	bool haveTimeRange = false, haveUVRange = false;
 	size_t timeRangeStart, timeRangeStop;
 	size_t uvRangeStart, uvRangeStop;
@@ -623,15 +626,15 @@ int main(int argc, char *argv[])
 		}
 		else if(strcmp(argv[argi], "-xx")==0)
 		{
-			pol = XXPol;
+			pol = Polarization::XX;
 		}
 		else if(strcmp(argv[argi], "-yy")==0)
 		{
-			pol = YYPol;
+			pol = Polarization::YY;
 		}
 		else if(strcmp(argv[argi], "-psf")==0)
 		{
-			pol = PsfPol;
+			psf = true;
 		}
 		else throw std::runtime_error(std::string("Unknown parameter or incorrectly used: ") + argv[argi]);
 		
@@ -658,6 +661,7 @@ int main(int argc, char *argv[])
 	imageInfo.dateObs = 0.0;
 	imageInfo.onlyModel = onlyModel;
 	imageInfo.polarization = pol;
+	imageInfo.psf = psf;
 	imageInfo.haveTimeRange = haveTimeRange;
 	imageInfo.timeRangeStart = timeRangeStart;
 	imageInfo.timeRangeStop = timeRangeStop;

@@ -5,10 +5,11 @@
 #include <string>
 #include <vector>
 
+#include "polarizationenum.h"
+
 class InversionAlgorithm
 {
 	public:
-		enum PolarizationEnum { XX, XY, YX, YY, StokesI };
 		enum WeightingEnum { NaturalWeighted, DistanceWeighted, UniformWeighted };
 		
 		InversionAlgorithm() :
@@ -27,7 +28,7 @@ class InversionAlgorithm
 			_doSubtractModel(false),
 			_addToModel(false),
 			_precalculatedWeightInfo(0),
-			_polarization(StokesI),
+			_polarization(Polarization::StokesI),
 			_weighting(DistanceWeighted)
 		{
 		}
@@ -145,8 +146,8 @@ class InversionAlgorithm
 		std::string _dataColumnName;
 		bool _doImagePSF, _doSubtractModel, _addToModel;
 		class ImageWeights *_precalculatedWeightInfo;
-		enum PolarizationEnum _polarization;
-		enum WeightingEnum _weighting;
+		PolarizationEnum _polarization;
+		WeightingEnum _weighting;
 };
 
 #endif

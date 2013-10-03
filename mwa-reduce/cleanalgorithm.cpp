@@ -300,7 +300,7 @@ void CleanAlgorithm::cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult
 	}
 }
 
-void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq)
+void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq, PolarizationEnum polarization)
 {
 	for(size_t y=0; y!=height; ++y)
 	{
@@ -317,7 +317,7 @@ void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t
 				ImageCoordinates::LMToRaDec<long double>(l, m, phaseCentreRA, phaseCentreDec, ra, dec);
 				std::stringstream nameStr;
 				nameStr << "component" << model.SourceCount();
-				component.SetSED(SpectralEnergyDistribution(value, refFreq, spectralIndex));
+				component.SetSED(SpectralEnergyDistribution(value, refFreq, spectralIndex, polarization));
 				component.SetPosRA(ra);
 				component.SetPosDec(dec);
 				

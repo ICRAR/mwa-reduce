@@ -458,7 +458,7 @@ void WSInversion::visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane,
 		_modelColumn->get(workItem.rowIndex, data);
 		casa::Array<std::complex<float>>::contiter dataIter = data.cbegin() + msData->startChannel * polCount;
 		
-		if(Polarization() == StokesI)
+		if(Polarization() == Polarization::StokesI)
 		{
 			for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 			{
@@ -616,7 +616,7 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t startChanne
 	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
 	const size_t selectedChannelCount = endChannel - startChannel;
 		
-	if(Polarization() == StokesI)
+	if(Polarization() == Polarization::StokesI)
 	{
 		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 		{
@@ -669,7 +669,7 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t startChannel, si
 	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
 	const size_t selectedChannelCount = endChannel - startChannel;
 		
-	if(Polarization() == StokesI)
+	if(Polarization() == Polarization::StokesI)
 	{
 		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 		{

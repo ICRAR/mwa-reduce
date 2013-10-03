@@ -11,6 +11,7 @@
 #include <limits>
 #include <stdexcept>
 #include "nlplfitter.h"
+#include "polarizationenum.h"
 
 class Measurement
 {
@@ -63,6 +64,33 @@ class Measurement
 		long double FluxDensity(size_t polarizationIndex) const { return _fluxDensities[polarizationIndex]; }
 		
 		void SetFluxDensity(size_t polarizationIndex, long double flux) { _fluxDensities[polarizationIndex] = flux; }
+		
+		void SetFluxDensityAllPol(PolarizationEnum polarization, long double flux)
+		{
+			switch(polarization)
+			{
+				case Polarization::XX:
+					_fluxDensities[0] = flux; _fluxDensities[1] = 0.0;
+					_fluxDensities[2] = 0.0;  _fluxDensities[3] = 0.0;
+					break;
+				case Polarization::XY:
+					_fluxDensities[0] = 0.0;  _fluxDensities[1] = flux;
+					_fluxDensities[2] = 0.0;  _fluxDensities[3] = 0.0;
+					break;
+				case Polarization::YX:
+					_fluxDensities[0] = 0.0;  _fluxDensities[1] = 0.0;
+					_fluxDensities[2] = flux; _fluxDensities[3] = 0.0;
+					break;
+				case Polarization::YY:
+					_fluxDensities[0] = 0.0;  _fluxDensities[1] = 0.0;
+					_fluxDensities[2] = 0.0;  _fluxDensities[3] = flux;
+					break;
+				case Polarization::StokesI:
+					_fluxDensities[0] = flux; _fluxDensities[1] = 0.0;
+					_fluxDensities[2] = 0.0;  _fluxDensities[3] = flux;
+					break;
+			}
+		}
 		
 		void SetFluxDensityStddev(size_t polarizationIndex, long double stddev) { _fluxDensityStddevs[polarizationIndex] = stddev; }
 		
@@ -125,9 +153,9 @@ class SpectralEnergyDistribution
 			AddMeasurement(fluxDensityJy, frequencyHz);
 		}
 		
-		SpectralEnergyDistribution(long double fluxDensityJy, long double frequencyHz, long double spectralIndex)
+		SpectralEnergyDistribution(long double fluxDensityJy, long double frequencyHz, long double spectralIndex, PolarizationEnum polarization = Polarization::StokesI)
 		{
-			AddMeasurement(fluxDensityJy, frequencyHz, spectralIndex);
+			AddMeasurement(fluxDensityJy, frequencyHz, spectralIndex, polarization);
 		}
 		
 		SpectralEnergyDistribution(long double fluxDensityAJy, long double frequencyAHz, long double fluxDensityBJy, long double frequencyBHz)
@@ -209,13 +237,10 @@ class SpectralEnergyDistribution
 			_measurements.insert(std::pair<long double, Measurement>(frequencyHz, measurement));
 		}
 		
-		void AddMeasurement(long double fluxDensityJy, long double frequencyHz, long double spectralIndex)
+		void AddMeasurement(long double fluxDensityJy, long double frequencyHz, long double spectralIndex, PolarizationEnum polarization = Polarization::StokesI)
 		{
 			Measurement measurementA, measurementB;
-			measurementA.SetFluxDensity(0, fluxDensityJy);
-			measurementA.SetFluxDensity(1, 0.0);
-			measurementA.SetFluxDensity(2, 0.0);
-			measurementA.SetFluxDensity(3, fluxDensityJy);
+			measurementA.SetFluxDensityAllPol(polarization, fluxDensityJy);
 			measurementA.SetFrequencyHz(frequencyHz);
 			_measurements.insert(std::pair<long double, Measurement>(frequencyHz, measurementA));
 			if(spectralIndex != 0.0)
@@ -227,10 +252,7 @@ class SpectralEnergyDistribution
 					refFreqB *= 2.0;
 				}
 				fluxB = fluxB * std::pow(refFreqB, spectralIndex);
-				measurementB.SetFluxDensity(0, fluxB);
-				measurementB.SetFluxDensity(1, 0.0);
-				measurementB.SetFluxDensity(2, 0.0);
-				measurementB.SetFluxDensity(3, fluxB);
+				measurementB.SetFluxDensityAllPol(polarization, fluxB);
 				measurementB.SetFrequencyHz(refFreqB);
 				_measurements.insert(std::pair<long double, Measurement>(refFreqB, measurementB));
 			}

@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
 	size_t nWLayers = 64, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
-	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
+	PolarizationEnum polarization = Polarization::StokesI;
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
 	std::string prefixName = "wsclean";
 	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false;
@@ -127,15 +127,15 @@ int main(int argc, char *argv[])
 			std::string polStr = argv[argi];
 			boost::to_lower(polStr);
 			if(polStr == "xx")
-				polarization = InversionAlgorithm::XX;
+				polarization = Polarization::XX;
 			else if(polStr == "xy")
-				polarization = InversionAlgorithm::XY;
+				polarization = Polarization::XY;
 			else if(polStr == "yx")
-				polarization = InversionAlgorithm::YX;
+				polarization = Polarization::YX;
 			else if(polStr == "yy")
-				polarization = InversionAlgorithm::YY;
+				polarization = Polarization::YY;
 			else if(polStr == "stokesi")
-				polarization = InversionAlgorithm::StokesI;
+				polarization = Polarization::StokesI;
 		}
 		else if(param == "negative")
 		{
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 			beamEval.AbsToApparent(model);
 		}
 	}
-	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, 0.0, (freqHigh+freqLow)*0.5);
+	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, 0.0, (freqHigh+freqLow)*0.5, polarization);
 	if(!saveModelFilename.empty())
 	{
 		std::cout << "Saving model to " << saveModelFilename << "... " << std::flush;
@@ -450,11 +450,11 @@ int main(int argc, char *argv[])
 	size_t polarizationIndex;
 	switch(polarization)
 	{
-		case InversionAlgorithm::StokesI:
-		case InversionAlgorithm::XX: polarizationIndex = 0; break;
-		case InversionAlgorithm::XY: polarizationIndex = 1; break;
-		case InversionAlgorithm::YX: polarizationIndex = 2; break;
-		case InversionAlgorithm::YY: polarizationIndex = 3; break;
+		case Polarization::StokesI:
+		case Polarization::XX: polarizationIndex = 0; break;
+		case Polarization::XY: polarizationIndex = 1; break;
+		case Polarization::YX: polarizationIndex = 2; break;
+		case Polarization::YY: polarizationIndex = 3; break;
 	}
 	renderer.Restore(&residual[0], imgWidth, imgHeight, model, beamSize, freqLow, freqHigh, polarizationIndex);
 	std::cout << "DONE\n";
