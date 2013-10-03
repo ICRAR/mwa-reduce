@@ -52,8 +52,10 @@ int main(int argc, char *argv[])
 			"\t   Default on: opposite of -nonegative.\n"
 			"\t-stopnegative\n"
 			"\t   Stop on negative components.\n"
-			"\t-interval <start-index> <stop-index>\n"
-			"\t   Only image the given interval. Indices specify the timesteps, stop is exclusive.\n"
+			"\t-interval <start-index> <end-index>\n"
+			"\t   Only image the given time interval. Indices specify the timesteps, end index is exclusive.\n"
+			"\t-channelrange <start-channel> <end-channel>\n"
+			"\t   Only image the given channel range. Indices specify channel indices, end index is exclusive.\n"
 			"\t-weight <weightmode>\n"
 			"\t   weightmode can be: natural, mwa, uniform\n"
 			"\t-datacolumn <columnname>\n"
@@ -66,7 +68,7 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
-	size_t nWLayers = 64, nIter = 0, intervalStart = 0, intervalStop = 0;
+	size_t nWLayers = 64, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	enum InversionAlgorithm::PolarizationEnum polarization = InversionAlgorithm::StokesI;
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
@@ -192,7 +194,13 @@ int main(int argc, char *argv[])
 		else if(param == "interval")
 		{
 			intervalStart = atoi(argv[argi+1]);
-			intervalStop = atoi(argv[argi+2]);
+			intervalEnd = atoi(argv[argi+2]);
+			argi += 2;
+		}
+		else if(param == "channelrange")
+		{
+			channelRangeStart = atoi(argv[argi+1]);
+			channelRangeEnd = atoi(argv[argi+2]);
 			argi += 2;
 		}
 		else if(param == "weight")
@@ -265,10 +273,10 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	inversionAlgorithm->SetWeighting(weightMode);
-	if(intervalStop != 0)
-	{
-		inversionAlgorithm->SetInterval(intervalStart, intervalStop);
-	}
+	if(intervalEnd != 0)
+		inversionAlgorithm->SetInterval(intervalStart, intervalEnd);
+	if(channelRangeEnd != 0)
+		inversionAlgorithm->SetChannelRange(channelRangeStart, channelRangeEnd);
 	
 	double
 		ra, dec,

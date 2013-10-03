@@ -18,7 +18,9 @@ class InversionAlgorithm
 			_pixelSizeY((1.0 / 60.0) * M_PI / 180.0),
 			_wGridSize(1),
 			_intervalStart(0),
-			_intervalStop(0),
+			_intervalEnd(0),
+			_channelRangeStart(0),
+			_channelRangeEnd(0),
 			_measurementSetPaths(),
 			_dataColumnName("DATA"),
 			_doImagePSF(false),
@@ -47,9 +49,12 @@ class InversionAlgorithm
 		PolarizationEnum Polarization() const { return _polarization; }
 		WeightingEnum Weighting() const { return _weighting; }
 		class ImageWeights* PrecalculatedWeightInfo() const { return _precalculatedWeightInfo; }
-		bool HasInterval() const { return _intervalStop != 0; }
+		bool HasInterval() const { return _intervalEnd != 0; }
 		size_t IntervalStart() const { return _intervalStart; }
-		size_t IntervalStop() const { return _intervalStop; }
+		size_t IntervalEnd() const { return _intervalEnd; }
+		bool HasChannelRange() const { return _channelRangeEnd != 0; }
+		size_t ChannelRangeStart() const { return _channelRangeStart; }
+		size_t ChannelRangeEnd() const { return _channelRangeEnd; }
 		
 		void SetImageWidth(size_t imageWidth)
 		{
@@ -106,7 +111,12 @@ class InversionAlgorithm
 		void SetInterval(size_t intervalStart, size_t intervalStop)
 		{
 			_intervalStart = intervalStart;
-			_intervalStop = intervalStop;
+			_intervalEnd = intervalStop;
+		}
+		void SetChannelRange(size_t channelRangeStart, size_t channelRangeEnd)
+		{
+			_channelRangeStart = channelRangeStart;
+			_channelRangeEnd = channelRangeEnd;
 		}
 		
 		virtual void Invert() = 0;
@@ -128,7 +138,9 @@ class InversionAlgorithm
 	protected:
 		size_t _imageWidth, _imageHeight;
 		double _pixelSizeX, _pixelSizeY;
-		size_t _wGridSize, _intervalStart, _intervalStop;
+		size_t _wGridSize;
+		size_t _intervalStart, _intervalEnd;
+		size_t _channelRangeStart, _channelRangeEnd;
 		std::vector<std::string> _measurementSetPaths;
 		std::string _dataColumnName;
 		bool _doImagePSF, _doSubtractModel, _addToModel;

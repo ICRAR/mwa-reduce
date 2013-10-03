@@ -64,10 +64,13 @@ class WSInversion : public InversionAlgorithm
 				MSData();
 				~MSData();
 				std::unique_ptr<casa::MeasurementSet> ms;
-				size_t channelCount, polarizationCount, matchingRows, totalRowsProcessed;
+				BandData bandData;
+				size_t startChannel, endChannel;
+				size_t polarizationCount, matchingRows, totalRowsProcessed;
 				double minW, maxW;
 				size_t rowStart, rowEnd;
 			
+				BandData SelectedBand() const { return BandData(bandData, startChannel, endChannel); }
 			private:
 				MSData(const MSData &source);
 				
@@ -90,13 +93,13 @@ class WSInversion : public InversionAlgorithm
 			}
 		}
 		
-		void workThreadParallel(BandData* bandData);
+		void workThreadParallel(const BandData* selectedBand);
 		void workThreadPerSample(lane<InversionWorkSample>* workLane);
 		
 		void visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<SamplingWorkItem>* outputLane);
-		void visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane);
-		void copyWeightedData(std::complex<float> *dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
-		void copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
+		void visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData);
+		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
+		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
 		int polarizationIndex() const
 		{
 			switch(Polarization())
@@ -119,7 +122,7 @@ class WSInversion : public InversionAlgorithm
 		double _totalWeight;
 		double _startTime;
 		LayeredImager::GridModeEnum _gridMode;
-		size_t _cpuCount;
+		size_t _cpuCount, _laneBufferSize;
 };
 
 #endif

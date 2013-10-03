@@ -24,7 +24,7 @@ WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
 WSInversion::MSData::~MSData()
 { }
 
-WSInversion::WSInversion() : InversionAlgorithm(), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour)
+WSInversion::WSInversion() : InversionAlgorithm(), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour), _laneBufferSize(16)
 {
 	_cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -33,7 +33,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 {
 	std::cout << "Opening " << measurementSet << "... " << std::flush;
 	msData.ms.reset(new casa::MeasurementSet(measurementSet));
-	casa::MeasurementSet &ms(*msData.ms);
+	casa::MeasurementSet& ms(*msData.ms);
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
 	/**
@@ -47,21 +47,37 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	casa::MPosition ant1Pos = antPosColumn(0);
 	
 	std::cout << 'B' << std::flush;
-	BandData bandData(ms.spectralWindow());
-	msData.channelCount = bandData.ChannelCount();
+	msData.bandData = BandData(ms.spectralWindow());
+	if(HasChannelRange())
+	{
+		msData.startChannel = ChannelRangeStart();
+		msData.endChannel = ChannelRangeEnd();
+		if(msData.startChannel >= msData.bandData.ChannelCount() || msData.endChannel > msData.bandData.ChannelCount()
+			|| msData.startChannel == msData.endChannel)
+		{
+			std::ostringstream str;
+			str << "An invalid channel range was specified! Measurement set " << measurementSet << " only has " << msData.bandData.ChannelCount() << " channels, requested imaging range is " << msData.startChannel << " -- " << msData.endChannel << '.';
+			throw std::runtime_error(str.str());
+		}
+	}
+	else {
+		msData.startChannel = 0;
+		msData.endChannel = msData.bandData.ChannelCount();
+	}
 	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
+	const BandData partBandData = BandData(msData.bandData, msData.startChannel, msData.endChannel);
 	if(_hasFrequencies)
 	{
-		_freqLow = std::min(_freqLow, bandData.LowestFrequency());
-		_freqHigh = std::max(_freqHigh, bandData.HighestFrequency());
-		_bandStart = std::min(_bandStart, bandData.BandStart());
-		_bandEnd = std::max(_bandEnd, bandData.BandEnd());
+		_freqLow = std::min(_freqLow, partBandData.LowestFrequency());
+		_freqHigh = std::max(_freqHigh, partBandData.HighestFrequency());
+		_bandStart = std::min(_bandStart, partBandData.BandStart());
+		_bandEnd = std::max(_bandEnd, partBandData.BandEnd());
 		_startTime = std::min(_startTime, timeColumn(0).getValue().get());
 	} else {
-		_freqLow = bandData.LowestFrequency();
-		_freqHigh = bandData.HighestFrequency();
-		_bandStart = bandData.BandStart();
-		_bandEnd = bandData.BandEnd();
+		_freqLow = partBandData.LowestFrequency();
+		_freqHigh = partBandData.HighestFrequency();
+		_bandStart = partBandData.BandStart();
+		_bandEnd = partBandData.BandEnd();
 		_startTime = timeColumn(0).getValue().get();
 		_hasFrequencies = true;
 	}
@@ -101,7 +117,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 				++timestepIndex;
 				if(timestepIndex == IntervalStart())
 					msData.rowStart = row;
-				if(timestepIndex == IntervalStop())
+				if(timestepIndex == IntervalEnd())
 				{
 					msData.rowEnd = row;
 					break;
@@ -122,14 +138,14 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 		{
 			casa::Vector<double> uvwArray = uvwColumn(row);
 			double uInM = uvwArray(0), vInM = uvwArray(1), wInM = uvwArray(2);
-			double wHi = fabs(wInM / bandData.SmallestWavelength());
-			double wLo = fabs(wInM / bandData.LongestWavelength());
+			double wHi = fabs(wInM / partBandData.SmallestWavelength());
+			double wLo = fabs(wInM / partBandData.LongestWavelength());
 			msData.maxW = std::max(msData.maxW, wHi);
 			msData.minW = std::min(msData.minW, wLo);
 			maxBaseline = std::max(maxBaseline, uInM*uInM + vInM*vInM + wInM*wInM);
 		}
 	}
-	_beamSize = bandData.SmallestWavelength() / sqrt(maxBaseline);
+	_beamSize = partBandData.SmallestWavelength() / sqrt(maxBaseline);
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
 }
 
@@ -139,7 +155,7 @@ void WSInversion::countSamplesPerLayer(MSData& msData)
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
-	BandData bandData(ms.spectralWindow());
+	const BandData& bandData(msData.bandData);
 	
 	std::vector<size_t> sampleCount(WGridSize());
 	msData.matchingRows = 0;
@@ -149,7 +165,7 @@ void WSInversion::countSamplesPerLayer(MSData& msData)
 		{
 			casa::Vector<double> uvwArray = uvwColumn(row);
 			const double wInMeters = uvwArray(2);
-			for(size_t ch=0; ch!=msData.channelCount; ++ch)
+			for(size_t ch=msData.startChannel; ch!=msData.endChannel; ++ch)
 			{
 				double w = wInMeters / bandData.ChannelWavelength(ch);
 				++sampleCount[_imager->WToLayer(w)];
@@ -181,12 +197,12 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	casa::IPosition dataShape = dataColumn.shape(0);
 	msData.polarizationCount = dataShape[0];
 	
-	BandData bandData(ms.spectralWindow());
-	_imager->PrepareBand(bandData);
+	const BandData selectedBand(msData.bandData, msData.startChannel, msData.endChannel);
+	_imager->PrepareBand(selectedBand);
 	
-	casa::Array<std::complex<float>> data(dataShape), modelData(dataShape);
-	casa::Array<float> weights(dataShape);
-	casa::Array<bool> flags(dataShape);
+	casa::Array<std::complex<float>> msDataArr(dataShape), msModelDataArr(dataShape);
+	casa::Array<float> msWeightsArr(dataShape);
+	casa::Array<bool> msFlagsArr(dataShape);
 	size_t rowsRead = 0;
 	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
@@ -195,35 +211,35 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 			casa::Vector<double> uvwArray = uvwColumn(row);
 			const double
 				wInMeters = uvwArray(2),
-				w1 = wInMeters / bandData.LongestWavelength(),
-				w2 = wInMeters / bandData.SmallestWavelength();
+				w1 = wInMeters / selectedBand.LongestWavelength(),
+				w2 = wInMeters / selectedBand.SmallestWavelength();
 			if(_imager->IsInLayerRange(w1, w2))
 			{
 				InversionWorkItem newItem;
 				newItem.u = uvwArray(0);
 				newItem.v = uvwArray(1);
 				newItem.w = wInMeters;
-				newItem.data = new std::complex<float>[msData.channelCount];
+				newItem.data = new std::complex<float>[selectedBand.ChannelCount()];
 				
-				weightColumn.get(row, weights);
-				flagColumn.get(row, flags);
+				weightColumn.get(row, msWeightsArr);
+				flagColumn.get(row, msFlagsArr);
 				
 				double rowWeight = 1.0;
 				switch(Weighting())
 				{
 					case UniformWeighted:
 					{
-						float* weightIter = weights.cbegin();
-						for(size_t ch=0; ch!=bandData.ChannelCount(); ++ch)
+						float* msWeightIter = msWeightsArr.cbegin() + msData.startChannel * msData.polarizationCount;
+						for(size_t ch=0; ch!=selectedBand.ChannelCount(); ++ch)
 						{
 							double
-								u = newItem.u / bandData.ChannelWavelength(ch),
-								v = newItem.v / bandData.ChannelWavelength(ch),
+								u = newItem.u / selectedBand.ChannelWavelength(ch),
+								v = newItem.v / selectedBand.ChannelWavelength(ch),
 								weight = PrecalculatedWeightInfo()->GetUniformWeight(u, v);
 							for(size_t p=0; p!=msData.polarizationCount; ++p)
 							{
-								*weightIter *= weight;
-								++weightIter;
+								*msWeightIter *= weight;
+								++msWeightIter;
 							}
 						}
 					} break;
@@ -235,23 +251,23 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 						break;
 				}
 				
-				dataColumn.get(row, data);
+				dataColumn.get(row, msDataArr);
 				if(DoImagePSF())
 				{
-					copyWeights(newItem.data, msData.channelCount, data, weights, flags, rowWeight);
+					copyWeights(newItem.data, msData.startChannel, msData.endChannel, msData.polarizationCount, msDataArr, msWeightsArr, msFlagsArr, rowWeight);
 				}
 				else {
 					if(DoSubtractModel())
 					{
-						modelColumn->get(row, modelData);
-						casa::Array<casa::Complex>::contiter modelIter = modelData.cbegin();
-						for(casa::Array<casa::Complex>::contiter iter = data.cbegin(); iter!=data.cend(); ++iter)
+						modelColumn->get(row, msModelDataArr);
+						casa::Array<casa::Complex>::contiter modelIter = msModelDataArr.cbegin();
+						for(casa::Array<casa::Complex>::contiter iter = msDataArr.cbegin(); iter!=msDataArr.cend(); ++iter)
 						{
 							*iter -= *modelIter;
 							modelIter++;
 						}
 					}
-					copyWeightedData(newItem.data, msData.channelCount, data, weights, flags, rowWeight);
+					copyWeightedData(newItem.data, msData.startChannel, msData.endChannel, msData.polarizationCount, msDataArr, msWeightsArr, msFlagsArr, rowWeight);
 				}
 				_inversionWorkLane->write(newItem);
 				
@@ -264,7 +280,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	msData.totalRowsProcessed += rowsRead;
 }
 
-void WSInversion::workThreadParallel(BandData* bandData)
+void WSInversion::workThreadParallel(const BandData* selectedBand)
 {
 	std::unique_ptr<lane<InversionWorkSample>[]> lanes(new lane<InversionWorkSample>[_cpuCount]);
 	boost::thread_group group;
@@ -277,8 +293,8 @@ void WSInversion::workThreadParallel(BandData* bandData)
 		bufferedLanes(new lane_write_buffer<InversionWorkSample>[_cpuCount]);
 	for(size_t i=0; i!=_cpuCount; ++i)
 	{
-		lanes[i].resize(bandData->ChannelCount() * 16);
-		bufferedLanes[i].reset(&lanes[i], std::max<size_t>(bandData->ChannelCount(), 16));
+		lanes[i].resize(selectedBand->ChannelCount() * _laneBufferSize);
+		bufferedLanes[i].reset(&lanes[i], std::max<size_t>(selectedBand->ChannelCount(), _laneBufferSize));
 		
 		group.add_thread(new boost::thread(&WSInversion::workThreadPerSample, this, &lanes[i]));
 	}
@@ -287,9 +303,9 @@ void WSInversion::workThreadParallel(BandData* bandData)
 	while(_inversionWorkLane->read(workItem))
 	{
 		InversionWorkSample sampleData;
-		for(size_t ch=0; ch!=bandData->ChannelCount(); ++ch)
+		for(size_t ch=0; ch!=selectedBand->ChannelCount(); ++ch)
 		{
-			double wavelength = bandData->ChannelWavelength(ch);
+			double wavelength = selectedBand->ChannelWavelength(ch);
 			sampleData.sample = workItem.data[ch];
 			sampleData.uInLambda = workItem.u / wavelength;
 			sampleData.vInLambda = workItem.v / wavelength;
@@ -306,7 +322,7 @@ void WSInversion::workThreadParallel(BandData* bandData)
 
 void WSInversion::workThreadPerSample(lane<InversionWorkSample>* workLane)
 {
-	lane_read_buffer<InversionWorkSample> buffer(workLane, 256);
+	lane_read_buffer<InversionWorkSample> buffer(workLane, std::min(_laneBufferSize*16, workLane->capacity()));
 	InversionWorkSample sampleData;
 	while(buffer.read(sampleData))
 	{
@@ -353,13 +369,13 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 	}
 	
-	BandData bandData(ms.spectralWindow());
-	_imager->PrepareBand(bandData);
+	const BandData selectedBandData(msData.bandData, msData.startChannel, msData.endChannel);
+	_imager->PrepareBand(selectedBandData);
 	
 	size_t rowsProcessed = 0;
 	
-	lane<SamplingWorkItem> calcLane(16+_cpuCount), writeLane(16);
-	boost::thread writeThread(&WSInversion::visSampleWriteThread, this, &writeLane);
+	lane<SamplingWorkItem> calcLane(_laneBufferSize+_cpuCount), writeLane(_laneBufferSize);
+	boost::thread writeThread(&WSInversion::visSampleWriteThread, this, &writeLane, &msData);
 	boost::thread_group calcThreads;
 	for(size_t i=0; i!=_cpuCount; ++i)
 		calcThreads.add_thread(new boost::thread(&WSInversion::visSampleCalcThread, this, &calcLane, &writeLane));
@@ -376,8 +392,8 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 			casa::Vector<double> uvwArray = uvwColumn(row);
 			const double
 				wInMeters = uvwArray(2),
-				w1 = wInMeters / bandData.LongestWavelength(),
-				w2 = wInMeters / bandData.SmallestWavelength();
+				w1 = wInMeters / selectedBandData.LongestWavelength(),
+				w2 = wInMeters / selectedBandData.SmallestWavelength();
 			if(_imager->IsInLayerRange(w1, w2))
 			{
 				us.push_back(uvwArray(0));
@@ -395,7 +411,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 		newItem.u = us[i];
 		newItem.v = vs[i];
 		newItem.w = ws[i];
-		newItem.data = new std::complex<float>[msData.channelCount];
+		newItem.data = new std::complex<float>[selectedBandData.ChannelCount()];
 		newItem.rowIndex = rowIndices[i];
 				
 		calcLane.write(newItem);
@@ -422,7 +438,7 @@ void WSInversion::visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<Sa
 	}
 }
 
-void WSInversion::visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane)
+void WSInversion::visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData)
 {
 	SamplingWorkItem workItem;
 	
@@ -432,33 +448,35 @@ void WSInversion::visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane)
 	
 	casa::IPosition shape = _modelColumn->shape(0);
 	casa::Array<std::complex<float>> data(shape);
-	size_t channelCount = shape[1];
+	size_t polCount = shape[0];
+	const BandData selectedBand = msData->SelectedBand();
+	const size_t selectedChannelCount = selectedBand.ChannelCount();
 	
 	int polIndex = polarizationIndex();
 	do
 	{
 		_modelColumn->get(workItem.rowIndex, data);
-		casa::Array<std::complex<float>>::contiter dataIter = data.cbegin();
+		casa::Array<std::complex<float>>::contiter dataIter = data.cbegin() + msData->startChannel * polCount;
 		
 		if(Polarization() == StokesI)
 		{
-			for(size_t ch=0; ch!=channelCount; ++ch)
+			for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 			{
 				if(std::isfinite(workItem.data[ch].real()))
 				{
 					if(AddToModel())
 					{
 						*dataIter += workItem.data[ch];
-						*(dataIter + 3) += workItem.data[ch];
+						*(dataIter + (polCount-1)) += workItem.data[ch];
 					} else {
 						*dataIter = workItem.data[ch];
-						*(dataIter + 3) = workItem.data[ch];
+						*(dataIter + (polCount-1)) = workItem.data[ch];
 					}
 				}
-				dataIter += 4;
+				dataIter += polCount;
 			}
 		} else {
-			for(size_t ch=0; ch!=channelCount; ++ch)
+			for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 			{
 				if(std::isfinite(workItem.data[ch].real()))
 				{
@@ -467,7 +485,7 @@ void WSInversion::visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane)
 					else
 						*(dataIter+polIndex) = workItem.data[ch];
 				}
-				dataIter += 4;
+				dataIter += polCount;
 			}
 		}
 		_modelColumn->put(workItem.rowIndex, data);
@@ -515,10 +533,10 @@ void WSInversion::Invert()
 		{
 			MSData& msData = msDataVector[i];
 			
-			BandData bandData(msData.ms->spectralWindow());
+			const BandData selectedBand(msData.SelectedBand());
 			
 			//boost::thread thread(&WSInversion::workThread, this, _inversionWorkLane.get());
-			boost::thread thread(&WSInversion::workThreadParallel, this, &bandData);
+			boost::thread thread(&WSInversion::workThreadParallel, this, &selectedBand);
 		
 			gridMeasurementSet(msData);
 			
@@ -591,15 +609,16 @@ void WSInversion::InvertToVisibilities(const double *image)
 	std::cout << "Total rows written: " << totalRowsWritten << " (overhead: " << round(totalRowsWritten * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 }
 
-void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight)
+void WSInversion::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight)
 {
-	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin();
-	casa::Array<float>::const_contiter weightPtr = weights.cbegin();
-	casa::Array<bool>::const_contiter flagPtr = flags.cbegin();
+	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
+	casa::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
+	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
+	const size_t selectedChannelCount = endChannel - startChannel;
 		
 	if(Polarization() == StokesI)
 	{
-		for(size_t ch=0; ch!=channelCount; ++ch)
+		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 		{
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
@@ -608,9 +627,9 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCoun
 			} else {
 				dest[ch] = 0;
 			}
-			weightPtr += 3;
-			inPtr += 3;
-			flagPtr += 3;
+			weightPtr += polCount-1;
+			inPtr += polCount-1;
+			flagPtr += polCount-1;
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
 				dest[ch] += *inPtr * (*weightPtr) * rowWeight;
@@ -626,7 +645,7 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCoun
 		inPtr += polIndex;
 		weightPtr += polIndex;
 		flagPtr += polIndex;
-		for(size_t ch=0; ch!=channelCount; ++ch)
+		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 		{
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
@@ -636,22 +655,23 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t channelCoun
 			else {
 				dest[ch] = 0;
 			}
-			weightPtr += 4;
-			inPtr += 4;
-			flagPtr += 4;
+			weightPtr += polCount;
+			inPtr += polCount;
+			flagPtr += polCount;
 		}
 	}
 }
 
-void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight)
+void WSInversion::copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight)
 {
-	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin();
-	casa::Array<float>::const_contiter weightPtr = weights.cbegin();
-	casa::Array<bool>::const_contiter flagPtr = flags.cbegin();
+	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
+	casa::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
+	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
+	const size_t selectedChannelCount = endChannel - startChannel;
 		
 	if(Polarization() == StokesI)
 	{
-		for(size_t ch=0; ch!=channelCount; ++ch)
+		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 		{
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
@@ -661,9 +681,9 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, co
 			else {
 				dest[ch] = 0;
 			}
-			inPtr += 3;
-			weightPtr += 3;
-			flagPtr += 3;
+			inPtr += polCount-1;
+			weightPtr += polCount-1;
+			flagPtr += polCount-1;
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
 				dest[ch] += (*weightPtr) * rowWeight;
@@ -679,7 +699,7 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, co
 		inPtr += polIndex;
 		weightPtr += polIndex;
 		flagPtr += polIndex;
-		for(size_t ch=0; ch!=channelCount; ++ch)
+		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 		{
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
@@ -688,9 +708,9 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t channelCount, co
 			} else {
 				dest[ch] = 0;
 			}
-			inPtr += 4;
-			weightPtr += 4;
-			flagPtr += 4;
+			inPtr += polCount;
+			weightPtr += polCount;
+			flagPtr += polCount;
 		}
 	}
 }
