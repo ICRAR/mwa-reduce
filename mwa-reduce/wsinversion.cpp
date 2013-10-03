@@ -517,6 +517,7 @@ void WSInversion::Invert()
 	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
 	_imager->SetGridMode(_gridMode);
 	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
+	_imager->SetImageImaginaryPart(ImaginaryPart());
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		countSamplesPerLayer(msDataVector[i]);
@@ -639,6 +640,37 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t startChanne
 			++inPtr;
 			++flagPtr;
 		}
+	} else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
+	{
+		// Step to XY:
+		++weightPtr;
+		++inPtr;
+		++flagPtr;
+		const bool flipSign = Polarization() == Polarization::YX;
+		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+		{
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
+				dest[ch] = *inPtr * (*weightPtr) * rowWeight;
+				_totalWeight += (*weightPtr) * rowWeight;
+			} else {
+				dest[ch] = 0;
+			}
+			// Step to YX:
+			++weightPtr;
+			++inPtr;
+			++flagPtr;
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
+				dest[ch] += *inPtr * (*weightPtr) * rowWeight;
+				_totalWeight += (*weightPtr) * rowWeight;
+			}
+			weightPtr += 3;
+			inPtr += 3;
+			flagPtr += 3;
+			if(flipSign)
+				dest[ch].imag(dest[ch].imag() * -1.0);
+		}
 	} else {
 		int polIndex = polarizationIndex();
 		
@@ -692,6 +724,35 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t startChannel, si
 			++inPtr;
 			++weightPtr;
 			++flagPtr;
+		}
+	} else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
+	{
+		// Step to XY:
+		inPtr++;
+		weightPtr++;
+		flagPtr++;
+		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+		{
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
+				dest[ch] = (*weightPtr) * rowWeight;
+				_totalWeight += (*weightPtr) * rowWeight;
+			}
+			else {
+				dest[ch] = 0;
+			}
+			// Step to YX:
+			inPtr++;
+			weightPtr++;
+			flagPtr++;
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+			{
+				dest[ch] += (*weightPtr) * rowWeight;
+				_totalWeight += (*weightPtr) * rowWeight;
+			}
+			inPtr += 3;
+			weightPtr += 3;
+			flagPtr += 3;
 		}
 	} else {
 		int polIndex = polarizationIndex();

@@ -29,6 +29,7 @@ class InversionAlgorithm
 			_addToModel(false),
 			_precalculatedWeightInfo(0),
 			_polarization(Polarization::StokesI),
+			_imaginaryPart(false),
 			_weighting(DistanceWeighted)
 		{
 		}
@@ -56,6 +57,7 @@ class InversionAlgorithm
 		bool HasChannelRange() const { return _channelRangeEnd != 0; }
 		size_t ChannelRangeStart() const { return _channelRangeStart; }
 		size_t ChannelRangeEnd() const { return _channelRangeEnd; }
+		bool ImaginaryPart() const { return _imaginaryPart; }
 		
 		void SetImageWidth(size_t imageWidth)
 		{
@@ -92,6 +94,10 @@ class InversionAlgorithm
 		void SetPolarization(PolarizationEnum polarization)
 		{
 			_polarization = polarization;
+		}
+		void SetImaginaryPart(bool imaginaryPart)
+		{
+			_imaginaryPart = imaginaryPart;
 		}
 		void SetWeighting(WeightingEnum weighting)
 		{
@@ -147,6 +153,7 @@ class InversionAlgorithm
 		bool _doImagePSF, _doSubtractModel, _addToModel;
 		class ImageWeights *_precalculatedWeightInfo;
 		PolarizationEnum _polarization;
+		bool _imaginaryPart;
 		WeightingEnum _weighting;
 };
 

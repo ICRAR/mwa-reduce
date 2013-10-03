@@ -58,6 +58,8 @@ int main(int argc, char *argv[])
 			"\t   Only image the given channel range. Indices specify channel indices, end index is exclusive.\n"
 			"\t-weight <weightmode>\n"
 			"\t   weightmode can be: natural, mwa, uniform\n"
+			"\t-imaginarypart\n"
+			"\t   saves the imaginary part instead of the real part; only sensible for xy/yx.\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
@@ -73,7 +75,7 @@ int main(int argc, char *argv[])
 	PolarizationEnum polarization = Polarization::StokesI;
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
 	std::string prefixName = "wsclean";
-	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false;
+	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	std::vector<std::string> filenames;
 	
@@ -136,6 +138,10 @@ int main(int argc, char *argv[])
 				polarization = Polarization::YY;
 			else if(polStr == "stokesi")
 				polarization = Polarization::StokesI;
+		}
+		else if(param == "imaginarypart")
+		{
+			imaginaryPart = true;
 		}
 		else if(param == "negative")
 		{
@@ -273,6 +279,7 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	inversionAlgorithm->SetWeighting(weightMode);
+	inversionAlgorithm->SetImaginaryPart(imaginaryPart);
 	if(intervalEnd != 0)
 		inversionAlgorithm->SetInterval(intervalStart, intervalEnd);
 	if(channelRangeEnd != 0)

@@ -90,12 +90,15 @@ class LayeredImager
 		enum GridModeEnum GridMode() const { return _gridMode; }
 		void SetGridMode(enum GridModeEnum mode) { _gridMode = mode; }
 		
+		void SetImageImaginaryPart(bool imageImaginaryPart) { _imageImaginaryPart = imageImaginaryPart; }
+		
 		void GetGriddingCorrectionImage(double* image) const;
 	private:
 		size_t layerRangeStart(size_t layerRangeIndex) const
 		{
 			return (_nWLayers * layerRangeIndex) / _nPasses;
 		}
+		template<bool ImageImaginaryPart>
 		void projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex);
 		void copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w);
 		void initializeSqrtLMLookupTable();
@@ -110,6 +113,7 @@ class LayeredImager
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
+		bool _imageImaginaryPart;
 		BandData _bandData;
 		
 		enum GridModeEnum _gridMode;

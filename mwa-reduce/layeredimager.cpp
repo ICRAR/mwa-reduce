@@ -13,6 +13,7 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_height(height),
 	_pixelSizeX(pixelSizeX),
 	_pixelSizeY(pixelSizeY),
+	_imageImaginaryPart(false),
 	_gridMode(NearestNeighbour),
 	_overSamplingFactor(15),
 	_kernelSize(7),
@@ -144,7 +145,10 @@ void LayeredImager::fftToImageThreadFunction(boost::mutex *mutex, std::stack<siz
 		fftw_execute(plan);
 		
 		// Add layer to full image
-		projectOnImageAndCorrect(fftwOut, LayerToW(layer + layerOffset), threadIndex);
+		if(_imageImaginaryPart)
+			projectOnImageAndCorrect<true>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
+		else
+			projectOnImageAndCorrect<false>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
 		
 		// lock for accessing tasks in guard
 		lock.lock();
@@ -561,6 +565,7 @@ void LayeredImager::initializeSqrtLMLookupTable()
 	}
 }
 
+template<bool ImageImaginaryPart>
 void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex)
 {
 	double *data = _imageData[threadIndex];
@@ -583,7 +588,10 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 				source->real() * c - source->imag() * s,
 				source->real() * s + source->imag() * c
 			);*/
-			data[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
+			if(ImageImaginaryPart)
+				data[xSrc + ySrc*_width] += source->real()*s + source->imag()*c;
+			else
+				data[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
 			
 			++source;
 			++sqrtLMIter;
