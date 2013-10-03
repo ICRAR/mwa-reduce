@@ -518,6 +518,7 @@ void WSInversion::Invert()
 	_imager->SetGridMode(_gridMode);
 	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
 	_imager->SetImageImaginaryPart(ImaginaryPart());
+	_imager->SetImageConjugatePart(Polarization() == Polarization::YX);
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		countSamplesPerLayer(msDataVector[i]);
@@ -662,8 +663,8 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t startChanne
 			++flagPtr;
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
-				dest[ch] += *inPtr * (*weightPtr) * rowWeight;
-				_totalWeight += (*weightPtr) * rowWeight;
+				//dest[ch] += *inPtr * (*weightPtr) * rowWeight;
+				//_totalWeight += (*weightPtr) * rowWeight;
 			}
 			weightPtr += 3;
 			inPtr += 3;
@@ -747,8 +748,8 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t startChannel, si
 			flagPtr++;
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
-				dest[ch] += (*weightPtr) * rowWeight;
-				_totalWeight += (*weightPtr) * rowWeight;
+				//dest[ch] += (*weightPtr) * rowWeight;
+				//_totalWeight += (*weightPtr) * rowWeight;
 			}
 			inPtr += 3;
 			weightPtr += 3;

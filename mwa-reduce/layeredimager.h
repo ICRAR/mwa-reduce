@@ -92,6 +92,8 @@ class LayeredImager
 		
 		void SetImageImaginaryPart(bool imageImaginaryPart) { _imageImaginaryPart = imageImaginaryPart; }
 		
+		void SetImageConjugatePart(bool imageConjugatePart) { _imageConjugatePart = imageConjugatePart; }
+		
 		void GetGriddingCorrectionImage(double* image) const;
 	private:
 		size_t layerRangeStart(size_t layerRangeIndex) const
@@ -113,7 +115,7 @@ class LayeredImager
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
-		bool _imageImaginaryPart;
+		bool _imageImaginaryPart, _imageConjugatePart;
 		BandData _bandData;
 		
 		enum GridModeEnum _gridMode;

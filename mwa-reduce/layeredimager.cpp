@@ -14,6 +14,7 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_pixelSizeX(pixelSizeX),
 	_pixelSizeY(pixelSizeY),
 	_imageImaginaryPart(false),
+	_imageConjugatePart(false),
 	_gridMode(NearestNeighbour),
 	_overSamplingFactor(15),
 	_kernelSize(7),
@@ -264,8 +265,16 @@ void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, 
  	const size_t
 		layerOffset = layerRangeStart(_curLayerRangeIndex),
 		layerRangeEnd = layerRangeStart(_curLayerRangeIndex+1);
+	if(_imageConjugatePart)
+	{
+		uInLambda = -uInLambda;
+		vInLambda = -vInLambda;
+		sample = std::conj(sample);
+	}
 	if(wInLambda < 0.0)
 	{
+		if(_imageImaginaryPart)
+			return;
 		uInLambda = -uInLambda;
 		vInLambda = -vInLambda;
 		wInLambda = -wInLambda;
@@ -589,7 +598,12 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 				source->real() * s + source->imag() * c
 			);*/
 			if(ImageImaginaryPart)
-				data[xSrc + ySrc*_width] += source->real()*s + source->imag()*c;
+			{
+				if(_imageConjugatePart)
+					data[xSrc + ySrc*_width] += -source->real()*s + source->imag()*c;
+				else
+					data[xSrc + ySrc*_width] += source->real()*s + source->imag()*c;
+			}
 			else
 				data[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
 			
