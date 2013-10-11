@@ -86,7 +86,6 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
 	std::cout << 'F' << std::flush;
@@ -128,10 +127,13 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 		std::cout << "DONE (" << msData.rowStart << '-' << msData.rowEnd << ")\n";
 	}
 	
-	std::cout << "Determining min and max w... " << std::flush;
+	std::cout << "Determining min and max w & beam size... " << std::flush;
 	msData.maxW= -1e100;
 	msData.minW = 1e100;
 	double maxBaseline = 0.0;
+	casa::IPosition flagShape(flagColumn.shape(msData.rowStart));
+	casa::Array<bool> flagArray(flagShape);
+	msData.polarizationCount = flagShape[0];
 	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
 		if(ant1Column(row) != ant2Column(row))
@@ -140,12 +142,26 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 			double uInM = uvwArray(0), vInM = uvwArray(1), wInM = uvwArray(2);
 			double wHi = fabs(wInM / partBandData.SmallestWavelength());
 			double wLo = fabs(wInM / partBandData.LongestWavelength());
-			msData.maxW = std::max(msData.maxW, wHi);
-			msData.minW = std::min(msData.minW, wLo);
-			maxBaseline = std::max(maxBaseline, uInM*uInM + vInM*vInM + wInM*wInM);
+			double baselineInM = sqrt(uInM*uInM + vInM*vInM + wInM*wInM);
+			if(wHi > msData.maxW || wLo < msData.minW || baselineInM / partBandData.SmallestWavelength() > maxBaseline)
+			{
+				flagColumn.get(row, flagArray);
+				const bool* flagArrayData = flagArray.cbegin() + msData.startChannel * msData.polarizationCount;
+				for(size_t ch=msData.startChannel; ch!=msData.endChannel; ++ch)
+				{
+					if(!*flagArrayData)
+					{
+						const double wavelength = msData.bandData.ChannelWavelength(ch);
+						msData.maxW = std::max(msData.maxW, fabs(wInM / wavelength));
+						msData.minW = std::min(msData.minW, fabs(wInM / wavelength));
+						maxBaseline = std::max(maxBaseline, baselineInM / wavelength);
+					}
+					flagArrayData += msData.polarizationCount;
+				}
+			}
 		}
 	}
-	_beamSize = partBandData.SmallestWavelength() / sqrt(maxBaseline);
+	_beamSize = 1.0 / maxBaseline;
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
 }
 
@@ -168,7 +184,9 @@ void WSInversion::countSamplesPerLayer(MSData& msData)
 			for(size_t ch=msData.startChannel; ch!=msData.endChannel; ++ch)
 			{
 				double w = wInMeters / bandData.ChannelWavelength(ch);
-				++sampleCount[_imager->WToLayer(w)];
+				size_t wLayerIndex = _imager->WToLayer(w);
+				if(wLayerIndex < WGridSize())
+					++sampleCount[wLayerIndex];
 			}
 			++msData.matchingRows;
 		}
@@ -195,7 +213,6 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 		modelColumn.reset(new casa::ROArrayColumn<std::complex<float>>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
 	
 	casa::IPosition dataShape = dataColumn.shape(0);
-	msData.polarizationCount = dataShape[0];
 	
 	const BandData selectedBand(msData.bandData, msData.startChannel, msData.endChannel);
 	_imager->PrepareBand(selectedBand);
@@ -641,7 +658,7 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t startChanne
 			++inPtr;
 			++flagPtr;
 		}
-	} else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
+	} /*else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
 	{
 		// Step to XY:
 		++weightPtr;
@@ -669,10 +686,10 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t startChanne
 			weightPtr += 3;
 			inPtr += 3;
 			flagPtr += 3;
-			if(flipSign)
-				dest[ch].imag(dest[ch].imag() * -1.0);
+			//if(flipSign)
+			//	dest[ch].imag(dest[ch].imag() * -1.0);
 		}
-	} else {
+	}*/ else {
 		int polIndex = polarizationIndex();
 		
 		inPtr += polIndex;
