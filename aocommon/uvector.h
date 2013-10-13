@@ -1,5 +1,5 @@
-#ifndef STDEXT_UVECTOR_H
-#define STDEXT_UVECTOR_H
+#ifndef AO_UVECTOR_H
+#define AO_UVECTOR_H
 
 #include <cstring>
 #include <iterator>
@@ -1236,4 +1236,5 @@ inline void swap(uvector<Tp,Alloc>& x, uvector<Tp,Alloc>& y)
 
 } // end of namespace ao
 
-#endif // STDEXT_UVECTOR_H
+#endif // AO_UVECTOR_H
+
