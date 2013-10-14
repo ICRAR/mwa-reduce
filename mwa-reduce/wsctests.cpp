@@ -17,9 +17,9 @@ void test(bool test, const char* descr)
 int main(int argc, char* argv[])
 {
 	ao::uvector<double> img(16, 0);
+	size_t x=size_t(-1), y=size_t(-1);
 #ifdef __AVX__
 	img[0] = 1;
-	size_t x=size_t(-1), y=size_t(-1);
 	CleanAlgorithm::PartialFindPeakAVX(img.data(), 4, 2, x, y, true, 0, 2);
 	test(x == 0 && y == 0, "x,y == 0,0");
 	img[1] = 2;
