@@ -207,7 +207,7 @@ void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage
 	if(_stopOnNegativeComponent)
 		_allowNegativeComponents = true;
 	
-	size_t componentX, componentY;
+	size_t componentX=0, componentY=0;
 	double peak = FindPeak(dataImage, width, height, componentX, componentY, _allowNegativeComponents);
 	std::cout << "Initial peak: " << peak << '\n';
 	double firstThreshold = _threshold, stopGainThreshold = fabs(peak*(1.0-_stopGain));
@@ -221,13 +221,13 @@ void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage
 	}
 
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-	std::vector<lane<CleanTask>*> taskLanes(cpuCount);
-	std::vector<lane<CleanResult>*> resultLanes(cpuCount);
+	std::vector<ao::lane<CleanTask>*> taskLanes(cpuCount);
+	std::vector<ao::lane<CleanResult>*> resultLanes(cpuCount);
 	boost::thread_group threadGroup;
 	for(size_t i=0; i!=cpuCount; ++i)
 	{
-		taskLanes[i] = new lane<CleanTask>(1);
-		resultLanes[i] = new lane<CleanResult>(1);
+		taskLanes[i] = new ao::lane<CleanTask>(1);
+		resultLanes[i] = new ao::lane<CleanResult>(1);
 		CleanThreadData cleanThreadData;
 		cleanThreadData.imgWidth = width;
 		cleanThreadData.imgHeight = height;
@@ -283,7 +283,7 @@ void CleanAlgorithm::ExecuteMajorIteration(double* dataImage, double* modelImage
 	reachedStopGain = fabs(peak) < stopGainThreshold;
 }
 
-void CleanAlgorithm::cleanThreadFunc(lane<CleanTask> *taskLane, lane<CleanResult> *resultLane, CleanThreadData cleanData)
+void CleanAlgorithm::cleanThreadFunc(ao::lane<CleanTask> *taskLane, ao::lane<CleanResult> *resultLane, CleanThreadData cleanData)
 {
 	CleanTask task;
 	while(taskLane->read(task))

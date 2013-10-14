@@ -31,11 +31,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
 set(CMAKE_REQUIRED_FLAGS "-std=c++0x")
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles(
-"#include \"${CMAKE_CURRENT_SOURCE_DIR}/bits/uvector.h\"
+"#include \"${CMAKE_CURRENT_SOURCE_DIR}/aocommon/uvector.h\"
 int main(int argc, char* argv[])
 {
 return 0;
 }" UVECTOR_COMPILES)
+check_cxx_source_compiles(
+"#include \"${CMAKE_CURRENT_SOURCE_DIR}/aocommon/lane_11.h\"
+int main(int argc, char* argv[])
+{
+return 0;
+}" LANE11_COMPILES)
 
 # The following stuff will set the "rpath" correctly, so that
 # LD_LIBRARY_PATH doesn't have to be set.
@@ -152,5 +158,8 @@ endif(GSL_LIB AND CBLAS_LIB)
 if(UVECTOR_COMPILES)
   add_definitions(-DHAVE_UVECTOR)
 endif(UVECTOR_COMPILES)
+if(LANE11_COMPILES)
+  add_definitions(-DHAVE_LANE11)
+endif(LANE11_COMPILES)
 
 target_link_libraries(aoimage ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})

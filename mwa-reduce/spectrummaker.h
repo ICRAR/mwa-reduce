@@ -89,11 +89,11 @@ public:
 private:
 	void measure(const std::string& filename, const std::string& solutionsFile);
 	
-	void measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskLane);
+	void measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* taskLane);
 	
 	void recalculateBeamWeights(size_t beamWeightIndex);
 	
-	void recalculateBeamWeightsThreadFunc(lane<BeamEvalTaskInfo>* taskLane);
+	void recalculateBeamWeightsThreadFunc(ao::lane<BeamEvalTaskInfo>* taskLane);
 	
 	struct Measurement
 	{

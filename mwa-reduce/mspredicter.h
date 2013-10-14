@@ -86,7 +86,7 @@ private:
 	boost::mutex _mutex;
 	
 	const size_t _laneSize;
-	lane<RowData> _workLane, _outputLane, _availableBufferLane;
+	ao::lane<RowData> _workLane, _outputLane, _availableBufferLane;
 	
 	std::unique_ptr<boost::thread> _readThread;
 	std::unique_ptr<boost::thread_group> _workThreadGroup;

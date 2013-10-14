@@ -38,14 +38,14 @@ struct ImageWork
 
 struct ThreadParameters
 {
-	lane<ImageWork> *worklane;
+	ao::lane<ImageWork> *worklane;
 	BTPImager *imager;
 	size_t threadIndex;
 };
 
 void workFunction(const ThreadParameters parameters)
 {
-	lane<ImageWork> &worklane = *parameters.worklane;
+	ao::lane<ImageWork> &worklane = *parameters.worklane;
 	BTPImager &imager = *parameters.imager;
 	size_t threadIndex = parameters.threadIndex;
 	ImageWork work;
@@ -427,7 +427,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 		size_t cpuCount = imager.ImageCount();
 		std::cout << "Starting " << cpuCount << " work threads... " << std::flush;
 		
-		lane<ImageWork> worklane(cpuCount * 2);
+		ao::lane<ImageWork> worklane(cpuCount * 2);
 		ThreadParameters parameters;
 		parameters.worklane = &worklane;
 		parameters.imager = &imager;

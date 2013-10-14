@@ -83,7 +83,7 @@ class WSInversion : public InversionAlgorithm
 
 		void sampleToMeasurementSet(MSData &msData);
 
-		void workThread(lane<InversionWorkItem>* workLane)
+		void workThread(ao::lane<InversionWorkItem>* workLane)
 		{
 			InversionWorkItem workItem;
 			while(workLane->read(workItem))
@@ -94,10 +94,10 @@ class WSInversion : public InversionAlgorithm
 		}
 		
 		void workThreadParallel(const BandData* selectedBand);
-		void workThreadPerSample(lane<InversionWorkSample>* workLane);
+		void workThreadPerSample(ao::lane<InversionWorkSample>* workLane);
 		
-		void visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<SamplingWorkItem>* outputLane);
-		void visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData);
+		void visSampleCalcThread(ao::lane<SamplingWorkItem>* inputLane, ao::lane<SamplingWorkItem>* outputLane);
+		void visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData);
 		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
 		int polarizationIndex() const
@@ -112,7 +112,7 @@ class WSInversion : public InversionAlgorithm
 		}
 
 		std::unique_ptr<LayeredImager> _imager;
-		std::unique_ptr<lane<InversionWorkItem>> _inversionWorkLane;
+		std::unique_ptr<ao::lane<InversionWorkItem>> _inversionWorkLane;
 		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
 		double _phaseCentreRA, _phaseCentreDec;
 		bool _hasFrequencies;

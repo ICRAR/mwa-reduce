@@ -299,7 +299,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 
 void WSInversion::workThreadParallel(const BandData* selectedBand)
 {
-	std::unique_ptr<lane<InversionWorkSample>[]> lanes(new lane<InversionWorkSample>[_cpuCount]);
+	std::unique_ptr<ao::lane<InversionWorkSample>[]> lanes(new ao::lane<InversionWorkSample>[_cpuCount]);
 	boost::thread_group group;
 	// Samples of the same w-layer are collected in a buffer
 	// before they are written into the lane. This is done because writing
@@ -337,7 +337,7 @@ void WSInversion::workThreadParallel(const BandData* selectedBand)
 	group.join_all();
 }
 
-void WSInversion::workThreadPerSample(lane<InversionWorkSample>* workLane)
+void WSInversion::workThreadPerSample(ao::lane<InversionWorkSample>* workLane)
 {
 	lane_read_buffer<InversionWorkSample> buffer(workLane, std::min(_laneBufferSize*16, workLane->capacity()));
 	InversionWorkSample sampleData;
@@ -391,7 +391,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	
 	size_t rowsProcessed = 0;
 	
-	lane<SamplingWorkItem> calcLane(_laneBufferSize+_cpuCount), writeLane(_laneBufferSize);
+	ao::lane<SamplingWorkItem> calcLane(_laneBufferSize+_cpuCount), writeLane(_laneBufferSize);
 	boost::thread writeThread(&WSInversion::visSampleWriteThread, this, &writeLane, &msData);
 	boost::thread_group calcThreads;
 	for(size_t i=0; i!=_cpuCount; ++i)
@@ -444,7 +444,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	_modelColumn.reset();
 }
 
-void WSInversion::visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<SamplingWorkItem>* outputLane)
+void WSInversion::visSampleCalcThread(ao::lane<SamplingWorkItem>* inputLane, ao::lane<SamplingWorkItem>* outputLane)
 {
 	SamplingWorkItem item;
 	while(inputLane->read(item))
@@ -455,7 +455,7 @@ void WSInversion::visSampleCalcThread(lane<SamplingWorkItem>* inputLane, lane<Sa
 	}
 }
 
-void WSInversion::visSampleWriteThread(lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData)
+void WSInversion::visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData)
 {
 	SamplingWorkItem workItem;
 	
@@ -544,7 +544,7 @@ void WSInversion::Invert()
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
 		std::cout << "Starting gridding pass " << pass << ".\n";
-		_inversionWorkLane.reset(new lane<InversionWorkItem>(16));
+		_inversionWorkLane.reset(new ao::lane<InversionWorkItem>(16));
 		
 		_imager->StartInversionPass(pass);
 		

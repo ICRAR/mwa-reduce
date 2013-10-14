@@ -182,7 +182,7 @@ void SpectrumSubtractor::initMeasureThreadData()
 		// BUFFER_COUNT-2, because the pushing thread can start
 		// overwritting the n-1 th buffer while the popping thread
 		// can just get the n-1 th buffer out.
-		_taskLanes[i] = new lane<MeasureThreadInfo>(BUFFER_COUNT-2);
+		_taskLanes[i] = new ao::lane<MeasureThreadInfo>(BUFFER_COUNT-2);
 	}
 }
 
@@ -244,7 +244,7 @@ void SpectrumSubtractor::measureThreadFunc(size_t threadIndex)
 {
 	size_t channelCount = _bandData.ChannelCount();
 	MeasureThreadInfo taskInfo;
-	lane<MeasureThreadInfo> &taskLane = *_taskLanes[threadIndex];
+	ao::lane<MeasureThreadInfo> &taskLane = *_taskLanes[threadIndex];
 	while(taskLane.read(taskInfo))
 	{
 		std::complex<float>* dataPtr = taskInfo.data;

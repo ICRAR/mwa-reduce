@@ -6,7 +6,9 @@
 
 #include "polarizationenum.h"
 
-template<typename T> class lane;
+namespace ao {
+	template<typename T> class lane;
+}
 
 class CleanAlgorithm
 {
@@ -116,7 +118,7 @@ class CleanAlgorithm
 			const double *psfImage;
 			size_t psfWidth, psfHeight;
 		};
-		void cleanThreadFunc(lane<CleanTask>* taskLane, lane<CleanResult>* resultLane, CleanThreadData cleanData);
+		void cleanThreadFunc(ao::lane<CleanTask>* taskLane, ao::lane<CleanResult>* resultLane, CleanThreadData cleanData);
 		
 		double _threshold, _subtractionGain, _stopGain;
 		size_t _maxIter, _iterationNumber;

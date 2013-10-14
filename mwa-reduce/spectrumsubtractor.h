@@ -67,7 +67,7 @@ class SpectrumSubtractor
 		Model _model;
 		std::vector<ModelSource> _sources;
 		BandData _bandData;
-		std::vector<lane<MeasureThreadInfo>*> _taskLanes;
+		std::vector<ao::lane<MeasureThreadInfo>*> _taskLanes;
 		size_t _cpuCount;
 		std::vector<std::unique_ptr<Predicter>> _predicters;
 		
@@ -78,7 +78,7 @@ class SpectrumSubtractor
 		std::vector<double> _spectrumSums, _spectrumWeights;
 
 		boost::mutex _subtractIOMutex;
-		lane<SubtractThreadInfo> _subtractWorkLane, _subtractWriteLane, _subtractAvailableLane;
+		ao::lane<SubtractThreadInfo> _subtractWorkLane, _subtractWriteLane, _subtractAvailableLane;
 		std::unique_ptr<boost::thread> _subtractWriteThread;
 		
 		static const size_t BUFFER_COUNT;

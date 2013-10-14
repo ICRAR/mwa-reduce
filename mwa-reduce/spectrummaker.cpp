@@ -81,14 +81,14 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	const size_t BUFFER_COUNT = 16;
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	boost::thread_group threadGroup;
-	std::vector<lane<ThreadTaskInfo>*> taskLanes(cpuCount);
+	std::vector<ao::lane<ThreadTaskInfo>*> taskLanes(cpuCount);
 	for(size_t i=0; i!=cpuCount; ++i)
 	{
 		// The task lane must issue a "wait" when its size is
 		// BUFFER_COUNT-2, because the pushing thread can start
 		// overwritting the n-1 th buffer while the popping thread
 		// can just get the n-1 th buffer out.
-		taskLanes[i] = new lane<ThreadTaskInfo>(BUFFER_COUNT-2);
+		taskLanes[i] = new ao::lane<ThreadTaskInfo>(BUFFER_COUNT-2);
 		threadGroup.add_thread(new boost::thread(&SpectrumMaker::measureThreadFunc, this, &*taskLanes[i]));
 	}
 	
@@ -232,7 +232,7 @@ void SpectrumMaker::recalculateBeamWeights(size_t beamWeightIndex)
 	}
 }
 
-void SpectrumMaker::recalculateBeamWeightsThreadFunc(lane<BeamEvalTaskInfo> *taskLane)
+void SpectrumMaker::recalculateBeamWeightsThreadFunc(ao::lane<BeamEvalTaskInfo> *taskLane)
 {
 	BeamEvalTaskInfo info;
 	while(taskLane->read(info))
@@ -247,7 +247,7 @@ void SpectrumMaker::recalculateBeamWeightsThreadFunc(lane<BeamEvalTaskInfo> *tas
 	}
 }
 
-void SpectrumMaker::measureThreadFunc(lane<SpectrumMaker::ThreadTaskInfo>* taskLane)
+void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* taskLane)
 {
 	size_t channelCount = _bandData.ChannelCount();
 	ThreadTaskInfo taskInfo;
