@@ -15,6 +15,11 @@ class CleanAlgorithm
 	public:
 		CleanAlgorithm();
 		
+#ifdef __AVX__
+		template<bool AllowNegativeComponent>
+		static double FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y);
+#endif
+		
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents)
 		{
 			double peakMax = std::fabs(*image);
@@ -23,11 +28,10 @@ class CleanAlgorithm
 			size_t peakIndex = 0;
 			size_t index = 0;
 			
-			//TODO: this first loop ignores allowNegativeComponents and might set peakMax to the maximum negative
-			// value, in which case the returned value is negative even though allowNegativeComponents=false.
 			while(!std::isfinite(peakMax) && imgIter!=endPtr)
 			{
-				peakMax = std::fabs(*imgIter);
+				if(allowNegativeComponents || *imgIter >= 0.0)
+					peakMax = std::fabs(*imgIter);
 				++imgIter;
 				++index;
 				++peakIndex;
@@ -53,7 +57,30 @@ class CleanAlgorithm
 
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, const class AreaSet &cleanAreas);
 
+#ifdef __AVX__
+		static double PartialFindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
+		{
+			double peakLevel;
+			if(allowNegativeComponents)
+				peakLevel = FindPeakAVX<true>(image + (width * startY), width, endY-startY, x, y);
+			else
+				peakLevel = FindPeakAVX<false>(image + (width * startY), width, endY-startY, x, y);
+			y += startY;
+			return peakLevel;
+		}
 		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
+		{
+			return PartialFindPeakAVX(image, width, height, x, y, allowNegativeComponents, startY, endY);
+		}
+#else
+#warning "Not using AVX optimized version of PartialFindPeak()!"
+		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
+		{
+			return PartialFindPeakSimple(image, width, height, x, y, allowNegativeComponents, startY, endY);
+		}
+#endif
+
+		static double PartialFindPeakSimple(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
 		{
 			double peakLevel = FindPeak(image + (width * startY), width, endY-startY, x, y, allowNegativeComponents);
 			y += startY;

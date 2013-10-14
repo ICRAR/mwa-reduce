@@ -7,6 +7,7 @@
 
 #include <boost/thread/thread.hpp>
 #include <emmintrin.h>
+#include <immintrin.h>
 
 #include <iostream>
 #include <limits>
@@ -50,6 +51,64 @@ double CleanAlgorithm::PartialFindPeak(const double *image, size_t width, size_t
 	}
 	return image[x + y*width];
 }
+
+#ifdef __AVX__
+template<bool AllowNegativeComponent>
+double CleanAlgorithm::FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y)
+{
+	double peakMax = std::fabs(*image);
+	const double* imgIter = image;
+	const double* const endPtr = image + width * height - 4;
+	size_t peakIndex = 0;
+	size_t index = 0;
+	
+	__m256d mPeakMax = _mm256_set1_pd(peakMax);
+	const double *i=imgIter;
+	for(; i<endPtr; i+=4)
+	{
+		__m256d val = _mm256_loadu_pd(i);
+		if(AllowNegativeComponent) {
+			__m256d negVal = _mm256_sub_pd(_mm256_set1_pd(0.0), val);
+			val = _mm256_max_pd(val, negVal);
+		}
+		int mask = _mm256_movemask_pd(_mm256_cmp_pd(val, mPeakMax, _CMP_GT_OQ));
+		if(mask != 0)
+		{
+			for(size_t di=0; di!=4; ++di)
+			{
+				double value = i[di];
+				if(AllowNegativeComponent) value = std::fabs(value);
+				if(value > peakMax)
+				{
+					peakIndex = index+di;
+					peakMax = std::fabs(i[di]);
+					mPeakMax = _mm256_set1_pd(peakMax);
+				}
+			}
+		}
+		index+=4;
+	}
+	for(; i!=endPtr+4; ++i)
+	{
+		double value = *i;
+		if(AllowNegativeComponent) value = std::fabs(value);
+		if(value > peakMax)
+		{
+			peakIndex = index;
+			peakMax = std::fabs(*i);
+		}
+		++index;
+	}
+	x = peakIndex % width;
+	y = peakIndex / width;
+	return image[x + y*width];
+}
+
+template
+double CleanAlgorithm::FindPeakAVX<false>(const double *image, size_t width, size_t height, size_t &x, size_t &y);
+template
+double CleanAlgorithm::FindPeakAVX<true>(const double *image, size_t width, size_t height, size_t &x, size_t &y);
+#endif // __AVX__
 
 void CleanAlgorithm::SubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor)
 {
