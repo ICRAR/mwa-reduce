@@ -17,6 +17,7 @@ void test(bool test, const char* descr)
 int main(int argc, char* argv[])
 {
 	ao::uvector<double> img(16, 0);
+#ifdef __AVX__
 	img[0] = 1;
 	size_t x=size_t(-1), y=size_t(-1);
 	CleanAlgorithm::PartialFindPeakAVX(img.data(), 4, 2, x, y, true, 0, 2);
@@ -34,7 +35,8 @@ int main(int argc, char* argv[])
 	CleanAlgorithm::PartialFindPeakAVX(img.data(), 4, 2, x, y, true, 0, 4);
 	test(x == 3 && y == 3, "x,y == 3,3");
 	std::cout << '\n';
-	
+#endif
+
 	size_t n = 5120;
 	ao::uvector<double> psf(n * n, 0.0);
 	img.resize(n * n);
