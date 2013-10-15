@@ -95,6 +95,10 @@ class CleanAlgorithm
 		
 		static void PartialSubtractImage(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY);
 		
+#ifdef __AVX__
+		static void PartialSubtractImageAVX(double *image, size_t imgWidth, size_t imgHeight, const double *psf, size_t psfWidth, size_t psfHeight, size_t x, size_t y, double factor, size_t startY, size_t endY);
+#endif
+		
 		/**
 		 * Single threaded implementation -- just for reference.
 		 */

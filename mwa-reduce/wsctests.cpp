@@ -84,4 +84,14 @@ int main(int argc, char* argv[])
 	for(size_t repeat=0; repeat!=100; ++repeat)
 		CleanAlgorithm::PartialSubtractImage(img.data(), n, n, psf.data(), n, n, x, y, 0.5, 0, n/2);
 	std::cout << "PartialSubtractImage: " << watch.ToMilliSecondsString() << '\n';
+	
+#ifdef __AVX__
+	x=n/2; y=n/2;
+	watch.Reset();
+	watch.Start();
+	for(size_t repeat=0; repeat!=100; ++repeat)
+		CleanAlgorithm::PartialSubtractImageAVX(img.data(), n, n, psf.data(), n, n, x, y, 0.5, 0, n/2);
+	std::cout << "PartialSubtractImageAVX: " << watch.ToMilliSecondsString() << '\n';
+#endif
+
 }
