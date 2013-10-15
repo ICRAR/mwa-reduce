@@ -8,6 +8,7 @@
 #include "parser/areaparser.h"
 #include "beamevaluator.h"
 #include "imageweights.h"
+#include "stopwatch.h"
 
 #include <iostream>
 #include <memory>
@@ -291,15 +292,22 @@ int main(int argc, char *argv[])
 		bandwidth, beamSize, dateObs;
 		
 	std::vector<double> psf;
+	bool isFirstInversion = true;
+	
+	Stopwatch inversionWatch(false), predictingWatch(false), cleaningWatch(false);
 	
 	if(nIter > 0)
 	{
 		std::cout << std::flush << " == Constructing PSF ==\n";
+		inversionWatch.Start();
 		inversionAlgorithm->SetDoImagePSF(true);
+		inversionAlgorithm->SetVerbose(isFirstInversion);
 		inversionAlgorithm->Invert();
 		psf.resize(imgWidth * imgHeight);
 		memcpy(&psf[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+		inversionWatch.Pause();
 		
+		isFirstInversion = false;
 		ra = inversionAlgorithm->ImageResultRA(),
 		dec = inversionAlgorithm->ImageResultDec(),
 		freqHigh = inversionAlgorithm->ImageHighestFrequencyChannel(),
@@ -330,8 +338,11 @@ int main(int argc, char *argv[])
 	}
 	
 	std::cout << std::flush << " == Constructing image ==\n";
+	inversionWatch.Start();
 	inversionAlgorithm->SetDoImagePSF(false);
+	inversionAlgorithm->SetVerbose(isFirstInversion);
 	inversionAlgorithm->Invert();
+	inversionWatch.Pause();
 	
 	ra = inversionAlgorithm->ImageResultRA(),
 	dec = inversionAlgorithm->ImageResultDec(),
@@ -341,6 +352,7 @@ int main(int argc, char *argv[])
 	bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
 	beamSize = inversionAlgorithm->ImageBeamSize(),
 	dateObs = inversionAlgorithm->ImageStartTime();
+	inversionAlgorithm->SetVerbose(false);
 	
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
 	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
@@ -381,7 +393,9 @@ int main(int argc, char *argv[])
 		bool reachedMajorThreshold = false;
 		do {
 			std::cout << std::flush << " == Cleaning (" << majorIterationNr << ") ==\n";
+			cleaningWatch.Start();
 			cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
+			cleaningWatch.Pause();
 			
 			if(majorIterationNr == 1)
 			{
@@ -404,12 +418,16 @@ int main(int argc, char *argv[])
 			if(mGain != 1.0)
 			{
 				std::cout << std::flush << " == Converting model image to visibilities ==\n";
+				predictingWatch.Start();
 				inversionAlgorithm->SetAddToModel(false);
 				inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+				predictingWatch.Pause();
 				
 				std::cout << std::flush << " == Constructing image ==\n";
+				inversionWatch.Start();
 				inversionAlgorithm->SetDoSubtractModel(true);
 				inversionAlgorithm->Invert();
+				inversionWatch.Pause();
 				
 				memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 				
@@ -472,4 +490,5 @@ int main(int argc, char *argv[])
 	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
 	std::cout << "DONE\n";
 	
+	std::cout << "Inversion: " << inversionWatch.ToString() << ", prediction: " << predictingWatch.ToString() << ", cleaning: " << cleaningWatch.ToString() << '\n';
 }
