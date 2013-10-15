@@ -1,0 +1,110 @@
+#ifndef MULTIBANDDATA_H
+#define MULTIBANDDATA_H
+
+#include <stdexcept>
+
+#include <ms/MeasurementSets/MeasurementSet.h>
+
+#include <tables/Tables/ArrayColumn.h>
+#include <tables/Tables/ScalarColumn.h>
+
+#include "banddata.h"
+
+class MultiBandData
+{
+	public:
+		MultiBandData()
+		{
+		}
+		
+		MultiBandData(casa::MSSpectralWindow& spwTable, casa::MSDataDescription& dataDescTable) :
+		_dataDescToBand(dataDescTable.nrow()),
+		_bandData(spwTable.nrow())
+		{
+			for(size_t spw=0; spw!=_bandData.size(); ++spw)
+			{
+				_bandData[spw] = BandData(spwTable, spw);
+			}
+			
+			casa::ROScalarColumn<int> spwColumn(	dataDescTable, casa::MSDataDescription::columnName(casa::MSDataDescriptionEnums::SPECTRAL_WINDOW_ID));
+			for(size_t id=0; id!=_dataDescToBand.size(); ++id)
+				_dataDescToBand[id] = spwColumn(id);
+		}
+		
+		MultiBandData(const MultiBandData& source) :
+			_dataDescToBand(source._dataDescToBand),
+			_bandData(source._bandData)
+		{
+		}
+		
+		MultiBandData(const MultiBandData& source, size_t startChannel, size_t endChannel) :
+			_dataDescToBand(source._dataDescToBand)
+		{
+			_bandData.resize(source.BandCount());
+			for(size_t spw=0; spw!=source.BandCount(); ++spw)
+				_bandData[spw] = BandData(source._bandData[spw], startChannel, endChannel);
+		}
+		
+		void operator=(const MultiBandData& source)
+		{
+			_dataDescToBand = source._dataDescToBand;
+			_bandData = source._bandData;
+		}
+		
+		const BandData& operator[](size_t dataDescID) const
+		{
+			return _bandData[_dataDescToBand[dataDescID]];
+		}
+		
+		const BandData& FirstBand() const
+		{
+			return _bandData.front();
+		}
+		
+		size_t BandCount() const
+		{
+			return _bandData.size();
+		}
+		
+		size_t DataDescCount() const
+		{
+			return _dataDescToBand.size();
+		}
+		
+		double LowestFrequency() const
+		{
+			double freq = _bandData[0].LowestFrequency();
+			for(size_t i=0; i!=_bandData.size(); ++i)
+				freq = std::min(freq, _bandData[i].LowestFrequency());
+			return freq;
+		}
+		
+		double HighestFrequency() const
+		{
+			double freq = _bandData[0].HighestFrequency();
+			for(size_t i=0; i!=_bandData.size(); ++i)
+				freq = std::max(freq, _bandData[i].HighestFrequency());
+			return freq;
+		}
+		
+		double BandStart() const
+		{
+			double freq = std::min(_bandData[0].BandStart(), _bandData[0].BandEnd());
+			for(size_t i=0; i!=_bandData.size(); ++i)
+				freq = std::min(freq, std::min(_bandData[i].BandStart(), _bandData[i].BandEnd()));
+			return freq;
+		}
+		
+		double BandEnd() const
+		{
+			double freq = std::max(_bandData[0].BandStart(), _bandData[0].BandEnd());
+			for(size_t i=0; i!=_bandData.size(); ++i)
+				freq = std::max(freq, std::max(_bandData[i].BandStart(), _bandData[i].BandEnd()));
+			return freq;
+		}
+	private:
+		std::vector<size_t> _dataDescToBand;
+		std::vector<BandData> _bandData;
+};
+
+#endif

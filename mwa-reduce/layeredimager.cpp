@@ -247,12 +247,13 @@ double LayeredImager::bessel0(double x, double precision)
 	return s;
 }
 
-void LayeredImager::AddData(const std::complex<float>* data, double uInM, double vInM, double wInM)
+void LayeredImager::AddData(const std::complex<float>* data, size_t dataDescId, double uInM, double vInM, double wInM)
 {
-	for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+	const BandData& curBand = _bandData[dataDescId];
+	for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
 	{
 		double
-			wavelength = _bandData.ChannelWavelength(ch),
+			wavelength = curBand.ChannelWavelength(ch),
 			u = uInM / wavelength,
 			v = vInM / wavelength,
 			w = wInM / wavelength;
@@ -354,15 +355,16 @@ void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, 
 	}
 }
 
-void LayeredImager::SampleData(std::complex<float>* data, double uInM, double vInM, double wInM)
+void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, double uInM, double vInM, double wInM)
 {
  	const size_t
 		layerOffset = layerRangeStart(_curLayerRangeIndex),
 		layerRangeEnd = layerRangeStart(_curLayerRangeIndex+1);
-	for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+	const BandData& curBand(_bandData[dataDescId]);
+	for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
 	{
 		double
-			wavelength = _bandData.ChannelWavelength(ch),
+			wavelength = curBand.ChannelWavelength(ch),
 			u = uInM / wavelength,
 			v = vInM / wavelength,
 			w = wInM / wavelength;

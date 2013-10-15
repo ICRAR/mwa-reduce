@@ -2,6 +2,7 @@
 #define LAYERED_IMAGER_H
 
 #include "banddata.h"
+#include "multibanddata.h"
 
 #include <boost/thread/mutex.hpp>
 
@@ -21,7 +22,7 @@ class LayeredImager
 		
 		void PrepareWLayers(size_t nWLayers, size_t maxMem, double minW, double maxW);
 		
-		void PrepareBand(const BandData &bandData)
+		void PrepareBand(const MultiBandData &bandData)
 		{
 			_bandData = bandData;
 		}
@@ -65,7 +66,7 @@ class LayeredImager
 		}
 		
 		// Inversion (uv to image) methods
-		void AddData(const std::complex<float>* data, double uInM, double vInM, double wInM);
+		void AddData(const std::complex<float>* data, size_t dataDescId, double uInM, double vInM, double wInM);
 		
 		void AddDataSample(std::complex<float> sample, double uInLambda, double vInLambda, double wInLambda);
 		
@@ -80,7 +81,7 @@ class LayeredImager
 		
 		void StartVisibilitySamplingPass(size_t passIndex);
 		
-		void SampleData(std::complex<float>* data, double uInM, double vInM, double wInM);
+		void SampleData(std::complex<float>* data, size_t dataDescId, double uInM, double vInM, double wInM);
 		
 		const double *Image() { return _imageData[0]; }
 		
@@ -116,7 +117,7 @@ class LayeredImager
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
 		bool _imageImaginaryPart, _imageConjugatePart;
-		BandData _bandData;
+		MultiBandData _bandData;
 		
 		enum GridModeEnum _gridMode;
 		size_t _overSamplingFactor, _kernelSize;

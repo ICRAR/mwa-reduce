@@ -5,6 +5,7 @@
 #include "layeredimager.h"
 
 #include "lane.h"
+#include "multibanddata.h"
 
 #include <complex>
 #include <memory>
@@ -44,6 +45,7 @@ class WSInversion : public InversionAlgorithm
 		struct InversionWorkItem
 		{
 			double u, v, w;
+			size_t dataDescId;
 			std::complex<float> *data;
 		};
 		struct InversionWorkSample
@@ -55,7 +57,7 @@ class WSInversion : public InversionAlgorithm
 		{
 			double u, v, w;
 			std::complex<float> *data;
-			size_t rowIndex;
+			size_t rowIndex, dataDescId;
 		};
 		
 		struct MSData
@@ -64,13 +66,13 @@ class WSInversion : public InversionAlgorithm
 				MSData();
 				~MSData();
 				std::unique_ptr<casa::MeasurementSet> ms;
-				BandData bandData;
+				MultiBandData bandData;
 				size_t startChannel, endChannel;
 				size_t polarizationCount, matchingRows, totalRowsProcessed;
 				double minW, maxW;
 				size_t rowStart, rowEnd;
 			
-				BandData SelectedBand() const { return BandData(bandData, startChannel, endChannel); }
+				MultiBandData SelectedBand() const { return MultiBandData(bandData, startChannel, endChannel); }
 			private:
 				MSData(const MSData &source);
 				
@@ -88,12 +90,12 @@ class WSInversion : public InversionAlgorithm
 			InversionWorkItem workItem;
 			while(workLane->read(workItem))
 			{
-				_imager->AddData(workItem.data, workItem.u, workItem.v, workItem.w);
+				_imager->AddData(workItem.data, workItem.dataDescId, workItem.u, workItem.v, workItem.w);
 				delete[] workItem.data;
 			}
 		}
 		
-		void workThreadParallel(const BandData* selectedBand);
+		void workThreadParallel(const MultiBandData* selectedBand);
 		void workThreadPerSample(ao::lane<InversionWorkSample>* workLane);
 		
 		void visSampleCalcThread(ao::lane<SamplingWorkItem>* inputLane, ao::lane<SamplingWorkItem>* outputLane);
