@@ -30,7 +30,8 @@ class InversionAlgorithm
 			_precalculatedWeightInfo(0),
 			_polarization(Polarization::StokesI),
 			_imaginaryPart(false),
-			_weighting(DistanceWeighted)
+			_weighting(DistanceWeighted),
+			_verbose(false)
 		{
 		}
 		virtual ~InversionAlgorithm()
@@ -58,6 +59,7 @@ class InversionAlgorithm
 		size_t ChannelRangeStart() const { return _channelRangeStart; }
 		size_t ChannelRangeEnd() const { return _channelRangeEnd; }
 		bool ImaginaryPart() const { return _imaginaryPart; }
+		bool Verbose() const { return _verbose; }
 		
 		void SetImageWidth(size_t imageWidth)
 		{
@@ -125,6 +127,10 @@ class InversionAlgorithm
 			_channelRangeStart = channelRangeStart;
 			_channelRangeEnd = channelRangeEnd;
 		}
+		void SetVerbose(bool verbose)
+		{
+			_verbose = verbose;
+		}
 		
 		virtual void Invert() = 0;
 		
@@ -155,6 +161,7 @@ class InversionAlgorithm
 		PolarizationEnum _polarization;
 		bool _imaginaryPart;
 		WeightingEnum _weighting;
+		bool _verbose;
 };
 
 #endif

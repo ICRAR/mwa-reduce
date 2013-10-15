@@ -291,15 +291,18 @@ int main(int argc, char *argv[])
 		bandwidth, beamSize, dateObs;
 		
 	std::vector<double> psf;
+	bool isFirstInversion = true;
 	
 	if(nIter > 0)
 	{
 		std::cout << std::flush << " == Constructing PSF ==\n";
 		inversionAlgorithm->SetDoImagePSF(true);
+		inversionAlgorithm->SetVerbose(isFirstInversion);
 		inversionAlgorithm->Invert();
 		psf.resize(imgWidth * imgHeight);
 		memcpy(&psf[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 		
+		isFirstInversion = false;
 		ra = inversionAlgorithm->ImageResultRA(),
 		dec = inversionAlgorithm->ImageResultDec(),
 		freqHigh = inversionAlgorithm->ImageHighestFrequencyChannel(),
@@ -331,6 +334,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << std::flush << " == Constructing image ==\n";
 	inversionAlgorithm->SetDoImagePSF(false);
+	inversionAlgorithm->SetVerbose(isFirstInversion);
 	inversionAlgorithm->Invert();
 	
 	ra = inversionAlgorithm->ImageResultRA(),
@@ -341,6 +345,7 @@ int main(int argc, char *argv[])
 	bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
 	beamSize = inversionAlgorithm->ImageBeamSize(),
 	dateObs = inversionAlgorithm->ImageStartTime();
+	inversionAlgorithm->SetVerbose(false);
 	
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
 	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));

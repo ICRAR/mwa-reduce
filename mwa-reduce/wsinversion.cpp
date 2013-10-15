@@ -163,6 +163,15 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	}
 	_beamSize = 1.0 / maxBaseline;
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
+	
+	if(Verbose())
+	{
+		double
+			maxL = ImageWidth() * PixelSizeX() * 0.5,
+			maxM = ImageHeight() * PixelSizeY() * 0.5;
+		double radiansForAllLayers = 2 * M_PI * msData.maxW * (sqrt(1.0 - maxL * maxL - maxM * maxM) - 1.0);
+		std::cout << "Suggested number of w-layers: " << ceil(fabs(radiansForAllLayers)) << '\n';
+	}
 }
 
 void WSInversion::countSamplesPerLayer(MSData& msData)
@@ -293,7 +302,8 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 		}
 	}
 	modelColumn.reset();
-	std::cout << "Rows that were required: " << rowsRead << '/' << msData.matchingRows << '\n';
+	if(Verbose())
+		std::cout << "Rows that were required: " << rowsRead << '/' << msData.matchingRows << '\n';
 	msData.totalRowsProcessed += rowsRead;
 }
 
@@ -537,8 +547,11 @@ void WSInversion::Invert()
 	_imager->SetImageImaginaryPart(ImaginaryPart());
 	_imager->SetImageConjugatePart(Polarization() == Polarization::YX);
 	
-	for(size_t i=0; i!=MeasurementSetCount(); ++i)
-		countSamplesPerLayer(msDataVector[i]);
+	if(Verbose())
+	{
+		for(size_t i=0; i!=MeasurementSetCount(); ++i)
+			countSamplesPerLayer(msDataVector[i]);
+	}
 	
 	_totalWeight = 0.0;
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
@@ -567,14 +580,17 @@ void WSInversion::Invert()
 		_imager->FinishInversionPass();
 	}
 	
-	size_t totalRowsRead = 0, totalMatchingRows = 0;
-	for(size_t i=0; i!=MeasurementSetCount(); ++i)
+	if(Verbose())
 	{
-		totalRowsRead += msDataVector[i].totalRowsProcessed;
-		totalMatchingRows += msDataVector[i].matchingRows;
+		size_t totalRowsRead = 0, totalMatchingRows = 0;
+		for(size_t i=0; i!=MeasurementSetCount(); ++i)
+		{
+			totalRowsRead += msDataVector[i].totalRowsProcessed;
+			totalMatchingRows += msDataVector[i].matchingRows;
+		}
+		
+		std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 	}
-	
-	std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 	
 	_imager->FinalizeImage(1.0/_totalWeight);
 }
