@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 	size_t nWLayers = 0, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
-	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
+	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::UniformWeighted;
 	std::string prefixName = "wsclean";
 	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false, makePsf = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
