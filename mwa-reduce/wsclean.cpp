@@ -137,8 +137,10 @@ int main(int argc, char *argv[])
 				polarization = Polarization::YX;
 			else if(polStr == "yy")
 				polarization = Polarization::YY;
-			else if(polStr == "stokesi")
+			else if(polStr == "stokesi" || polStr == "i")
 				polarization = Polarization::StokesI;
+			else
+				throw std::runtime_error("Unknown polarization given in -pol parameter");
 		}
 		else if(param == "imaginarypart")
 		{

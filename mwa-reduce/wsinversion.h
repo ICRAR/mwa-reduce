@@ -102,15 +102,31 @@ class WSInversion : public InversionAlgorithm
 		void visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData);
 		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
-		int polarizationIndex() const
+		int polarizationIndex(int polCount) const
 		{
-			switch(Polarization())
+			if(polCount == 4)
 			{
-				default: return 0;
-				case Polarization::XY: return 1;
-				case Polarization::YX: return 2;
-				case Polarization::YY: return 3;
+				switch(Polarization())
+				{
+					default: return 0;
+					case Polarization::XY: return 1;
+					case Polarization::YX: return 2;
+					case Polarization::YY: return 3;
+				}
 			}
+			else if(polCount == 2)
+			{
+				switch(Polarization())
+				{
+					default: return 0;
+					case Polarization::YY: return 1;
+					case Polarization::XY:
+					case Polarization::YX:
+						throw std::runtime_error("Invalid polarization");
+				}
+			}
+			else
+				return 0;
 		}
 
 		std::unique_ptr<LayeredImager> _imager;

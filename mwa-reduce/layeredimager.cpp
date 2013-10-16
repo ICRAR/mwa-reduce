@@ -272,10 +272,8 @@ void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, 
 		vInLambda = -vInLambda;
 		sample = std::conj(sample);
 	}
-	if(wInLambda < 0.0)
+	if(wInLambda < 0.0 && !_imageImaginaryPart)
 	{
-		if(_imageImaginaryPart)
-			return;
 		uInLambda = -uInLambda;
 		vInLambda = -vInLambda;
 		wInLambda = -wInLambda;

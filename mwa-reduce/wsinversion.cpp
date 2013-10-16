@@ -496,7 +496,7 @@ void WSInversion::visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkL
 	size_t polCount = shape[0];
 	const MultiBandData selectedBand = msData->SelectedBand();
 	
-	int polIndex = polarizationIndex();
+	int polIndex = polarizationIndex(polCount);
 	do
 	{
 		_modelColumn->get(workItem.rowIndex, data);
@@ -725,7 +725,7 @@ void WSInversion::copyWeightedData(std::complex<float>* dest, size_t startChanne
 			//	dest[ch].imag(dest[ch].imag() * -1.0);
 		}
 	}*/ else {
-		int polIndex = polarizationIndex();
+		int polIndex = polarizationIndex(polCount);
 		
 		inPtr += polIndex;
 		weightPtr += polIndex;
@@ -778,7 +778,7 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t startChannel, si
 			++weightPtr;
 			++flagPtr;
 		}
-	} else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
+	} /*else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
 	{
 		// Step to XY:
 		inPtr++;
@@ -807,8 +807,8 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t startChannel, si
 			weightPtr += 3;
 			flagPtr += 3;
 		}
-	} else {
-		int polIndex = polarizationIndex();
+	} */ else {
+		int polIndex = polarizationIndex(polCount);
 		
 		inPtr += polIndex;
 		weightPtr += polIndex;
