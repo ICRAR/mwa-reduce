@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 {
 	if(argc < 2)
 	{
-		std::cout << "Syntax: beam [-allsky] [-proto <input fitsfile>] [-ms <measurementset>] [-delays <0,0,..>\n";
+		std::cout << "Syntax: beam [-allsky] [-square] [-proto <input fitsfile>] [-ms <measurementset>] [-delays <0,0,..>]\n";
 		return 0;
 	}
 	
@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 	const char *inpFitsname = 0;
 	const char *msName = 0;
 	double delays[16];
+	bool doSquare = false;
 	for(size_t i=0; i!=16; ++i)
 		delays[i] = 0.0;
 	while(argi<argc && argv[argi][0] == '-')
@@ -61,6 +62,10 @@ int main(int argc, char *argv[])
 			}
 			for(size_t i=0; i!=16; ++i)
 				delays[i] = list[i];
+		}
+		else if(param == "square")
+		{
+			doSquare = true;
 		}
 		else throw std::runtime_error(std::string("Invalid param: ") + param);
 		++argi;
@@ -176,14 +181,18 @@ int main(int argc, char *argv[])
 			ImageCoordinates::XYToLM(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
 			ImageCoordinates::LMToRaDec(l, m, refRA, refDec, ra, dec);
 			
-			std::complex<double> gain[4], gainSq[4];
+			std::complex<double> gain[4];
 			tilebeam.AnalyticJones(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, centralFrequency, gain);
-			Matrix2x2::ATimesHermB(gainSq, gain, gain);
+			if(doSquare) {
+				std::complex<double> gainSq[4];
+				Matrix2x2::ATimesHermB(gainSq, gain, gain);
+				Matrix2x2::Assign(gain, gainSq);
+			}
 			
 			for(size_t i=0; i!=4; ++i)
 			{
-				*imgPtr[i*2] = gainSq[i].real();
-				*imgPtr[i*2 + 1] = gainSq[i].imag();
+				*imgPtr[i*2] = gain[i].real();
+				*imgPtr[i*2 + 1] = gain[i].imag();
 				++imgPtr[i*2];
 				++imgPtr[i*2 + 1];
 			}
