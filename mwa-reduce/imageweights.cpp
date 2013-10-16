@@ -1,5 +1,6 @@
 #include "imageweights.h"
 #include "banddata.h"
+#include "multibanddata.h"
 
 #include <cmath>
 #include <iostream>
@@ -51,12 +52,13 @@ double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, 
 
 void ImageWeights::Grid(casa::MeasurementSet& ms)
 {
-	const BandData bandData(ms.spectralWindow());
+	const MultiBandData bandData(ms.spectralWindow(), ms.dataDescription());
 	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
 	casa::ROArrayColumn<float> weightColumn(ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<bool> flagColumn(ms, casa::MS::columnName(casa::MSMainEnums::FLAG));
+	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
 	
 	const casa::IPosition shape(flagColumn.shape(0));
 	const size_t polarizationCount = shape[0];
@@ -73,6 +75,7 @@ void ImageWeights::Grid(casa::MeasurementSet& ms)
 			flagColumn.get(row, flagArr);
 			weightColumn.get(row, weightArr);
 			const casa::Vector<double> uvw = uvwColumn(row);
+			const BandData& curBand = bandData[dataDescIdColumn(row)];
 			
 			bool* flagIter = flagArr.cbegin();
 			float* weightIter = weightArr.cbegin();
@@ -84,11 +87,11 @@ void ImageWeights::Grid(casa::MeasurementSet& ms)
 				vInM = -vInM;
 			}
 			
-			for(size_t ch=0; ch!=bandData.ChannelCount(); ++ch)
+			for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
 			{
 				double
-					u = uInM / bandData.ChannelWavelength(ch),
-					v = vInM / bandData.ChannelWavelength(ch);
+					u = uInM / curBand.ChannelWavelength(ch),
+					v = vInM / curBand.ChannelWavelength(ch);
 				double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
 				double y = round(v*_imageHeight*_pixelScale);
 					
