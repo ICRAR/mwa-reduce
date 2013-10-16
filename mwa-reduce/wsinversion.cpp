@@ -166,8 +166,8 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	}
 	_beamSize = 1.0 / maxBaseline;
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
-	
-	if(Verbose())
+
+	if(Verbose() || !HasWGridSize())
 	{
 		double
 			maxL = ImageWidth() * PixelSizeX() * 0.5,
@@ -178,7 +178,11 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 			radiansForAllLayers = 2 * M_PI * msData.maxW * (1.0 - sqrt(1.0 - lmSq));
 		else
 			radiansForAllLayers = 2 * M_PI * msData.maxW;
-		std::cout << "Suggested number of w-layers: " << ceil(radiansForAllLayers) << '\n';
+		size_t suggestedGridSize = size_t(ceil(radiansForAllLayers));
+		if(!HasWGridSize())
+			SetWGridSize(suggestedGridSize);
+		if(Verbose())
+			std::cout << "Suggested number of w-layers: " << ceil(suggestedGridSize) << '\n';
 	}
 }
 

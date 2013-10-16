@@ -17,7 +17,7 @@ class InversionAlgorithm
 			_imageHeight(1024),
 			_pixelSizeX((1.0 / 60.0) * M_PI / 180.0),
 			_pixelSizeY((1.0 / 60.0) * M_PI / 180.0),
-			_wGridSize(1),
+			_wGridSize(0),
 			_intervalStart(0),
 			_intervalEnd(0),
 			_channelRangeStart(0),
@@ -42,6 +42,7 @@ class InversionAlgorithm
 		size_t ImageHeight() const { return _imageHeight; }
 		double PixelSizeX() const { return _pixelSizeX; }
 		double PixelSizeY() const { return _pixelSizeY; }
+		bool HasWGridSize() const { return _wGridSize != 0; }
 		size_t WGridSize() const { return _wGridSize; }
 		const std::string &MeasurementSetPath(size_t index) const { return _measurementSetPaths[index]; }
 		size_t MeasurementSetCount() const { return _measurementSetPaths.size(); }
@@ -80,6 +81,10 @@ class InversionAlgorithm
 		void SetWGridSize(size_t wGridSize)
 		{
 			_wGridSize = wGridSize;
+		}
+		void SetNoWGridSize()
+		{
+			_wGridSize = 0;
 		}
 		void AddMeasurementSetPath(const std::string &measurementSetPath)
 		{

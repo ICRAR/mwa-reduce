@@ -31,36 +31,42 @@ int main(int argc, char *argv[])
 			"\t-name <image-prefix>\n"
 			"\t   Use image-prefix as prefix for output files. Default is 'wsclean'.\n"
 			"\t-size <width> <height>\n"
+			"\t   Default: 2048 x 2048\n"
 			"\t-scale <pixel-scale>\n"
-			"\t   Scale of a pixel in degrees, e.g. 0.012.\n"
+			"\t   Scale of a pixel in degrees, e.g. 0.012. Default: 0.01\n"
 			"\t-nwlayers <nwlayers>\n"
-			"\t   Number of w-layers to use\n"
+			"\t   Number of w-layers to use. Default: minimum suggested #w-layers for first MS.\n"
 			"\t-niter <niter>\n"
-			"\t   Maximum number of clean iterations to perform\n"
+			"\t   Maximum number of clean iterations to perform. Default: 0\n"
 			"\t-threshold <threshold>\n"
-			"\t   Stopping clean thresholding in Jy\n"
+			"\t   Stopping clean thresholding in Jy. Default: 0.0\n"
 			"\t-gain <gain>\n"
-			"\t   Cleaning gain: Ratio of peak that will be subtracted in each iteration (default = 0.1).\n"
+			"\t   Cleaning gain: Ratio of peak that will be subtracted in each iteration. Default: 0.1\n"
 			"\t-mgain <gain>\n"
 			"\t   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major\n"
-			"\t   iteration (default = 1.0, to use major iterations, 0.9 is a good value).\n"
+			"\t   iteration (default = 1.0, to use major iterations, 0.9 is a good value). Default: 1.0\n"
 			"\t-smallpsf\n"
-			"\t   Resize the psf to speed up minor clean iterations.\n"
+			"\t   Resize the psf to speed up minor clean iterations. Not the default.\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
+			"\t   Default: stokesi.\n"
 			"\t-nonegative\n"
-			"\t   Do not allow negative components during cleaning.\n"
+			"\t   Do not allow negative components during cleaning. Not the default.\n"
 			"\t-negative\n"
 			"\t   Default on: opposite of -nonegative.\n"
 			"\t-stopnegative\n"
-			"\t   Stop on negative components.\n"
+			"\t   Stop on negative components. Not the default.\n"
 			"\t-interval <start-index> <end-index>\n"
 			"\t   Only image the given time interval. Indices specify the timesteps, end index is exclusive.\n"
+			"\t   Default: image all time steps.\n"
 			"\t-channelrange <start-channel> <end-channel>\n"
 			"\t   Only image the given channel range. Indices specify channel indices, end index is exclusive.\n"
+			"\t   Default: image all channels.\n"
 			"\t-weight <weightmode>\n"
-			"\t   weightmode can be: natural, mwa, uniform\n"
+			"\t   Weightmode can be: natural, mwa, uniform. Default: uniform\n"
+			"\t-makepsf\n"
+			"\t   Always make the psf, even when no cleaning is performed.\n"
 			"\t-imaginarypart\n"
-			"\t   saves the imaginary part instead of the real part; only sensible for xy/yx.\n"
+			"\t   saves the imaginary part instead of the real part; only sensible for xy/yx. Not the default.\n"
 			"\t-datacolumn <columnname>\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
@@ -71,12 +77,12 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
-	size_t nWLayers = 64, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
+	size_t nWLayers = 0, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::DistanceWeighted;
 	std::string prefixName = "wsclean";
-	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false;
+	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false, makePsf = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
 	std::vector<std::string> filenames;
 	
@@ -157,6 +163,10 @@ int main(int argc, char *argv[])
 		else if(param == "stopnegative")
 		{
 			stopOnNegative = true;
+		}
+		else if(param == "makepsf")
+		{
+			makePsf = true;
 		}
 		else if(param == "addmodel")
 		{
@@ -278,7 +288,10 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetImageHeight(imgHeight);
 	inversionAlgorithm->SetPixelSizeX(pixelScale);
 	inversionAlgorithm->SetPixelSizeY(pixelScale);
-	inversionAlgorithm->SetWGridSize(nWLayers);
+	if(nWLayers != 0)
+		inversionAlgorithm->SetWGridSize(nWLayers);
+	else
+		inversionAlgorithm->SetNoWGridSize();
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	inversionAlgorithm->SetWeighting(weightMode);
