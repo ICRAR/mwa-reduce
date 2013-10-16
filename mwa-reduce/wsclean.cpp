@@ -311,7 +311,7 @@ int main(int argc, char *argv[])
 	
 	Stopwatch inversionWatch(false), predictingWatch(false), cleaningWatch(false);
 	
-	if(nIter > 0)
+	if(nIter > 0 || makePsf)
 	{
 		std::cout << std::flush << " == Constructing PSF ==\n";
 		inversionWatch.Start();
