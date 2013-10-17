@@ -49,6 +49,9 @@ int main(int argc, char *argv[])
 			"\t   Resize the psf to speed up minor clean iterations. Not the default.\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
 			"\t   Default: stokesi.\n"
+			"\t-gridmode <nn or kb>\n"
+			"\t   Kernel and mode used for gridding: kb = Kaiser-Bessel (currently 7 pixels), nn = nearest\n"
+			"\t   neighbour (no kernel). Default: kb.\n"
 			"\t-nonegative\n"
 			"\t   Do not allow negative components during cleaning. Not the default.\n"
 			"\t-negative\n"
@@ -83,7 +86,7 @@ int main(int argc, char *argv[])
 	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::UniformWeighted;
 	std::string prefixName = "wsclean";
 	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false, makePsf = false;
-	enum LayeredImager::GridModeEnum gridMode = LayeredImager::NearestNeighbour;
+	enum LayeredImager::GridModeEnum gridMode = LayeredImager::KaiserBessel;
 	std::vector<std::string> filenames;
 	
 	while(argi < argc && argv[argi][0] == '-')
