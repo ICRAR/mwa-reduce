@@ -568,7 +568,7 @@ void WSInversion::Invert()
 	_imager->SetGridMode(_gridMode);
 	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
 	_imager->SetImageImaginaryPart(ImaginaryPart());
-	_imager->SetImageConjugatePart(Polarization() == Polarization::YX);
+	_imager->SetImageConjugatePart(Polarization() == Polarization::YX && ImaginaryPart());
 	
 	if(Verbose())
 	{
