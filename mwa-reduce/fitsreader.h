@@ -29,6 +29,7 @@ class FitsReader
 		double Bandwidth() const { return _bandwidth; }
 		
 		double DateObs() const { return _dateObs; }
+		PolarizationEnum Polarization() const { return _polarization; }
 	private:
 		float readFloatKey(const char *key);
 		double readDoubleKey(const char *key);

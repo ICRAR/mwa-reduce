@@ -75,6 +75,12 @@ int main(int argc, char *argv[])
 	}
 	
 	FitsWriter writer(firstImage);
-	for(size_t p=0; p!=4; ++p)
-		writer.Write<double>(outFilename[p], &inputData[p][0]);
+	writer.SetPolarization(Polarization::StokesI);
+	writer.Write<double>(outFilename[0], &inputData[0][0]);
+	writer.SetPolarization(Polarization::StokesQ);
+	writer.Write<double>(outFilename[1], &inputData[1][0]);
+	writer.SetPolarization(Polarization::StokesU);
+	writer.Write<double>(outFilename[2], &inputData[2][0]);
+	writer.SetPolarization(Polarization::StokesV);
+	writer.Write<double>(outFilename[3], &inputData[3][0]);
 }

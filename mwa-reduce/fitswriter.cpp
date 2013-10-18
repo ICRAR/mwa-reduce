@@ -153,7 +153,7 @@ void FitsWriter::SetMetadata(const FitsReader& reader)
 	_frequency = reader.Frequency();
 	_bandwidth = reader.Bandwidth();
 	_dateObs = reader.DateObs();
-	// TODO polarization
+	_polarization = reader.Polarization();
 	// TODO beam!
 }
 
