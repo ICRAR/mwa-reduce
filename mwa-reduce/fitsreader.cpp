@@ -1,4 +1,5 @@
 #include "fitsreader.h"
+#include "polarizationenum.h"
 
 #include <stdexcept>
 #include <sstream>
@@ -128,6 +129,24 @@ void FitsReader::initialize()
 	} else {
 		_frequency = 0.0;
 		_bandwidth = 0.0;
+	}
+	if(naxis >= 4)
+	{
+		if(readStringKey("CTYPE4") != "STOKES")
+			throw std::runtime_error("Invalid value for CTYPE4");
+		float val = readFloatKey("CRVAL4");
+		switch(int(val))
+		{
+			default: throw std::runtime_error("Unknown polarization specified in fits file");
+			case 1: _polarization = Polarization::StokesI; break;
+			case 2: _polarization = Polarization::StokesQ; break;
+			case 3: _polarization = Polarization::StokesU; break;
+			case 4: _polarization = Polarization::StokesV; break;
+			case -5: _polarization = Polarization::XX; break;
+			case -6: _polarization = Polarization::YY; break;
+			case -7: _polarization = Polarization::XY; break;
+			case -8: _polarization = Polarization::YX; break;
+		}
 	}
 }
 

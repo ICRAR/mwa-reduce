@@ -15,6 +15,27 @@
 
 #include <boost/algorithm/string.hpp>
 
+void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgorithm)
+{
+	double
+		ra = inversionAlgorithm.ImageResultRA(),
+		dec = inversionAlgorithm.ImageResultDec(),
+		pixelScaleX = inversionAlgorithm.PixelSizeX(),
+		pixelScaleY = inversionAlgorithm.PixelSizeY(),
+		freqHigh = inversionAlgorithm.ImageHighestFrequencyChannel(),
+		freqLow = inversionAlgorithm.ImageLowestFrequencyChannel(),
+		freqCentre = (freqHigh + freqLow) * 0.5,
+		bandwidth = inversionAlgorithm.ImageBandEnd() - inversionAlgorithm.ImageBandStart(),
+		beamSize = inversionAlgorithm.ImageBeamSize(),
+		dateObs = inversionAlgorithm.ImageStartTime();
+		
+	writer.SetImageDimensions(inversionAlgorithm.ImageWidth(), inversionAlgorithm.ImageHeight(), ra, dec, pixelScaleX, pixelScaleY);
+	writer.SetFrequency(freqCentre, bandwidth);
+	writer.SetDate(dateObs);
+	writer.SetBeamInfo(beamSize);
+	writer.SetPolarization(inversionAlgorithm.Polarization());
+}
+
 int main(int argc, char *argv[])
 {
 	std::cout << "\n"
@@ -304,11 +325,6 @@ int main(int argc, char *argv[])
 	if(channelRangeEnd != 0)
 		inversionAlgorithm->SetChannelRange(channelRangeStart, channelRangeEnd);
 	
-	double
-		ra, dec,
-		freqHigh, freqLow, freqCentre,
-		bandwidth, beamSize, dateObs;
-		
 	std::vector<double> psf;
 	bool isFirstInversion = true;
 	
@@ -326,20 +342,12 @@ int main(int argc, char *argv[])
 		inversionWatch.Pause();
 		
 		isFirstInversion = false;
-		ra = inversionAlgorithm->ImageResultRA(),
-		dec = inversionAlgorithm->ImageResultDec(),
-		freqHigh = inversionAlgorithm->ImageHighestFrequencyChannel(),
-		freqLow = inversionAlgorithm->ImageLowestFrequencyChannel(),
-		freqCentre = (freqHigh + freqLow) * 0.5,
-		bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
-		beamSize = inversionAlgorithm->ImageBeamSize(),
-		dateObs = inversionAlgorithm->ImageStartTime();
-		std::cout << "Beam size is " << beamSize*(180.0*60.0/M_PI) << " arcmin.\n";
+		std::cout << "Beam size is " << inversionAlgorithm->ImageBeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
 		
 		std::cout << "Writing psf image... " << std::flush;
-		FitsWriter psfWriter(std::string(prefixName) + "-psf.fits");
-		psfWriter.SetBeamInfo(beamSize);
-		psfWriter.Write(&psf[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+		FitsWriter fitsWriter;
+		initFitsWriter(fitsWriter, *inversionAlgorithm);
+		fitsWriter.Write(std::string(prefixName) + "-psf.fits", &psf[0]);
 		std::cout << "DONE\n";
 		
 		CleanAlgorithm::RemoveNaNsInPSF(&psf[0], imgWidth, imgHeight);
@@ -347,10 +355,9 @@ int main(int argc, char *argv[])
 		if(inversionAlgorithm->HasGriddingCorrectionImage())
 		{
 			std::cout << "Writing gridding correction image... " << std::flush;
-			FitsWriter griddingWriter(std::string(prefixName) + "-gridding.fits");
 			std::vector<double> gridding(imgWidth * imgHeight);
 			inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
-			griddingWriter.Write(&gridding[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+			fitsWriter.Write(std::string(prefixName) + "-gridding.fits", &gridding[0]);
 			std::cout << "DONE\n";
 		}
 	}
@@ -361,28 +368,19 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetVerbose(isFirstInversion);
 	inversionAlgorithm->Invert();
 	inversionWatch.Pause();
-	
-	ra = inversionAlgorithm->ImageResultRA(),
-	dec = inversionAlgorithm->ImageResultDec(),
-	freqHigh = inversionAlgorithm->ImageHighestFrequencyChannel(),
-	freqLow = inversionAlgorithm->ImageLowestFrequencyChannel(),
-	freqCentre = (freqHigh + freqLow) * 0.5,
-	bandwidth = inversionAlgorithm->ImageBandEnd() - inversionAlgorithm->ImageBandStart(),
-	beamSize = inversionAlgorithm->ImageBeamSize(),
-	dateObs = inversionAlgorithm->ImageStartTime();
 	inversionAlgorithm->SetVerbose(false);
 	
 	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
 	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 	
+	std::cout << "Writing dirty image... " << std::flush;
+	FitsWriter fitsWriter;
+	initFitsWriter(fitsWriter, *inversionAlgorithm);
+	fitsWriter.Write(std::string(prefixName) + "-dirty.fits", &residual[0]);
+	std::cout << "DONE\n";
+	
 	if(mGain == 1.0)
 		inversionAlgorithm.reset();
-	
-	std::cout << "Writing dirty image... " << std::flush;
-	FitsWriter dirtyWriter(std::string(prefixName) + "-dirty.fits");
-	dirtyWriter.SetBeamInfo(beamSize);
-	dirtyWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
-	std::cout << "DONE\n";
 	
 	if(nIter > 0)
 	{
@@ -402,7 +400,7 @@ int main(int argc, char *argv[])
 			AreaParser parser;
 			std::ifstream caFile(cleanAreasFilename.c_str());
 			parser.Parse(*cleanAreas, caFile);
-			cleanAreas->SetImageProperties(pixelScale, pixelScale, ra, dec, imgWidth, imgHeight);
+			cleanAreas->SetImageProperties(pixelScale, pixelScale, inversionAlgorithm->ImageResultRA(), inversionAlgorithm->ImageResultDec(), imgWidth, imgHeight);
 			cleanAlgorithm.SetCleanAreas(*cleanAreas);
 		}
 		
@@ -418,18 +416,14 @@ int main(int argc, char *argv[])
 			if(majorIterationNr == 1)
 			{
 				std::cout << "Writing residual image... " << std::flush;
-				FitsWriter resWriter(std::string(prefixName) + "-residual.fits");
-				resWriter.SetBeamInfo(beamSize);
-				resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+				fitsWriter.Write(std::string(prefixName) + "-residual.fits", &residual[0]);
 				std::cout << "DONE\n";
 			}
 			
 			if(!reachedMajorThreshold)
 			{
 				std::cout << "Writing model image... " << std::flush;
-				FitsWriter modelWriter(std::string(prefixName) + "-model.fits");
-				modelWriter.SetBeamInfo(beamSize);
-				modelWriter.Write(&modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+				fitsWriter.Write(std::string(prefixName) + "-model.fits", &modelImage[0]);
 				std::cout << "DONE\n";
 			}
 			
@@ -455,9 +449,7 @@ int main(int argc, char *argv[])
 					inversionAlgorithm.reset();
 					
 					std::cout << "Writing residual image... " << std::flush;
-					FitsWriter resWriter(std::string(prefixName) + "-residmajor.fits");
-					resWriter.SetBeamInfo(beamSize);
-					resWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+					fitsWriter.Write(std::string(prefixName) + "-residmajor.fits", &residual[0]);
 					std::cout << "DONE\n";
 				}
 				
@@ -481,7 +473,7 @@ int main(int argc, char *argv[])
 			beamEval.AbsToApparent(model);
 		}
 	}
-	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, 0.0, (freqHigh+freqLow)*0.5, polarization);
+	CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, fitsWriter.RA(), fitsWriter.Dec(), pixelScale, pixelScale, 0.0, fitsWriter.Frequency(), polarization);
 	if(!saveModelFilename.empty())
 	{
 		std::cout << "Saving model to " << saveModelFilename << "... " << std::flush;
@@ -489,7 +481,7 @@ int main(int argc, char *argv[])
 	}
 	
 	std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
-	ModelRenderer renderer(ra, dec, pixelScale, pixelScale);
+	ModelRenderer renderer(fitsWriter.RA(), fitsWriter.Dec(), pixelScale, pixelScale);
 	size_t polarizationIndex;
 	switch(polarization)
 	{
@@ -499,13 +491,14 @@ int main(int argc, char *argv[])
 		case Polarization::YX: polarizationIndex = 2; break;
 		case Polarization::YY: polarizationIndex = 3; break;
 	}
-	renderer.Restore(&residual[0], imgWidth, imgHeight, model, beamSize, freqLow, freqHigh, polarizationIndex);
+	double
+		freqLow = fitsWriter.Frequency() - fitsWriter.Bandwidth()*0.5,
+		freqHigh = fitsWriter.Frequency() + fitsWriter.Bandwidth()*0.5;
+	renderer.Restore(&residual[0], imgWidth, imgHeight, model, fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, polarizationIndex);
 	std::cout << "DONE\n";
 	
 	std::cout << "Writing restored image... " << std::flush;
-	FitsWriter restoredWriter(std::string(prefixName) + "-image.fits");
-	restoredWriter.SetBeamInfo(beamSize);
-	restoredWriter.Write(&residual[0], imgWidth, imgHeight, ra, dec, pixelScale, pixelScale, freqCentre, bandwidth, dateObs);
+	fitsWriter.Write(std::string(prefixName) + "-image.fits", &residual[0]);
 	std::cout << "DONE\n";
 	
 	std::cout << "Inversion: " << inversionWatch.ToString() << ", prediction: " << predictingWatch.ToString() << ", cleaning: " << cleaningWatch.ToString() << '\n';

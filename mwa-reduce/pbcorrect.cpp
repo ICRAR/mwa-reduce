@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 {
 	if(argc != 19)
 		std::cout << "Syntax:\n"
-			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yx.fits> <yxi.fits> <yy.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outxx.fits> <outxy.fits> <outyx.fits> <outyy.fits>\n";
+			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yx.fits> <yxi.fits> <yy.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outi.fits> <outq.fits> <outu.fits> <outv.fits>\n";
 		
 	const char
 		*inpFilename[6] = { argv[1], argv[2], argv[3], argv[4], argv[5], argv[6] },
@@ -68,13 +68,13 @@ int main(int argc, char *argv[])
 				inputData[p][i] = std::numeric_limits<double>::quiet_NaN();
 		}
 			
-		for(size_t p=0; p!=4; ++p)
-			inputData[p][i] = imgValues[p].real();
+		inputData[0][i] = 0.5 * (imgValues[0].real() + imgValues[3].real());
+		inputData[1][i] = 0.5 * (imgValues[0].real() - imgValues[3].real());
+		inputData[2][i] = 0.5 * (imgValues[1].real() + imgValues[2].real());
+		inputData[3][i] = 0.5 * (-imgValues[1].imag() + imgValues[2].imag());
 	}
 	
+	FitsWriter writer(firstImage);
 	for(size_t p=0; p!=4; ++p)
-	{
-		FitsWriter writer(outFilename[p]);
-		writer.Write<double>(&inputData[p][0], width, height, firstImage.PhaseCentreRA(), firstImage.PhaseCentreDec(), firstImage.PixelSizeX(), firstImage.PixelSizeY(), firstImage.Frequency(), firstImage.Bandwidth(), firstImage.DateObs());
-	}
+		writer.Write<double>(outFilename[p], &inputData[p][0]);
 }

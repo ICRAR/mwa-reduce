@@ -12,7 +12,10 @@ public:
 		XY,
 		YX,
 		YY,
-		StokesI
+		StokesI,
+		StokesQ,
+		StokesU,
+		StokesV
 	};
 	
 	static size_t TypeTo4PolIndex(enum PolarizationEnum polarization)

@@ -132,7 +132,8 @@ int main(int argc, char *argv[])
 		
 	size_t width, height;
 	double pixelSizeX, pixelSizeY;
-	double refRA, refDec, bandWidth, dateObs;
+	double refRA, refDec;
+	FitsWriter writer;
 	if(inpFitsname == 0)
 	{
 		// All sky
@@ -142,19 +143,21 @@ int main(int argc, char *argv[])
 		pixelSizeY = 2.0 / (double) height;
 		refRA = (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0];
 		refDec = zenithDec;
-		bandWidth = 1000000.0;
-		dateObs = 0.0;
+		double bandWidth = 1000000.0;
+		
+		writer.SetImageDimensions(width, height, refRA, refDec, pixelSizeX, pixelSizeY);
+		writer.SetFrequency(centralFrequency, bandWidth);
 	}
 	else {
 		FitsReader reader(inpFitsname);
+		writer.SetMetadata(reader);
+		
 		width = reader.ImageWidth();
 		height = reader.ImageHeight();
 		pixelSizeX = reader.PixelSizeX();
 		pixelSizeY = reader.PixelSizeY();
 		refRA = reader.PhaseCentreRA();
 		refDec = reader.PhaseCentreDec();
-		bandWidth = reader.Bandwidth();
-		dateObs = reader.DateObs();
 	}
 	std::cout << "Reference dir: "
 		<< refRA*180.0/M_PI << " RA, "
@@ -206,9 +209,7 @@ int main(int argc, char *argv[])
 		"beam-xxr.fits", "beam-xxi.fits", "beam-xyr.fits", "beam-xyi.fits", 
 		"beam-yxr.fits", "beam-yxi.fits", "beam-yyr.fits", "beam-yyi.fits"
 	};
+	
 	for(size_t i=0; i!=8; ++i)
-	{
-		FitsWriter writer(names[i]);
-		writer.Write<double>(&outImage[i][0], width, height, refRA, refDec, pixelSizeY, pixelSizeX, centralFrequency, bandWidth, dateObs);
-	}
+		writer.Write<double>(names[i], &outImage[i][0]);
 }

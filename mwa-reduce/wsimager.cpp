@@ -63,7 +63,11 @@ int main(int argc, char* argv[])
 	double
 		bandStart = inversionAlgorithm.ImageBandStart(),
 		bandEnd = inversionAlgorithm.ImageBandEnd();
-	FitsWriter writer(fitsfileName);
-	writer.Write(inversionAlgorithm.ImageResult(), imgWidth, imgHeight, inversionAlgorithm.ImageResultRA(), inversionAlgorithm.ImageResultDec(), -pixelScale, pixelScale, (bandStart + bandEnd) * 0.5, bandEnd - bandStart, inversionAlgorithm.ImageStartTime());
+		
+	FitsWriter writer;
+	writer.SetImageDimensions(imgWidth, imgHeight, inversionAlgorithm.ImageResultRA(), inversionAlgorithm.ImageResultDec(), -pixelScale, pixelScale);
+	writer.SetFrequency((bandStart + bandEnd) * 0.5, bandEnd - bandStart);
+	writer.SetDate(inversionAlgorithm.ImageStartTime());
+	writer.Write(fitsfileName, inversionAlgorithm.ImageResult());
 	std::cout << "DONE\n";
 }

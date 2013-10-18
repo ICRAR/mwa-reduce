@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
 			++iter;
 		}
 	}
-	FitsWriter outputWriter(argv[3]);
-	outputWriter.Write(&image[0], width, height, reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.Frequency(), reader.Bandwidth(), reader.DateObs());
+	FitsWriter outputWriter(reader);
+	outputWriter.Write(argv[3], &image[0]);
 	
 	return 0;
 }

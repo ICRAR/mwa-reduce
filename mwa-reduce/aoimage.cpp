@@ -696,8 +696,11 @@ int main(int argc, char *argv[])
 			std::cout << "Writing intermediate fits file... " << std::flush;
 		else
 			std::cout << "Writing final fits file... " << std::flush;
-		FitsWriter writer(fitsfile);
-		writer.Write(imageData, imager.ImageSize(), imager.ImageSize(), imageInfo.phaseCentreRA, imageInfo.phaseCentreDec, pixelScale, pixelScale, (imageInfo.lowestFrequency + imageInfo.highestFrequency) * 0.5, imageInfo.bandwidth, imageInfo.dateObs);
+		FitsWriter writer;
+		writer.SetImageDimensions(imager.ImageSize(), imager.ImageSize(), imageInfo.phaseCentreRA, imageInfo.phaseCentreDec, pixelScale, pixelScale);
+		writer.SetFrequency((imageInfo.lowestFrequency + imageInfo.highestFrequency) * 0.5, imageInfo.bandwidth);
+		writer.SetDate(imageInfo.dateObs);
+		writer.Write(fitsfile, imageData);
 		delete[] imageData;
 		std::cout << "DONE\n";
 	}

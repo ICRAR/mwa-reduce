@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
 		double pixelSizeX = 0.01, pixelSizeY = 0.01;
 		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
 		
+		std::unique_ptr<FitsWriter> writer;
 		if(!templateFits.empty())
 		{
 			FitsReader reader(templateFits);
@@ -45,13 +46,16 @@ int main(int argc, char* argv[])
 			bandwidth = reader.Bandwidth();
 			dateObs = reader.DateObs();
 			frequency = reader.Frequency();
+			writer.reset(new FitsWriter(reader));
 		}
 		
 		std::vector<double> image(width * height);
 		ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY);
 		renderer.RenderModel(&image[0], width, height, model, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);
 		
-		FitsWriter writer(outputFitsName);
-		writer.Write(&image[0], width, height, ra, dec, pixelSizeX, pixelSizeY, frequency, bandwidth, dateObs);
+		writer->SetImageDimensions(width, height, ra, dec, pixelSizeX, pixelSizeY);
+		writer->SetFrequency(frequency, bandwidth);
+		writer->SetDate(dateObs);
+		writer->Write(outputFitsName, &image[0]);
 	}
 }

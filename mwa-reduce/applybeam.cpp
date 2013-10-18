@@ -31,6 +31,6 @@ int main(int argc, char *argv[])
 		++beamIter;
 	}
 	
-	FitsWriter writer(outFits);
-	writer.Write<double>(&inpImage[0], width, height, inpReader.PhaseCentreRA(), inpReader.PhaseCentreDec(), inpReader.PixelSizeX(), inpReader.PixelSizeY(), inpReader.Frequency(), inpReader.Bandwidth(), inpReader.DateObs());
+	FitsWriter writer(inpReader);
+	writer.Write<double>(outFits, &inpImage[0]);
 }

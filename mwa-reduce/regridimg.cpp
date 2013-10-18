@@ -279,10 +279,12 @@ int main(int argc, char *argv[])
 	}
 	
 	std::cout << "Writing " << outImageName << "...\n";
-	FitsWriter imgWriter(outImageName);
-	imgWriter.Write<double>(&outImage.values[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth, outImage.dateObs);
+	FitsWriter imgWriter;
+	imgWriter.SetImageDimensions(outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY);
+	imgWriter.SetFrequency(outImage.frequency, outImage.bandwidth);
+	imgWriter.SetDate(outImage.dateObs);
+	imgWriter.Write<double>(outImageName, &outImage.values[0]);
 	
 	std::cout << "Writing " << outWeightName << "...\n";
-	FitsWriter weightsWriter(outWeightName);
-	weightsWriter.Write<double>(&outImage.weights[0], outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY, outImage.frequency, outImage.bandwidth, outImage.dateObs);
+	imgWriter.Write<double>(outWeightName, &outImage.weights[0]);
 }

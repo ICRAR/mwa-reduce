@@ -5,6 +5,8 @@
 
 #include <fitsio.h>
 
+#include "polarizationenum.h"
+
 class FitsReader
 {
 	public:
@@ -44,6 +46,7 @@ class FitsReader
 		double _phaseCentreRA, _phaseCentreDec;
 		double _pixelSizeX, _pixelSizeY;
 		double _frequency, _bandwidth, _dateObs;
+		PolarizationEnum _polarization;
 };
 
 #endif

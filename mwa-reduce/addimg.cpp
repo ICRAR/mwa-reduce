@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 #include <iostream>
+#include <memory>
 
 int main(int argc, char *argv[])
 {
@@ -16,9 +17,8 @@ int main(int argc, char *argv[])
 	const char *outImageName = argv[1];
 	const char *outWeightName = argv[2];
 	size_t width = 0, height = 0;
-	double ra = 0.0, dec = 0.0, pixelSizeX = 0.0, pixelSizeY = 0.0;
 	double *outImage = 0, *outWeights = 0;
-	double frequency = 0.0, bandwidth = 0.0, dateObs = 0.0;
+	std::unique_ptr<FitsWriter> imgWriter;
 	for(int argi=3; argi + 1 < argc; argi += 2)
 	{
 		const char *inpImageName = argv[argi];
@@ -29,13 +29,7 @@ int main(int argc, char *argv[])
 		{
 			width = inpReader.ImageWidth(),
 			height = inpReader.ImageHeight();
-			ra = inpReader.PhaseCentreRA();
-			dec = inpReader.PhaseCentreDec();
-			pixelSizeX = inpReader.PixelSizeX();
-			pixelSizeY = inpReader.PixelSizeY();
-			frequency = inpReader.Frequency();
-			bandwidth = inpReader.Bandwidth();
-			dateObs = inpReader.DateObs();
+			imgWriter.reset(new FitsWriter(inpReader));
 			
 			const size_t size = width * height;
 			outImage = new double[size];
@@ -89,11 +83,9 @@ int main(int argc, char *argv[])
 		++weightsIter;
 	}
 	
-	FitsWriter imgWriter(outImageName);
-	imgWriter.Write<double>(outImage, width, height, ra, dec, pixelSizeX, pixelSizeY, frequency, bandwidth, dateObs);
+	imgWriter->Write<double>(outImageName, outImage);
 	delete[] outImage;
 	
-	FitsWriter weightsWriter(outWeightName);
-	weightsWriter.Write<double>(outWeights, width, height, ra, dec, pixelSizeX, pixelSizeY, frequency, bandwidth, dateObs);
+	imgWriter->Write<double>(outWeightName, outWeights);
 	delete[] outWeights;
 }
