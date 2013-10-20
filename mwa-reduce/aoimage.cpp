@@ -350,8 +350,6 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	MDirection refDir = refDirColumn(0);
 	
 	std::cout << 'C' << std::flush;
-	typedef float num_t;
-	typedef std::complex<num_t> complex_t;
 	ROScalarColumn<int> ant1Column(ms, ms.columnName(MSMainEnums::ANTENNA1));
 	ROScalarColumn<int> ant2Column(ms, ms.columnName(MSMainEnums::ANTENNA2));
 	ROArrayColumn<std::complex<float> > dataColumn(ms, columnName);
@@ -442,7 +440,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 		/**
 		* Push all work
 		*/
-		double zenithDistance, pAngle;
+		double zenithDistance = 0.0, pAngle = 0.0;
 		bool formattedFlags[channelCount];
 		std::cout << "Making image";
 		for(size_t row=0;row!=ms.nrow();++row)
@@ -473,9 +471,9 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					MDirection::Ref ref2(casa::MDirection::AZELGEO, frame);
 					MDirection azel = MDirection::Convert(refDir, ref2)();
 					Vector<Double> azelVal = azel.getValue().get();
-					double azimuth = azelVal[0];
-					double zenithDistance2 = asin(cosDec * sinHA / sin(azimuth));
-					double pAngle3 = asin(-sin(azimuth) * cosLat / cosDec);
+					//double azimuth = azelVal[0];
+					//double zenithDistance2 = asin(cosDec * sinHA / sin(azimuth));
+					//double pAngle3 = asin(-sin(azimuth) * cosLat / cosDec);
 					//std::cout << "Z=" << (zenithDistance*180/M_PI) << ", Z2=" << (zenithDistance2*180/M_PI) << ", pangle=" << (pAngle*180.0/M_PI) << ", pangleold=" << (atan2(cosLat * sinHA, sinLat * cosDec - cosLat * sinDec * cosHA)*180/M_PI) << "pAngle3=" << (pAngle3*180.0/M_PI) << '\n';
 					
 					pAngle = -pAngle;
@@ -519,7 +517,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					casa::Array<std::complex<float> >::const_iterator inPtr = data.begin();
 					casa::Array<bool>::const_iterator flagPtr = flags.begin();
 					
-					size_t sampleCount = readData(info.polarization, info.psf, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
+					readData(info.polarization, info.psf, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
 					
 					if(avgFactor != 1)
 					{
@@ -580,8 +578,8 @@ int main(int argc, char *argv[])
 	PolarizationEnum pol = Polarization::StokesI;
 	bool psf = false;
 	bool haveTimeRange = false, haveUVRange = false;
-	size_t timeRangeStart, timeRangeStop;
-	size_t uvRangeStart, uvRangeStop;
+	size_t timeRangeStart = 0, timeRangeStop = 0;
+	size_t uvRangeStart = 0, uvRangeStop = 0;
 	while(argc - argi >= 1 && argv[argi][0]=='-')
 	{
 		if(argc - argi >= 2 && strcmp(argv[argi], "-avg")==0)
