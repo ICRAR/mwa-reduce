@@ -54,7 +54,7 @@ bool FitsReader::readFloatKeyIfExists(const char *key, float &dest)
 bool FitsReader::readDoubleKeyIfExists(const char *key, double &dest)
 {
 	int status = 0;
-	float doubleValue;
+	double doubleValue;
 	fits_read_key(_fitsPtr, TDOUBLE, key, &doubleValue, 0, &status);
 	if(status == 0)
 		dest = doubleValue;
@@ -109,10 +109,10 @@ void FitsReader::initialize()
 	_imgWidth = naxes[0];
 	_imgHeight = naxes[1];
 	
-	float bScale = 1.0, bZero = 0.0, equinox = 2000.0;
-	readFloatKeyIfExists("BSCALE", bScale);
-	readFloatKeyIfExists("BZERO", bZero);
-	readFloatKeyIfExists("EQUINOX", equinox);
+	double bScale = 1.0, bZero = 0.0, equinox = 2000.0;
+	readDoubleKeyIfExists("BSCALE", bScale);
+	readDoubleKeyIfExists("BZERO", bZero);
+	readDoubleKeyIfExists("EQUINOX", equinox);
 	if(bScale != 1.0)
 		throw std::runtime_error("Invalid value for BSCALE");
 	if(bZero != 0.0)
@@ -122,15 +122,15 @@ void FitsReader::initialize()
 	
 	if(readStringKey("CTYPE1") != "RA---SIN")
 		throw std::runtime_error("Invalid value for CTYPE1");
-	_phaseCentreRA = readFloatKey("CRVAL1") * (M_PI / 180.0);
-	_pixelSizeX = readFloatKey("CDELT1") * (-M_PI / 180.0);
+	_phaseCentreRA = readDoubleKey("CRVAL1") * (M_PI / 180.0);
+	_pixelSizeX = readDoubleKey("CDELT1") * (-M_PI / 180.0);
 	if(readStringKey("CUNIT1") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT1");
 	
 	if(readStringKey("CTYPE2") != "DEC--SIN")
 		throw std::runtime_error("Invalid value for CTYPE2");
-	_phaseCentreDec = readFloatKey("CRVAL2") * (M_PI / 180.0);
-	_pixelSizeY = readFloatKey("CDELT2") * (M_PI / 180.0);
+	_phaseCentreDec = readDoubleKey("CRVAL2") * (M_PI / 180.0);
+	_pixelSizeY = readDoubleKey("CDELT2") * (M_PI / 180.0);
 	if(readStringKey("CUNIT2") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT2");
 	readDoubleKeyIfExists("DATE-OBS", _dateObs);
@@ -138,8 +138,8 @@ void FitsReader::initialize()
 	{
 		if(readStringKey("CTYPE3") == "FREQ")
 		{
-			_frequency = readFloatKey("CRVAL3");
-			_bandwidth = readFloatKey("CDELT3");
+			_frequency = readDoubleKey("CRVAL3");
+			_bandwidth = readDoubleKey("CDELT3");
 		}
 	} else {
 		_frequency = 0.0;
@@ -149,7 +149,7 @@ void FitsReader::initialize()
 	{
 		if(readStringKey("CTYPE4") == "STOKES")
 		{
-			float val = readFloatKey("CRVAL4");
+			double val = readDoubleKey("CRVAL4");
 			switch(int(val))
 			{
 				default: throw std::runtime_error("Unknown polarization specified in fits file");
@@ -172,7 +172,12 @@ void FitsReader::initialize()
 		_beamMinorAxisRad = bMin * (M_PI / 180.0);
 		_beamPositionAngle = bPa * (M_PI / 180.0);
 	}
-	else _hasBeam = false;
+	else {
+		_hasBeam = false;
+		_beamMajorAxisRad = 0.0;
+		_beamMinorAxisRad = 0.0;
+		_beamPositionAngle = 0.0;
+	}
 	readStringKeyIfExists("ORIGIN", _origin, _originComment);
 	readHistory();
 }
