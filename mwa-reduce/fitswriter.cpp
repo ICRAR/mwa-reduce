@@ -62,7 +62,7 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
 	
 	fits_write_key(fptr, TFLOAT, "EQUINOX", (void*) &equinox, "J2000", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "BTYPE", (void*) "Intensity", "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) "AO/WSImager", "Imager written by Andre Offringa", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) _origin.c_str(), _originComment.c_str(), &status); checkStatus(status, filename);
 	float phaseCentreRADeg = (_phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (_phaseCentreDec/M_PI)*180.0;
 	float centrePixelX = (_width / 2.0)+1, centrePixelY = (_height / 2.0)+1;
 	float stepXDeg = (-_pixelSizeX/M_PI)*180.0, stepYDeg = (_pixelSizeY/M_PI)*180.0;
@@ -112,6 +112,14 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
   std::sprintf(dateStr, "%d-%02d-%02dT%02d:%02d:%02d.%01d", year, month, day, hour, min, sec, deciSec);
 	fits_write_key(fptr, TSTRING, "DATE-OBS", (void*) dateStr, "", &status); checkStatus(status, filename);
 	
+	// History
+	std::ostringstream histStr;
+	for(std::vector<std::string>::const_iterator i=_history.begin(); i!=_history.end(); ++i)
+	{
+		fits_write_history(fptr, i->c_str(), &status);
+		checkStatus(status, filename);
+	}
+	
 	long firstpixel[4];
 	for(int i=0;i < 4;i++) firstpixel[i] = 1;
 	if(sizeof(NumType)==8)
@@ -154,7 +162,16 @@ void FitsWriter::SetMetadata(const FitsReader& reader)
 	_bandwidth = reader.Bandwidth();
 	_dateObs = reader.DateObs();
 	_polarization = reader.Polarization();
-	// TODO beam!
+	_hasBeam = reader.HasBeam();
+	if(_hasBeam)
+	{
+		_beamMajorAxisRad = reader.BeamMajorAxisRad();
+		_beamMinorAxisRad = reader.BeamMinorAxisRad();
+		_beamPositionAngle = reader.BeamPositionAngle();
+	}
+	_origin = reader.Origin();
+	_originComment = reader.OriginComment();
+	_history = reader.History();
 }
 
 void FitsWriter::julianDateToYMD(double jd, int &year, int &month, int &day)

@@ -2,6 +2,7 @@
 #define FITSWRITER_H
 
 #include <string>
+#include <vector>
 
 #include "polarizationenum.h"
 
@@ -15,7 +16,8 @@ class FitsWriter
 			_dateObs(0.0),
 			_hasBeam(false),
 			_beamMajorAxisRad(0.0), _beamMinorAxisRad(0.0), _beamPositionAngle(0.0),
-			_polarization(Polarization::StokesI)
+			_polarization(Polarization::StokesI),
+			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa")
 		{
 		}
 		
@@ -26,7 +28,8 @@ class FitsWriter
 			_dateObs(0.0),
 			_hasBeam(false),
 			_beamMajorAxisRad(0.0), _beamMinorAxisRad(0.0), _beamPositionAngle(0.0),
-			_polarization(Polarization::StokesI)
+			_polarization(Polarization::StokesI),
+			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa")
 		{
 			SetMetadata(reader);
 		}
@@ -66,6 +69,19 @@ class FitsWriter
 		{
 			_polarization = polarization;
 		}
+		void SetOrigin(const std::string& origin, const std::string& comment)
+		{
+			_origin = origin;
+			_originComment = comment;
+		}
+		void SetHistory(const std::vector<std::string>& history)
+		{
+			_history = history;
+		}
+		void AddHistory(std::string& historyLine)
+		{
+			_history.push_back(historyLine);
+		}
 		void SetMetadata(const class FitsReader& reader);
 		
 		double RA() const { return _phaseCentreRA; }
@@ -81,6 +97,8 @@ class FitsWriter
 		bool _hasBeam;
 		double _beamMajorAxisRad, _beamMinorAxisRad, _beamPositionAngle;
 		PolarizationEnum _polarization;
+		std::string _origin, _originComment;
+		std::vector<std::string> _history;
 		
 		void checkStatus(int status, const std::string& filename);
 		void julianDateToYMD(double jd, int &year, int &month, int &day);

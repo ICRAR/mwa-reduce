@@ -15,6 +15,8 @@
 
 #include <boost/algorithm/string.hpp>
 
+std::string commandLine;
+
 void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgorithm)
 {
 	double
@@ -34,6 +36,8 @@ void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgor
 	writer.SetDate(dateObs);
 	writer.SetBeamInfo(beamSize);
 	writer.SetPolarization(inversionAlgorithm.Polarization());
+	writer.SetOrigin("WSClean", "W-stacking imager written by Andre Offringa");
+	writer.AddHistory(commandLine);
 }
 
 int main(int argc, char *argv[])
@@ -275,6 +279,13 @@ int main(int argc, char *argv[])
 		inversionAlgorithm->AddMeasurementSetPath(argv[i]);
 		filenames.push_back(argv[i]);
 	}
+	
+	// Store command line, to write later in fits file
+	std::ostringstream commandLineStr;
+	commandLineStr << "wsclean";
+	for(int i=1; i!=argc; ++i)
+		commandLineStr << ' ' << argv[i];
+	commandLine = commandLineStr.str();
 	
 	// If uniform weighted; initialize weight grid.
 	std::unique_ptr<ImageWeights> imageWeights;

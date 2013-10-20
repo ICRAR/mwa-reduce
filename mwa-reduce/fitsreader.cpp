@@ -70,6 +70,20 @@ std::string FitsReader::readStringKey(const char *key)
 	return std::string(keyStr);
 }
 
+bool FitsReader::readStringKeyIfExists(const char *key, std::string& value, std::string& comment)
+{
+	int status = 0;
+	char valueStr[256], commentStr[256];
+	fits_read_key(_fitsPtr, TSTRING, key, valueStr, commentStr, &status);
+	checkStatus(status, key);
+	if(status == 0)
+	{
+		value = valueStr;
+		comment = commentStr;
+	}
+	return status == 0;
+}
+
 void FitsReader::initialize()
 {
 	int status = 0;
@@ -122,32 +136,45 @@ void FitsReader::initialize()
 	readDoubleKeyIfExists("DATE-OBS", _dateObs);
 	if(naxis >= 3)
 	{
-		if(readStringKey("CTYPE3") != "FREQ")
-			throw std::runtime_error("Invalid value for CTYPE3");
-		_frequency = readFloatKey("CRVAL3");
-		_bandwidth = readFloatKey("CDELT3");
+		if(readStringKey("CTYPE3") == "FREQ")
+		{
+			_frequency = readFloatKey("CRVAL3");
+			_bandwidth = readFloatKey("CDELT3");
+		}
 	} else {
 		_frequency = 0.0;
 		_bandwidth = 0.0;
 	}
 	if(naxis >= 4)
 	{
-		if(readStringKey("CTYPE4") != "STOKES")
-			throw std::runtime_error("Invalid value for CTYPE4");
-		float val = readFloatKey("CRVAL4");
-		switch(int(val))
+		if(readStringKey("CTYPE4") == "STOKES")
 		{
-			default: throw std::runtime_error("Unknown polarization specified in fits file");
-			case 1: _polarization = Polarization::StokesI; break;
-			case 2: _polarization = Polarization::StokesQ; break;
-			case 3: _polarization = Polarization::StokesU; break;
-			case 4: _polarization = Polarization::StokesV; break;
-			case -5: _polarization = Polarization::XX; break;
-			case -6: _polarization = Polarization::YY; break;
-			case -7: _polarization = Polarization::XY; break;
-			case -8: _polarization = Polarization::YX; break;
+			float val = readFloatKey("CRVAL4");
+			switch(int(val))
+			{
+				default: throw std::runtime_error("Unknown polarization specified in fits file");
+				case 1: _polarization = Polarization::StokesI; break;
+				case 2: _polarization = Polarization::StokesQ; break;
+				case 3: _polarization = Polarization::StokesU; break;
+				case 4: _polarization = Polarization::StokesV; break;
+				case -5: _polarization = Polarization::XX; break;
+				case -6: _polarization = Polarization::YY; break;
+				case -7: _polarization = Polarization::XY; break;
+				case -8: _polarization = Polarization::YX; break;
+			}
 		}
 	}
+	double bMaj=0.0, bMin=0.0, bPa=0.0;
+	if(readDoubleKeyIfExists("BMAJ", bMaj) && readDoubleKeyIfExists("BMIN", bMin) && readDoubleKeyIfExists("BPA", bPa))
+	{
+		_hasBeam = true;
+		_beamMajorAxisRad = bMaj * (M_PI / 180.0);
+		_beamMinorAxisRad = bMin * (M_PI / 180.0);
+		_beamPositionAngle = bPa * (M_PI / 180.0);
+	}
+	else _hasBeam = false;
+	readStringKeyIfExists("ORIGIN", _origin, _originComment);
+	readHistory();
 }
 
 template void FitsReader::Read(double* image);
@@ -167,6 +194,23 @@ void FitsReader::Read(NumType* image)
 	else
 		throw std::runtime_error("sizeof(NumType)!=8 not implemented");
 	checkStatus(status);
+}
+
+void FitsReader::readHistory()
+{
+	int status = 0;
+	int npos, moreKeys;
+	fits_get_hdrspace(_fitsPtr, &npos, &moreKeys, &status);
+	checkStatus(status);
+	char keyCard[256];
+	for(int pos=1; pos<=npos; ++pos)
+	{
+		fits_read_record(_fitsPtr, pos, keyCard, &status);
+		keyCard[7] = 0;
+		if(std::string("HISTORY") == keyCard) {
+			_history.push_back(&keyCard[8]);
+		}
+	}
 }
 
 FitsReader::~FitsReader()

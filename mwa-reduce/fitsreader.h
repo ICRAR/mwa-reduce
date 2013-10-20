@@ -2,6 +2,7 @@
 #define FITSREADER_H
 
 #include <string>
+#include <vector>
 
 #include <fitsio.h>
 
@@ -11,7 +12,10 @@ class FitsReader
 {
 	public:
 		FitsReader(const std::string &filename) 
-		: _filename(filename) { initialize(); }
+		: _filename(filename), _hasBeam(false)
+		{
+			initialize(); 
+		}
 		~FitsReader();
 		
 		template<typename NumType> void Read(NumType *image);
@@ -30,12 +34,24 @@ class FitsReader
 		
 		double DateObs() const { return _dateObs; }
 		PolarizationEnum Polarization() const { return _polarization; }
+		
+		bool HasBeam() const { return _hasBeam; }
+		double BeamMajorAxisRad() const { return _beamMajorAxisRad; }
+		double BeamMinorAxisRad() const { return _beamMinorAxisRad; }
+		double BeamPositionAngle() const { return _beamPositionAngle; }
+		
+		const std::string& Origin() const { return _origin; }
+		const std::string& OriginComment() const { return _originComment; }
+		
+		const std::vector<std::string>& History() const { return _history; }
 	private:
-		float readFloatKey(const char *key);
-		double readDoubleKey(const char *key);
-		bool readFloatKeyIfExists(const char *key, float &dest);
-		bool readDoubleKeyIfExists(const char *key, double &dest);
-		std::string readStringKey(const char *key);
+		float readFloatKey(const char* key);
+		double readDoubleKey(const char* key);
+		bool readFloatKeyIfExists(const char* key, float& dest);
+		bool readDoubleKeyIfExists(const char* key, double& dest);
+		std::string readStringKey(const char* key);
+		bool readStringKeyIfExists(const char* key, std::string& value, std::string& comment);
+		void readHistory();
 		
 		std::string _filename;
 		fitsfile *_fitsPtr;
@@ -47,7 +63,12 @@ class FitsReader
 		double _phaseCentreRA, _phaseCentreDec;
 		double _pixelSizeX, _pixelSizeY;
 		double _frequency, _bandwidth, _dateObs;
+		bool _hasBeam;
+		double _beamMajorAxisRad, _beamMinorAxisRad, _beamPositionAngle;
+		
 		PolarizationEnum _polarization;
+		std::string _origin, _originComment;
+		std::vector<std::string> _history;
 };
 
 #endif
