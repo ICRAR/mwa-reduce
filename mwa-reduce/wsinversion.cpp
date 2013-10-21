@@ -586,6 +586,8 @@ void WSInversion::Invert()
 		
 		for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		{
+			_inversionWorkLane->clear();
+			
 			MSData& msData = msDataVector[i];
 			
 			const MultiBandData selectedBand(msData.SelectedBand());
