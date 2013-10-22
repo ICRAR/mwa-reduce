@@ -96,11 +96,11 @@ source {
     position 19h59m28.4s 40d44m02s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 10916.5 0 0 10916.5
+      fluxdensity Jy 9420.71 0 0 9420.71
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 5504.87 0 0 5504.87
+      fluxdensity Jy 4763.72 0 0 4763.72
     }
   }
   component {
@@ -108,11 +108,11 @@ source {
     position 19h59m32.3s 40d44m02s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 3458.42 0 0 3458.42
+      fluxdensity Jy 2984.56 0 0 2984.56
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 1743.99 0 0 1743.99
+      fluxdensity Jy 1509.19 0 0 1509.19
     }
   }
   component {
@@ -120,11 +120,11 @@ source {
     position 19h59m24.4s 40d44m02s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 2440.64 0 0 2440.64
+      fluxdensity Jy 2106.23 0 0 2106.23
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 1230.75 0 0 1230.75
+      fluxdensity Jy 1065.05 0 0 1065.05
     }
   }
   component {
@@ -132,11 +132,11 @@ source {
     position 19h59m20.4s 40d44m47s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 1465.45 0 0 1465.45
+      fluxdensity Jy 1264.66 0 0 1264.66
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 739.031 0 0 739.031
+      fluxdensity Jy 639.531 0 0 639.531
     }
   }
   component {
@@ -144,11 +144,11 @@ source {
     position 19h59m36.3s 40d43m17s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 977.422 0 0 977.422
+      fluxdensity Jy 843.498 0 0 843.498
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 492.885 0 0 492.885
+      fluxdensity Jy 426.525 0 0 426.525
     }
   }
   component {
@@ -156,11 +156,11 @@ source {
     position 19h59m20.4s 40d44m02s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 384.286 0 0 384.286
+      fluxdensity Jy 331.632 0 0 331.632
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 193.781 0 0 193.781
+      fluxdensity Jy 167.691 0 0 167.691
     }
   }
   component {
@@ -168,11 +168,11 @@ source {
     position 19h59m32.3s 40d43m17s
     measurement {
       frequency 74 MHz
-      fluxdensity Jy 293.997 0 0 293.997
+      fluxdensity Jy 253.714 0 0 253.714
     }
     measurement {
       frequency 178 MHz
-      fluxdensity Jy 148.253 0 0 148.253
+      fluxdensity Jy 128.293 0 0 128.293
     }
   }
 }
