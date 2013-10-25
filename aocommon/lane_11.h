@@ -6,16 +6,84 @@
 #include <mutex>
 #include <condition_variable>
 
+/**
+ * @file
+ * Internal header file for the lane.
+ * @headername{lane.h}
+ */
+
 namespace ao
 {
 
-template<typename T>
+/**
+ * @brief The lane is an efficient cyclic buffer that is synchronized.
+ * @details
+ * A lane can typically used in a multi-threaded producer-consumer
+ * situation. The lane also holds a state which allows for
+ * an ellegant way of communicating from producer(s) to
+ * consumer(s) that all data has been produced.
+ * 
+ * A simple example:
+ * @code
+ * void producer(lane<Task>* taskLane)
+ * {
+ *   while(moreTasks)
+ *     taskLane->write(nextTask());
+ * }
+ * 
+ * void consumer(lane<Task>* taskLane)
+ * {
+ *   Task task;
+ *   while(taskLane->read(task))
+ *     processTask(task);
+ * }
+ * 
+ * void run()
+ * {
+ *   lane<Task> taskLane;
+ *   std::thread consumerThread(&consumer(), &taskLane);
+ *   producer(&taskLane);
+ *   consumerThread.join();
+ * }
+ * @endcode
+ * 
+ * The various read and write methods, as well as the empty(),
+ * capacity() and size() methods are always thread safe. The other
+ * methods are not: assignment, swap(), clear() and resize() can not
+ * be called from a different thread while another thread is also
+ * accessing the lane. The same holds obviously for the constructors
+ * and destructor. This is chosen because these methods would always never
+ * be called in parallel with other methods.
+ * 
+ * With one reader and one writer, the order is guaranteed to be consistent.
+ * With multiple readers or writers in combination with the multi-element
+ * write or read functions, a stream of symbols might be interrupted. For
+ * example, if a multi-element write() won't fit completely in the buffer,
+ * the thread will wait for free space. Another thread might get now write
+ * access first, causing the single call to the multi-element write to be
+ * "split up".
+ * 
+ * @author Andre Offringa
+ * @tparam Tp Type of elements to be stored in the lane.
+ */
+template<typename Tp>
 class lane
 {
 	public:
+		/** @brief Integer type used to store size types. */
 		typedef std::size_t size_type;
-		typedef T value_type;
 		
+		/** @brief Type of elements stored in the lane. */
+		typedef Tp value_type;
+		
+		/** @brief Construct a lane with zero elements.
+		 * @details A lane with zero elements can not be written to or read to
+		 * (both operations will wait forever).
+		 * 
+		 * This constructor makes it easy to construct e.g. a container
+		 * of lanes. After the container is created, the lanes can be
+		 * resized with @ref resize().
+		 */
 		lane() :
 			_buffer(0),
 			_capacity(0),
@@ -25,8 +93,12 @@ class lane
 		{
 		}
 		
+		/** @brief Construct a lane with the given capacity.
+		 * @details After construction, the lane is ready for writing to and reading from.
+		 * @param capacity Number of elements that the lane can hold at once.
+		 */
 		explicit lane(size_t capacity) :
-			_buffer(new T[capacity]),
+			_buffer(new Tp[capacity]),
 			_capacity(capacity),
 			_write_position(0),
 			_free_write_space(_capacity),
@@ -34,27 +106,50 @@ class lane
 		{
 		}
 		
-		lane(const lane<T>& source) = delete;
+		lane(const lane<Tp>& source) = delete;
 		
-		lane(lane<T>&& source)
+		/** @brief Move construct a lane.
+		 * @details This operation is not thread safe: the behaviour is undefined when
+		 * other threads access the source lane.
+		 * @param source Original lane to be moved from.
+		 */
+		lane(lane<Tp>&& source) :
+			_buffer(0),
+			_capacity(0),
+			_write_position(0),
+			_free_write_space(0),
+			_status(status_normal)
 		{
 			swap(source);
 		}
 		
+		/** @brief Destructor.
+		 * @details The destructor is not synchronized.
+		 */
 		~lane()
 		{
 			delete[] _buffer;
 		}
 		
-		lane<T>& operator=(const lane<T>& source) = delete;
+		lane<Tp>& operator=(const lane<Tp>& source) = delete;
 		
-		lane<T>& operator=(lane<T>&& source)
+		/** @brief Move assignment.
+		 * @details This operation is not thread safe: the behaviour is undefined when
+		 * other threads access the source lane.
+		 * @param source Original lane to be moved from.
+		 * @returns This lane.
+		 */
+		lane<Tp>& operator=(lane<Tp>&& source)
 		{
 			swap(source);
 			return *this;
 		}
 		
-		void swap(lane<T>& other)
+		/** @brief Swap the contents of this lane with another.
+		 * @details This operation is not thread safe: the behaviour is undefined when
+		 * other threads access either lane.
+		 */
+		void swap(lane<Tp>& other)
 		{
 			std::swap(_buffer, other._buffer);
 			std::swap(_capacity, other._capacity);
@@ -63,14 +158,28 @@ class lane
 			std::swap(_status, other._status);
 		}
 		
+		/** @brief Clear the contents and reset the state of the lane.
+		 * @details After calling clear(), the lane is in the same state as after
+		 * construction. This also means that after clearing the lane, it
+		 * is as if write_end() has not been called yet.
+		 * 
+		 * This method is not thread safe.
+		 */
 		void clear()
 		{
-			std::lock_guard<std::mutex> lock(_mutex);
 			_write_position = 0;
 			_free_write_space = _capacity;
 			_status = status_normal;
 		}
 		
+		/** @brief Write a single element.
+		 * @details This method is thread safe, and can be called together with
+		 * other write and read methods from different threads.
+		 * 
+		 * If this call comes after a call to write_end(), the call
+		 * will be ignored.
+		 * @param element Object to be copied into the cyclic buffer.
+		 */
 		void write(const value_type& element)
 		{
 			std::unique_lock<std::mutex> lock(_mutex);
@@ -89,6 +198,14 @@ class lane
 			}
 		}
 		
+		/** @brief Write a single element by moving it in.
+		 * @details This method is thread safe, and can be called together with
+		 * other write and read methods from different threads.
+		 * 
+		 * If this call comes after a call to write_end(), the call
+		 * will be ignored.
+		 * @param element Object to be moved into the cyclic buffer.
+		 */
 		void write(value_type&& element)
 		{
 			std::unique_lock<std::mutex> lock(_mutex);
@@ -204,7 +321,7 @@ class lane
 		 */
 		void resize(size_t new_capacity)
 		{
-			T *new_buffer = new T[new_capacity];
+			Tp *new_buffer = new Tp[new_capacity];
 			delete[] _buffer;
 			_buffer = new_buffer;
 			_capacity = new_capacity;
@@ -213,7 +330,7 @@ class lane
 			_status = status_normal;
 		}
 	private:
-		T* _buffer;
+		Tp* _buffer;
 		
 		size_t _capacity;
 		
@@ -305,8 +422,8 @@ class lane
 		}
 };
 
-template<typename T>
-void swap(ao::lane<T>& first, ao::lane<T>& second)
+template<typename Tp>
+void swap(ao::lane<Tp>& first, ao::lane<Tp>& second)
 {
 	first.swap(second);
 }

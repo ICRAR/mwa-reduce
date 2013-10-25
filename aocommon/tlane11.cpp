@@ -29,34 +29,42 @@ void consumer1(ao::lane<int>* lane)
 		std::cout << "Incorrect nr of samples: got " << b << '\n';
 }
 
-void producerN(ao::lane<int>* lane)
+void producerN(ao::lane<int>* lane, size_t n)
 {
-	std::vector<int> vals(N_AT_A_TIME);
+	std::vector<int> vals(n);
 	int i = 0;
-	for(int a=0; a!=int(NITER/N_AT_A_TIME); ++a)
+	for(int a=0; a!=int(NITER/n); ++a)
 	{
-		for(int b=0; b!=int(N_AT_A_TIME); ++b)
+		for(int b=0; b!=int(n); ++b)
 		{
 			vals[b] = i;
 		  ++i;
 		}
-		lane->write(vals.data(), N_AT_A_TIME);
+		lane->write(vals.data(), n);
 	}
+	for(size_t b=0; b!=NITER%n; ++b)
+	{
+		vals[b] = i;
+		++i;
+	}
+	lane->write(vals.data(), NITER%n);
 	lane->write_end();
 }
 
-void consumerN(ao::lane<int>* lane)
+void consumerN(ao::lane<int>* lane, size_t n)
 {
-	std::vector<int> vals(N_AT_A_TIME);
+	std::vector<int> vals(n);
 	int b = 0;
-	while(lane->read(vals.data(), N_AT_A_TIME))
+	size_t nread = lane->read(vals.data(), n);
+	while(nread != 0)
 	{
-		for(int i=0; i!=int(N_AT_A_TIME); ++i)
+		for(size_t i=0; i!=nread; ++i)
 		{
 			if(vals[i] != b)
 				std::cout << vals[i] << " != " << b << '\n';
 			++b;
 		}
+		nread = lane->read(vals.data(), n);
 	}
 	if(b != int(NITER))
 		std::cout << "Incorrect nr of samples: got " << b << '\n';
@@ -77,7 +85,7 @@ int main(int argc, char* argv[])
 	l.clear();
 	watch.Reset();
 	watch.Start();
-	thread producerThread2(&producerN, &l);
+	thread producerThread2(&producerN, &l, N_AT_A_TIME);
 	thread consumerThread2(&consumer1, &l);
 	producerThread2.join();
 	consumerThread2.join();
@@ -88,7 +96,7 @@ int main(int argc, char* argv[])
 	watch.Reset();
 	watch.Start();
 	thread producerThread3(&producer1, &l);
-	thread consumerThread3(&consumerN, &l);
+	thread consumerThread3(&consumerN, &l, N_AT_A_TIME);
 	producerThread3.join();
 	consumerThread3.join();
 	std::cout << watch.ToString() << " (" << (NITER/watch.Seconds()) << " read-writes/sec)\n";
@@ -97,8 +105,8 @@ int main(int argc, char* argv[])
 	l.clear();
 	watch.Reset();
 	watch.Start();
-	thread producerThread4(&producerN, &l);
-	thread consumerThread4(&consumerN, &l);
+	thread producerThread4(&producerN, &l, N_AT_A_TIME);
+	thread consumerThread4(&consumerN, &l, N_AT_A_TIME);
 	producerThread4.join();
 	consumerThread4.join();
 	std::cout << watch.ToString() << " (" << (NITER/watch.Seconds()) << " read-writes/sec)\n";
@@ -107,10 +115,24 @@ int main(int argc, char* argv[])
 	l.clear();
 	watch.Reset();
 	watch.Start();
-	thread consumerThread5(&consumerN, &l);
-	producerN(&l);
+	thread consumerThread5(&consumerN, &l, N_AT_A_TIME);
+	producerN(&l, N_AT_A_TIME);
 	consumerThread5.join();
 	std::cout << watch.ToString() << " (" << (NITER/watch.Seconds()) << " read-writes/sec)\n";
+	
+	size_t n = 1;
+	while(n < 100000)
+	{
+		l.clear();
+		watch.Reset();
+		watch.Start();
+		thread consumerThread6(&consumerN, &l, n);
+		producerN(&l, n);
+		consumerThread6.join();
+		std::cout << n << '\t' << (NITER/watch.Seconds()) << '\n';
+		
+		n *= 2;
+	}
 	
 	return 0;
 }
