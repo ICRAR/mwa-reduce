@@ -9,22 +9,24 @@ class WeightMode
 public:
 	enum WeightingEnum { NaturalWeighted, DistanceWeighted, UniformWeighted, BriggsWeighted };
 		
-	WeightMode(WeightingEnum mode) : _mode(mode), _briggsRobustness(0.0)
+	WeightMode(WeightingEnum mode) : _mode(mode), _briggsRobustness(0.0), _superWeight(1.0)
 	{ }
 	
-	WeightMode(const WeightMode& source) : _mode(source._mode), _briggsRobustness(source._briggsRobustness)
+	WeightMode(const WeightMode& source)
+	: _mode(source._mode), _briggsRobustness(source._briggsRobustness), _superWeight(source._superWeight)
 	{ }
 	
 	WeightMode& operator=(const WeightMode& source)
 	{
 		_mode = source._mode;
 		_briggsRobustness = source._briggsRobustness;
+		_superWeight = source._superWeight;
 		return *this;
 	}
 	
 	bool operator==(const WeightMode& rhs)
 	{
-		if(_mode != rhs._mode)
+		if(_mode != rhs._mode || _superWeight != rhs._superWeight)
 			return false;
 		else if(_mode == BriggsWeighted)
 			return _briggsRobustness == rhs._briggsRobustness;
@@ -44,7 +46,13 @@ public:
 	bool IsDistance() const { return _mode == DistanceWeighted; }
 	bool IsUniform() const { return _mode == UniformWeighted; }
 	bool IsBriggs() const { return _mode == BriggsWeighted; }
+	
 	double BriggsRobustness() const { return _briggsRobustness; }
+	double SuperWeight() const { return _superWeight; }
+	
+	void SetSuperWeight(double superWeight) { _superWeight = superWeight; }
+	void SetMode(const WeightMode& mode) { _mode = mode._mode; _briggsRobustness = mode._briggsRobustness; }
+	
 	bool RequiresGridding() const { return IsUniform() || IsBriggs(); }
 	
 	std::string ToString() const 
@@ -65,7 +73,7 @@ public:
 	}
 private:
 	enum WeightingEnum _mode;
-	double _briggsRobustness;
+	double _briggsRobustness, _superWeight;
 };
 
 #endif

@@ -13,7 +13,7 @@
 class ImageWeights
 {
 	public:
-		ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale);
+		ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale, double superWeight=1.0);
 		
 		double GetWeight(double u, double v)
 		{
@@ -28,7 +28,11 @@ class ImageWeights
 		}
 		double GetUniformWeight(double u, double v) const
 		{
-			return 1.0 / sumValue(u, v);
+			double val = sumValue(u, v);
+			if(val != 0.0)
+				return 1.0 / val;
+			else
+				return 0.0;
 		}
 		double GetInverseTaperedWeight(double u, double v)
 		{
@@ -46,6 +50,9 @@ class ImageWeights
 		void Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 
 	private:
+		ImageWeights(const ImageWeights&) { }
+		void operator=(const ImageWeights&) { }
+		
 		double sumValue(double u, double v) const
 		{
 			if(v < 0.0) {

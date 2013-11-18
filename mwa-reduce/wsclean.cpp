@@ -92,6 +92,9 @@ int main(int argc, char *argv[])
 			"\t-weight <weightmode>\n"
 			"\t   Weightmode can be: natural, mwa, uniform, briggs. Default: uniform. When using Briggs' weighting,\n"
 			"\t   add the robustness parameter, like: \"-weight briggs 0.5\".\n"
+			"\t-superweight <factor>\n"
+			"\t   Increase the weight gridding box size, similar to Casa's superuniform weighting scheme. Default: 1.0\n"
+			"\t   The factor can be rational and can be less than one for subpixel weighting.\n"
 			"\t-makepsf\n"
 			"\t   Always make the psf, even when no cleaning is performed.\n"
 			"\t-imaginarypart\n"
@@ -257,18 +260,23 @@ int main(int argc, char *argv[])
 			++argi;
 			std::string weightArg = argv[argi];
 			if(weightArg == "natural")
-				weightMode = WeightMode(WeightMode::NaturalWeighted);
+				weightMode.SetMode(WeightMode(WeightMode::NaturalWeighted));
 			else if(weightArg == "mwa")
-				weightMode = WeightMode(WeightMode::DistanceWeighted);
+				weightMode.SetMode(WeightMode(WeightMode::DistanceWeighted));
 			else if(weightArg == "uniform")
-				weightMode = WeightMode(WeightMode::UniformWeighted);
+				weightMode.SetMode(WeightMode(WeightMode::UniformWeighted));
 			else if(weightArg == "briggs")
 			{
 				++argi;
 				double robustness = atof(argv[argi]);
-				weightMode = WeightMode::Briggs(robustness);
+				weightMode.SetMode(WeightMode::Briggs(robustness));
 			}
 			else throw std::runtime_error("Unknown weighting mode specified");
+		}
+		else if(param == "superweight")
+		{
+			++argi;
+			weightMode.SetSuperWeight(atof(argv[argi]));
 		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
@@ -295,12 +303,12 @@ int main(int argc, char *argv[])
 		commandLineStr << ' ' << argv[i];
 	commandLine = commandLineStr.str();
 	
-	// If uniform weighted; initialize weight grid.
+	// Initialize weight grid if necessary.
 	std::unique_ptr<ImageWeights> imageWeights;
 	if(weightMode.RequiresGridding())
 	{
 		std::cout << "Precalculating weights for " << weightMode.ToString() << " weighting... " << std::flush;
-		imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale));
+		imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale, weightMode.SuperWeight()));
 		for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
 		{
 			casa::MeasurementSet ms(inversionAlgorithm->MeasurementSetPath(i));

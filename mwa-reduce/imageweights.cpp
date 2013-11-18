@@ -6,12 +6,14 @@
 #include <iostream>
 #include <cstring>
 
-ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale) : 
-	_imageWidth(imageWidth),
-	_imageHeight(imageHeight),
-	_pixelScale(pixelScale),
-	_sum(_imageWidth*_imageHeight/2)
+ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale, double superWeight)
 {
+	_imageWidth = round(double(imageWidth) / superWeight);
+	_imageHeight = round(double(imageHeight) / superWeight);
+	_pixelScale = pixelScale;
+	if(_imageWidth%2 != 0) ++_imageWidth;
+	if(_imageHeight%2 != 0) ++_imageHeight;
+	_sum.resize(_imageWidth*_imageHeight/2);
 }
 
 double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep)
@@ -136,7 +138,7 @@ void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, doub
 			double wavelength = frequencyToWavelength(lowestFrequency + frequencyStep*ch);
 			double x = round(uTimesLambda*_imageWidth*_pixelScale/wavelength + _imageWidth/2);
 			double y = round(vTimesLambda*_imageHeight*_pixelScale/wavelength);
-			if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 			{
 				size_t index = (size_t) x + (size_t) y*_imageWidth;
 				_sum[index] += 1.0;
