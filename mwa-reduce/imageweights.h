@@ -54,7 +54,7 @@ class ImageWeights
 			}
 			double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
 			double y = round(v*_imageHeight*_pixelScale);
-			if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 				return _sum[(size_t) x + (size_t) y*_imageWidth];
 			else {
 				return 0.0;

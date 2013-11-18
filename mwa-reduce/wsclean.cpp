@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 	if(argc < 3)
 	{
 		std::cout << "Syntax:\twsclean [options] <input-ms> [<2nd-ms> [..]]\n"
-			"Will create cleaned images of the input ms(es). DATA column will be used by default.\n"
+			"Will create cleaned images of the input ms(es).\n"
 			"If multiple mses are specified, they need to be phase-rotated to the same point on the sky.\n"
 			"Options can be:\n"
 			"\t-name <image-prefix>\n"
@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 			"\t-imaginarypart\n"
 			"\t   saves the imaginary part instead of the real part; only sensible for xy/yx. Not the default.\n"
 			"\t-datacolumn <columnname>\n"
+			"\t   Default: CORRECTED_DATA if it exists, otherwise DATA will be used.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";

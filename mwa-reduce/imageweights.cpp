@@ -81,7 +81,7 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode)
 				double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
 				double y = round(v*_imageHeight*_pixelScale);
 					
-				if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+				if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 				{
 					for(size_t p=0; p!=polarizationCount; ++p)
 					{
@@ -92,6 +92,13 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode)
 								if(weightMode.IsBriggs())
 									totalSum += *weightIter;
 						}
+						++flagIter;
+						++weightIter;
+					}
+				}
+				else {
+					for(size_t p=0; p!=polarizationCount; ++p)
+					{
 						++flagIter;
 						++weightIter;
 					}
