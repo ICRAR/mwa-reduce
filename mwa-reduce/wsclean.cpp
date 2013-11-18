@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 			"\t   Only image the given channel range. Indices specify channel indices, end index is exclusive.\n"
 			"\t   Default: image all channels.\n"
 			"\t-weight <weightmode>\n"
-			"\t   Weightmode can be: natural, mwa, uniform, briggs. Default: uniform. When using briggs' weighting,\n"
+			"\t   Weightmode can be: natural, mwa, uniform, briggs. Default: uniform. When using Briggs' weighting,\n"
 			"\t   add the robustness parameter, like: \"-weight briggs 0.5\".\n"
 			"\t-makepsf\n"
 			"\t   Always make the psf, even when no cleaning is performed.\n"

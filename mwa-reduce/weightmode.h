@@ -60,6 +60,7 @@ public:
 				s << "Briggs'(" << _briggsRobustness << ")";
 				return s.str();
 			}
+			default: return "?";
 		}
 	}
 private:

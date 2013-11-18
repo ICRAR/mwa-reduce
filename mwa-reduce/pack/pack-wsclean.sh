@@ -4,7 +4,7 @@ mkdir /tmp/wsclean
 mkdir /tmp/wsclean/aocommon
 cp CMakeLists-wsclean.txt /tmp/wsclean/CMakeLists.txt
 cd ..
-cp -v areaset.* banddata.* beamevaluator.* buffered_lane.* cleanalgorithm.* fitsreader.* fitswriter.* imagecoordinates.* imageweights.* inversionalgorithm.* lane.* layeredimager.* multibanddata.* nlplfitter.* matrix2x2.* model.* modelrenderer.* modelsource.* polarizationenum.* radeccoord.* sourcesdf.* sourcesdfwithsamples.* spectralenergydistribution.* stopwatch.* tilebeam.* uvector.* uvwdistribution.* wsclean.* wsinversion.* /tmp/wsclean/
+cp -v areaset.* banddata.* beamevaluator.* buffered_lane.* cleanalgorithm.* fitsreader.* fitswriter.* imagecoordinates.* imageweights.* inversionalgorithm.* lane.* layeredimager.* multibanddata.* nlplfitter.* matrix2x2.* model.* modelrenderer.* modelsource.* polarizationenum.* radeccoord.* sourcesdf.* sourcesdfwithsamples.* spectralenergydistribution.* stopwatch.* tilebeam.* uvector.* uvwdistribution.* weightmode.* wsclean.* wsinversion.* /tmp/wsclean/
 cp -v aocommon/lane.h aocommon/lane_03.h aocommon/lane_11.h aocommon/uvector.h /tmp/wsclean/aocommon
 mkdir /tmp/wsclean/parser
 cp -v parser/*.{h,cpp} /tmp/wsclean/parser

@@ -138,6 +138,8 @@ class CleanAlgorithm
 		};
 		struct CleanResult
 		{
+			CleanResult() : nextPeakX(0), nextPeakY(0), peakLevel(0.0)
+			{ }
 			size_t nextPeakX, nextPeakY;
 			double peakLevel;
 		};
