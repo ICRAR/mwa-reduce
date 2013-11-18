@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	size_t nWLayers = 0, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
-	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::UniformWeighted;
+	WeightMode weightMode(WeightMode::UniformWeighted);
 	std::string prefixName = "wsclean";
 	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false, makePsf = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::KaiserBessel;
@@ -255,11 +255,17 @@ int main(int argc, char *argv[])
 			++argi;
 			std::string weightArg = argv[argi];
 			if(weightArg == "natural")
-				weightMode = InversionAlgorithm::NaturalWeighted;
+				weightMode = WeightMode(WeightMode::NaturalWeighted);
 			else if(weightArg == "mwa")
-				weightMode = InversionAlgorithm::DistanceWeighted;
+				weightMode = WeightMode(WeightMode::DistanceWeighted);
 			else if(weightArg == "uniform")
-				weightMode = InversionAlgorithm::UniformWeighted;
+				weightMode = WeightMode(WeightMode::UniformWeighted);
+			else if(weightArg == "briggs")
+			{
+				++argi;
+				double robustness = atof(argv[argi]);
+				weightMode = WeightMode::Briggs(robustness);
+			}
 			else throw std::runtime_error("Unknown weighting mode specified");
 		}
 		else {
@@ -289,14 +295,14 @@ int main(int argc, char *argv[])
 	
 	// If uniform weighted; initialize weight grid.
 	std::unique_ptr<ImageWeights> imageWeights;
-	if(weightMode == InversionAlgorithm::UniformWeighted)
+	if(weightMode.RequiresGridding())
 	{
-		std::cout << "Precalculating weights for uniform weighting... " << std::flush;
+		std::cout << "Precalculating weights for " << weightMode.ToString() << " weighting... " << std::flush;
 		imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale));
 		for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
 		{
 			casa::MeasurementSet ms(inversionAlgorithm->MeasurementSetPath(i));
-			imageWeights->Grid(ms);
+			imageWeights->Grid(ms, weightMode);
 			if(inversionAlgorithm->MeasurementSetCount() > 1)
 				std::cout << i << ' ' << std::flush;
 		}

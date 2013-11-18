@@ -6,12 +6,11 @@
 #include <vector>
 
 #include "polarizationenum.h"
+#include "weightmode.h"
 
 class InversionAlgorithm
 {
 	public:
-		enum WeightingEnum { NaturalWeighted, DistanceWeighted, UniformWeighted };
-		
 		InversionAlgorithm() :
 			_imageWidth(1024),
 			_imageHeight(1024),
@@ -30,7 +29,7 @@ class InversionAlgorithm
 			_precalculatedWeightInfo(0),
 			_polarization(Polarization::StokesI),
 			_imaginaryPart(false),
-			_weighting(DistanceWeighted),
+			_weighting(WeightMode::UniformWeighted),
 			_verbose(false)
 		{
 		}
@@ -51,7 +50,7 @@ class InversionAlgorithm
 		bool DoSubtractModel() const { return _doSubtractModel; }
 		bool AddToModel() const { return _addToModel; }
 		PolarizationEnum Polarization() const { return _polarization; }
-		WeightingEnum Weighting() const { return _weighting; }
+		WeightMode Weighting() const { return _weighting; }
 		class ImageWeights* PrecalculatedWeightInfo() const { return _precalculatedWeightInfo; }
 		bool HasInterval() const { return _intervalEnd != 0; }
 		size_t IntervalStart() const { return _intervalStart; }
@@ -106,7 +105,7 @@ class InversionAlgorithm
 		{
 			_imaginaryPart = imaginaryPart;
 		}
-		void SetWeighting(WeightingEnum weighting)
+		void SetWeighting(WeightMode weighting)
 		{
 			_weighting = weighting;
 		}
@@ -165,7 +164,7 @@ class InversionAlgorithm
 		class ImageWeights *_precalculatedWeightInfo;
 		PolarizationEnum _polarization;
 		bool _imaginaryPart;
-		WeightingEnum _weighting;
+		WeightMode _weighting;
 		bool _verbose;
 };
 
