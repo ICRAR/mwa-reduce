@@ -11,7 +11,7 @@
 class BandData
 {
 	public:
-		BandData() : _channelCount(0), _channelFrequencies(0)
+		BandData() : _channelCount(0), _channelFrequencies(0), _frequencyStep(0.0)
 		{
 		}
 		
@@ -27,7 +27,7 @@ class BandData
 			initFromTable(spwTable, bandIndex);
 		}
 		
-		BandData(const BandData& source) : _channelCount(source._channelCount)
+		BandData(const BandData& source) : _channelCount(source._channelCount), _frequencyStep(source._frequencyStep)
 		{
 			_channelFrequencies = new double[_channelCount];
 			for(size_t index = 0; index != _channelCount; ++index)
@@ -36,9 +36,9 @@ class BandData
 			}
 		}
 		
-		BandData(const BandData &source, size_t startChannel, size_t endChannel)
+		BandData(const BandData &source, size_t startChannel, size_t endChannel) :
+			_channelCount(endChannel - startChannel), _frequencyStep(source._frequencyStep)
 		{
-			_channelCount = endChannel - startChannel;
 			if(_channelCount == 0) throw std::runtime_error("No channels in set");
 			
 			_channelFrequencies = new double[_channelCount];
@@ -56,6 +56,7 @@ class BandData
 		void operator=(const BandData& source)
 		{
 			_channelCount = source._channelCount;
+			_frequencyStep = source._frequencyStep;
 			if(_channelCount != 0)
 			{
 				_channelFrequencies = new double[_channelCount];
@@ -97,10 +98,7 @@ class BandData
 		}
 		double FrequencyStep() const
 		{
-		  if(_channelCount > 1)
-		    return _channelFrequencies[1] - _channelFrequencies[0];
-		  else
-		    return 0.0;
+			return _frequencyStep;
 		}
 		double LongestWavelength() const
 		{
@@ -144,10 +142,15 @@ class BandData
 				_channelFrequencies[index] = *i;
 				++index;
 			}
+		  if(_channelCount > 1)
+		    _frequencyStep = _channelFrequencies[1] - _channelFrequencies[0];
+		  else
+		    _frequencyStep = 0.0;
 		}
 		
 		size_t _channelCount;
 		double *_channelFrequencies;
+		double _frequencyStep;
 };
 
 #endif

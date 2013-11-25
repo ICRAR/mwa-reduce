@@ -154,7 +154,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 				{
 					if(!*flagArrayData)
 					{
-						const double wavelength = curBand.ChannelWavelength(ch);
+						const double wavelength = curBand.ChannelWavelength(ch - msData.startChannel);
 						msData.maxW = std::max(msData.maxW, fabs(wInM / wavelength));
 						msData.minW = std::min(msData.minW, fabs(wInM / wavelength));
 						maxBaseline = std::max(maxBaseline, baselineInM / wavelength);
