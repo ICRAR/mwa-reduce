@@ -91,6 +91,8 @@ int main(int argc, char *argv[])
 			++outImagePtr;
 			++outWeightPtr;
 		}
+		
+		std::cout << '.' << std::flush;
 	}
 	
 	// Divide the weight out
