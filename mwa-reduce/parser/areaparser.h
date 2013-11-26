@@ -9,7 +9,13 @@
 class AreaParser : private Tokenizer
 {
 	public:
-		void Parse(AreaSet &areaSet, std::ifstream &stream)
+		void Parse(AreaSet& areaSet, const std::string& filename)
+		{
+			std::ifstream str(filename.c_str());
+			Parse(areaSet, str);
+		}
+		
+		void Parse(AreaSet& areaSet, std::ifstream& stream)
 		{
 			SetStream(stream);
 			

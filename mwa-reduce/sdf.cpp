@@ -1,6 +1,8 @@
 #include "banddata.h"
 #include "model.h"
 #include "imagecoordinates.h"
+#include "areaset.h"
+#include "parser/areaparser.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -14,7 +16,7 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-without/only <areafile>]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -28,6 +30,8 @@ int main(int argc, char *argv[])
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
+	bool excludeArea = false;
+	std::unique_ptr<AreaSet> areaSet;
 	while(argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
@@ -122,6 +126,13 @@ int main(int argc, char *argv[])
 		} else if(strcmp(argv[argi], "-sort") == 0)
 		{
 			doSort = true;
+		} else if(strcmp(argv[argi], "-without") == 0 || strcmp(argv[argi], "-only") == 0)
+		{
+			excludeArea = strcmp(argv[argi], "-without") == 0;
+			++argi;
+			areaSet.reset(new AreaSet());
+			AreaParser areaParser;
+			areaParser.Parse(*areaSet, argv[argi]);
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: ") + argv[argi]);
 		}
@@ -165,6 +176,21 @@ int main(int argc, char *argv[])
 		model.Optimize();
 	if(doSort)
 		model.Sort();
+	
+	if(areaSet != 0)
+	{
+		std::vector<size_t> toBeRemoved;
+		for(size_t i=0; i!=model.SourceCount(); ++i)
+		{
+			const ModelSource& source = model.Source(i);
+			std::vector<const SkyArea*> areas;
+			areaSet->FindAreas(areas, source.Peak().PosRA(), source.Peak().PosDec());
+			if((areas.empty() && !excludeArea) || (!areas.empty() && excludeArea))
+				toBeRemoved.push_back(i);
+		}
+		for(std::vector<size_t>::const_reverse_iterator i=toBeRemoved.rbegin(); i!=toBeRemoved.rend(); ++i)
+			model.RemoveSource(*i);
+	}
 	
 	if(applyThreshold)
 	{
