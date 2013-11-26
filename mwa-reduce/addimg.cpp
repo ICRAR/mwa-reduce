@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 		{
 			double beamVal = *inpWeightsIter;
 			*outImagePtr +=  (*i) * beamVal;
-			*outWeightPtr += beamVal;
+			*outWeightPtr += beamVal * beamVal;
 			
 			++inpWeightsIter;
 			++outImagePtr;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	for(double *imagePtr=outImage; imagePtr!=imageEnd; ++imagePtr)
 	{
 		double weight = *weightsIter;
-		*imagePtr /=  weight*weight;
+		*imagePtr /=  weight;
 		
 		++weightsIter;
 	}
