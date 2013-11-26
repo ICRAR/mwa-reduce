@@ -1,5 +1,6 @@
 #include "fitsreader.h"
 #include "fitswriter.h"
+#include "uvector.h"
 
 #include <vector>
 #include <stdexcept>
@@ -11,8 +12,8 @@ int main(int argc, char *argv[])
 {
 	if(argc < 5)
 	{
-		std::cerr << "Syntax: addimg <outimage> <outweights> <inpimage1> <inpweights1> [<inpimage2> <inpweights2> ...]\n"
-			"All images should be fits files. Use -1 as inpweight for unity weight.\n";
+		std::cerr << "Syntax: addimg <outimage> <outweights> <inpimage1> <inpbeam1> [<inpimage2> <inpbeam2> ...]\n"
+			"All images should be fits files. Use -1 as inpweight for unity weight, or \"-c inpbeam-real inpbeam-imag\" for complex beam.\n";
 	}
 	const char *outImageName = argv[1];
 	const char *outWeightName = argv[2];
@@ -44,13 +45,31 @@ int main(int argc, char *argv[])
 				throw std::runtime_error("Not all images have same size");
 		}
 		
-		std::vector<double> inpImage(width*height), weightImage(width*height);
+		ao::uvector<double> inpImage(width*height), weightImage(width*height);
 		
 		inpReader.Read<double>(&inpImage[0]);
 		
 		if(std::string(inpWeightName) == "-1")
 		{
 			weightImage.assign(width*height, 1.0);
+		}
+		else if(std::string(inpWeightName) == "-c")
+		{
+			argi += 2;
+			FitsReader realReader(argv[argi]), imagReader(argv[argi+1]);
+			if(realReader.ImageWidth() != width || realReader.ImageHeight() != height)
+				throw std::runtime_error("Real beam and image do not have same size");
+			if(imagReader.ImageWidth() != width || imagReader.ImageHeight() != height)
+				throw std::runtime_error("Imaginary beam and image do not have same size");
+			
+			ao::uvector<double> realImage(width*height), imagImage(width*height);
+			realReader.Read<double>(&realImage[0]);
+			imagReader.Read<double>(&imagImage[0]);
+			for(size_t j=0; j!=width*height; ++j)
+			{
+				double r = realImage[j], i = imagImage[j];
+				weightImage[j] = r*r + i*i;
+			}
 		}
 		else {
 			FitsReader weightsReader(inpWeightName);
@@ -61,11 +80,12 @@ int main(int argc, char *argv[])
 			
 		// Add the images in
 		double *outImagePtr = outImage, *outWeightPtr = outWeights;
-		std::vector<double>::iterator inpWeightsIter = weightImage.begin();
-		for(std::vector<double>::iterator i=inpImage.begin(); i!=inpImage.end(); ++i)
+		ao::uvector<double>::iterator inpWeightsIter = weightImage.begin();
+		for(ao::uvector<double>::iterator i=inpImage.begin(); i!=inpImage.end(); ++i)
 		{
-			*outImagePtr +=  (*i) * (*inpWeightsIter);
-			*outWeightPtr += (*inpWeightsIter);
+			double beamVal = *inpWeightsIter;
+			*outImagePtr +=  (*i) * beamVal;
+			*outWeightPtr += beamVal;
 			
 			++inpWeightsIter;
 			++outImagePtr;
@@ -78,7 +98,8 @@ int main(int argc, char *argv[])
 	double *imageEnd = outImage + (width * height);
 	for(double *imagePtr=outImage; imagePtr!=imageEnd; ++imagePtr)
 	{
-		*imagePtr /=  *weightsIter;
+		double weight = *weightsIter;
+		*imagePtr /=  weight*weight;
 		
 		++weightsIter;
 	}
