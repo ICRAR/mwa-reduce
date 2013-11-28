@@ -5,6 +5,7 @@
 #include "model.h"
 #include "banddata.h"
 #include "matrix2x2.h"
+#include "serializable.h"
 
 #include <complex>
 #include <vector>
@@ -77,15 +78,24 @@ public:
 		
 		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
 			measure(i->first, i->second);
-		
+	}
+	
+	void Finish()
+	{
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
 			_spectrumPerSource[s].Normalize();
 		}
-	}
+	}		
 	
 	void FluxPerFrequency(std::map<double, double>& dest, size_t sourceIndex, size_t polIndex) const
 	{ _spectrumPerSource[sourceIndex].ToMap(dest, polIndex); }
+	
+	void ToModel(Model& model) const;
+			
+	void SaveIntermediate(const std::string& filename);
+	
+	void AddMeasurementsFromFile(const std::string& filename);
 private:
 	void measure(const std::string& filename, const std::string& solutionsFile);
 	
@@ -95,7 +105,7 @@ private:
 	
 	void recalculateBeamWeightsThreadFunc(ao::lane<BeamEvalTaskInfo>* taskLane);
 	
-	struct Measurement
+	struct Measurement : public Serializable
 	{
 		std::complex<double> flux[4];
 		std::complex<double> weights[4];
@@ -126,9 +136,33 @@ private:
 					flux[p] = std::numeric_limits<double>::quiet_NaN();
 			}
 		}
+		
+		virtual void Serialize(std::ostream& stream) const
+		{
+			for(size_t p=0; p!=4; ++p)
+				SerializeToDoubleC(stream, flux[p]);
+			for(size_t p=0; p!=4; ++p)
+				SerializeToDoubleC(stream, weights[p]);
+		}
+		
+		virtual void Unserialize(std::istream& stream)
+		{
+			for(size_t p=0; p!=4; ++p)
+				flux[p] = UnserializeDoubleC(stream);
+			for(size_t p=0; p!=4; ++p)
+				weights[p] = UnserializeDoubleC(stream);
+		}
+		
+		void UnserializeAndAdd(std::istream& stream)
+		{
+			for(size_t p=0; p!=4; ++p)
+				flux[p] += UnserializeDoubleC(stream);
+			for(size_t p=0; p!=4; ++p)
+				weights[p] += UnserializeDoubleC(stream);
+		}
 	};
 	
-	class Spectrum
+	class Spectrum : public Serializable
 	{
 		public:
 			typedef std::map<double, Measurement>::iterator iterator;
@@ -137,6 +171,8 @@ private:
 			iterator end() { return _measurements.end(); }
 			const_iterator begin() const { return _measurements.begin(); }
 			const_iterator end() const { return _measurements.end(); }
+			
+			Spectrum() { }
 			
 			void Normalize() {
 				for(iterator i=begin(); i!=end(); ++i)
@@ -166,6 +202,53 @@ private:
 				}
 			}
 			
+			virtual void Serialize(std::ostream& stream) const
+			{
+				SerializeToUInt64(stream, _measurements.size());
+				for(const_iterator i=begin(); i!=end(); ++i)
+				{
+					SerializeToDouble(stream, i->first);
+					i->second.Serialize(stream);
+				}
+			}
+			
+			virtual void Unserialize(std::istream& stream)
+			{
+				_measurements.clear();
+				size_t s = UnserializeUInt64(stream);
+				for(size_t i=0; i!=s; ++i)
+				{
+					double f = UnserializeDouble(stream);
+					Measurement m;
+					m.Unserialize(stream);
+					_measurements.insert(std::make_pair(f, m));
+				}
+			}
+				
+			void UnserializeAndAdd(std::istream& stream)
+			{
+				size_t s = UnserializeUInt64(stream);
+				for(size_t i=0; i!=s; ++i)
+				{
+					double frequency = UnserializeDouble(stream);
+					Measurement newMeas;
+					newMeas.Unserialize(stream);
+					
+					iterator iter = _measurements.find(frequency);
+					if(iter == end())
+					{
+						_measurements.insert(std::pair<double, Measurement>(frequency, newMeas));
+					}
+					else {
+						for(size_t p=0; p!=4; ++p)
+						{
+							iter->second.flux[p] += newMeas.flux[p];
+							iter->second.weights[p] += newMeas.weights[p];
+						}
+					}
+				}
+			}
+		
 			void ToMap(std::map<double, double>& dest, size_t polIndex) const
 			{
 				for(const_iterator i=begin(); i!=end(); ++i)
@@ -173,6 +256,10 @@ private:
 					dest.insert(std::make_pair(i->first, i->second.flux[polIndex].real()));
 				}
 			}
+			
+			Spectrum(const Spectrum& source) : _measurements(source._measurements) { }
+			void operator=(const Spectrum& source) { _measurements = source._measurements; }
+			
 		private:
 			std::map<double, Measurement> _measurements;
 	};
