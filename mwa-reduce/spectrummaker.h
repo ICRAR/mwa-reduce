@@ -6,6 +6,8 @@
 #include "banddata.h"
 #include "matrix2x2.h"
 #include "serializable.h"
+#include "weightmode.h"
+#include "imageweights.h"
 
 #include <complex>
 #include <vector>
@@ -76,6 +78,8 @@ public:
 			_spectrumPerSource[s].Clear();
 		}
 		
+		initWeighting();
+		
 		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
 			measure(i->first, i->second);
 	}
@@ -96,6 +100,13 @@ public:
 	void SaveIntermediate(const std::string& filename);
 	
 	void AddMeasurementsFromFile(const std::string& filename);
+	
+	void SetWeighting(WeightMode mode, size_t gridSize, double pixelScale)
+	{
+		_weightMode = mode;
+		_weightGridSize = gridSize;
+		_weightPixelScale = pixelScale;
+	}
 private:
 	void measure(const std::string& filename, const std::string& solutionsFile);
 	
@@ -104,6 +115,8 @@ private:
 	void recalculateBeamWeights(size_t beamWeightIndex);
 	
 	void recalculateBeamWeightsThreadFunc(ao::lane<BeamEvalTaskInfo>* taskLane);
+	
+	void initWeighting();
 	
 	struct Measurement : public Serializable
 	{
@@ -272,6 +285,10 @@ private:
 	std::unique_ptr<BeamEvaluator> _beamEvaluator;
 	BandData _bandData;
 	bool _applyBeam;
+	WeightMode _weightMode;
+	size_t _weightGridSize;
+	double _weightPixelScale;
+	std::unique_ptr<ImageWeights> _imageWeights;
 };
 
 #endif

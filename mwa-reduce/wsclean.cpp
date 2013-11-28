@@ -126,6 +126,8 @@ int main(int argc, char *argv[])
 		{
 			imgWidth = atoi(argv[argi+1]);
 			imgHeight = atoi(argv[argi+2]);
+			if(imgWidth != imgHeight)
+				throw std::runtime_error("width != height : Can't handle non-square images yet");
 			argi += 2;
 		}
 		else if(param == "scale")

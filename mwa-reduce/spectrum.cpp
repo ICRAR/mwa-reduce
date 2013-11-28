@@ -13,6 +13,7 @@
 #include "model.h"
 #include "predicter.h"
 #include "spectrummaker.h"
+#include "weightmode.h"
 
 using namespace casa;
 
@@ -20,12 +21,15 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum [-applybeam] [-s <model to subtract>] [-g <solutions>] [-saveintermediate <file>] <model for positions> <output-model> <ms> [<ms2>...]\n"
+		std::cout << "Usage: spectrum [-applybeam] [-s <model to subtract>] [-g <solutions>] [-saveintermediate <file>] [-weight <gridsize> <mode> [<robustness>]] <model for positions> <output-model> <ms> [<ms2>...]\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
 		const char *subtractionModelFile = 0, *solutionsFile = 0, *intermediateFile = 0;
 		bool applyBeam = false;
+		WeightMode weightMode(WeightMode::NaturalWeighted);
+		size_t weightGridSize = 0;
+		double weightPixelScale = 0.0;
 		while(argv[argi][0] == '-')
 		{
 			const std::string param = &argv[argi][1];
@@ -48,6 +52,28 @@ int main(int argc, char **argv)
 				++argi;
 				intermediateFile = argv[argi];
 			}
+			else if(param == "weight")
+			{
+				++argi;
+				weightGridSize = atoi(argv[argi]);
+				++argi;
+				weightPixelScale = atof(argv[argi]);
+				++argi;
+				std::string weightArg = argv[argi];
+				if(weightArg == "natural")
+					weightMode.SetMode(WeightMode(WeightMode::NaturalWeighted));
+				else if(weightArg == "mwa")
+					weightMode.SetMode(WeightMode(WeightMode::DistanceWeighted));
+				else if(weightArg == "uniform")
+					weightMode.SetMode(WeightMode(WeightMode::UniformWeighted));
+				else if(weightArg == "briggs")
+				{
+					++argi;
+					double robustness = atof(argv[argi]);
+					weightMode.SetMode(WeightMode::Briggs(robustness));
+				}
+				else throw std::runtime_error("Unknown weighting mode specified");
+			}
 			else throw std::runtime_error("Invalid parameter");
 			++argi;
 		}
@@ -66,6 +92,7 @@ int main(int argc, char **argv)
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			spectrumMaker.AddSource(*s);
 		spectrumMaker.SetApplyBeam(applyBeam);
+		spectrumMaker.SetWeighting(weightMode, weightGridSize, weightPixelScale);
 		
 		if(subtractionModelFile != 0) spectrumMaker.SetSubtractedModel(Model(subtractionModelFile));
 		

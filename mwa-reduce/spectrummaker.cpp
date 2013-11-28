@@ -20,7 +20,7 @@
 
 #include <limits>
 
-SpectrumMaker::SpectrumMaker()
+SpectrumMaker::SpectrumMaker() : _applyBeam(false), _weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
 {
 }
 
@@ -270,7 +270,8 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 		{
 			double lambda = _bandData.ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
-			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
+			const double uOverL = u/lambda, vOverL = v/lambda;
+			predicter.Predict4(predicted, _sources[s], uOverL, vOverL, w/lambda, ch, taskInfo.a1, taskInfo.a2);
 			bool sampleGood = true;
 			double weightScalar = 0.0;
 			for(size_t p=0; p!=4; ++p)
@@ -285,6 +286,21 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 				
 				++weightPtr;
 				++flagPtr;
+			}
+			if(_imageWeights != 0)
+			{
+				switch(_weightMode.Mode())
+				{
+					case WeightMode::UniformWeighted:
+						weightScalar *= _imageWeights->GetUniformWeight(uOverL, vOverL);
+						break;
+					case WeightMode::BriggsWeighted:
+						weightScalar *= _imageWeights->GetBriggsWeight(uOverL, vOverL);
+						break;
+					case WeightMode::NaturalWeighted:
+					case WeightMode::DistanceWeighted:
+						break;
+				}
 			}
 			
 			std::complex<double> visSample[4];
@@ -320,6 +336,23 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 			measWeightIter += 4;
 			beamWeightPtr += 4;
 		}
+	}
+}
+
+void SpectrumMaker::initWeighting()
+{
+	if(_weightMode.RequiresGridding())
+	{
+		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting... " << std::flush;
+		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale));
+		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
+		{
+			casa::MeasurementSet ms(i->first);
+			_imageWeights->Grid(ms, _weightMode);
+			if(_files.size() > 1)
+				std::cout << ". " << std::flush;
+		}
+		std::cout << "DONE\n";
 	}
 }
 	
