@@ -198,7 +198,17 @@ int main(int argc, char *argv[])
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
 			const SpectralEnergyDistribution& sed = sourcePtr->Peak().SED();
-			if(sourcePtr->TotalFlux(sed.LowestFrequency(), sed.HighestFrequency(), 0) >= threshold)
+			double flux = sourcePtr->TotalFlux(sed.LowestFrequency(), sed.HighestFrequency(), 0);
+			if(!std::isfinite(flux))
+			{
+				long double f, e;
+				sed.FitPowerlaw(f, e, 0);
+				double lowFlux = f * std::pow(sed.LowestFrequency(), e);
+				double hiFlux = f * std::pow(sed.HighestFrequency(), e);
+				flux = (lowFlux + hiFlux) * 0.5;
+			}
+
+			if(flux >= threshold)
 				temp.AddSource(*sourcePtr);
 		}
 		model = temp;

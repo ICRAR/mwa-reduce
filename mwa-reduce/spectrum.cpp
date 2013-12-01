@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum [-applybeam] [-s <model to subtract>] [-g <solutions>] [-saveintermediate <file>] [-weight <gridsize> <mode> [<robustness>]] <model for positions> <output-model> <ms> [<ms2>...]\n"
+		std::cout << "Usage: spectrum [-applybeam] [-s <model to subtract>] [-g <solutions>] [-saveintermediate <file>] [-weight <gridsize> <pixelscale> <mode> [<robustness>]] <model for positions> <output-model> <ms> [<ms2>...]\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
