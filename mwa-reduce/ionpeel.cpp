@@ -37,7 +37,7 @@ private:
 	static bool isfinite(const std::complex<double>& val) { return std::isfinite(val.real()) && std::isfinite(val.imag()); }
 	
 	Model _model;
-	std::vector<std::unique_ptr<VisibilityArray<std::complex<double>, 2>>> _dataArrays;
+	std::vector<std::unique_ptr<VisibilityArray<std::complex<double>, 4>>> _dataArrays;
 	std::vector<std::unique_ptr<VisibilityArray<double, 2>>> _weightArrays;
 	std::vector<std::unique_ptr<Predicter>> _predicters;
 	std::vector<Model> _predictionModels;
@@ -49,8 +49,9 @@ private:
 
 void IonPeeler::Peel(const char* msName, const char* modelName)
 {
-	casa::MeasurementSet ms(msName);
+	casa::MeasurementSet ms(msName, casa::MeasurementSet::Update);
 	_model = Model(modelName);
+	//_model.SortOnBrightness();
 	
 	bool applyBeam = true;
 	size_t startRow = 0;
@@ -59,7 +60,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
-	casa::ROArrayColumn<casa::Complex> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+	casa::ArrayColumn<casa::Complex> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 	casa::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	if(polarizationCount != 4)
@@ -147,7 +148,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		std::cout << "Reading (T " << startTimestep << "-" << endTimestep << ", rows " << _curStartRow << '-' << _curEndRow << ")...\n";
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			_dataArrays[ch].reset(new VisibilityArray<std::complex<double>, 2>(1, antennaCount, timestepsInPass));
+			_dataArrays[ch].reset(new VisibilityArray<std::complex<double>, 4>(1, antennaCount, timestepsInPass));
 			_weightArrays[ch].reset(new VisibilityArray<double, 2>(1, antennaCount, timestepsInPass));
 		}
 		double time = timeColumn(_curStartRow);
@@ -186,8 +187,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 					}
 					
 					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
-					arrPtr[0] = dataPtr[0];
-					arrPtr[1] = dataPtr[3];
+					arrPtr[0] = dataPtr[0]; arrPtr[1] = dataPtr[1];
+					arrPtr[2] = dataPtr[2]; arrPtr[3] = dataPtr[3];
 					double* weightsWritePtr = _weightArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
 					weightsWritePtr[0] = weightsReadPtr[0];
 					weightsWritePtr[1] = weightsReadPtr[3];
@@ -208,6 +209,25 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		threads.push_back(std::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
 		for(auto& t : threads)
 			t.join();
+		
+		// Write back
+		for(size_t rowIndex=_curStartRow; rowIndex!=_curEndRow; ++rowIndex)
+		{
+			RowData& rowData = _rowData[rowIndex-_curStartRow];
+			if(rowData.a1 != rowData.a2)
+			{
+				timeIndex = rowData.timeIndex;
+				std::complex<float> *dataPtr = data.cbegin();
+				for(size_t ch = 0; ch!=channelCount; ++ch)
+				{
+					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
+					dataPtr[0] = arrPtr[0]; dataPtr[1] = arrPtr[1];
+					dataPtr[2] = arrPtr[2]; dataPtr[3] = arrPtr[3];
+					dataPtr += 4;
+				}
+				dataColumn.put(rowIndex, data);
+			}
+		}
 	}
 }
 
@@ -244,25 +264,43 @@ void IonPeeler::processChannel(size_t channelIndex)
 				const std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
 				const double* weightPtr = _weightArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
 				
-				if(isfinite(dataPtr[0]) && isfinite(dataPtr[1]) && dataPtr[0] != 0.0 && dataPtr[1] != 0.0)
+				if(isfinite(dataPtr[0]) && isfinite(dataPtr[3]) && dataPtr[0] != 0.0 && dataPtr[3] != 0.0)
 				{
 					// Predict visibility
 					std::complex<double> model[4];
 					_predicters[sourceIndex]->Predict4(model, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
 					
 					// Calculate ionospheric term
-					ionTerm += weightPtr[0] * dataPtr[0] / model[0] + weightPtr[1] * dataPtr[1] / model[3];
+					ionTerm += weightPtr[0] * dataPtr[3] / model[0] + weightPtr[1] * dataPtr[3] / model[3];
 					ionWeight += weightPtr[0] + weightPtr[1];
 					++count;
 				}
 			}
 		}
-		if(ionWeight != 0.0 && (channelIndex + 11) % 16 == 0)
+		
+		if(ionWeight != 0.0 && isfinite(ionTerm))
 		{
-			std::cout << "Added " << count << " samples.\n";
-			std::cout << "Ch=" << channelIndex << ", gain=" << std::abs(ionTerm / ionWeight) << ", phase=" << std::atan2(ionTerm.imag(), ionTerm.real()) << " (w=" << ionWeight << ")\n";
+			ionTerm /= ionWeight;
+			
+			if((channelIndex + 11) % 16 == 0)
+			{
+				std::cout << "Ch=" << channelIndex << ", gain=" << std::abs(ionTerm) << ", phase=" << std::atan2(ionTerm.imag(), ionTerm.real()) << " (w=" << ionWeight << ")\n";
+			}
+		
+			// Subtract source from visibilities in mem
+			for(size_t row=_curStartRow; row!=_curEndRow; ++row)
+			{
+				const RowData& rowData = _rowData[row - _curStartRow];
+				const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
+				std::complex<double> model[4];
+				_predicters[sourceIndex]->Predict4(model, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
+				
+				Matrix2x2::ScalarMultiply(model, ionTerm);
+				
+				std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
+				Matrix2x2::Subtract(dataPtr, model);
+			}
 		}
-		// Subtract source from visibilities in mem
 	}
 }
 

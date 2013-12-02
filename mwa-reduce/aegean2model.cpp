@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 				++beg; ++beg; ++beg; ++beg;
 				double flux = atof(beg->c_str());
 				ModelComponent component;
-				component.SetPosRA(ra * M_PI / 180.0);
+				component.SetPosRA((ra+12.0*15.0) * M_PI / 180.0);
 				component.SetPosDec(dec * M_PI / 180.0);
 				component.SetSED(SpectralEnergyDistribution(flux, 150000000.0));
 				ModelSource source;
