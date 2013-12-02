@@ -251,7 +251,7 @@ void IonPeeler::processChannel(size_t channelIndex)
 					_predicters[sourceIndex]->Predict4(model, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
 					
 					// Calculate ionospheric term
-					ionTerm += weightPtr[0] * model[0] / dataPtr[0] + weightPtr[1] * model[3] / dataPtr[1];
+					ionTerm += weightPtr[0] * dataPtr[0] / model[0] + weightPtr[1] * dataPtr[1] / model[3];
 					ionWeight += weightPtr[0] + weightPtr[1];
 					++count;
 				}
