@@ -2,6 +2,8 @@
 #include <tables/Tables/ArrayColumn.h>
 #include <measures/Measures/MEpoch.h>
 #include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <mutex>
+#include <thread>
 
 #include "model.h"
 #include "banddata.h"
@@ -19,17 +21,30 @@
  * - Write the residual flux back to the measurement set
  */
 
+struct RowData
+{
+	double u, v, w;
+	size_t a1, a2, timeIndex;
+};
+
 class IonPeeler
 {
 public:
 	void Peel(const char* msName, const char* modelName);
 private:
 	void processChannel(size_t channelIndex);
+	void processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks);
+	static bool isfinite(const std::complex<double>& val) { return std::isfinite(val.real()) && std::isfinite(val.imag()); }
 	
 	Model _model;
 	std::vector<std::unique_ptr<VisibilityArray<std::complex<double>, 2>>> _dataArrays;
 	std::vector<std::unique_ptr<VisibilityArray<double, 2>>> _weightArrays;
 	std::vector<std::unique_ptr<Predicter>> _predicters;
+	std::vector<Model> _predictionModels;
+	std::vector<RowData> _rowData;
+	size_t _curStartRow, _curEndRow;
+	BandData _bandData;
+	size_t _cpuCount;
 };
 
 void IonPeeler::Peel(const char* msName, const char* modelName)
@@ -50,8 +65,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	if(polarizationCount != 4)
 		throw std::runtime_error("Expecting MS with 4 polarizations");
 	
-	BandData bandData(ms.spectralWindow());
-	const size_t channelCount = bandData.ChannelCount();
+	_bandData = BandData(ms.spectralWindow());
+	const size_t channelCount = _bandData.ChannelCount();
 	const size_t antennaCount = ms.antenna().nrow();
 	
 	casa::MSField fieldTable = ms.field();
@@ -69,18 +84,19 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	beamEvaluator.SetTime(startTime);
 	
 	std::cout << "Initializing model predicter for " << _model.SourceCount() << " sources...\n";
-	std::vector<Model> predictionModels;
+	_predictionModels.resize(_model.SourceCount());
+	_predicters.resize(_model.SourceCount());
 	for(size_t s=0; s!=_model.SourceCount(); ++s)
 	{
-		predictionModels.push_back(Model());
-		predictionModels.back().AddSource(_model.Source(s));
+		_predictionModels[s].AddSource(_model.Source(s));
 		
-		_predicters[s].reset(new Predicter(phaseCentreRA, phaseCentreDec, bandData.LowestFrequency(), bandData.HighestFrequency(), channelCount));
+		_predicters[s].reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount));
 		if(applyBeam)
-			_predicters[s]->Initialize(predictionModels.back(), solutionFile, &beamEvaluator);
+			_predicters[s]->Initialize(_predictionModels[s], solutionFile, &beamEvaluator);
 		else
-			_predicters[s]->Initialize(predictionModels.back(), solutionFile);
+			_predicters[s]->Initialize(_predictionModels[s], solutionFile);
 	}
+	_predicters.front()->ReportSources(_predictionModels.front());
 	
 	std::cout << "Counting timesteps...\n";
 	double time = -1.0;
@@ -101,9 +117,11 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
+	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
+	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	size_t passCount = (solutionInterval==0) ? 1 : (timestepCount + solutionInterval - 1) / solutionInterval;
-	casa::Array<std::complex<float> > data(dataShape), modelData(dataShape);
+	casa::Array<std::complex<float> > data(dataShape);
 	casa::Array<float> weights(dataShape);
 	casa::Array<bool> flags(dataShape);
 	_dataArrays.resize(channelCount);
@@ -113,30 +131,46 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		const size_t
 			startTimestep = timestepCount * pass / passCount,
 			endTimestep = timestepCount * (pass+1) / passCount,
-			timestepsInPass = endTimestep - startTimestep,
-			startRow = timestepRows[startTimestep],
-			endRow = timestepRows[endTimestep];
+			timestepsInPass = endTimestep - startTimestep;
+		_curStartRow = timestepRows[startTimestep];
+		_curEndRow = timestepRows[endTimestep];
+		_rowData.resize(_curEndRow - _curStartRow);
 		
-		std::cout << "Reading...\n";
+		if(beamEvaluator.Time().getValue() != timeMColumn(_curStartRow).getValue())
+		{
+			std::cout << "Evaluating beam...\n";
+			beamEvaluator.SetTime(timeMColumn(_curStartRow));
+			for(size_t s=0; s!=_model.SourceCount(); ++s)
+				_predicters[s]->UpdateBeam(_predictionModels[s]);
+		}
+		
+		std::cout << "Reading (T " << startTimestep << "-" << endTimestep << ", rows " << _curStartRow << '-' << _curEndRow << ")...\n";
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
 			_dataArrays[ch].reset(new VisibilityArray<std::complex<double>, 2>(1, antennaCount, timestepsInPass));
 			_weightArrays[ch].reset(new VisibilityArray<double, 2>(1, antennaCount, timestepsInPass));
 		}
-		double time = timeColumn(startRow);
+		double time = timeColumn(_curStartRow);
 		size_t timeIndex = startTimestep;
-		for(size_t rowIndex=startRow; rowIndex!=endRow; ++rowIndex)
+		for(size_t rowIndex=_curStartRow; rowIndex!=_curEndRow; ++rowIndex)
 		{
-			size_t
-				a1 = ant1Column(rowIndex),
-				a2 = ant2Column(rowIndex);
-			if(a1 != a2)
+			RowData& rowData = _rowData[rowIndex-_curStartRow];
+			rowData.a1 = ant1Column(rowIndex);
+			rowData.a2 = ant2Column(rowIndex);
+			if(timeColumn(rowIndex) != time)
 			{
-				if(timeColumn(rowIndex) != time)
-				{
-					++timeIndex;
-					time = timeColumn(rowIndex);
-				}
+				++timeIndex;
+				time = timeColumn(rowIndex);
+			}
+			rowData.timeIndex = timeIndex;
+			if(rowData.a1 != rowData.a2)
+			{
+				casa::Array<double> uvwArray = uvwColumn(rowIndex);
+				casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
+				rowData.u = *uvwI; ++uvwI;
+				rowData.v = *uvwI; ++uvwI;
+				rowData.w = *uvwI;
+			
 				dataColumn.get(rowIndex, data);
 				weightColumn.get(rowIndex, weights);
 				flagColumn.get(rowIndex, flags);
@@ -146,35 +180,88 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 				
 				for(size_t ch = 0; ch!=channelCount; ++ch)
 				{
-					size_t chIndex = ch * 4;
 					for(size_t p=0; p!=4; ++p)
 					{
-						if(flagPtr[chIndex+p]) weightsReadPtr[chIndex+p] = 0.0;
+						if(flagPtr[p]) weightsReadPtr[p] = 0.0;
 					}
 					
-					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(a1, a2, timeIndex - startTimestep);
+					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
 					arrPtr[0] = dataPtr[0];
 					arrPtr[1] = dataPtr[3];
-					double* weightsWritePtr = _weightArrays[ch]->ValuePtr(a1, a2, timeIndex - startTimestep);
+					double* weightsWritePtr = _weightArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
 					weightsWritePtr[0] = weightsReadPtr[0];
 					weightsWritePtr[1] = weightsReadPtr[3];
+					
+					weightsReadPtr += 4;
+					dataPtr += 4;
+					flagPtr += 4;
 				}
 			}
 		}
 		
-		std::cout << "Predicting...\n";
-		// Data is in memory: predict visibilities
+		std::cout << "Processing channels...\n";
+		std::vector<size_t> tasks;
+		for(size_t ch=0; ch!=channelCount; ++ch)
+			tasks.push_back(channelCount - ch - 1);
+		std::mutex mutex;
+		std::vector<std::thread> threads;
+		threads.push_back(std::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
+		for(auto& t : threads)
+			t.join();
+	}
+}
+
+void IonPeeler::processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks)
+{
+	std::unique_lock<std::mutex> lock(*mutex);
+	while(!tasks->empty())
+	{
+		const size_t channel = tasks->back();
+		tasks->pop_back();
+		lock.unlock();
+		
+		processChannel(channel);
+		
+		lock.lock();
 	}
 }
 
 void IonPeeler::processChannel(size_t channelIndex)
 {
-	for(size_t sourceIndex=0; sourceIndex!=_model.SourceCount(); ++sourceIndex)
+	double lambda = _bandData.ChannelWavelength(channelIndex);
+	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 	{
-		// Predict visibility
-		
-		// Calculate phase term
-		
+		std::complex<double> ionTerm = 0.0;
+		double ionWeight = 0.0;
+		size_t startTimeIndex = _rowData.front().timeIndex;
+		size_t count = 0;
+		for(size_t row=_curStartRow; row!=_curEndRow; ++row)
+		{
+			const RowData& rowData = _rowData[row - _curStartRow];
+			if(rowData.a1 != rowData.a2)
+			{
+				const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
+				const std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
+				const double* weightPtr = _weightArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
+				
+				if(isfinite(dataPtr[0]) && isfinite(dataPtr[1]) && dataPtr[0] != 0.0 && dataPtr[1] != 0.0)
+				{
+					// Predict visibility
+					std::complex<double> model[4];
+					_predicters[sourceIndex]->Predict4(model, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
+					
+					// Calculate ionospheric term
+					ionTerm += weightPtr[0] * model[0] / dataPtr[0] + weightPtr[1] * model[3] / dataPtr[1];
+					ionWeight += weightPtr[0] + weightPtr[1];
+					++count;
+				}
+			}
+		}
+		if(ionWeight != 0.0 && (channelIndex + 11) % 16 == 0)
+		{
+			std::cout << "Added " << count << " samples.\n";
+			std::cout << "Ch=" << channelIndex << ", gain=" << std::abs(ionTerm / ionWeight) << ", phase=" << std::atan2(ionTerm.imag(), ionTerm.real()) << " (w=" << ionWeight << ")\n";
+		}
 		// Subtract source from visibilities in mem
 	}
 }

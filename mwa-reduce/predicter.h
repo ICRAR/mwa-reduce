@@ -10,7 +10,7 @@ class Predicter
 		typedef double NumType;
 		typedef std::complex<NumType> CNumType;
 		
-		Predicter(NumType phaseCentreRA, NumType phaseCentreDec, NumType startFrequency, NumType endFrequency, size_t channelCount, bool applyBeam = false) :
+		Predicter(NumType phaseCentreRA, NumType phaseCentreDec, NumType startFrequency, NumType endFrequency, size_t channelCount) :
 			_ra0(phaseCentreRA), _dec0(phaseCentreDec), _startFrequency(startFrequency), _endFrequency(endFrequency), _channelCount(channelCount)
 		{
 			_totalFlux[0] = 0.0;
