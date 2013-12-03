@@ -154,7 +154,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 				{
 					if(!*flagArrayData)
 					{
-						const double wavelength = curBand.ChannelWavelength(ch);
+						const double wavelength = curBand.ChannelWavelength(ch - msData.startChannel);
 						msData.maxW = std::max(msData.maxW, fabs(wInM / wavelength));
 						msData.minW = std::min(msData.minW, fabs(wInM / wavelength));
 						maxBaseline = std::max(maxBaseline, baselineInM / wavelength);
@@ -267,9 +267,10 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				flagColumn.get(row, msFlagsArr);
 				
 				double rowWeight = 1.0;
-				switch(Weighting())
+				switch(Weighting().Mode())
 				{
-					case UniformWeighted:
+					case WeightMode::UniformWeighted:
+					case WeightMode::BriggsWeighted:
 					{
 						float* msWeightIter = msWeightsArr.cbegin() + msData.startChannel * msData.polarizationCount;
 						for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
@@ -277,7 +278,9 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 							double
 								u = newItem.u / curBand.ChannelWavelength(ch),
 								v = newItem.v / curBand.ChannelWavelength(ch),
-								weight = PrecalculatedWeightInfo()->GetUniformWeight(u, v);
+								weight = Weighting().IsUniform() ?
+									PrecalculatedWeightInfo()->GetUniformWeight(u, v) :
+									PrecalculatedWeightInfo()->GetBriggsWeight(u, v);
 							for(size_t p=0; p!=msData.polarizationCount; ++p)
 							{
 								*msWeightIter *= weight;
@@ -285,10 +288,10 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 							}
 						}
 					} break;
-					case NaturalWeighted:
+					case WeightMode::NaturalWeighted:
 						rowWeight = 1.0;
 						break;
-					case DistanceWeighted:
+					case WeightMode::DistanceWeighted:
 						rowWeight = sqrt(newItem.u*newItem.u + newItem.v*newItem.v + newItem.w*newItem.w);
 						break;
 				}

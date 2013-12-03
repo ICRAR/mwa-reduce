@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 project(wsclean)
 
-set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wall -DNDEBUG -march=native -msse4.1")
+set(CMAKE_CXX_FLAGS "-O3 -Wall -DNDEBUG -march=native -msse4.1")
 
 find_library(CASA_MS_LIB casa_ms REQUIRED)
 find_library(CASA_TABLES_LIB casa_tables REQUIRED)
@@ -42,7 +42,47 @@ IF("${isSystemDir}" STREQUAL "-1")
    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 ENDIF("${isSystemDir}" STREQUAL "-1")
 
-add_executable(wsclean wsclean.cpp beamevaluator.cpp cleanalgorithm.cpp fitswriter.cpp layeredimager.cpp model.cpp modelrenderer.cpp wsinversion.cpp tilebeam.cpp)
+set(CMAKE_REQUIRED_FLAGS "-std=c++0x")
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles(
+"#include \"${CMAKE_CURRENT_SOURCE_DIR}/aocommon/uvector.h\"
+int main(int argc, char* argv[])
+{
+return 0;
+}" UVECTOR_COMPILES)
+check_cxx_source_compiles(
+"#include \"${CMAKE_CURRENT_SOURCE_DIR}/aocommon/lane_11.h\"
+int main(int argc, char* argv[])
+{
+return 0;
+}" LANE11_COMPILES)
+
+if(UVECTOR_COMPILES)
+  add_definitions(-DHAVE_UVECTOR)
+endif(UVECTOR_COMPILES)
+if(LANE11_COMPILES)
+  add_definitions(-DHAVE_LANE11)
+endif(LANE11_COMPILES)
+
+# The following stuff will set the "rpath" correctly, so that
+# LD_LIBRARY_PATH doesn't have to be set.
+
+# use, i.e. don't skip the full RPATH for the build tree
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+# when building, don't use the install RPATH already
+# (but later on when installing)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+# the RPATH to be used when installing, but only if it's not a system directory
+LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+IF("${isSystemDir}" STREQUAL "-1")
+   SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ENDIF("${isSystemDir}" STREQUAL "-1")
+
+add_executable(wsclean wsclean.cpp beamevaluator.cpp cleanalgorithm.cpp fitswriter.cpp imageweights.cpp layeredimager.cpp model.cpp modelrenderer.cpp stopwatch.cpp wsinversion.cpp tilebeam.cpp)
 set_target_properties(wsclean PROPERTIES COMPILE_FLAGS "-std=c++0x")
 
 target_link_libraries(wsclean ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})

@@ -44,6 +44,13 @@ public:
 			dest[p] *= factor;
 	}
 	
+	template<typename T>
+	static void ScalarMultiply(T* dest, T factor)
+	{
+		for(size_t p=0; p!=4; ++p)
+			dest[p] *= factor;
+	}
+	
 	template<typename T, typename RHS>
 	static void MultiplyAdd(std::complex<T>* dest, const RHS* rhs, T factor)
 	{

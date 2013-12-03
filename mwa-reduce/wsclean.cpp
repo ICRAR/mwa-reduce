@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 	if(argc < 3)
 	{
 		std::cout << "Syntax:\twsclean [options] <input-ms> [<2nd-ms> [..]]\n"
-			"Will create cleaned images of the input ms(es). DATA column will be used by default.\n"
+			"Will create cleaned images of the input ms(es).\n"
 			"If multiple mses are specified, they need to be phase-rotated to the same point on the sky.\n"
 			"Options can be:\n"
 			"\t-name <image-prefix>\n"
@@ -90,12 +90,17 @@ int main(int argc, char *argv[])
 			"\t   Only image the given channel range. Indices specify channel indices, end index is exclusive.\n"
 			"\t   Default: image all channels.\n"
 			"\t-weight <weightmode>\n"
-			"\t   Weightmode can be: natural, mwa, uniform. Default: uniform\n"
+			"\t   Weightmode can be: natural, mwa, uniform, briggs. Default: uniform. When using Briggs' weighting,\n"
+			"\t   add the robustness parameter, like: \"-weight briggs 0.5\".\n"
+			"\t-superweight <factor>\n"
+			"\t   Increase the weight gridding box size, similar to Casa's superuniform weighting scheme. Default: 1.0\n"
+			"\t   The factor can be rational and can be less than one for subpixel weighting.\n"
 			"\t-makepsf\n"
 			"\t   Always make the psf, even when no cleaning is performed.\n"
 			"\t-imaginarypart\n"
 			"\t   saves the imaginary part instead of the real part; only sensible for xy/yx. Not the default.\n"
 			"\t-datacolumn <columnname>\n"
+			"\t   Default: CORRECTED_DATA if it exists, otherwise DATA will be used.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
@@ -108,7 +113,7 @@ int main(int argc, char *argv[])
 	size_t nWLayers = 0, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
-	enum InversionAlgorithm::WeightingEnum weightMode = InversionAlgorithm::UniformWeighted;
+	WeightMode weightMode(WeightMode::UniformWeighted);
 	std::string prefixName = "wsclean";
 	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false, makePsf = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::KaiserBessel;
@@ -121,6 +126,8 @@ int main(int argc, char *argv[])
 		{
 			imgWidth = atoi(argv[argi+1]);
 			imgHeight = atoi(argv[argi+2]);
+			if(imgWidth != imgHeight)
+				throw std::runtime_error("width != height : Can't handle non-square images yet");
 			argi += 2;
 		}
 		else if(param == "scale")
@@ -255,12 +262,23 @@ int main(int argc, char *argv[])
 			++argi;
 			std::string weightArg = argv[argi];
 			if(weightArg == "natural")
-				weightMode = InversionAlgorithm::NaturalWeighted;
+				weightMode.SetMode(WeightMode(WeightMode::NaturalWeighted));
 			else if(weightArg == "mwa")
-				weightMode = InversionAlgorithm::DistanceWeighted;
+				weightMode.SetMode(WeightMode(WeightMode::DistanceWeighted));
 			else if(weightArg == "uniform")
-				weightMode = InversionAlgorithm::UniformWeighted;
+				weightMode.SetMode(WeightMode(WeightMode::UniformWeighted));
+			else if(weightArg == "briggs")
+			{
+				++argi;
+				double robustness = atof(argv[argi]);
+				weightMode.SetMode(WeightMode::Briggs(robustness));
+			}
 			else throw std::runtime_error("Unknown weighting mode specified");
+		}
+		else if(param == "superweight")
+		{
+			++argi;
+			weightMode.SetSuperWeight(atof(argv[argi]));
 		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
@@ -287,16 +305,16 @@ int main(int argc, char *argv[])
 		commandLineStr << ' ' << argv[i];
 	commandLine = commandLineStr.str();
 	
-	// If uniform weighted; initialize weight grid.
+	// Initialize weight grid if necessary.
 	std::unique_ptr<ImageWeights> imageWeights;
-	if(weightMode == InversionAlgorithm::UniformWeighted)
+	if(weightMode.RequiresGridding())
 	{
-		std::cout << "Precalculating weights for uniform weighting... " << std::flush;
-		imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale));
+		std::cout << "Precalculating weights for " << weightMode.ToString() << " weighting... " << std::flush;
+		imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale, weightMode.SuperWeight()));
 		for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
 		{
 			casa::MeasurementSet ms(inversionAlgorithm->MeasurementSetPath(i));
-			imageWeights->Grid(ms);
+			imageWeights->Grid(ms, weightMode);
 			if(inversionAlgorithm->MeasurementSetCount() > 1)
 				std::cout << i << ' ' << std::flush;
 		}

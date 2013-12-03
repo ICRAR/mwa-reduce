@@ -141,7 +141,7 @@ public:
 		_end(_begin + n),
 		_endOfStorage(_end)
 	{
-		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(_begin, n, val);
 	}
 	
 	/** @brief Construct a vector by copying elements from a range.
@@ -341,7 +341,7 @@ public:
 		}
 		_end = _begin + n;
 		if(oldSize < n)
-			std::uninitialized_fill<Tp*,Tp>(_begin + oldSize, _end, val);
+			std::uninitialized_fill<Tp*,size_t>(_begin + oldSize, _end, val);
 	}
 	
 	/** @brief Get the number of elements the container can currently hold without reallocating storage. */
@@ -469,7 +469,7 @@ public:
 			_endOfStorage = _begin + n;
 		}
 		_end = _begin + n;
-		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(_begin, n, val);
 	}
 	
 	/** @brief Assign this container to an initializer list.
@@ -573,7 +573,7 @@ public:
 			memmove(const_cast<iterator>(position)+n, position, (_end - position) * sizeof(Tp));
 			_end += n;
 		}
-		std::uninitialized_fill_n<Tp*,Tp>(const_cast<iterator>(position), n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(const_cast<iterator>(position), n, val);
 		return const_cast<iterator>(position);
 	}
 	
@@ -796,7 +796,7 @@ public:
 		{
 			enlarge(enlarge_size(n));
 		}
-		std::uninitialized_fill_n<Tp*,Tp>(_end, n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(_end, n, val);
 		_end += n;
 	}
 	
@@ -860,7 +860,7 @@ private:
 		_begin = allocate(n);
 		_end = _begin + n;
 		_endOfStorage = _end;
-		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(_begin, n, val);
 	}
 	
 	template<typename InputIterator>
@@ -897,7 +897,7 @@ private:
 			_endOfStorage = _begin + n;
 		}
 		_end = _begin + n;
-		std::uninitialized_fill_n<Tp*,Tp>(_begin, n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(_begin, n, val);
 	}
 	
 	template<typename InputIterator>
@@ -940,7 +940,7 @@ private:
 			memmove(const_cast<iterator>(position)+n, position, (_end - position) * sizeof(Tp));
 			_end += n;
 		}
-		std::uninitialized_fill_n<Tp*,Tp>(const_cast<iterator>(position), n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(const_cast<iterator>(position), n, val);
 		return const_cast<iterator>(position);
 	}
 	
@@ -1124,7 +1124,7 @@ private:
 		{
 			enlarge(enlarge_size(n));
 		}
-		std::uninitialized_fill_n<Tp*,Tp>(_end, n, val);
+		std::uninitialized_fill_n<Tp*,size_t>(_end, n, val);
 		_end += n;
 	}
 	

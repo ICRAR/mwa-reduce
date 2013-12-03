@@ -209,7 +209,7 @@ void LayeredImager::makeKernel(std::vector<double> &kernel, double alpha, size_t
 	size_t
 		n = kernel.size(),
 		mid = n/2;
-	std::vector<double> sincKernel(mid);
+	std::vector<double> sincKernel(mid+1);
 	const double filterRatio = 1.0 / double(overSamplingFactor); // FILTER POINT / TOTAL BANDWIDTH
 	sincKernel[0] = filterRatio;
 	for(size_t i=1; i!=mid+1; i++)

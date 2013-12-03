@@ -24,13 +24,14 @@ int main(int argc, char *argv[])
 {
 	if(argc < 2)
 	{
-		std::cout << "Syntax: beam [-allsky] [-square] [-proto <input fitsfile>] [-ms <measurementset>] [-delays <0,0,..>]\n";
+		std::cout << "Syntax: beam [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] [-delays <0,0,..>]\n";
 		return 0;
 	}
 	
 	int argi= 1;
-	const char *inpFitsname = 0;
-	const char *msName = 0;
+	const char* inpFitsname = 0;
+	const char* msName = 0;
+	string prefixName = "beam"; 
 	double delays[16];
 	bool doSquare = false;
 	for(size_t i=0; i!=16; ++i)
@@ -47,6 +48,11 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			msName = argv[argi];
+		}
+		else if(param == "name")
+		{
+			++argi;
+			prefixName = argv[argi];
 		}
 		else if(param == "allsky")
 		{
@@ -205,9 +211,9 @@ int main(int argc, char *argv[])
 	
 	std::cout << "\nWriting...\n";
 	
-	const char *names[8] = {
-		"beam-xxr.fits", "beam-xxi.fits", "beam-xyr.fits", "beam-xyi.fits", 
-		"beam-yxr.fits", "beam-yxi.fits", "beam-yyr.fits", "beam-yyi.fits"
+	const string names[8] = {
+		prefixName+"-xxr.fits", prefixName+"-xxi.fits", prefixName+"-xyr.fits", prefixName+"-xyi.fits", 
+		prefixName+"-yxr.fits", prefixName+"-yxi.fits", prefixName+"-yyr.fits", prefixName+"-yyi.fits"
 	};
 	
 	for(size_t i=0; i!=8; ++i)

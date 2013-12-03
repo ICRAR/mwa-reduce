@@ -6,27 +6,14 @@
 #include <iostream>
 #include <cstring>
 
-ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale) : 
-	_imageWidth(imageWidth),
-	_imageHeight(imageHeight),
-	_pixelScale(pixelScale),
-	_sum(_imageWidth*_imageHeight/2)
+ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale, double superWeight)
 {
-}
-
-double ImageWeights::GetUniformWeight(double u, double v)
-{
-	if(v < 0.0) {
-		u = -u;
-		v = -v;
-	}
-	double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
-	double y = round(v*_imageHeight*_pixelScale);
-	if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
-		return 1.0 / (double) _sum[(size_t) x + (size_t) y*_imageWidth];
-	else {
-		return 0.0;
-	}
+	_imageWidth = round(double(imageWidth) / superWeight);
+	_imageHeight = round(double(imageHeight) / superWeight);
+	_pixelScale = pixelScale;
+	if(_imageWidth%2 != 0) ++_imageWidth;
+	if(_imageHeight%2 != 0) ++_imageHeight;
+	_sum.resize(_imageWidth*_imageHeight/2);
 }
 
 double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep)
@@ -50,7 +37,7 @@ double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, 
 	return weightSum / channelCount;
 }
 
-void ImageWeights::Grid(casa::MeasurementSet& ms)
+void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode)
 {
 	const MultiBandData bandData(ms.spectralWindow(), ms.dataDescription());
 	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
@@ -66,6 +53,7 @@ void ImageWeights::Grid(casa::MeasurementSet& ms)
 	casa::Array<casa::Complex> dataArr(shape);
 	casa::Array<bool> flagArr(shape);
 	casa::Array<float> weightArr(shape);
+	double totalSum = 0.0;
 	
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
@@ -95,7 +83,7 @@ void ImageWeights::Grid(casa::MeasurementSet& ms)
 				double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
 				double y = round(v*_imageHeight*_pixelScale);
 					
-				if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+				if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 				{
 					for(size_t p=0; p!=polarizationCount; ++p)
 					{
@@ -103,12 +91,34 @@ void ImageWeights::Grid(casa::MeasurementSet& ms)
 						{
 								size_t index = (size_t) x + (size_t) y*_imageWidth;
 								_sum[index] += *weightIter;
+								if(weightMode.IsBriggs())
+									totalSum += *weightIter;
 						}
 						++flagIter;
 						++weightIter;
 					}
 				}
+				else {
+					for(size_t p=0; p!=polarizationCount; ++p)
+					{
+						++flagIter;
+						++weightIter;
+					}
+				}
 			}
+		}
+	}
+	if(weightMode.IsBriggs())
+	{
+		double avgW = 0.0;
+		for(ao::uvector<double>::const_iterator i=_sum.begin(); i!=_sum.end(); ++i)
+			avgW += *i * *i;
+		avgW /= totalSum;
+		double numeratorSqrt = 5.0 * exp10(-weightMode.BriggsRobustness());
+		double sSq = numeratorSqrt*numeratorSqrt / avgW;
+		for(ao::uvector<double>::iterator i=_sum.begin(); i!=_sum.end(); ++i)
+		{
+			*i = 1.0 / (1.0 + *i * sSq);
 		}
 	}
 }
@@ -128,7 +138,7 @@ void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, doub
 			double wavelength = frequencyToWavelength(lowestFrequency + frequencyStep*ch);
 			double x = round(uTimesLambda*_imageWidth*_pixelScale/wavelength + _imageWidth/2);
 			double y = round(vTimesLambda*_imageHeight*_pixelScale/wavelength);
-			if(x >= 0.0 && x < _imageWidth && y < _imageHeight)
+			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 			{
 				size_t index = (size_t) x + (size_t) y*_imageWidth;
 				_sum[index] += 1.0;

@@ -13,6 +13,7 @@
 #include "model.h"
 #include "predicter.h"
 #include "spectrummaker.h"
+#include "weightmode.h"
 
 using namespace casa;
 
@@ -20,12 +21,15 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: spectrum [-s <model to subtract>] [-g <solutions>] [-applybeam] <model for positions> <output-model> <ms> [<ms2>...]\n"
+		std::cout << "Usage: spectrum [-applybeam] [-s <model to subtract>] [-g <solutions>] [-saveintermediate <file>] [-weight <gridsize> <pixelscale> <mode> [<robustness>]] <model for positions> <output-model> <ms> [<ms2>...]\n"
 			"Calculates the spectrum directly from the ms, for each source in the model.\n";
 	} else {
 		size_t argi = 1;
-		const char *subtractionModelFile = 0, *solutionsFile = 0;
+		const char *subtractionModelFile = 0, *solutionsFile = 0, *intermediateFile = 0;
 		bool applyBeam = false;
+		WeightMode weightMode(WeightMode::NaturalWeighted);
+		size_t weightGridSize = 0;
+		double weightPixelScale = 0.0;
 		while(argv[argi][0] == '-')
 		{
 			const std::string param = &argv[argi][1];
@@ -42,6 +46,33 @@ int main(int argc, char **argv)
 			else if(param == "applybeam")
 			{
 				applyBeam = true;
+			}
+			else if(param == "saveintermediate")
+			{
+				++argi;
+				intermediateFile = argv[argi];
+			}
+			else if(param == "weight")
+			{
+				++argi;
+				weightGridSize = atoi(argv[argi]);
+				++argi;
+				weightPixelScale = atof(argv[argi]);
+				++argi;
+				std::string weightArg = argv[argi];
+				if(weightArg == "natural")
+					weightMode.SetMode(WeightMode(WeightMode::NaturalWeighted));
+				else if(weightArg == "mwa")
+					weightMode.SetMode(WeightMode(WeightMode::DistanceWeighted));
+				else if(weightArg == "uniform")
+					weightMode.SetMode(WeightMode(WeightMode::UniformWeighted));
+				else if(weightArg == "briggs")
+				{
+					++argi;
+					double robustness = atof(argv[argi]);
+					weightMode.SetMode(WeightMode::Briggs(robustness));
+				}
+				else throw std::runtime_error("Unknown weighting mode specified");
 			}
 			else throw std::runtime_error("Invalid parameter");
 			++argi;
@@ -61,39 +92,19 @@ int main(int argc, char **argv)
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			spectrumMaker.AddSource(*s);
 		spectrumMaker.SetApplyBeam(applyBeam);
+		spectrumMaker.SetWeighting(weightMode, weightGridSize, weightPixelScale);
 		
 		if(subtractionModelFile != 0) spectrumMaker.SetSubtractedModel(Model(subtractionModelFile));
 		
 		spectrumMaker.Measure();
 		
+		if(intermediateFile != 0)
+			spectrumMaker.SaveIntermediate(intermediateFile);
+		
+		spectrumMaker.Finish();
+		
 		Model outputModel;
-		for(size_t sourceIndex = 0; sourceIndex!=model.SourceCount(); ++sourceIndex)
-		{
-			SpectralEnergyDistribution sed;
-			std::map<double, double> spectrum[4];
-			for(size_t p=0; p!=4; ++p)
-				spectrumMaker.FluxPerFrequency(spectrum[p], sourceIndex, p);
-			
-			std::map<double, double>::const_iterator
-				chIter1 = spectrum[1].begin(), chIter2 = spectrum[2].begin(), chIter3 = spectrum[3].begin();
-			for(std::map<double, double>::const_iterator chIter0=spectrum[0].begin(); chIter0!=spectrum[0].end(); ++chIter0)
-			{
-				Measurement m;
-				m.SetFluxDensity(0, chIter0->second);
-				m.SetFluxDensity(1, chIter1->second);
-				m.SetFluxDensity(2, chIter2->second);
-				m.SetFluxDensity(3, chIter3->second);
-				m.SetFrequencyHz(chIter0->first);
-				sed.AddMeasurement(m);
-				
-				++chIter1; ++chIter2; ++chIter3;
-			}
-			ModelComponent component = model.Source(sourceIndex).Peak();
-			component.SetSED(sed);
-			ModelSource source;
-			source.AddComponent(component);
-			outputModel.AddSource(source);
-		}
+		spectrumMaker.ToModel(outputModel);
 		outputModel.Save(modelFilename);
 	}
 }

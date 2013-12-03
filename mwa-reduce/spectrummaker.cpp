@@ -20,7 +20,7 @@
 
 #include <limits>
 
-SpectrumMaker::SpectrumMaker()
+SpectrumMaker::SpectrumMaker() : _applyBeam(false), _weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
 {
 }
 
@@ -270,7 +270,8 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 		{
 			double lambda = _bandData.ChannelWavelength(ch);
 			Predicter::CNumType predicted[4];
-			predicter.Predict4(predicted, _sources[s], u/lambda, v/lambda, w/lambda, ch, taskInfo.a1, taskInfo.a2);
+			const double uOverL = u/lambda, vOverL = v/lambda;
+			predicter.Predict4(predicted, _sources[s], uOverL, vOverL, w/lambda, ch, taskInfo.a1, taskInfo.a2);
 			bool sampleGood = true;
 			double weightScalar = 0.0;
 			for(size_t p=0; p!=4; ++p)
@@ -285,6 +286,21 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 				
 				++weightPtr;
 				++flagPtr;
+			}
+			if(_imageWeights != 0)
+			{
+				switch(_weightMode.Mode())
+				{
+					case WeightMode::UniformWeighted:
+						weightScalar *= _imageWeights->GetUniformWeight(uOverL, vOverL);
+						break;
+					case WeightMode::BriggsWeighted:
+						weightScalar *= _imageWeights->GetBriggsWeight(uOverL, vOverL);
+						break;
+					case WeightMode::NaturalWeighted:
+					case WeightMode::DistanceWeighted:
+						break;
+				}
 			}
 			
 			std::complex<double> visSample[4];
@@ -322,4 +338,76 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 		}
 	}
 }
+
+void SpectrumMaker::initWeighting()
+{
+	if(_weightMode.RequiresGridding())
+	{
+		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting... " << std::flush;
+		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale));
+		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
+		{
+			casa::MeasurementSet ms(i->first);
+			_imageWeights->Grid(ms, _weightMode);
+			if(_files.size() > 1)
+				std::cout << ". " << std::flush;
+		}
+		std::cout << "DONE\n";
+	}
+}
 	
+void SpectrumMaker::ToModel(Model& model) const
+{
+	for(size_t sourceIndex = 0; sourceIndex!=_sources.size(); ++sourceIndex)
+	{
+		SpectralEnergyDistribution sed;
+		std::map<double, double> spectrum[4];
+		for(size_t p=0; p!=4; ++p)
+			FluxPerFrequency(spectrum[p], sourceIndex, p);
+		
+		std::map<double, double>::const_iterator
+			chIter1 = spectrum[1].begin(), chIter2 = spectrum[2].begin(), chIter3 = spectrum[3].begin();
+		for(std::map<double, double>::const_iterator chIter0=spectrum[0].begin(); chIter0!=spectrum[0].end(); ++chIter0)
+		{
+			::Measurement m;
+			m.SetFluxDensity(0, chIter0->second);
+			m.SetFluxDensity(1, chIter1->second);
+			m.SetFluxDensity(2, chIter2->second);
+			m.SetFluxDensity(3, chIter3->second);
+			m.SetFrequencyHz(chIter0->first);
+			sed.AddMeasurement(m);
+			
+			++chIter1; ++chIter2; ++chIter3;
+		}
+		ModelComponent component = _sources[sourceIndex].Peak();
+		component.SetSED(sed);
+		ModelSource source;
+		source.AddComponent(component);
+		model.AddSource(source);
+	}
+}
+	
+void SpectrumMaker::SaveIntermediate(const string& filename)
+{
+	std::ofstream str(filename.c_str());
+	Serializable::SerializeToUInt64(str, _spectrumPerSource.size());
+	
+	for(std::vector<Spectrum>::const_iterator i=_spectrumPerSource.begin(); i!=_spectrumPerSource.end(); ++i)
+		i->Serialize(str);
+}
+
+void SpectrumMaker::AddMeasurementsFromFile(const string& filename)
+{
+	std::ifstream str(filename.c_str());
+	size_t sourceCount = Serializable::UnserializeUInt64(str);
+	if(_spectrumPerSource.size() == 0)
+		_spectrumPerSource.resize(sourceCount);
+	else if(sourceCount != _spectrumPerSource.size())
+		throw std::runtime_error("Trying to add spectrum measurement file with different nr of sources");
+	
+	if(sourceCount != _sources.size())
+		throw std::runtime_error("Number of sources in intermediate file did not match number of sources in position model");
+	
+	for(std::vector<Spectrum>::iterator i=_spectrumPerSource.begin(); i!=_spectrumPerSource.end(); ++i)
+		i->UnserializeAndAdd(str);
+}
