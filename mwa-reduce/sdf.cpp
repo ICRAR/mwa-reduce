@@ -262,45 +262,48 @@ int main(int argc, char *argv[])
 	
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 	{
-		const SpectralEnergyDistribution &sed = sourcePtr->Peak().SED();
-		const long double startFreq = sed.LowestFrequency();
-		const long double endFreq = sed.HighestFrequency();
-		if(powerlaw)
+		for(auto& compPtr : *sourcePtr)
 		{
-			long double e, f;
-			SpectralEnergyDistribution newSED;
-			Measurement m1, m2;
-			m1.SetFrequencyHz(startFreq);
-			m2.SetFrequencyHz(endFreq);
-			
-			for(size_t p=0; p!=4; ++p)
+			const SpectralEnergyDistribution &sed = compPtr.SED();
+			const long double startFreq = sed.LowestFrequency();
+			const long double endFreq = sed.HighestFrequency();
+			if(powerlaw)
 			{
-				sed.FitPowerlaw(f, e, p);
-				m1.SetFluxDensity(p, f * std::pow(startFreq, e));
-				m2.SetFluxDensity(p, f * std::pow(endFreq, e));
-			}
-			newSED.AddMeasurement(m1);
-			newSED.AddMeasurement(m2);
-			sourcePtr->Peak().SetSED(newSED);
-		}
-		else if(resample)
-		{
-			SpectralEnergyDistribution newSED;
-			const long double newBandSize = (endFreq - startFreq) / newChannelCount;
-			for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
-			{
-				long double chStartFreq = startFreq + newBandSize*newChIndex;
-				long double chEndFreq = endFreq + newBandSize*(newChIndex+1.0);
-				long double flux;
-				if(newChannelCount < sed.MeasurementCount())
-					flux = sed.IntegratedFlux(chStartFreq, chEndFreq, 0);
-				else
-					flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, 0);
+				long double e, f;
+				SpectralEnergyDistribution newSED;
+				Measurement m1, m2;
+				m1.SetFrequencyHz(startFreq);
+				m2.SetFrequencyHz(endFreq);
 				
-				newSED.AddMeasurement(flux, (chStartFreq+chEndFreq)*0.5);
+				for(size_t p=0; p!=4; ++p)
+				{
+					sed.FitPowerlaw(f, e, p);
+					m1.SetFluxDensity(p, f * std::pow(startFreq, e));
+					m2.SetFluxDensity(p, f * std::pow(endFreq, e));
+				}
+				newSED.AddMeasurement(m1);
+				newSED.AddMeasurement(m2);
+				compPtr.SetSED(newSED);
 			}
-			
-			sourcePtr->Peak().SetSED(newSED);
+			else if(resample)
+			{
+				SpectralEnergyDistribution newSED;
+				const long double newBandSize = (endFreq - startFreq) / newChannelCount;
+				for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
+				{
+					long double chStartFreq = startFreq + newBandSize*newChIndex;
+					long double chEndFreq = endFreq + newBandSize*(newChIndex+1.0);
+					long double flux;
+					if(newChannelCount < sed.MeasurementCount())
+						flux = sed.IntegratedFlux(chStartFreq, chEndFreq, 0);
+					else
+						flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, 0);
+					
+					newSED.AddMeasurement(flux, (chStartFreq+chEndFreq)*0.5);
+				}
+				
+				compPtr.SetSED(newSED);
+			}
 		}
 	}
 	

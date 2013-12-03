@@ -28,7 +28,7 @@ public:
 			std::swap(antenna1, antenna2);
 		return &_values[NPol * _nChannels * (BaselineIndex(antenna1, antenna2) + timeIndex * _nBaselines)];
 	}
-	void SetAll(const T &newValue)
+	void SetAll(const T& newValue)
 	{
 		_values.assign(_nChannels * _nBaselines * _nTimesteps * NPol, newValue);
 	}
