@@ -42,6 +42,7 @@ private:
 	void processChannel(size_t channelIndex);
 	void processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks);
 	static bool isfinite(const std::complex<double>& val) { return std::isfinite(val.real()) && std::isfinite(val.imag()); }
+	void initWeighting(casa::MeasurementSet& ms);
 	
 	size_t _solutionInterval;
 	bool _applyBeam;

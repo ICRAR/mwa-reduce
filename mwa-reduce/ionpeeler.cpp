@@ -17,11 +17,23 @@ IonPeeler::IonPeeler() : _solutionInterval(1), _applyBeam(true), _weightMode(Wei
 IonPeeler::~IonPeeler()
 { }
 
+void IonPeeler::initWeighting(casa::MeasurementSet& ms)
+{
+	if(_weightMode.RequiresGridding())
+	{
+		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
+		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale));
+		_imageWeights->Grid(ms, _weightMode);
+	}
+}
+
 void IonPeeler::Peel(const char* msName, const char* modelName)
 {
 	casa::MeasurementSet ms(msName, casa::MeasurementSet::Update);
 	_model = Model(modelName);
 	//_model.SortOnBrightness();
+	
+	initWeighting(ms);
 	
 	size_t startRow = 0;
 	std::string solutionFile;
@@ -174,7 +186,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 			tasks.push_back(channelCount - ch - 1);
 		std::mutex mutex;
 		std::vector<std::thread> threads;
-		threads.push_back(std::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
+		for(size_t i=0; i!=_cpuCount; ++i)
+			threads.push_back(std::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
 		for(auto& t : threads)
 			t.join();
 		
