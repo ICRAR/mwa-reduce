@@ -296,7 +296,7 @@ void IonPeeler::processChannel(size_t channelIndex)
 				if(isfinite(dataPtr[0]) && isfinite(dataPtr[3]) && dataPtr[0] != 0.0 && dataPtr[3] != 0.0)
 				{
 					// Predict visibility
-					_predicters[sourceIndex]->Predict4(modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
+					_predicters[sourceIndex]->Predict4(&*modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
 					
 					double imageWeight = 1.0;
 					if(_imageWeights != 0)
