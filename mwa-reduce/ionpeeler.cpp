@@ -71,7 +71,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	{
 		_predictionModels[s].AddSource(_model.Source(s));
 		
-		_predicters[s].reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount));
+		_predicters[s] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
 		if(_applyBeam)
 			_predicters[s]->Initialize(_predictionModels[s], solutionFile, &beamEvaluator);
 		else
@@ -128,8 +128,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		std::cout << "Reading (T " << startTimestep << "-" << endTimestep << ", rows " << _curStartRow << '-' << _curEndRow << ")...\n";
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
-			_dataArrays[ch].reset(new VisibilityArray<std::complex<double>, 4>(1, antennaCount, timestepsInPass));
-			_weightArrays[ch].reset(new VisibilityArray<double, 2>(1, antennaCount, timestepsInPass));
+			_dataArrays[ch] = new VisibilityArray<std::complex<double>, 4>(1, antennaCount, timestepsInPass);
+			_weightArrays[ch] = new VisibilityArray<double, 2>(1, antennaCount, timestepsInPass);
 		}
 		double time = timeColumn(_curStartRow);
 		size_t timeIndex = startTimestep;
@@ -210,7 +210,16 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 			}
 		}
 		_progressBar.reset();
+		
+		for(size_t ch=0; ch!=channelCount; ++ch)
+		{
+			delete _dataArrays[ch];
+			delete _weightArrays[ch];
+		}
 	}
+	
+	for(size_t s=0; s!=_model.SourceCount(); ++s)
+		_predicters[s] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
 }
 
 void IonPeeler::processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks)

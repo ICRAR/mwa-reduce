@@ -49,9 +49,9 @@ private:
 	std::string _dataColumnName;
 	
 	Model _model;
-	std::vector<std::unique_ptr<VisibilityArray<std::complex<double>, 4>>> _dataArrays;
-	std::vector<std::unique_ptr<VisibilityArray<double, 2>>> _weightArrays;
-	std::vector<std::unique_ptr<Predicter>> _predicters;
+	std::vector<VisibilityArray<std::complex<double>, 4>*> _dataArrays;
+	std::vector<VisibilityArray<double, 2>*> _weightArrays;
+	std::vector<Predicter*> _predicters;
 	std::vector<Model> _predictionModels;
 	std::vector<RowData> _rowData;
 	size_t _curStartRow, _curEndRow;
