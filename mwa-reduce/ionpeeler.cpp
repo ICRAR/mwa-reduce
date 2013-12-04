@@ -338,10 +338,10 @@ void IonPeeler::processChannel(size_t channelIndex)
 				const RowData& rowData = _rowData[row - _curStartRow];
 				if(rowData.a1 != rowData.a2)
 				{
-					Matrix2x2::ScalarMultiply(modelPtr, ionTerm);
+					Matrix2x2::ScalarMultiply(&*modelPtr, ionTerm);
 					
 					std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
-					Matrix2x2::Subtract(dataPtr, modelPtr);
+					Matrix2x2::Subtract(dataPtr, &*modelPtr);
 					modelPtr += 4;
 				}
 			}
