@@ -15,8 +15,6 @@ int main(int argc, char* argv[])
 		for(Model::const_iterator srcIter=model.begin(); srcIter!=model.end(); ++srcIter)
 		{
 			const ModelSource& s = *srcIter;
-			if(s.ComponentCount() != 1)
-				throw std::runtime_error("Multiple components in source");
 			const ModelComponent& c = s.Peak();
 			str << "TEXT " << c.PosRA()*180.0/M_PI << " " << c.PosDec()*180.0/M_PI << " " << s.Name() << "\n";
 		}
