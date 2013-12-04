@@ -31,7 +31,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 {
 	casa::MeasurementSet ms(msName, casa::MeasurementSet::Update);
 	_model = Model(modelName);
-	//_model.SortOnBrightness();
+	_model.SortOnBrightness();
 	
 	initWeighting(ms);
 	
@@ -188,8 +188,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		std::vector<std::thread> threads;
 		for(size_t i=0; i!=_cpuCount; ++i)
 			threads.push_back(std::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
-		for(auto& t : threads)
-			t.join();
+		for(std::vector<std::thread>::iterator t = threads.begin(); t!=threads.end(); ++t)
+			t->join();
 		
 		// Write back
 		for(size_t rowIndex=_curStartRow; rowIndex!=_curEndRow; ++rowIndex)
