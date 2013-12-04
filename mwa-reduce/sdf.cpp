@@ -262,9 +262,9 @@ int main(int argc, char *argv[])
 	
 	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 	{
-		for(auto& compPtr : *sourcePtr)
+		for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 		{
-			const SpectralEnergyDistribution &sed = compPtr.SED();
+			const SpectralEnergyDistribution &sed = compPtr->SED();
 			const long double startFreq = sed.LowestFrequency();
 			const long double endFreq = sed.HighestFrequency();
 			if(powerlaw)
@@ -283,7 +283,7 @@ int main(int argc, char *argv[])
 				}
 				newSED.AddMeasurement(m1);
 				newSED.AddMeasurement(m2);
-				compPtr.SetSED(newSED);
+				compPtr->SetSED(newSED);
 			}
 			else if(resample)
 			{
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
 					newSED.AddMeasurement(flux, (chStartFreq+chEndFreq)*0.5);
 				}
 				
-				compPtr.SetSED(newSED);
+				compPtr->SetSED(newSED);
 			}
 		}
 	}
