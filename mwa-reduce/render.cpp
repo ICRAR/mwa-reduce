@@ -9,9 +9,10 @@
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-t templatefits] [-b] <model> <outputfits>\n";
+		std::cout << "syntax: render [-t templatefits] [-b] [-r] [-a] <model> <outputfits>\n";
 	else {
 		std::string templateFits;
+		bool restore = false, addToTemplate = false, applyBeam = false;
 		
 		int argi = 1;
 		while(argi < argc && argv[argi][0] == '-')
@@ -20,6 +21,12 @@ int main(int argc, char* argv[])
 			if(param == "t") {
 				++argi;
 				templateFits = argv[argi];
+			}
+			else if(param == "r") {
+				restore = true;
+			}
+			else if(param == "a") {
+				addToTemplate = true;
 			}
 			else throw std::runtime_error("Invalid param");
 			++argi;

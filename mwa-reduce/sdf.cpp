@@ -463,8 +463,10 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-	if(!outputModel.empty())
+	if(!outputModel.empty()) {
+		std::cout << "Writing model with " << model.SourceCount() << " sources.\n";
 		model.Save(outputModel.c_str());
+	}
 	
 	return 0;
 }
