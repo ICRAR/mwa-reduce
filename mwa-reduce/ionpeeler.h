@@ -75,6 +75,7 @@ private:
 	std::vector<RowData> _rowData;
 	size_t _pass, _passCount;
 	size_t _curStartRow, _curEndRow;
+	size_t _startTimestep, _endTimestep;
 	BandData _bandData;
 	size_t _antennaCount;
 	size_t _cpuCount;

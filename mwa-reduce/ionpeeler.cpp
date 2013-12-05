@@ -117,12 +117,11 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	_weightArrays.resize(channelCount);
 	for(_pass=0; _pass!=_passCount; ++_pass)
 	{
-		const size_t
-			startTimestep = timestepCount * _pass / _passCount,
-			endTimestep = timestepCount * (_pass+1) / _passCount,
-			timestepsInPass = endTimestep - startTimestep;
-		_curStartRow = timestepRows[startTimestep];
-		_curEndRow = timestepRows[endTimestep];
+		_startTimestep = timestepCount * _pass / _passCount;
+		_endTimestep = timestepCount * (_pass+1) / _passCount;
+		const size_t timestepsInPass = _endTimestep - _startTimestep;
+		_curStartRow = timestepRows[_startTimestep];
+		_curEndRow = timestepRows[_endTimestep];
 		_rowData.resize(_curEndRow - _curStartRow);
 		
 		if(beamEvaluator.Time().getValue() != timeMColumn(_curStartRow).getValue())
@@ -133,14 +132,14 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 				_predicters[s]->UpdateBeam(_predictionModels[s]);
 		}
 		
-		std::cout << "Reading (T " << startTimestep << "-" << endTimestep << ", rows " << _curStartRow << '-' << _curEndRow << ")...\n";
+		std::cout << "Reading (T " << _startTimestep << "-" << _endTimestep << ", rows " << _curStartRow << '-' << _curEndRow << ")...\n";
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
 			_dataArrays[ch] = new VisibilityArray<std::complex<double>, 4>(1, _antennaCount, timestepsInPass);
 			_weightArrays[ch] = new VisibilityArray<double, 2>(1, _antennaCount, timestepsInPass);
 		}
 		double time = timeColumn(_curStartRow);
-		size_t timeIndex = startTimestep;
+		size_t timeIndex = _startTimestep;
 		for(size_t rowIndex=_curStartRow; rowIndex!=_curEndRow; ++rowIndex)
 		{
 			RowData& rowData = _rowData[rowIndex-_curStartRow];
@@ -174,10 +173,10 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 						if(flagPtr[p]) weightsReadPtr[p] = 0.0;
 					}
 					
-					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
+					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - _startTimestep);
 					arrPtr[0] = dataPtr[0]; arrPtr[1] = dataPtr[1];
 					arrPtr[2] = dataPtr[2]; arrPtr[3] = dataPtr[3];
-					double* weightsWritePtr = _weightArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
+					double* weightsWritePtr = _weightArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - _startTimestep);
 					weightsWritePtr[0] = weightsReadPtr[0];
 					weightsWritePtr[1] = weightsReadPtr[3];
 					
@@ -209,7 +208,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 				std::complex<float> *dataPtr = data.cbegin();
 				for(size_t ch = 0; ch!=channelCount; ++ch)
 				{
-					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - startTimestep);
+					std::complex<double> *arrPtr = _dataArrays[ch]->ValuePtr(rowData.a1, rowData.a2, timeIndex - _startTimestep);
 					dataPtr[0] = arrPtr[0]; dataPtr[1] = arrPtr[1];
 					dataPtr[2] = arrPtr[2]; dataPtr[3] = arrPtr[3];
 					dataPtr += 4;
@@ -256,10 +255,10 @@ int IonPeeler::posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vecto
 {
 	const FittingInfo &fittingInfo = *reinterpret_cast<FittingInfo*>(data);
 	const IonPeeler &ionPeeler = *reinterpret_cast<IonPeeler*>(fittingInfo.ionPeeler);
+	const size_t startTimestep = ionPeeler._startTimestep;
 	double g = gsl_vector_get(xvec, 0);
 	double dl = gsl_vector_get(xvec, 1);
 	double dm = gsl_vector_get(xvec, 2);
-	size_t startTimeIndex = ionPeeler._rowData.front().timeIndex;
 	
 	size_t dataPointIndex = 0;
 	const std::complex<double>* modelPtr = &fittingInfo.modelData[0];
@@ -268,7 +267,7 @@ int IonPeeler::posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vecto
 		const RowData& rowData = ionPeeler._rowData[row - ionPeeler._curStartRow];
 		if(rowData.a1 != rowData.a2)
 		{
-			const std::complex<double>* dataPtr = ionPeeler._dataArrays[fittingInfo.channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
+			const std::complex<double>* dataPtr = ionPeeler._dataArrays[fittingInfo.channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimestep);
 			double value = 0.0;
 			if(isfinite(dataPtr[0]) && isfinite(dataPtr[3]))
 			{
@@ -283,7 +282,8 @@ int IonPeeler::posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vecto
 						modelPtr[3].real() * cExp - modelPtr[3].imag() * sExp,
 						modelPtr[3].real() * sExp + modelPtr[3].imag() * cExp
 					);
-				value = std::abs((g * (rotModelXX + rotModelYY) - dataPtr[0] - dataPtr[3]) * 0.5);
+				value = ((g * (rotModelXX + rotModelYY) - dataPtr[0] - dataPtr[3]) * 0.5).real();
+				//std::abs((g * (rotModelXX + rotModelYY) - dataPtr[0] - dataPtr[3]) * 0.5);
 			}
 			gsl_vector_set(f, dataPointIndex, value);
 			++dataPointIndex;
@@ -297,10 +297,10 @@ int IonPeeler::posMinimizationFuncDeriv(const gsl_vector *xvec, void *data, gsl_
 {
 	const FittingInfo &fittingInfo = *reinterpret_cast<FittingInfo*>(data);
 	const IonPeeler &ionPeeler = *reinterpret_cast<IonPeeler*>(fittingInfo.ionPeeler);
+	const size_t startTimestep = ionPeeler._startTimestep;
 	double g = gsl_vector_get(xvec, 0);
 	double dl = gsl_vector_get(xvec, 1);
 	double dm = gsl_vector_get(xvec, 2);
-	size_t startTimeIndex = ionPeeler._rowData.front().timeIndex;
 	
 	size_t dataPointIndex = 0;
 	const std::complex<double>* modelPtr = &fittingInfo.modelData[0];
@@ -310,7 +310,7 @@ int IonPeeler::posMinimizationFuncDeriv(const gsl_vector *xvec, void *data, gsl_
 		if(rowData.a1 != rowData.a2)
 		{
 			double dfdg = 0.0, dfddl = 0.0, dfddm = 0.0;
-			const std::complex<double>* dataPtr = ionPeeler._dataArrays[fittingInfo.channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
+			const std::complex<double>* dataPtr = ionPeeler._dataArrays[fittingInfo.channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimestep);
 			if(isfinite(dataPtr[0]) && isfinite(dataPtr[3]))
 			{
 				double expTerm = (rowData.u * dl + rowData.v * dm) * 2.0 * M_PI;
@@ -325,8 +325,8 @@ int IonPeeler::posMinimizationFuncDeriv(const gsl_vector *xvec, void *data, gsl_
 						modelPtr[3].real() * sExp + modelPtr[3].imag() * cExp
 					);
 				dfdg = (rotModelXX + rotModelYY).real() * 0.5;
-				dfddl = -(rotModelXX + rotModelYY).imag() * g * rowData.u * 2.0 * M_PI;
-				dfddm = -(rotModelXX + rotModelYY).imag() * g * rowData.v * 2.0 * M_PI;
+				dfddl = -(rotModelXX + rotModelYY).imag() * g * rowData.u * M_PI;
+				dfddm = -(rotModelXX + rotModelYY).imag() * g * rowData.v * M_PI;
 			}
 			gsl_matrix_set(J, dataPointIndex, 0, dfdg);
 			gsl_matrix_set(J, dataPointIndex, 1, dfddl);
@@ -335,7 +335,6 @@ int IonPeeler::posMinimizationFuncDeriv(const gsl_vector *xvec, void *data, gsl_
 			modelPtr += 4;
 		}
 	}
-		
 	return GSL_SUCCESS;
 }
 int IonPeeler::posMinimizationFuncBoth(const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J)
@@ -350,12 +349,18 @@ void IonPeeler::positionFitter(size_t channelIndex)
 	double lambda = _bandData.ChannelWavelength(channelIndex);
 	
 	const gsl_multifit_fdfsolver_type *T = gsl_multifit_fdfsolver_lmsder;
-	size_t dataValueCount = (_antennaCount * (_antennaCount-1)/2) * _solutionInterval;
+	size_t dataValueCount = 0;
+	for(size_t row=_curStartRow; row!=_curEndRow; ++row) 
+	{
+		const RowData& rowData = _rowData[row - _curStartRow];
+		if(rowData.a1 != rowData.a2) ++dataValueCount;
+	}
 	gsl_multifit_fdfsolver *solver = gsl_multifit_fdfsolver_alloc(T, dataValueCount, 3);
 	
 	FittingInfo fInfo;
 	fInfo.ionPeeler = this;
 	fInfo.modelData.resize((_curEndRow-_curStartRow)*4);
+	fInfo.channelIndex = channelIndex;
 	
 	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 	{
@@ -366,7 +371,6 @@ void IonPeeler::positionFitter(size_t channelIndex)
 			if(rowData.a1 != rowData.a2)
 			{
 				const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
-				// Predict visibility
 				_predicters[sourceIndex]->Predict4(&*modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
 				modelPtr += 4;
 			}
@@ -388,18 +392,19 @@ void IonPeeler::positionFitter(size_t channelIndex)
 		size_t iter = 0;
 		do {
 			iter++;
-			status = gsl_multifit_fdfsolver_iterate (solver);
+			status = gsl_multifit_fdfsolver_iterate(solver);
 			
 			if(status)
 				break;
 			
 			status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
 			
-		} while (status == GSL_CONTINUE && iter < 50);
+		} while (status == GSL_CONTINUE && iter < 100);
 		
 		double g = gsl_vector_get (solver->x, 0);
 		double dl = gsl_vector_get (solver->x, 1);
 		double dm = gsl_vector_get (solver->x, 2);
+		std::cout << gsl_strerror(status) << "\n";
 		std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
 	}
 	gsl_multifit_fdfsolver_free(solver);
