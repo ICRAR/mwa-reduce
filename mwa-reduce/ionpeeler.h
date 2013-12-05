@@ -9,6 +9,11 @@
 #include <mutex>
 #include <thread>
 
+#ifdef HAVE_GSL
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_matrix.h>
+#endif
+
 class ImageWeights;
 class Predicter;
 class ProgressBar;
@@ -32,17 +37,31 @@ public:
 	}
 	
 	void Peel(const char* msName, const char* modelName);
+	void SaveSolutions(const std::string& filename) const;
 private:
 	struct RowData
 	{
 		double u, v, w;
 		size_t a1, a2, timeIndex;
 	};
+	struct FittingInfo
+	{
+		IonPeeler* ionPeeler;
+		ao::uvector<std::complex<double>> modelData;
+		size_t channelIndex;
+	};
 
 	void processChannel(size_t channelIndex);
 	void processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks);
 	static bool isfinite(const std::complex<double>& val) { return std::isfinite(val.real()) && std::isfinite(val.imag()); }
 	void initWeighting(casa::MeasurementSet& ms);
+	
+	void scalarGainFitter(size_t channelIndex);
+	void positionFitter(size_t channelIndex);
+	
+	static int posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vector *f);
+	static int posMinimizationFuncDeriv(const gsl_vector *xvec, void *data, gsl_matrix *J);
+	static int posMinimizationFuncBoth(const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J);
 	
 	size_t _solutionInterval;
 	bool _applyBeam;
@@ -54,8 +73,10 @@ private:
 	std::vector<Predicter*> _predicters;
 	std::vector<Model> _predictionModels;
 	std::vector<RowData> _rowData;
+	size_t _pass, _passCount;
 	size_t _curStartRow, _curEndRow;
 	BandData _bandData;
+	size_t _antennaCount;
 	size_t _cpuCount;
 	
 	WeightMode _weightMode;
@@ -63,6 +84,8 @@ private:
 	double _weightPixelScale;
 	std::unique_ptr<ImageWeights> _imageWeights;
 	std::unique_ptr<ProgressBar> _progressBar;
+	ao::uvector<std::complex<double>> _solutions;
+	ao::uvector<double> _solutionWeights;
 };
 
 #endif

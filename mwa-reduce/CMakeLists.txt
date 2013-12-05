@@ -157,6 +157,7 @@ target_link_libraries(wsctests ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
 if(GSL_LIB AND CBLAS_LIB)
   add_definitions(-DHAVE_GSL)
+  target_link_libraries(ionpeel ${GSL_LIB} ${CBLAS_LIB})
   target_link_libraries(tests ${GSL_LIB} ${CBLAS_LIB})
   target_link_libraries(sdf ${GSL_LIB} ${CBLAS_LIB})
   target_link_libraries(simcompress ${GSL_LIB} ${CBLAS_LIB})
