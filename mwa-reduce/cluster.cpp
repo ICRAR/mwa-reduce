@@ -19,6 +19,10 @@ public:
 		_meanRA = rhs._meanRA;
 		_meanDec = rhs._meanDec;
 	}
+	bool operator<(const Cluster& rhs) const
+	{
+		return TotalFlux() < rhs.TotalFlux();
+	}
 	
 	void AddSource(const ModelSource* source)
 	{
@@ -46,10 +50,21 @@ public:
 		{
 			_meanRA = 0.0;
 			_meanDec = 0.0;
+			long double firstRA = _sources.front()->Peak().PosRA();
+			bool doWrap =
+				(firstRA > - 0.25*M_PI && firstRA < 0.25*M_PI) ||
+				(firstRA > 1.75*M_PI && firstRA < 2.25*M_PI) ||
+				(firstRA > -2.25*M_PI && firstRA < -1.75*M_PI);
 			for(std::vector<const ModelSource*>::const_iterator i=_sources.begin(); i!=_sources.end(); ++i)
 			{
 				const ModelSource& s = **i;
-				_meanRA += s.Peak().PosRA();
+				long double ra = s.Peak().PosRA();
+				if(doWrap)
+				{
+					if(ra > M_PI) ra -= 2.0 * M_PI;
+					else if(ra < -M_PI) ra += 2.0 * M_PI;
+				}
+				_meanRA += ra;
 				_meanDec += s.Peak().PosDec();
 			}
 			_meanRA /= _sources.size();
@@ -57,12 +72,17 @@ public:
 		}
 	}
 	
-	double Distance(const ModelSource& source) const
+	long double Distance(const ModelSource& source) const
 	{
-		double dRA = source.Peak().PosRA() - _meanRA, dDec = source.Peak().PosDec() - _meanDec;
-		return sqrt(dRA*dRA + dDec*dDec);
+		return AngularDistance(source);
+		/*long double dRA = source.Peak().PosRA() - _meanRA, dDec = source.Peak().PosDec() - _meanDec;
+		while(dRA > 2.0*M_PI) dRA -= 2.0*M_PI;
+		while(dRA < -2.0*M_PI) dRA += 2.0*M_PI;
+		if(dRA > M_PI) dRA = 2.0*M_PI - dRA;
+		else if(dRA < -M_PI) dRA = 2.0*M_PI + dRA;
+		return sqrt(dRA*dRA + dDec*dDec);*/
 	}
-	double AngularDistance(const ModelSource& source) const
+	long double AngularDistance(const ModelSource& source) const
 	{
 		return ImageCoordinates::AngularDistance<long double>(source.Peak().PosRA(), source.Peak().PosDec(), _meanRA, _meanDec);
 	}
@@ -72,6 +92,16 @@ public:
 	{
 		_meanRA = source.Peak().PosRA();
 		_meanDec = source.Peak().PosDec();
+	}
+	long double TotalFlux() const
+	{
+		double sum = 0.0;
+		for(std::vector<const ModelSource*>::const_iterator s=_sources.begin(); s!=_sources.end(); ++s)
+		{
+			double flux = (*s)->TotalFlux(150000000.0, 0);
+			sum += flux;
+		}
+		return sum;
 	}
 private:
 	std::vector<const ModelSource*> _sources;
@@ -97,29 +127,44 @@ size_t NearestCluster(const std::vector<Cluster>& clusters, const ModelSource& s
 
 void Output(const std::vector<Cluster>& clusters)
 {
+	double sumOfMaxDist = 0.0, maxDistOfAll = 0.0, sumDistSq = 0.0, sumDist = 0.0;
+	size_t n = 0;
 	for(size_t i=0; i!=clusters.size(); ++i)
 	{
-		std::cout << "Cluster " << i
-			<< " (" << RaDecCoord::RAToString(clusters[i].MeanRA()) << " " << RaDecCoord::DecToString(clusters[i].MeanDec()) << ")"
+		double meanRA = clusters[i].MeanRA();
+		if(meanRA < 0.0) meanRA += 2.0 * M_PI;
+		std::cout << "Cluster " << (i+1)
+			<< " (" << RaDecCoord::RAToString(meanRA) << " " << RaDecCoord::DecToString(clusters[i].MeanDec()) << ")"
 			<< ": " << clusters[i].SourceCount() << " sources";
 		if(clusters[i].SourceCount() > 0)
 		{
-			double sum = clusters[i].Source(0)->TotalFlux(150000000.0, 0);
-			double maxSource = sum, minSource = sum;
-			double maxDist = clusters[i].AngularDistance(*clusters[i].Source(0));
-			for(size_t s=1; s!=clusters[i].SourceCount(); ++s)
+			double sum = 0.0;
+			double maxSource = clusters[i].Source(0)->TotalFlux(150000000.0, 0), minSource = maxSource;
+			double maxDist = 0.0;
+			for(size_t s=0; s!=clusters[i].SourceCount(); ++s)
 			{
 				const ModelSource& source = *clusters[i].Source(s);
 				double flux = source.TotalFlux(150000000.0, 0);
 				double dist = clusters[i].AngularDistance(source);
+				sumDist += dist;
+				sumDistSq += dist*dist;
 				if(flux > maxSource) maxSource = flux;
 				if(flux < minSource) minSource = flux;
 				if(dist > maxDist) maxDist = dist;
+				sum += flux;
+				++n;
 			}
-			std::cout << ", min=" << minSource << ", max=" << maxSource << ", sum=" << sum << ", max dist=" << (maxDist*180.0/M_PI) << " deg";
+			maxDist *= 180.0/M_PI;
+			std::cout << ", min=" << minSource << ", max=" << maxSource << ", sum=" << sum << ", max dist=" << maxDist << " deg";
+			sumOfMaxDist += maxDist;
+			if(maxDist > maxDistOfAll) maxDistOfAll = maxDist;
 		}
 		std::cout << '\n';
 	}
+	std::cout << "Average max dist: " << sumOfMaxDist/clusters.size() << " deg\n";
+	std::cout << "Max dist of all : " << maxDistOfAll << " deg\n";
+	std::cout << "Average distance: " << sumDist/n << " deg\n";
+	std::cout << "Distance RMS    : " << sqrt(sumDistSq/n) << " deg\n";
 }
 
 int main(int argc, char* argv[])
@@ -169,5 +214,27 @@ int main(int argc, char* argv[])
 	
 	std::cout << "K-means used " << iterationCount << " iterations.\n";
 	
+	std::sort(clusters.rbegin(), clusters.rend());
+	
 	Output(clusters);
+	
+	Model outputModel;
+	for(size_t cIndex=0; cIndex!=clusters.size(); ++cIndex)
+	{
+		ModelSource sourceCluster;
+		std::ostringstream nameStr;
+		nameStr << "cluster" << (cIndex+1);
+		sourceCluster.SetName(nameStr.str());
+		const Cluster& cluster = clusters[cIndex];
+		for(size_t s=0; s!=cluster.SourceCount(); ++s)
+		{
+			const ModelSource& source = *cluster.Source(s);
+			for(ModelSource::const_iterator compIter=source.begin(); compIter!=source.end(); ++compIter)
+			{
+				sourceCluster.AddComponent(*compIter);
+			}
+		}
+		outputModel.AddSource(sourceCluster);
+	}
+	outputModel.Save(argv[2]);
 }
