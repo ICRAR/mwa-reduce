@@ -3,6 +3,7 @@
 #include "imagecoordinates.h"
 #include "areaset.h"
 #include "parser/areaparser.h"
+#include "beamevaluator.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -16,17 +17,17 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-without/only <areafile>]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-without/only <areafile>]\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, resample = false, unpolarized = false, delNoisySources = false;
+	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, unpolarized = false, delNoisySources = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
-	long double scale = 1.0, threshold = 0.0, delNoisySourceLimit = 0.0;
+	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, delNoisySourceLimit = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0;
-	std::string outputModel, collectName;
+	std::string outputModel, collectName, appThresholdMS;
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
@@ -106,6 +107,13 @@ int main(int argc, char *argv[])
 			++argi;
 			threshold = atof(argv[argi]);
 			applyThreshold = true;
+		} else if(strcmp(argv[argi], "-tapp") == 0)
+		{
+			++argi;
+			appThresholdMS = argv[argi];
+			++argi;
+			appThreshold = atof(argv[argi]);
+			applyAppThreshold = true;
 		} else if(strcmp(argv[argi], "-r") == 0)
 		{
 			++argi;
@@ -209,6 +217,36 @@ int main(int argc, char *argv[])
 			}
 
 			if(flux >= threshold)
+				temp.AddSource(*sourcePtr);
+		}
+		model = temp;
+	}
+	
+	if(applyAppThreshold)
+	{
+		Model temp;
+		casa::MeasurementSet ms(appThresholdMS);
+		BeamEvaluator beam(ms);
+		BandData bandData(ms.spectralWindow());
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			double flux[4];
+			for(size_t p=0; p!=4; ++p)
+			{
+				const SpectralEnergyDistribution& sed = sourcePtr->Peak().SED();
+				flux[p] = sourcePtr->TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
+				if(!std::isfinite(flux[p]))
+				{
+					long double f, e;
+					sed.FitPowerlaw(f, e, p);
+					double lowFlux = f * std::pow(bandData.LowestFrequency(), e);
+					double hiFlux = f * std::pow(bandData.HighestFrequency(), e);
+					flux[p] = (lowFlux + hiFlux) * 0.5;
+				}
+			}
+			beam.AbsToApparent(sourcePtr->Peak().PosRA(), sourcePtr->Peak().PosDec(), bandData.CentreFrequency(), flux);
+			double stokesIFlux = (flux[0] + flux[3]) * 0.5;
+			if(stokesIFlux >= appThreshold)
 				temp.AddSource(*sourcePtr);
 		}
 		model = temp;

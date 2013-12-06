@@ -100,7 +100,7 @@ add_executable(peel peel.cpp peeler.cpp beamevaluator.cpp calibrationmethod.cpp 
 add_executable(phasecal beamevaluator.cpp phasecal.cpp model.cpp predicter.cpp tilebeam.cpp)
 add_executable(regridimg regridimg.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(render render.cpp modelrenderer.cpp fitsreader.cpp fitswriter.cpp model.cpp)
-add_executable(sdf sdf.cpp model.cpp nlplfitter.cpp)
+add_executable(sdf sdf.cpp beamevaluator.cpp model.cpp nlplfitter.cpp tilebeam.cpp)
 add_executable(simcompress simcompress.cpp gausencoder.cpp)
 add_executable(subtract subtract.cpp)
 add_executable(subtrmodel beamevaluator.cpp subtrmodel.cpp model.cpp predicter.cpp tilebeam.cpp mspredicter.cpp progressbar.cpp)
