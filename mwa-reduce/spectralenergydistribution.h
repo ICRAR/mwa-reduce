@@ -89,6 +89,8 @@ class Measurement
 					_fluxDensities[0] = flux; _fluxDensities[1] = 0.0;
 					_fluxDensities[2] = 0.0;  _fluxDensities[3] = flux;
 					break;
+				default:
+					throw std::runtime_error("Not implemented");
 			}
 		}
 		

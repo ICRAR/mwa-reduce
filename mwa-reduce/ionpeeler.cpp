@@ -268,7 +268,7 @@ int IonPeeler::posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vecto
 	double dm = gsl_vector_get(xvec, 2);
 	
 	size_t dataPointIndex = 0;
-	const std::complex<double>* modelPtr = &fittingInfo.modelData[0];
+	const std::complex<double>* modelPtr = &(*fittingInfo.modelData)[0];
 	for(size_t row=ionPeeler._curStartRow; row!=ionPeeler._curEndRow; ++row)
 	{
 		const RowData& rowData = ionPeeler._rowData[row - ionPeeler._curStartRow];
@@ -314,7 +314,7 @@ int IonPeeler::posMinimizationFuncDeriv(const gsl_vector *xvec, void *data, gsl_
 	double dm = gsl_vector_get(xvec, 2);
 	
 	size_t dataPointIndex = 0;
-	const std::complex<double>* modelPtr = &fittingInfo.modelData[0];
+	const std::complex<double>* modelPtr = &(*fittingInfo.modelData)[0];
 	for(size_t row=ionPeeler._curStartRow; row!=ionPeeler._curEndRow; ++row)
 	{
 		const RowData& rowData = ionPeeler._rowData[row - ionPeeler._curStartRow];
@@ -377,7 +377,6 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 	
 	FittingInfo fInfo;
 	fInfo.ionPeeler = this;
-	fInfo.modelData.resize((_curEndRow-_curStartRow)*4);
 	fInfo.channelIndex = channelIndex;
 	
 	ao::uvector<double>
@@ -385,32 +384,42 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 		_solutionsDL(_predictionModels.size()),
 		_solutionsDM(_predictionModels.size());
 	
+	// The array containing for each source, the model data per cross-correlated row: modelData[s][row*4+p]
+	std::vector<ao::uvector<std::complex<double>>> modelDataPerSource;
+	
+	// Predict model for this source
+	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
+	{
+		ao::uvector<std::complex<double>>& modelData = modelDataPerSource[sourceIndex];
+		modelData.resize((_curEndRow-_curStartRow)*4);
+		ao::uvector<std::complex<double>>::iterator modelPtr = modelData.begin();
+		for(size_t row=_curStartRow; row!=_curEndRow; ++row)
+		{
+			const RowData& rowData = _rowData[row - _curStartRow];
+			if(rowData.a1 != rowData.a2)
+			{
+				const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
+				_predicters[sourceIndex]->Predict4(&*modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
+				modelPtr += 4;
+			}
+		}
+	}
+	
 	for(size_t fitIteration=0; fitIteration!=_fitIterationCount; ++fitIteration)
 	{
 		for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 		{
+			ao::uvector<std::complex<double>>& modelData = modelDataPerSource[sourceIndex];
+			fInfo.modelData = &modelData;
 			double&
 				g = _solutionsG[sourceIndex],
 				dl = _solutionsDL[sourceIndex],
 				dm = _solutionsDM[sourceIndex];
 			
-			// Predict
-			ao::uvector<std::complex<double>>::iterator modelPtr = fInfo.modelData.begin();
-			for(size_t row=_curStartRow; row!=_curEndRow; ++row)
-			{
-				const RowData& rowData = _rowData[row - _curStartRow];
-				if(rowData.a1 != rowData.a2)
-				{
-					const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
-					_predicters[sourceIndex]->Predict4(&*modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
-					modelPtr += 4;
-				}
-			}
-			
 			// Add back if it was subtracted
 			if(fitIteration != 0)
 			{
-				modelPtr = fInfo.modelData.begin();
+				ao::uvector<std::complex<double>>::iterator modelPtr = modelData.begin();
 				for(size_t row=_curStartRow; row!=_curEndRow; ++row)
 				{
 					const RowData& rowData = _rowData[row - _curStartRow];
@@ -491,7 +500,7 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 			}
 			
 			// Subtract
-			modelPtr = fInfo.modelData.begin();
+			ao::uvector<std::complex<double>>::iterator modelPtr = modelData.begin();
 			for(size_t row=_curStartRow; row!=_curEndRow; ++row)
 			{
 				const RowData& rowData = _rowData[row - _curStartRow];

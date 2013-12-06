@@ -47,7 +47,7 @@ private:
 	struct FittingInfo
 	{
 		IonPeeler* ionPeeler;
-		ao::uvector<std::complex<double>> modelData;
+		ao::uvector<std::complex<double>>* modelData;
 		size_t channelIndex;
 	};
 	struct PeelingStats
