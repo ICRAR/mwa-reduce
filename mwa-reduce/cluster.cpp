@@ -116,7 +116,7 @@ void Output(const std::vector<Cluster>& clusters)
 				if(flux < minSource) minSource = flux;
 				if(dist > maxDist) maxDist = dist;
 			}
-			std::cout << ", min=" << minSource << ", max=" << maxSource << ", sum=" << sum << ", max dist=" << (maxDist*180.0/M_PI);
+			std::cout << ", min=" << minSource << ", max=" << maxSource << ", sum=" << sum << ", max dist=" << (maxDist*180.0/M_PI) << " deg";
 		}
 		std::cout << '\n';
 	}
