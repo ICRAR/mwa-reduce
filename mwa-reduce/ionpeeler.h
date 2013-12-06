@@ -50,20 +50,52 @@ private:
 		ao::uvector<std::complex<double>> modelData;
 		size_t channelIndex;
 	};
+	struct PeelingStats
+	{
+		size_t lsFits;
+		size_t lsFittingIterations;
+		double gSum, dlSum, dmSum;
+		double gSumSq, dlSumSq, dmSumSq;
+		PeelingStats() :
+			lsFits(0),
+			lsFittingIterations(0),
+			gSum(0.0),
+			dlSum(0.0),
+			dmSum(0.0),
+			gSumSq(0.0),
+			dlSumSq(0.0),
+			dmSumSq(0.0)
+		{ }
+		void operator+=(const PeelingStats& rhs)
+		{
+			lsFits += rhs.lsFits;
+			lsFittingIterations += rhs.lsFittingIterations;
+			gSum += rhs.gSum;
+			dlSum += rhs.dlSum;
+			dmSum += rhs.dmSum;
+			gSumSq += rhs.gSumSq;
+			dlSumSq += rhs.dlSumSq;
+			dmSumSq += rhs.dmSumSq;
+		}
+	};
 
-	void processChannel(size_t channelIndex);
+	void processChannel(size_t channelIndex, PeelingStats& stats);
 	void processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks);
 	static bool isfinite(const std::complex<double>& val) { return std::isfinite(val.real()) && std::isfinite(val.imag()); }
 	void initWeighting(casa::MeasurementSet& ms);
 	
 	void scalarGainFitter(size_t channelIndex);
-	void positionFitter(size_t channelIndex);
+	void positionFitter(size_t channelIndex, PeelingStats& stats);
+	
+	void outputStats(const PeelingStats& stats);
+	std::string radToString(double r);
 	
 	static int posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vector *f);
 	static int posMinimizationFuncDeriv(const gsl_vector *xvec, void *data, gsl_matrix *J);
 	static int posMinimizationFuncBoth(const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J);
 	
 	size_t _solutionInterval;
+	size_t _fitIterationCount;
 	bool _applyBeam;
 	std::string _dataColumnName;
 	
@@ -79,6 +111,7 @@ private:
 	BandData _bandData;
 	size_t _antennaCount;
 	size_t _cpuCount;
+	struct PeelingStats _stats;
 	
 	WeightMode _weightMode;
 	size_t _weightGridSize;

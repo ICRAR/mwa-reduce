@@ -17,7 +17,7 @@
 #include <gsl/gsl_multifit_nlin.h>
 #endif
 
-IonPeeler::IonPeeler() : _solutionInterval(1), _applyBeam(true), _weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
+IonPeeler::IonPeeler() : _solutionInterval(1), _fitIterationCount(3), _applyBeam(true), _weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
 { }
 
 IonPeeler::~IonPeeler()
@@ -188,6 +188,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		}
 		
 		_progressBar.reset(new ProgressBar("Processing channels"));
+		_stats = PeelingStats();
 		std::vector<size_t> tasks;
 		for(size_t ch=0; ch!=channelCount; ++ch)
 			tasks.push_back(channelCount - ch - 1);
@@ -218,6 +219,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		}
 		_progressBar.reset();
 		
+		outputStats(_stats);
+		
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
 			delete _dataArrays[ch];
@@ -231,6 +234,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 
 void IonPeeler::processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks)
 {
+	PeelingStats stats;
 	std::unique_lock<std::mutex> lock(*mutex);
 	while(!tasks->empty())
 	{
@@ -239,16 +243,18 @@ void IonPeeler::processingThreadFunction(std::mutex* mutex, std::vector<size_t>*
 		tasks->pop_back();
 		lock.unlock();
 		
-		processChannel(channel);
+		processChannel(channel, stats);
 		
 		lock.lock();
 	}
+	// (mutex is still locked)
+	_stats += stats;
 }
 
-void IonPeeler::processChannel(size_t channelIndex)
+void IonPeeler::processChannel(size_t channelIndex, PeelingStats& stats)
 {
 	//scalarGainFitter(channelIndex);
-	positionFitter(channelIndex);
+	positionFitter(channelIndex, stats);
 }
 
 int IonPeeler::posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vector *f)
@@ -356,7 +362,7 @@ int IonPeeler::posMinimizationFuncBoth(const gsl_vector *x, void *data, gsl_vect
 	return GSL_SUCCESS;
 }
 
-void IonPeeler::positionFitter(size_t channelIndex)
+void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 {
 	const gsl_multifit_fdfsolver_type *T = gsl_multifit_fdfsolver_lmsder;
 	const double lambda = _bandData.ChannelWavelength(channelIndex);
@@ -374,50 +380,141 @@ void IonPeeler::positionFitter(size_t channelIndex)
 	fInfo.modelData.resize((_curEndRow-_curStartRow)*4);
 	fInfo.channelIndex = channelIndex;
 	
-	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
+	ao::uvector<double>
+		_solutionsG(_predictionModels.size()),
+		_solutionsDL(_predictionModels.size()),
+		_solutionsDM(_predictionModels.size());
+	
+	for(size_t fitIteration=0; fitIteration!=_fitIterationCount; ++fitIteration)
 	{
-		ao::uvector<std::complex<double>>::iterator modelPtr = fInfo.modelData.begin();
-		for(size_t row=_curStartRow; row!=_curEndRow; ++row)
+		for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 		{
-			const RowData& rowData = _rowData[row - _curStartRow];
-			if(rowData.a1 != rowData.a2)
+			double&
+				g = _solutionsG[sourceIndex],
+				dl = _solutionsDL[sourceIndex],
+				dm = _solutionsDM[sourceIndex];
+			
+			// Predict
+			ao::uvector<std::complex<double>>::iterator modelPtr = fInfo.modelData.begin();
+			for(size_t row=_curStartRow; row!=_curEndRow; ++row)
 			{
-				const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
-				_predicters[sourceIndex]->Predict4(&*modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
-				modelPtr += 4;
+				const RowData& rowData = _rowData[row - _curStartRow];
+				if(rowData.a1 != rowData.a2)
+				{
+					const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
+					_predicters[sourceIndex]->Predict4(&*modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
+					modelPtr += 4;
+				}
+			}
+			
+			// Add back if it was subtracted
+			if(fitIteration != 0)
+			{
+				modelPtr = fInfo.modelData.begin();
+				for(size_t row=_curStartRow; row!=_curEndRow; ++row)
+				{
+					const RowData& rowData = _rowData[row - _curStartRow];
+					if(rowData.a1 != rowData.a2)
+					{
+						std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - _startTimestep);
+						double uOverL = rowData.u / lambda, vOverL = rowData.v / lambda;
+						double expTerm = (uOverL * dl + vOverL * dm) * 2.0 * M_PI;
+						double sExp, cExp;
+						sincos(expTerm, &sExp, &cExp);
+						for(size_t p=0; p!=4; ++p)
+						{
+							std::complex<double> rotModel = std::complex<double>(
+									modelPtr[p].real() * cExp - modelPtr[p].imag() * sExp,
+									modelPtr[p].real() * sExp + modelPtr[p].imag() * cExp
+								);
+							std::complex<double> corModel = g * rotModel;
+							dataPtr[p] -= corModel;
+						}
+						modelPtr += 4;
+					}
+				}
+			}
+			
+			// Fit
+			gsl_multifit_function_fdf fdf;
+			fdf.f = &posMinimizationFunc;
+			fdf.df = &posMinimizationFuncDeriv;
+			fdf.fdf = &posMinimizationFuncBoth;
+			fdf.n = dataValueCount;
+			fdf.p = 3;
+			fdf.params = &fInfo;
+			
+			double initialValsArray[3];
+			if(fitIteration == 0)
+			{
+				initialValsArray[0] = 1.0;
+				initialValsArray[1] = 0.0;
+				initialValsArray[2] = 0.0;
+			}
+			else {
+				initialValsArray[0] = g;
+				initialValsArray[1] = dl;
+				initialValsArray[2] = dm;
+			}
+			gsl_vector_view initialVals = gsl_vector_view_array (initialValsArray, 3);
+			gsl_multifit_fdfsolver_set (solver, &fdf, &initialVals.vector);
+
+			int status;
+			size_t iter = 0;
+			do {
+				iter++;
+				status = gsl_multifit_fdfsolver_iterate(solver);
+				
+				if(status)
+					break;
+				
+				status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
+				
+			} while (status == GSL_CONTINUE && iter < 100);
+			
+			g = gsl_vector_get (solver->x, 0);
+			dl = gsl_vector_get (solver->x, 1);
+			dm = gsl_vector_get (solver->x, 2);
+			//std::cout << gsl_strerror(status) << "\n";
+			//std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
+			
+			if(fitIteration+1 == _fitIterationCount)
+			{
+				stats.lsFits++;
+				stats.lsFittingIterations += iter;
+				stats.gSum += g;
+				stats.dlSum += dl;
+				stats.dmSum += dm;
+				stats.gSumSq += g*g;
+				stats.dlSumSq += dl*dl;
+				stats.dmSumSq += dm*dm;
+			}
+			
+			// Subtract
+			modelPtr = fInfo.modelData.begin();
+			for(size_t row=_curStartRow; row!=_curEndRow; ++row)
+			{
+				const RowData& rowData = _rowData[row - _curStartRow];
+				if(rowData.a1 != rowData.a2)
+				{
+					std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - _startTimestep);
+					double uOverL = rowData.u / lambda, vOverL = rowData.v / lambda;
+					double expTerm = (uOverL * dl + vOverL * dm) * 2.0 * M_PI;
+					double sExp, cExp;
+					sincos(expTerm, &sExp, &cExp);
+					for(size_t p=0; p!=4; ++p)
+					{
+						std::complex<double> rotModel = std::complex<double>(
+								modelPtr[p].real() * cExp - modelPtr[p].imag() * sExp,
+								modelPtr[p].real() * sExp + modelPtr[p].imag() * cExp
+							);
+						std::complex<double> corModel = g * rotModel;
+						dataPtr[p] -= corModel;
+					}
+					modelPtr += 4;
+				}
 			}
 		}
-		
-		gsl_multifit_function_fdf fdf;
-		fdf.f = &posMinimizationFunc;
-		fdf.df = &posMinimizationFuncDeriv;
-		fdf.fdf = &posMinimizationFuncBoth;
-		fdf.n = dataValueCount;
-		fdf.p = 3;
-		fdf.params = &fInfo;
-		
-		double initialValsArray[3] = { 1.0, 0.0, 0.0 };
-		gsl_vector_view initialVals = gsl_vector_view_array (initialValsArray, 3);
-		gsl_multifit_fdfsolver_set (solver, &fdf, &initialVals.vector);
-
-		int status;
-		size_t iter = 0;
-		do {
-			iter++;
-			status = gsl_multifit_fdfsolver_iterate(solver);
-			
-			if(status)
-				break;
-			
-			status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
-			
-		} while (status == GSL_CONTINUE && iter < 100);
-		
-		double g = gsl_vector_get (solver->x, 0);
-		double dl = gsl_vector_get (solver->x, 1);
-		double dm = gsl_vector_get (solver->x, 2);
-		std::cout << gsl_strerror(status) << "\n";
-		std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
 	}
 	gsl_multifit_fdfsolver_free(solver);
 }
@@ -547,4 +644,21 @@ void IonPeeler::SaveSolutions(const string& filename) const
 	Serializable::SerializeToUInt64(str, _predictionModels.size());
 	str.write(reinterpret_cast<const char*>(_solutions.data()), sizeof(std::complex<double>) * _solutions.size());
 	str.write(reinterpret_cast<const char*>(_solutionWeights.data()), sizeof(double) * _solutionWeights.size());
+}
+
+std::string IonPeeler::radToString(double r)
+{
+	std::ostringstream str;
+	str << 60.0*60.0*(r*180.0)/M_PI << "''";
+	return str.str();
+}
+
+void IonPeeler::outputStats(const IonPeeler::PeelingStats& stats)
+{
+	std::cout
+		<< "Avg lsiterations=" << double(stats.lsFittingIterations) / stats.lsFits
+		<< ", avg g=" << stats.gSum / stats.lsFits
+		<< ", ion avg=" << radToString(stats.dlSum/stats.lsFits) << ',' << radToString(stats.dmSum/stats.lsFits)
+		<< ", ion RMS=" << radToString(sqrt(stats.dlSumSq/stats.lsFits)) << ',' << radToString(sqrt(stats.dmSumSq/stats.lsFits))
+		<< '\n';
 }
