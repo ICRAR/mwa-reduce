@@ -1,6 +1,7 @@
 #ifndef MODELSOURCE_H
 #define MODELSOURCE_H
 
+#include <algorithm>
 #include <string>
 #include <sstream>
 
@@ -263,6 +264,11 @@ class ModelSource
 					i->SetSED(sed);
 				}
 			}
+		}
+		
+		void SortComponents()
+		{
+			std::sort(_components.rbegin(), _components.rend());
 		}
 	private:
 		std::string _name;

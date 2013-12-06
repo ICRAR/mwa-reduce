@@ -3,6 +3,7 @@
 #include "uvector.h"
 
 #include <iostream>
+#include <fstream>
 
 class Cluster
 {
@@ -145,7 +146,7 @@ void Output(const std::vector<Cluster>& clusters)
 			{
 				const ModelSource& source = *clusters[i].Source(s);
 				double flux = source.TotalFlux(150000000.0, 0);
-				double dist = clusters[i].AngularDistance(source);
+				double dist = clusters[i].AngularDistance(source)*180.0/M_PI;
 				sumDist += dist;
 				sumDistSq += dist*dist;
 				if(flux > maxSource) maxSource = flux;
@@ -154,7 +155,6 @@ void Output(const std::vector<Cluster>& clusters)
 				sum += flux;
 				++n;
 			}
-			maxDist *= 180.0/M_PI;
 			std::cout << ", min=" << minSource << ", max=" << maxSource << ", sum=" << sum << ", max dist=" << maxDist << " deg";
 			sumOfMaxDist += maxDist;
 			if(maxDist > maxDistOfAll) maxDistOfAll = maxDist;
@@ -234,7 +234,16 @@ int main(int argc, char* argv[])
 				sourceCluster.AddComponent(*compIter);
 			}
 		}
+		sourceCluster.SortComponents();
 		outputModel.AddSource(sourceCluster);
 	}
 	outputModel.Save(argv[2]);
+	
+	std::ofstream str("kvis.ann");
+	for(size_t cIndex=0; cIndex!=clusters.size(); ++cIndex)
+	{
+		const Cluster& cluster = clusters[cIndex];
+		str << "TEXT " << cluster.MeanRA()*180.0/M_PI << " " << cluster.MeanDec()*180.0/M_PI << " cluster" << (cIndex+1) << "\n";
+	}
+	
 }
