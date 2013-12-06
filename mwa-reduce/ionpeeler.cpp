@@ -385,7 +385,7 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 		_solutionsDM(_predictionModels.size());
 	
 	// The array containing for each source, the model data per cross-correlated row: modelData[s][row*4+p]
-	std::vector<ao::uvector<std::complex<double>>> modelDataPerSource;
+	std::vector<ao::uvector<std::complex<double>>> modelDataPerSource(_predictionModels.size());
 	
 	// Predict model for this source
 	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
