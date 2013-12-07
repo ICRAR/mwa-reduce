@@ -11,13 +11,47 @@
 #include <fstream>
 #include <set>
 
+class IsApparentLessBright
+{
+public:
+	BeamEvaluator* _beam;
+	double _frequency;
+	
+	bool operator()(const ModelSource& lhs, const ModelSource& rhs) const
+	{
+		return totalAppFlux(lhs) < totalAppFlux(rhs);
+	}
+	
+	bool operator()(const ModelComponent& lhs, const ModelComponent& rhs) const
+	{
+		return totalAppFlux(lhs) < totalAppFlux(rhs);
+	}
+	
+	double totalAppFlux(const ModelComponent& c) const
+	{
+		double flux[4];
+		for(size_t p=0; p!=4; ++p)
+			flux[p] = c.SED().FluxAtFrequency(_frequency, p);
+		_beam->AbsToApparent(c.PosRA(), c.PosDec(), _frequency, flux);
+		return (flux[0] + flux[3]) * 0.5;
+	}
+	
+	double totalAppFlux(const ModelSource& s) const
+	{
+		double totalFlux = 0.0;
+		for(ModelSource::const_iterator compIter=s.begin(); compIter!=s.end(); ++compIter)
+			totalFlux += totalAppFlux(*compIter);
+		return totalFlux / s.ComponentCount();
+	}
+};
+
 int main(int argc, char *argv[])
 {
 	if(argc == 1)
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-without/only <areafile>]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-appsort <ms>] [-without/only <areafile>]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -27,8 +61,8 @@ int main(int argc, char *argv[])
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, delNoisySourceLimit = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0;
-	std::string outputModel, collectName, appThresholdMS;
-	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false;
+	std::string outputModel, collectName, appThresholdMS, appSortMS;
+	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false, doAppSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
 	bool excludeArea = false;
@@ -134,6 +168,11 @@ int main(int argc, char *argv[])
 		} else if(strcmp(argv[argi], "-sort") == 0)
 		{
 			doSort = true;
+		} else if(strcmp(argv[argi], "-appsort") == 0)
+		{
+			doAppSort = true;
+			++argi;
+			appSortMS = argv[argi];
 		} else if(strcmp(argv[argi], "-without") == 0 || strcmp(argv[argi], "-only") == 0)
 		{
 			excludeArea = strcmp(argv[argi], "-without") == 0;
@@ -184,6 +223,28 @@ int main(int argc, char *argv[])
 		model.Optimize();
 	if(doSort)
 		model.Sort();
+	if(doAppSort)
+	{
+		casa::MeasurementSet ms(appSortMS);
+		BeamEvaluator beam(ms);
+		BandData bandData(ms.spectralWindow());
+		IsApparentLessBright compareFunc;
+		compareFunc._beam = &beam;
+		compareFunc._frequency = bandData.CentreFrequency();
+		std::vector<ModelSource> temp(model.begin(), model.end());
+		std::sort(temp.rbegin(), temp.rend(), compareFunc);
+		
+		Model tempModel;
+		for(std::vector<ModelSource>::const_iterator s=temp.begin(); s!=temp.end(); ++s)
+		{
+			std::vector<ModelComponent> components(s->begin(), s->end());
+			std::sort(components.rbegin(), components.rend(), compareFunc);
+			ModelSource sortedSource;
+			for(std::vector<ModelComponent>::const_iterator c=components.begin(); c!=components.end(); ++c)
+				sortedSource.AddComponent(*c);
+			tempModel.AddSource(sortedSource);
+		}
+	}
 	
 	if(areaSet != 0)
 	{
