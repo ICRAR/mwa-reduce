@@ -244,6 +244,7 @@ int main(int argc, char *argv[])
 				sortedSource.AddComponent(*c);
 			tempModel.AddSource(sortedSource);
 		}
+		model = tempModel;
 	}
 	
 	if(areaSet != 0)
