@@ -14,6 +14,7 @@ void Predicter::initialize(ModelComponent& component)
 	parameters->m = m;
 	parameters->brightness = new NumType[_channelCount*4];
 	parameters->beamValues = new CNumType[_channelCount*4];
+	parameters->appBrightness = new CNumType[_channelCount*4];
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
 		for(size_t p=0; p!=4; ++p)
@@ -69,10 +70,15 @@ void Predicter::updateBeam(ModelComponent& component)
 		{
 			double chCentreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
 			_beamEvaluator->EvaluateAbsToApparentGain(posInfo, chCentreFreq, &parameters->beamValues[ch*4]);
+			CNumType temp[4];
+			Matrix2x2::ATimesB(temp, &parameters->beamValues[ch*4], &parameters->brightness[ch*4]);
+			Matrix2x2::ATimesHermB(&parameters->appBrightness[ch*4], temp, &parameters->beamValues[ch*4]);
 		}
 		else {
 			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
 			parameters->beamValues[ch*4+2] = 0.0; parameters->beamValues[ch*4+3] = 1.0;
+			parameters->appBrightness[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
+			parameters->appBrightness[ch*4+2] = 0.0; parameters->beamValues[ch*4+3] = 1.0;
 		}
 	}
 }
@@ -111,31 +117,45 @@ void Predicter::predict4(CNumType *dest, const ModelComponent& component, NumTyp
 			NumType l = parameters->l, m = parameters->m;
 			NumType lmsqrt = parameters->lmsqrt;
 			NumType angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
-			double sinangle, cosangle;
-			sincos(angle, &sinangle, &cosangle);
-			for(size_t p=0; p!=4; ++p)
+			double sinangleOverLMS, cosangleOverLMS;
+			sincos(angle, &sinangleOverLMS, &cosangleOverLMS);
+			sinangleOverLMS /= lmsqrt;
+			cosangleOverLMS /= lmsqrt;
+			if(_beamEvaluator != 0)
 			{
-				NumType fact = parameters->brightness[channelIndex*4+p] / lmsqrt;
-				dest[p] = CNumType(fact * cosangle, fact * sinangle);
+				for(size_t p=0; p!=4; ++p)
+				{
+					CNumType fact = parameters->appBrightness[channelIndex*4+p];
+					dest[p] = CNumType(
+						fact.real() * cosangleOverLMS - fact.imag() * sinangleOverLMS,
+						fact.real() * sinangleOverLMS + fact.imag() * cosangleOverLMS);
+				}
+			}
+			else {
+				for(size_t p=0; p!=4; ++p)
+				{
+					NumType fact = parameters->brightness[channelIndex*4+p];
+					dest[p] = CNumType(fact * cosangleOverLMS, fact * sinangleOverLMS);
+				}
 			}
 		}
 	}
 	
-	CNumType temp[4];
 	if(!_rhsSolutions.empty())
 	{
+		CNumType temp[4];
 		std::complex<double>
 			*antenna1Sol = &_rhsSolutions[a1*_channelCount*4],
 			*antenna2Sol = &_rhsSolutions[a2*_channelCount*4];
 		Matrix2x2::ATimesB(temp, antenna1Sol, dest);
 		Matrix2x2::ATimesHermB(dest, temp, antenna2Sol);
 	}
-	if(_beamEvaluator != 0)
+	/*if(_beamEvaluator != 0)
 	{
 		SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
 		Matrix2x2::ATimesB(temp, &parameters->beamValues[channelIndex*4], dest);
 		Matrix2x2::ATimesHermB(dest, temp, &parameters->beamValues[channelIndex*4]);
-	}
+	}*/
 }
 
 void Predicter::Predict4(Predicter::CNumType* dest, const ModelSource& source, Predicter::NumType u, Predicter::NumType v, Predicter::NumType w, size_t channelIndex, size_t a1, size_t a2)

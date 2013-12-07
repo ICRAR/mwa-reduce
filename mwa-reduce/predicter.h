@@ -42,7 +42,7 @@ class Predicter
 		struct SourceParameters
 		{
 			NumType l, m, lmsqrt, *brightness;
-			CNumType *beamValues;
+			CNumType *beamValues, *appBrightness;
 		};
 		void readSolutions(const std::string& solutionFile);
 		
