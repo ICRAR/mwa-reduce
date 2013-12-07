@@ -239,7 +239,8 @@ int main(int argc, char *argv[])
 		{
 			std::vector<ModelComponent> components(s->begin(), s->end());
 			std::sort(components.rbegin(), components.rend(), compareFunc);
-			ModelSource sortedSource;
+			ModelSource sortedSource(*s);
+			sortedSource.ClearComponents();
 			for(std::vector<ModelComponent>::const_iterator c=components.begin(); c!=components.end(); ++c)
 				sortedSource.AddComponent(*c);
 			tempModel.AddSource(sortedSource);

@@ -173,6 +173,10 @@ class ModelSource
 			_components.push_back(component);
 		}
 		
+		void ClearComponents() {
+			_components.clear();
+		}
+		
 		double TotalFlux(double frequencyStartHz, double frequencyEndHz, size_t polarizationIndex) const
 		{
 			double flux = 0.0;
