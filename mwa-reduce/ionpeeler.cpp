@@ -37,7 +37,6 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 {
 	casa::MeasurementSet ms(msName, casa::MeasurementSet::Update);
 	_model = Model(modelName);
-	_model.SortOnBrightness();
 	
 	initWeighting(ms);
 	

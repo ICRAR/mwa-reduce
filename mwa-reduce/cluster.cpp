@@ -226,16 +226,19 @@ int main(int argc, char* argv[])
 		nameStr << "cluster" << (cIndex+1);
 		sourceCluster.SetName(nameStr.str());
 		const Cluster& cluster = clusters[cIndex];
-		for(size_t s=0; s!=cluster.SourceCount(); ++s)
+		if(cluster.SourceCount() != 0)
 		{
-			const ModelSource& source = *cluster.Source(s);
-			for(ModelSource::const_iterator compIter=source.begin(); compIter!=source.end(); ++compIter)
+			for(size_t s=0; s!=cluster.SourceCount(); ++s)
 			{
-				sourceCluster.AddComponent(*compIter);
+				const ModelSource& source = *cluster.Source(s);
+				for(ModelSource::const_iterator compIter=source.begin(); compIter!=source.end(); ++compIter)
+				{
+					sourceCluster.AddComponent(*compIter);
+				}
 			}
+			sourceCluster.SortComponents();
+			outputModel.AddSource(sourceCluster);
 		}
-		sourceCluster.SortComponents();
-		outputModel.AddSource(sourceCluster);
 	}
 	outputModel.Save(argv[2]);
 	
