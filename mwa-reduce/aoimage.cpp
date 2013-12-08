@@ -319,8 +319,9 @@ size_t readData(PolarizationEnum polarization,
 		case Polarization::YY:
 			return readDataYY(channelCount, polarizationCount,
 				outPtr, outFlagPtr, inPtr, flagPtr);
+		default:
+			throw std::runtime_error("Unsupported polarization");
 	}
-	throw std::runtime_error("Unsupported polarization");
 }
 
 void image(const char *msName, const char *columnName, BTPImager &imager, size_t avgFactor, ImageInfo &info)

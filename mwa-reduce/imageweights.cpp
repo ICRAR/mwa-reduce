@@ -37,7 +37,7 @@ double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, 
 	return weightSum / channelCount;
 }
 
-void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode)
+void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const MSSelection& selection)
 {
 	const MultiBandData bandData(ms.spectralWindow(), ms.dataDescription());
 	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
@@ -108,6 +108,7 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode)
 			}
 		}
 	}
+	// TODO this is not right: can't update Sum here since there might be more mses be gridded
 	if(weightMode.IsBriggs())
 	{
 		double avgW = 0.0;

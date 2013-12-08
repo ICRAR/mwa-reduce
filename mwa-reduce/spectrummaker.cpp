@@ -348,7 +348,7 @@ void SpectrumMaker::initWeighting()
 		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
 		{
 			casa::MeasurementSet ms(i->first);
-			_imageWeights->Grid(ms, _weightMode);
+			_imageWeights->Grid(ms, _weightMode, MSSelection::Everything());
 			if(_files.size() > 1)
 				std::cout << ". " << std::flush;
 		}

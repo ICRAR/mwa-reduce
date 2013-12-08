@@ -9,6 +9,7 @@
 #include "uvector.h"
 #include "inversionalgorithm.h"
 #include "weightmode.h"
+#include "msselection.h"
 
 class ImageWeights
 {
@@ -43,7 +44,7 @@ class ImageWeights
 			return sumValue(u, v);
 		}
 
-		void Grid(casa::MeasurementSet& ms, WeightMode weightMode);
+		void Grid(casa::MeasurementSet& ms, WeightMode weightMode, const MSSelection& selection);
 		
 		double ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 

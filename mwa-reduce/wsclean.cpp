@@ -1,19 +1,21 @@
+#include "areaset.h"
+#include "beamevaluator.h"
 #include "cleanalgorithm.h"
-#include "inversionalgorithm.h"
-#include "wsinversion.h"
 #include "fitswriter.h"
+#include "imageweights.h"
+#include "inversionalgorithm.h"
 #include "modelrenderer.h"
 #include "model.h"
-#include "areaset.h"
-#include "parser/areaparser.h"
-#include "beamevaluator.h"
-#include "imageweights.h"
+#include "msselection.h"
 #include "stopwatch.h"
+#include "wsinversion.h"
+
+#include "parser/areaparser.h"
+
+#include <boost/algorithm/string.hpp>
 
 #include <iostream>
 #include <memory>
-
-#include <boost/algorithm/string.hpp>
 
 std::string commandLine;
 
@@ -89,6 +91,8 @@ int main(int argc, char *argv[])
 			"\t-channelrange <start-channel> <end-channel>\n"
 			"\t   Only image the given channel range. Indices specify channel indices, end index is exclusive.\n"
 			"\t   Default: image all channels.\n"
+			"\t-field <fieldid>\n"
+			"\t   Image the given field id. Default: first field (id 0).\n"
 			"\t-weight <weightmode>\n"
 			"\t   Weightmode can be: natural, mwa, uniform, briggs. Default: uniform. When using Briggs' weighting,\n"
 			"\t   add the robustness parameter, like: \"-weight briggs 0.5\".\n"
@@ -110,7 +114,8 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
-	size_t nWLayers = 0, nIter = 0, intervalStart = 0, intervalEnd = 0, channelRangeStart = 0, channelRangeEnd = 0;
+	size_t nWLayers = 0, nIter = 0;
+	MSSelection selection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
 	WeightMode weightMode(WeightMode::UniformWeighted);
@@ -247,15 +252,18 @@ int main(int argc, char *argv[])
 		}
 		else if(param == "interval")
 		{
-			intervalStart = atoi(argv[argi+1]);
-			intervalEnd = atoi(argv[argi+2]);
+			selection.SetInterval(atoi(argv[argi+1]), atoi(argv[argi+2]));
 			argi += 2;
 		}
 		else if(param == "channelrange")
 		{
-			channelRangeStart = atoi(argv[argi+1]);
-			channelRangeEnd = atoi(argv[argi+2]);
+			selection.SetChannelRange(atoi(argv[argi+1]), atoi(argv[argi+2]));
 			argi += 2;
+		}
+		else if(param == "field")
+		{
+			++argi;
+			selection.SetFieldId(atoi(argv[argi]));
 		}
 		else if(param == "weight")
 		{
@@ -314,7 +322,7 @@ int main(int argc, char *argv[])
 		for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
 		{
 			casa::MeasurementSet ms(inversionAlgorithm->MeasurementSetPath(i));
-			imageWeights->Grid(ms, weightMode);
+			imageWeights->Grid(ms, weightMode, selection);
 			if(inversionAlgorithm->MeasurementSetCount() > 1)
 				std::cout << i << ' ' << std::flush;
 		}
@@ -349,10 +357,7 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetDataColumnName(columnName);
 	inversionAlgorithm->SetWeighting(weightMode);
 	inversionAlgorithm->SetImaginaryPart(imaginaryPart);
-	if(intervalEnd != 0)
-		inversionAlgorithm->SetInterval(intervalStart, intervalEnd);
-	if(channelRangeEnd != 0)
-		inversionAlgorithm->SetChannelRange(channelRangeStart, channelRangeEnd);
+	inversionAlgorithm->SetSelection(selection);
 	
 	std::vector<double> psf;
 	bool isFirstInversion = true;
@@ -519,6 +524,7 @@ int main(int argc, char *argv[])
 		case Polarization::XY: polarizationIndex = 1; break;
 		case Polarization::YX: polarizationIndex = 2; break;
 		case Polarization::YY: polarizationIndex = 3; break;
+		default: throw std::runtime_error("Unsupported polarization");
 	}
 	double
 		freqLow = fitsWriter.Frequency() - fitsWriter.Bandwidth()*0.5,

@@ -6,6 +6,7 @@
 #include "predicter.h"
 #include "progressbar.h"
 #include "serializable.h"
+#include "msselection.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <tables/Tables/ArrayColumn.h>
@@ -29,7 +30,7 @@ void IonPeeler::initWeighting(casa::MeasurementSet& ms)
 	{
 		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
 		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale));
-		_imageWeights->Grid(ms, _weightMode);
+		_imageWeights->Grid(ms, _weightMode, MSSelection::Everything());
 	}
 }
 

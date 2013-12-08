@@ -1,12 +1,13 @@
 #ifndef INVERSION_ALGORITHM_H
 #define INVERSION_ALGORITHM_H
 
+#include "polarizationenum.h"
+#include "msselection.h"
+#include "weightmode.h"
+
 #include <cmath>
 #include <string>
 #include <vector>
-
-#include "polarizationenum.h"
-#include "weightmode.h"
 
 class InversionAlgorithm
 {
@@ -17,10 +18,6 @@ class InversionAlgorithm
 			_pixelSizeX((1.0 / 60.0) * M_PI / 180.0),
 			_pixelSizeY((1.0 / 60.0) * M_PI / 180.0),
 			_wGridSize(0),
-			_intervalStart(0),
-			_intervalEnd(0),
-			_channelRangeStart(0),
-			_channelRangeEnd(0),
 			_measurementSetPaths(),
 			_dataColumnName("DATA"),
 			_doImagePSF(false),
@@ -30,7 +27,8 @@ class InversionAlgorithm
 			_polarization(Polarization::StokesI),
 			_imaginaryPart(false),
 			_weighting(WeightMode::UniformWeighted),
-			_verbose(false)
+			_verbose(false),
+			_selection()
 		{
 		}
 		virtual ~InversionAlgorithm()
@@ -52,12 +50,7 @@ class InversionAlgorithm
 		PolarizationEnum Polarization() const { return _polarization; }
 		WeightMode Weighting() const { return _weighting; }
 		class ImageWeights* PrecalculatedWeightInfo() const { return _precalculatedWeightInfo; }
-		bool HasInterval() const { return _intervalEnd != 0; }
-		size_t IntervalStart() const { return _intervalStart; }
-		size_t IntervalEnd() const { return _intervalEnd; }
-		bool HasChannelRange() const { return _channelRangeEnd != 0; }
-		size_t ChannelRangeStart() const { return _channelRangeStart; }
-		size_t ChannelRangeEnd() const { return _channelRangeEnd; }
+		const MSSelection& Selection() const { return _selection; }
 		bool ImaginaryPart() const { return _imaginaryPart; }
 		bool Verbose() const { return _verbose; }
 		
@@ -121,15 +114,9 @@ class InversionAlgorithm
 		{ 
 			_precalculatedWeightInfo = precalculatedWeightInfo;
 		}
-		void SetInterval(size_t intervalStart, size_t intervalStop)
+		void SetSelection(const MSSelection& selection)
 		{
-			_intervalStart = intervalStart;
-			_intervalEnd = intervalStop;
-		}
-		void SetChannelRange(size_t channelRangeStart, size_t channelRangeEnd)
-		{
-			_channelRangeStart = channelRangeStart;
-			_channelRangeEnd = channelRangeEnd;
+			_selection = selection;
 		}
 		void SetVerbose(bool verbose)
 		{
@@ -156,8 +143,6 @@ class InversionAlgorithm
 		size_t _imageWidth, _imageHeight;
 		double _pixelSizeX, _pixelSizeY;
 		size_t _wGridSize;
-		size_t _intervalStart, _intervalEnd;
-		size_t _channelRangeStart, _channelRangeEnd;
 		std::vector<std::string> _measurementSetPaths;
 		std::string _dataColumnName;
 		bool _doImagePSF, _doSubtractModel, _addToModel;
@@ -166,6 +151,7 @@ class InversionAlgorithm
 		bool _imaginaryPart;
 		WeightMode _weighting;
 		bool _verbose;
+		MSSelection _selection;
 };
 
 #endif
