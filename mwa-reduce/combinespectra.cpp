@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			spectrumMaker.AddSource(*s);
 		
-		for(size_t argi=3; argi!=argc; ++argi)
+		for(int argi=3; argi!=argc; ++argi)
 		{
 			std::cout << "Adding " << argv[argi] << "...\n";
 			spectrumMaker.AddMeasurementsFromFile(argv[argi]);

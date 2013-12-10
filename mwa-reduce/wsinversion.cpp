@@ -48,10 +48,10 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	
 	std::cout << 'B' << std::flush;
 	msData.bandData = MultiBandData(ms.spectralWindow(), ms.dataDescription());
-	if(HasChannelRange())
+	if(Selection().HasChannelRange())
 	{
-		msData.startChannel = ChannelRangeStart();
-		msData.endChannel = ChannelRangeEnd();
+		msData.startChannel = Selection().ChannelRangeStart();
+		msData.endChannel = Selection().ChannelRangeEnd();
 		const BandData& firstBand = msData.bandData.FirstBand();
 		if(msData.startChannel >= firstBand.ChannelCount() || msData.endChannel > firstBand.ChannelCount()
 			|| msData.startChannel == msData.endChannel)
@@ -87,14 +87,14 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
+	casa::ROScalarColumn<int> fieldIdColumn(ms, ms.columnName(casa::MSMainEnums::FIELD_ID));
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
 	std::cout << 'F' << std::flush;
 	casa::MSField fTable(ms.field());
-	if(fTable.nrow() != 1) throw std::runtime_error("Need exactly one field in set");
 	casa::MDirection::ROScalarColumn refDirColumn(fTable, fTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
-	casa::MDirection refDir = refDirColumn(0);
+	casa::MDirection refDir = refDirColumn(Selection().FieldId());
 	casa::MEpoch curtime = timeColumn(0);
 	casa::MeasFrame frame(ant1Pos, curtime);
 	casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
@@ -106,7 +106,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 
 	msData.rowStart = 0;
 	msData.rowEnd = ms.nrow();
-	if(HasInterval())
+	if(Selection().HasInterval())
 	{
 		std::cout << "Determining first and last row index... " << std::flush;
 		casa::MEpoch time = timeColumn(0);
@@ -116,9 +116,9 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 			if(time.getValue() != timeColumn(row).getValue())
 			{
 				++timestepIndex;
-				if(timestepIndex == IntervalStart())
+				if(timestepIndex == Selection().IntervalStart())
 					msData.rowStart = row;
-				if(timestepIndex == IntervalEnd())
+				if(timestepIndex == Selection().IntervalEnd())
 				{
 					msData.rowEnd = row;
 					break;
@@ -138,7 +138,7 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	msData.polarizationCount = flagShape[0];
 	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
-		if(ant1Column(row) != ant2Column(row))
+		if(ant1Column(row) != ant2Column(row) && Selection().IsFieldSelected(fieldIdColumn(row)))
 		{
 			const BandData& curBand = partBandData[dataDescIdColumn(row)];
 			casa::Vector<double> uvwArray = uvwColumn(row);
@@ -227,6 +227,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
+	casa::ROScalarColumn<int> fieldIdColumn(ms, ms.columnName(casa::MSMainEnums::FIELD_ID));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
@@ -246,7 +247,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	size_t rowsRead = 0;
 	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
-		if(ant1Column(row) != ant2Column(row))
+		if(ant1Column(row) != ant2Column(row) && Selection().IsFieldSelected(fieldIdColumn(row)))
 		{
 			casa::Vector<double> uvwArray = uvwColumn(row);
 			const BandData& curBand(selectedBand[dataDescIdColumn(row)]);
@@ -385,6 +386,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
+	casa::ROScalarColumn<int> fieldIdColumn(ms, ms.columnName(casa::MSMainEnums::FIELD_ID));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
 	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
@@ -435,7 +437,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	std::vector<size_t> rowIndices, dataIds;
 	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
-		if(ant1Column(row) != ant2Column(row))
+		if(ant1Column(row) != ant2Column(row) && Selection().IsFieldSelected(fieldIdColumn(row)))
 		{
 			size_t dataDescId = dataDescIdColumn(row);
 			const BandData& curBand(selectedBandData[dataDescId]);
