@@ -19,7 +19,7 @@
 
 std::string commandLine;
 
-void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgorithm)
+void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgorithm, double beamSizeArcmin)
 {
 	double
 		ra = inversionAlgorithm.ImageResultRA(),
@@ -36,10 +36,16 @@ void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgor
 	writer.SetImageDimensions(inversionAlgorithm.ImageWidth(), inversionAlgorithm.ImageHeight(), ra, dec, pixelScaleX, pixelScaleY);
 	writer.SetFrequency(freqCentre, bandwidth);
 	writer.SetDate(dateObs);
-	writer.SetBeamInfo(beamSize);
 	writer.SetPolarization(inversionAlgorithm.Polarization());
 	writer.SetOrigin("WSClean", "W-stacking imager written by Andre Offringa");
 	writer.AddHistory(commandLine);
+	if(beamSizeArcmin != 0.0) {
+		double beamSizeRad = beamSizeArcmin * (M_PI / 60.0 / 180.0);
+		writer.SetBeamInfo(beamSizeRad, beamSizeRad, 0.0);
+	}
+	else {
+		writer.SetBeamInfo(beamSize);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -99,6 +105,9 @@ int main(int argc, char *argv[])
 			"\t-superweight <factor>\n"
 			"\t   Increase the weight gridding box size, similar to Casa's superuniform weighting scheme. Default: 1.0\n"
 			"\t   The factor can be rational and can be less than one for subpixel weighting.\n"
+			"\t-beamsize <arcmin>\n"
+			"\t   Set the FWHM beam size in arcmin for restoring the clean components. Default: longest projected\n"
+			"\t   baseline defines restoring beam.\n"
 			"\t-makepsf\n"
 			"\t   Always make the psf, even when no cleaning is performed.\n"
 			"\t-imaginarypart\n"
@@ -113,7 +122,7 @@ int main(int argc, char *argv[])
 	
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
-	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0;
+	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0;
 	size_t nWLayers = 0, nIter = 0;
 	MSSelection selection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
@@ -288,6 +297,11 @@ int main(int argc, char *argv[])
 			++argi;
 			weightMode.SetSuperWeight(atof(argv[argi]));
 		}
+		else if(param == "beamsize")
+		{
+			++argi;
+			beamSize = atof(argv[argi]);
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -380,7 +394,7 @@ int main(int argc, char *argv[])
 		
 		std::cout << "Writing psf image... " << std::flush;
 		FitsWriter fitsWriter;
-		initFitsWriter(fitsWriter, *inversionAlgorithm);
+		initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
 		fitsWriter.Write(std::string(prefixName) + "-psf.fits", &psf[0]);
 		std::cout << "DONE\n";
 		
@@ -409,7 +423,7 @@ int main(int argc, char *argv[])
 	
 	std::cout << "Writing dirty image... " << std::flush;
 	FitsWriter fitsWriter;
-	initFitsWriter(fitsWriter, *inversionAlgorithm);
+	initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
 	fitsWriter.Write(std::string(prefixName) + "-dirty.fits", &residual[0]);
 	std::cout << "DONE\n";
 	
