@@ -40,7 +40,6 @@ public:
 	{
 		return fieldId == _fieldId;
 	}
-
 	void SetFieldId(size_t fieldId)
 	{ 
 		_fieldId = fieldId; 
