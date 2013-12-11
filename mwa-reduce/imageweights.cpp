@@ -42,6 +42,8 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 	const MultiBandData bandData(ms.spectralWindow(), ms.dataDescription());
 	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
+	casa::ROScalarColumn<int> fieldIdColumn(ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID));
+	casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
 	casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
 	casa::ROArrayColumn<float> weightColumn(ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<bool> flagColumn(ms, casa::MS::columnName(casa::MSMainEnums::FLAG));
@@ -54,11 +56,18 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 	casa::Array<bool> flagArr(shape);
 	casa::Array<float> weightArr(shape);
 	double totalSum = 0.0;
+	size_t timestep = 0;
+	double time = timeColumn(0);
 	
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
-		const int a1 = antenna1Column(row), a2 = antenna2Column(row);
-		if(a1 != a2)
+		const int a1 = antenna1Column(row), a2 = antenna2Column(row), fieldId = fieldIdColumn(row);
+		if(time != timeColumn(row))
+		{
+			++timestep;
+			time = timeColumn(row);
+		}
+		if(selection.IsSelected(fieldId, timestep, a1, a2))
 		{
 			flagColumn.get(row, flagArr);
 			weightColumn.get(row, weightArr);
@@ -75,7 +84,18 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 				vInM = -vInM;
 			}
 			
-			for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
+			size_t startChannel, endChannel;
+			if(selection.HasChannelRange())
+			{
+				startChannel = selection.ChannelRangeStart();
+				endChannel = selection.ChannelRangeEnd();
+			}
+			else {
+				startChannel = 0;
+				endChannel = curBand.ChannelCount();
+			}
+	
+			for(size_t ch=startChannel; ch!=endChannel; ++ch)
 			{
 				double
 					u = uInM / curBand.ChannelWavelength(ch),
