@@ -3,7 +3,9 @@
 #include "imagecoordinates.h"
 #include "areaset.h"
 #include "parser/areaparser.h"
+#include "loghistogram.h"
 #include "beamevaluator.h"
+#include "uvector.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -51,21 +53,21 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-appsort <ms>] [-without/only <areafile>]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>]\n";
 		return 0;
 	}
 	int argi = 1;
 	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, unpolarized = false, delNoisySources = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
-	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, delNoisySourceLimit = 0.0;
+	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, delNoisySourceLimit = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
-	size_t newChannelCount = 0;
+	size_t newChannelCount = 0, logNlogSBinCount = 0;
 	std::string outputModel, collectName, appThresholdMS, appSortMS;
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false, doAppSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
-	bool excludeArea = false;
+	bool excludeArea = false, logNlogS = false;
 	std::unique_ptr<AreaSet> areaSet;
 	while(argv[argi][0]=='-')
 	{
@@ -180,6 +182,13 @@ int main(int argc, char *argv[])
 			areaSet.reset(new AreaSet());
 			AreaParser areaParser;
 			areaParser.Parse(*areaSet, argv[argi]);
+		} else if(strcmp(argv[argi], "-lognlogs") == 0)
+		{
+			++argi;
+			logNlogSFrequency = atof(argv[argi]);
+			++argi;
+			logNlogSBinCount = atoi(argv[argi]);
+			logNlogS = true;
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: ") + argv[argi]);
 		}
@@ -490,6 +499,57 @@ int main(int argc, char *argv[])
 	if(unpolarized)
 	{
 		model.SetUnpolarized();
+	}
+	
+	if(logNlogS)
+	{
+		LogHistogram histogram;
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			const ModelSource& source = *sourcePtr;
+			double x = source.TotalFlux(logNlogSFrequency*1000000.0, 0), y = source.TotalFlux(logNlogSFrequency*1000000.0, 1);
+			histogram.Add(0.5 * (x + y));
+		}
+		long double max = histogram.MaxAmplitude(), min = histogram.MinPositiveAmplitude();
+		long double step = powl(max/min, 1.0/logNlogSBinCount);
+		std::ofstream plotDataStream("lognlogs-data.txt");
+		ao::uvector<long double> vals(logNlogSBinCount);
+		for(size_t i=0; i!=logNlogSBinCount; ++i)
+		{
+			long double
+				intervalStart = min * powl(step, i),
+				mid = min * powl(step, double(i) + 0.5),
+				intervalEnd = min * powl(step, i+1),
+				val = histogram.NormalizedCount(intervalStart, intervalEnd),
+				valNormalized = log10(val * powl(mid, 2.5));
+			vals[i] = valNormalized;
+			plotDataStream << intervalStart << '\t' << intervalEnd << '\t' << intervalStart * sqrt(step) << '\t' << val << '\t' << valNormalized << '\n';
+			intervalStart = intervalEnd;
+		}
+		size_t avgCount = 0;
+		long double avg = 0.0;
+		for(size_t i=logNlogSBinCount/5*3; i<logNlogSBinCount; ++i)
+		{
+			if(std::isfinite(vals[i]))
+			{
+				avg += vals[i];
+				++avgCount;
+			}
+		}
+		avg /= avgCount;
+		
+		std::ofstream plotStream("lognlogs.plt");
+		plotStream <<
+			"set terminal postscript enhanced color\n"
+			"set logscale x\n"
+			"set xrange [" << min << ":" << max << "]\n"
+			"set yrange [:1.2]\n"
+			"set output \"lognlogs.ps\"\n"
+			"set key bottom right\n"
+			"set xlabel \"Flux (Jy)\"\n"
+			"set ylabel \"log N/S^{-2.5}/avg\"\n"
+			"plot \"lognlogs-data.txt\" using 2:(column(5)/" << avg << ") with lines lw 2.0 title \"Measured\", \\\n"
+			"1 with lines lw 2.0 lt 3 title \"Euclidean\"\n";
 	}
 	
 	if(outputPlot)
