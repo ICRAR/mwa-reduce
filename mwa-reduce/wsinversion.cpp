@@ -392,6 +392,27 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 	msData.polarizationCount = dataColumn.shape(0)[0];
 	
+	if(ms.isColumn(casa::MSMainEnums::MODEL_DATA))
+	{
+		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+		casa::IPosition dataShape = dataColumn.shape(0);
+		bool isDefined = _modelColumn->isDefined(0);
+		bool isSameShape = false;
+		if(isDefined)
+		{
+			casa::IPosition modelShape = _modelColumn->shape(0);
+			isSameShape = modelShape == dataShape;
+		}
+		if(!isDefined || !isSameShape)
+		{
+			std::cout << "WARNING: Your model column does not have the same shape as your data column: resetting MODEL column.\n";
+			casa::Array<casa::Complex> zeroArray(dataShape);
+			for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
+				*i = std::complex<float>(0.0, 0.0);
+			for(size_t row=0; row!=ms.nrow(); ++row)
+				_modelColumn->put(row, zeroArray);
+		}
+	}
 	if(!ms.isColumn(casa::MSMainEnums::MODEL_DATA))
 	{
 		std::cout << "Adding model data column... " << std::flush;
