@@ -238,6 +238,14 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	
 	casa::IPosition dataShape = dataColumn.shape(0);
 	
+	bool isWeightDefined = weightColumn.isDefined(0);
+	bool hasWeights = false;
+	if(isWeightDefined)
+	{
+		casa::IPosition modelShape = weightColumn.shape(0);
+		hasWeights = (modelShape == dataShape);
+	}
+		
 	const MultiBandData selectedBand(msData.SelectedBand());
 	_imager->PrepareBand(selectedBand);
 	
@@ -245,6 +253,11 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	casa::Array<float> msWeightsArr(dataShape);
 	casa::Array<bool> msFlagsArr(dataShape);
 	size_t rowsRead = 0;
+	if(!hasWeights)
+	{
+		msWeightsArr.set(1);
+		std::cout << "WARNING: This measurement set has no or an invalid WEIGHT_SPECTRUM column; all visibilities are assumed to have equal weight.\n";
+	}
 	for(size_t row=msData.rowStart; row!=msData.rowEnd; ++row)
 	{
 		if(ant1Column(row) != ant2Column(row) && Selection().IsFieldSelected(fieldIdColumn(row)))
@@ -264,7 +277,8 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				newItem.dataDescId = dataDescIdColumn(row);
 				newItem.data = new std::complex<float>[curBand.ChannelCount()];
 				
-				weightColumn.get(row, msWeightsArr);
+				if(hasWeights)
+					weightColumn.get(row, msWeightsArr);
 				flagColumn.get(row, msFlagsArr);
 				
 				double rowWeight = 1.0;

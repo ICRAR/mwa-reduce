@@ -50,6 +50,15 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
 	
 	const casa::IPosition shape(flagColumn.shape(0));
+	
+	bool isWeightDefined = weightColumn.isDefined(0);
+	bool hasWeights = false;
+	if(isWeightDefined)
+	{
+		casa::IPosition modelShape = weightColumn.shape(0);
+		hasWeights = (modelShape == shape);
+	}
+		
 	const size_t polarizationCount = shape[0];
 	
 	casa::Array<casa::Complex> dataArr(shape);
@@ -58,6 +67,9 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 	double totalSum = 0.0;
 	size_t timestep = 0;
 	double time = timeColumn(0);
+	
+	if(!hasWeights)
+		weightArr.set(1.0);
 	
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
@@ -70,7 +82,8 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 		if(selection.IsSelected(fieldId, timestep, a1, a2))
 		{
 			flagColumn.get(row, flagArr);
-			weightColumn.get(row, weightArr);
+			if(hasWeights)
+				weightColumn.get(row, weightArr);
 			const casa::Vector<double> uvw = uvwColumn(row);
 			const BandData& curBand = bandData[dataDescIdColumn(row)];
 			
