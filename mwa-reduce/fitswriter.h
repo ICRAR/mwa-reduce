@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "polarizationenum.h"
 
@@ -89,6 +90,27 @@ class FitsWriter
 		double Frequency() const { return _frequency; }
 		double Bandwidth() const { return _bandwidth; }
 		double BeamSizeMajorAxis() const { return _beamMajorAxisRad; }
+		
+		void SetExtraKeyword(const std::string& name, const std::string& value)
+		{
+			if(_extraStringKeywords.count(name) != 0)
+				_extraStringKeywords.erase(name);
+			_extraStringKeywords.insert(std::make_pair(name, value));
+		}
+		void SetExtraKeyword(const std::string& name, double value)
+		{
+			if(_extraNumKeywords.count(name) != 0)
+				_extraNumKeywords.erase(name);
+			_extraNumKeywords.insert(std::make_pair(name, value));
+		}
+		void SetExtraStringKeywords(const std::map<std::string, std::string>& keywords)
+		{
+			_extraStringKeywords = keywords;
+		}
+		void SetExtraNumKeywords(const std::map<std::string, double>& keywords)
+		{
+			_extraNumKeywords = keywords;
+		}
 	private:
 		std::size_t _width, _height;
 		double _phaseCentreRA, _phaseCentreDec, _pixelSizeX, _pixelSizeY;
@@ -99,6 +121,8 @@ class FitsWriter
 		PolarizationEnum _polarization;
 		std::string _origin, _originComment;
 		std::vector<std::string> _history;
+		std::map<std::string, std::string> _extraStringKeywords;
+		std::map<std::string, double> _extraNumKeywords;
 		
 		void checkStatus(int status, const std::string& filename);
 		void julianDateToYMD(double jd, int &year, int &month, int &day);

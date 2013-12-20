@@ -112,6 +112,21 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
   std::sprintf(dateStr, "%d-%02d-%02dT%02d:%02d:%02d.%01d", year, month, day, hour, min, sec, deciSec);
 	fits_write_key(fptr, TSTRING, "DATE-OBS", (void*) dateStr, "", &status); checkStatus(status, filename);
 	
+	// Extra keywords
+	for(std::map<std::string, std::string>::const_iterator i=_extraStringKeywords.begin(); i!=_extraStringKeywords.end(); ++i)
+	{
+		const char* name = i->first.c_str();
+		char* valueStr = const_cast<char*>(i->second.c_str());
+		fits_write_key(fptr, TSTRING, name, valueStr, "", &status);
+		checkStatus(status, filename);
+	}
+	for(std::map<std::string, double>::const_iterator i=_extraNumKeywords.begin(); i!=_extraNumKeywords.end(); ++i)
+	{
+		const char* name = i->first.c_str();
+		fits_write_key(fptr, TDOUBLE, name, (void*) &i->second, "", &status);
+		checkStatus(status, filename);
+	}
+	
 	// History
 	std::ostringstream histStr;
 	for(std::vector<std::string>::const_iterator i=_history.begin(); i!=_history.end(); ++i)

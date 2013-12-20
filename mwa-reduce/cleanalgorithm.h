@@ -120,6 +120,14 @@ class CleanAlgorithm
 		
 		void SetResizePSF(bool resizePSF) { _resizePSF = resizePSF; }
 		
+		size_t MaxNIter() const { return _maxIter; }
+		double Threshold() const { return _threshold; }
+		double SubtractionGain() const { return _subtractionGain; }
+		double StopGain() const { return _stopGain; }
+		bool AllowNegativeComponents() const { return _allowNegativeComponents; }
+		bool StopOnNegativeComponents() const { return _allowNegativeComponents; }
+		bool ResizePSF() const { return _resizePSF; }
+		
 		static void ResizeImage(double* dest, size_t newWidth, size_t newHeight, const double* source, size_t width, size_t height);
 		
 		static void GetModelFromImage(class Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq, 
@@ -130,6 +138,8 @@ class CleanAlgorithm
 		static void RemoveNaNsInPSF(double* psf, size_t width, size_t height);
 		
 		static void CalculateFastCleanPSFSize(size_t& psfWidth, size_t& psfHeight, size_t imageWidth, size_t imageHeight);
+		
+		size_t IterationNumber() const { return _iterationNumber; }
 	private:
 		struct CleanTask
 		{

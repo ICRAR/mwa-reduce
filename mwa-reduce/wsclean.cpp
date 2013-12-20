@@ -46,6 +46,38 @@ void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgor
 	else {
 		writer.SetBeamInfo(beamSize);
 	}
+	
+	writer.SetExtraKeyword("WSCNWLAY", inversionAlgorithm.WGridSize());
+	writer.SetExtraKeyword("WSCDATAC", inversionAlgorithm.DataColumnName());
+	writer.SetExtraKeyword("WSCWEIGH", inversionAlgorithm.Weighting().ToString());
+	if(inversionAlgorithm.Selection().HasChannelRange())
+	{
+		writer.SetExtraKeyword("WSCCHANS", inversionAlgorithm.Selection().ChannelRangeStart());
+		writer.SetExtraKeyword("WSCCHANE", inversionAlgorithm.Selection().ChannelRangeEnd());
+	}
+	if(inversionAlgorithm.Selection().HasInterval())
+	{
+		writer.SetExtraKeyword("WSCTIMES", inversionAlgorithm.Selection().IntervalStart());
+		writer.SetExtraKeyword("WSCTIMEE", inversionAlgorithm.Selection().IntervalEnd());
+	}
+	writer.SetExtraKeyword("WSCFIELD", inversionAlgorithm.Selection().FieldId());
+}
+
+void SetCleanParameters(FitsWriter& writer, const CleanAlgorithm& clean)
+{
+	writer.SetExtraKeyword("WSCNITER", clean.MaxNIter());
+	writer.SetExtraKeyword("WSCTHRES", clean.Threshold());
+	writer.SetExtraKeyword("WSCGAIN", clean.SubtractionGain());
+	writer.SetExtraKeyword("WSCMGAIN", clean.StopGain());
+	writer.SetExtraKeyword("WSCNEGCM", clean.AllowNegativeComponents());
+	writer.SetExtraKeyword("WSCNEGST", clean.StopOnNegativeComponents());
+	writer.SetExtraKeyword("WSCSMPSF", clean.ResizePSF());
+}
+
+void UpdateCleanParameters(FitsWriter& writer, size_t minorIterationNr, size_t majorIterationNr)
+{
+	writer.SetExtraKeyword("WSCMINOR", minorIterationNr);
+	writer.SetExtraKeyword("WSCMAJOR", majorIterationNr);
 }
 
 int main(int argc, char *argv[])
@@ -430,17 +462,20 @@ int main(int argc, char *argv[])
 	if(mGain == 1.0)
 		inversionAlgorithm.reset();
 	
+	CleanAlgorithm cleanAlgorithm;
+	cleanAlgorithm.SetMaxNIter(nIter);
+	cleanAlgorithm.SetThreshold(threshold);
+	cleanAlgorithm.SetSubtractionGain(gain);
+	cleanAlgorithm.SetStopGain(mGain);
+	cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
+	cleanAlgorithm.SetStopOnNegativeComponents(stopOnNegative);
+	cleanAlgorithm.SetResizePSF(smallPSF);
+
+	SetCleanParameters(fitsWriter, cleanAlgorithm);
+	UpdateCleanParameters(fitsWriter, 0, 0);
+		
 	if(nIter > 0)
 	{
-		CleanAlgorithm cleanAlgorithm;
-		cleanAlgorithm.SetMaxNIter(nIter);
-		cleanAlgorithm.SetThreshold(threshold);
-		cleanAlgorithm.SetSubtractionGain(gain);
-		cleanAlgorithm.SetStopGain(mGain);
-		cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
-		cleanAlgorithm.SetStopOnNegativeComponents(stopOnNegative);
-		cleanAlgorithm.SetResizePSF(smallPSF);
-			
 		std::unique_ptr<AreaSet> cleanAreas;
 		if(!cleanAreasFilename.empty())
 		{
@@ -461,10 +496,19 @@ int main(int argc, char *argv[])
 			cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
 			cleaningWatch.Pause();
 			
+			UpdateCleanParameters(fitsWriter, cleanAlgorithm.IterationNumber(), majorIterationNr);
+			
 			if(majorIterationNr == 1)
 			{
-				std::cout << "Writing residual image... " << std::flush;
-				fitsWriter.Write(std::string(prefixName) + "-residual.fits", &residual[0]);
+				if(mGain == 1.0)
+				{
+					std::cout << "Writing residual image... " << std::flush;
+					fitsWriter.Write(std::string(prefixName) + "-residual.fits", &residual[0]);
+				}
+				else {
+					std::cout << "Writing first iteration image... " << std::flush;
+					fitsWriter.Write(std::string(prefixName) + "-first-residual.fits", &residual[0]);
+				}
 				std::cout << "DONE\n";
 			}
 			
@@ -497,7 +541,7 @@ int main(int argc, char *argv[])
 					inversionAlgorithm.reset();
 					
 					std::cout << "Writing residual image... " << std::flush;
-					fitsWriter.Write(std::string(prefixName) + "-residmajor.fits", &residual[0]);
+					fitsWriter.Write(std::string(prefixName) + "-residual.fits", &residual[0]);
 					std::cout << "DONE\n";
 				}
 				
