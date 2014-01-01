@@ -1,6 +1,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+
+#include "delaunay.h"
 #include "fitsreader.h"
 #include "model.h"
 #include "modelrenderer.h"
@@ -9,10 +11,11 @@
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-t templatefits] [-b] [-r] [-a] <model> <outputfits>\n";
+		std::cout << "syntax: render [-delaunay] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] <model>\n";
 	else {
 		std::string templateFits;
-		bool restore = false, addToTemplate = false;
+		std::string outputFitsName;
+		bool restore = false, addToTemplate = false, delaunay = false;
 		
 		int argi = 1;
 		while(argi < argc && argv[argi][0] == '-')
@@ -28,12 +31,19 @@ int main(int argc, char* argv[])
 			else if(param == "a") {
 				addToTemplate = true;
 			}
+			else if(param == "delaunay") {
+				delaunay = true;
+			}
+			else if(param == "o")
+			{
+				++argi;
+				outputFitsName = argv[argi];
+			}
 			else throw std::runtime_error("Invalid param");
 			++argi;
 		}
 	
 		Model model(argv[argi]);
-		std::string outputFitsName(argv[argi+1]);
 	
 		size_t width = 1024, height = 1024;
 		double ra = 0.0, dec = 0.0;
@@ -64,18 +74,37 @@ int main(int argc, char* argv[])
 			writer.reset(new FitsWriter(reader));
 		}
 		
-		ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY);
-		if(restore)
+		if(!outputFitsName.empty())
 		{
-			renderer.Restore(&image[0], width, height, model, beamSize, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);
-		}
-		else {
-			renderer.RenderModel(&image[0], width, height, model, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);
+			ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY);
+			if(restore)
+			{
+				renderer.Restore(&image[0], width, height, model, beamSize, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);
+			}
+			else {
+				renderer.RenderModel(&image[0], width, height, model, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);
+			}
 		}
 		
-		writer->SetImageDimensions(width, height, ra, dec, pixelSizeX, pixelSizeY);
-		writer->SetFrequency(frequency, bandwidth);
-		writer->SetDate(dateObs);
-		writer->Write(outputFitsName, &image[0]);
+		if(delaunay)
+		{
+			Delaunay triangulator;
+			for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
+			{
+				const ModelSource& source = *i;
+				triangulator.AddVertex(source.MeanRA(), source.MeanDec());
+			}
+			triangulator.Triangulate();
+			triangulator.SaveConvexHullAsKvis("convex.ann");
+			triangulator.SaveTriangulationAsKvis("triangles.ann");
+		}
+		
+		if(!outputFitsName.empty())
+		{
+			writer->SetImageDimensions(width, height, ra, dec, pixelSizeX, pixelSizeY);
+			writer->SetFrequency(frequency, bandwidth);
+			writer->SetDate(dateObs);
+			writer->Write(outputFitsName, &image[0]);
+		}
 	}
 }

@@ -17,6 +17,8 @@ find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
 find_library(GSL_LIB NAMES gsl)
 find_path(GSL_INCLUDE_DIR NAMES gsl/gsl_version.h)
 find_library(CBLAS_LIB NAMES gslcblas)
+find_path(GTS_INCLUDE_DIR NAMES gts.h)
+find_path(GLIB_INCLUDE_DIR NAMES glib.h PATH_SUFFIXES glib-2.0)
 
 set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_MEASURES_LIB} ${CASA_CASA_LIB} ${DL_LIB})
 
@@ -29,6 +31,9 @@ include_directories(${FFTW3_INCLUDE_DIR})
 if(GSL_LIB AND CBLAS_LIB AND GSL_INCLUDE_DIR)
   include_directories(${GSL_INCLUDE_DIR})
 endif(GSL_LIB AND CBLAS_LIB AND GSL_INCLUDE_DIR)
+if(GTS_INCLUDE_DIR AND GLIB_INCLUDE_DIR)
+  include_directories(${GTS_INCLUDE_DIR} ${GLIB_INCLUDE_DIR})
+endif(GTS_INCLUDE_DIR AND GLIB_INCLUDE_DIR)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb")
 

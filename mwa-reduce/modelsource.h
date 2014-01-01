@@ -270,6 +270,36 @@ class ModelSource
 			}
 		}
 		
+		double MeanRA() const
+		{
+			long double firstRA = _components[0].PosRA();
+			bool doWrap =
+				(firstRA > - 0.25*M_PI && firstRA < 0.25*M_PI) ||
+				(firstRA > 1.75*M_PI && firstRA < 2.25*M_PI) ||
+				(firstRA > -2.25*M_PI && firstRA < -1.75*M_PI);
+
+			double sum = 0.0;
+			for(const_iterator c=_components.begin(); c!=_components.end(); ++c)
+			{
+				double ra = c->PosRA();
+				if(doWrap)
+				{
+					if(ra > M_PI) ra -= 2.0 * M_PI;
+					else if(ra < -M_PI) ra += 2.0 * M_PI;
+				}
+				sum += ra;
+			}
+			return sum / _components.size();
+		}
+		
+		double MeanDec() const
+		{
+			double sum = 0.0;
+			for(const_iterator c=_components.begin(); c!=_components.end(); ++c)
+				sum += c->PosDec();
+			return sum / _components.size();
+		}
+		
 		void SortComponents()
 		{
 			std::sort(_components.rbegin(), _components.rend());
