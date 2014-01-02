@@ -274,6 +274,12 @@ private:
 	};
 	
 public:
+	struct Triangle
+	{
+		double x[3], y[3];
+		void* userData[3];
+	};
+	
 	Delaunay() { }
 	
 	void AddVertex(double ra, double dec, void* userData=0)
@@ -283,6 +289,22 @@ public:
 		vertex->y = dec;
 		vertex->userData = userData;
 		_vertices.push_back(vertex);
+	}
+	
+	size_t TriangleCount() const { return _triangles.size(); }
+	
+	Triangle GetTriangle(size_t triangleIndex) const
+	{
+		TriangleNode* node = _triangles[triangleIndex];
+		Triangle t;
+		for(size_t i=0; i!=3; ++i)
+		{
+			const Vertex& v = *node->vertices[i];
+			t.x[i] = v.x;
+			t.y[i] = v.y;
+			t.userData[i] = v.userData;
+		}
+		return t;
 	}
 	
 	void Triangulate()
@@ -492,6 +514,7 @@ public:
 #endif
 		
 		removeBoundingVertices();
+		makeLeafTriangleList();
 	}
 	
 	void SaveConvexHullAsKvis(const std::string& filename)

@@ -7,6 +7,8 @@
 #include "model.h"
 #include "modelrenderer.h"
 #include "fitswriter.h"
+#include "triangleinterpolator.h"
+#include "imagecoordinates.h"
 
 int main(int argc, char* argv[])
 {
@@ -89,14 +91,35 @@ int main(int argc, char* argv[])
 		if(delaunay)
 		{
 			Delaunay triangulator;
-			for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
+			for(Model::iterator i=model.begin(); i!=model.end(); ++i)
 			{
-				const ModelSource& source = *i;
-				triangulator.AddVertex(source.MeanRA(), source.MeanDec());
+				ModelSource& source = *i;
+				triangulator.AddVertex(source.MeanRA(), source.MeanDec(), &source);
 			}
 			triangulator.Triangulate();
 			triangulator.SaveConvexHullAsKvis("convex.ann");
 			triangulator.SaveTriangulationAsKvis("triangles.ann");
+			
+			TriangleInterpolator interpolator;
+			for(size_t i=0; i!=triangulator.TriangleCount(); ++i)
+			{
+				Delaunay::Triangle triangle = triangulator.GetTriangle(i);
+				ModelSource* source[3];
+				double x[3], y[3];
+				for(size_t j=0; j!=3; ++j) {
+					source[j] = reinterpret_cast<ModelSource*>(triangle.userData[j]);
+					double l, m;
+					ImageCoordinates::RaDecToLM(triangle.x[j], triangle.y[j], ra, dec, l, m);
+					ImageCoordinates::LMToXYfloat(l, m, pixelSizeX, pixelSizeY, width, height, x[j], y[j]);
+					std::cout << x[j] << ',' << y[j] << " -> ";
+				}
+				std::cout << "Interpolating\n";
+				interpolator.Interpolate(&image[0], width, height,
+					x[0], y[0], source[0]->TotalFlux(frequency, 0),
+					x[1], y[1], source[1]->TotalFlux(frequency, 0),
+					x[2], y[2], source[2]->TotalFlux(frequency, 0)
+				);
+			}
 		}
 		
 		if(!outputFitsName.empty())

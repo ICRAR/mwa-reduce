@@ -69,6 +69,14 @@ class ImageCoordinates
 		}
 		
 		template<typename T>
+		static void LMToXYfloat(T l, T m, T pixelSizeX, T pixelSizeY, size_t width, size_t height, T &x, T &y)
+		{
+			T midX = (T) width / 2.0, midY = (T) height / 2.0;
+			x = -l / pixelSizeX + midX;
+			y = m / pixelSizeY + midY;
+		}
+		
+		template<typename T>
 		static T AngularDistance(T ra1, T dec1, T ra2, T dec2)
 		{
 			T sinDec1, sinDec2, cosDec1, cosDec2;
