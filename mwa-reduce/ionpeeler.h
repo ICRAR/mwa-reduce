@@ -37,7 +37,6 @@ public:
 	}
 	
 	void Peel(const char* msName, const char* modelName);
-	void SaveSolutions(const std::string& filename) const;
 private:
 	struct RowData
 	{
@@ -84,7 +83,6 @@ private:
 	static bool isfinite(const std::complex<double>& val) { return std::isfinite(val.real()) && std::isfinite(val.imag()); }
 	void initWeighting(casa::MeasurementSet& ms);
 	
-	void scalarGainFitter(size_t channelIndex);
 	void positionFitter(size_t channelIndex, PeelingStats& stats);
 	
 	void outputStats(const PeelingStats& stats);
@@ -118,8 +116,6 @@ private:
 	double _weightPixelScale;
 	std::unique_ptr<ImageWeights> _imageWeights;
 	std::unique_ptr<ProgressBar> _progressBar;
-	ao::uvector<std::complex<double>> _solutions;
-	ao::uvector<double> _solutionWeights;
 };
 
 #endif

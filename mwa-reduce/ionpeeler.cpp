@@ -111,8 +111,6 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	casa::Array<std::complex<float> > data(dataShape);
 	casa::Array<float> weights(dataShape);
 	casa::Array<bool> flags(dataShape);
-	_solutions.resize(_model.SourceCount() * _passCount * channelCount);
-	_solutionWeights.resize(_model.SourceCount() * _passCount * channelCount);
 	_dataArrays.resize(channelCount);
 	_weightArrays.resize(channelCount);
 	for(_pass=0; _pass!=_passCount; ++_pass)
@@ -253,7 +251,6 @@ void IonPeeler::processingThreadFunction(std::mutex* mutex, std::vector<size_t>*
 
 void IonPeeler::processChannel(size_t channelIndex, PeelingStats& stats)
 {
-	//scalarGainFitter(channelIndex);
 	positionFitter(channelIndex, stats);
 }
 
@@ -526,133 +523,6 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 		}
 	}
 	gsl_multifit_fdfsolver_free(solver);
-}
-
-void IonPeeler::scalarGainFitter(size_t channelIndex)
-{
-	double lambda = _bandData.ChannelWavelength(channelIndex);
-	size_t startTimeIndex = _rowData.front().timeIndex;
-	
-	// Pre-measure the weight: this is equal for all sources so do only once
-	double ionWeight = 0.0;
-	for(size_t row=_curStartRow; row!=_curEndRow; ++row)
-	{
-		const RowData& rowData = _rowData[row - _curStartRow];
-		if(rowData.a1 != rowData.a2)
-		{
-			const std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
-			const double* weightPtr = _weightArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
-			double weight;
-			if(isfinite(dataPtr[0]) && isfinite(dataPtr[3]) && dataPtr[0] != 0.0 && dataPtr[3] != 0.0)
-				weight = weightPtr[0] + weightPtr[1];
-			else
-				weight = 0.0;
-			
-			if(_imageWeights != 0)
-			{
-				const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda;
-				switch(_weightMode.Mode())
-				{
-					case WeightMode::UniformWeighted:
-						weight *= _imageWeights->GetUniformWeight(uOverL, vOverL);
-						break;
-					case WeightMode::BriggsWeighted:
-						weight *= _imageWeights->GetBriggsWeight(uOverL, vOverL);
-						break;
-					case WeightMode::NaturalWeighted:
-					case WeightMode::DistanceWeighted:
-						break;
-				}
-			}
-			ionWeight += weight;
-		}
-	}
-	// Measure ionospheric term
-	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
-	{
-		std::complex<double> ionTerm = 0.0;
-		ao::uvector<std::complex<double>> modelData((_curEndRow-_curStartRow)*4);
-		ao::uvector<std::complex<double>>::iterator modelPtr = modelData.begin();
-		for(size_t row=_curStartRow; row!=_curEndRow; ++row)
-		{
-			const RowData& rowData = _rowData[row - _curStartRow];
-			if(rowData.a1 != rowData.a2)
-			{
-				const double uOverL = rowData.u/lambda, vOverL = rowData.v/lambda, wOverL = rowData.w/lambda;
-				const std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
-				const double* weightPtr = _weightArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
-				
-				if(isfinite(dataPtr[0]) && isfinite(dataPtr[3]) && dataPtr[0] != 0.0 && dataPtr[3] != 0.0)
-				{
-					// Predict visibility
-					_predicters[sourceIndex]->Predict4(&*modelPtr, _predictionModels[sourceIndex], uOverL, vOverL, wOverL, channelIndex, rowData.a1, rowData.a2);
-					
-					double imageWeight = 1.0;
-					if(_imageWeights != 0)
-					{
-						switch(_weightMode.Mode())
-						{
-							case WeightMode::UniformWeighted:
-								imageWeight = _imageWeights->GetUniformWeight(uOverL, vOverL);
-								break;
-							case WeightMode::BriggsWeighted:
-								imageWeight = _imageWeights->GetBriggsWeight(uOverL, vOverL);
-								break;
-							case WeightMode::NaturalWeighted:
-							case WeightMode::DistanceWeighted:
-								break;
-						}
-					}
-					
-					// Calculate ionospheric term
-					ionTerm += (weightPtr[0] * dataPtr[3] / modelPtr[0] + weightPtr[1] * dataPtr[3] / modelPtr[3]) * imageWeight;
-				}
-				modelPtr += 4;
-			}
-		}
-		
-		if(ionWeight != 0.0 && isfinite(ionTerm))
-		{
-			ionTerm /= ionWeight;
-			_solutions[(_pass * _bandData.ChannelCount() + channelIndex)*_predictionModels.size() + sourceIndex] = ionTerm;
-			_solutionWeights[(_pass * _bandData.ChannelCount() + channelIndex)*_predictionModels.size() + sourceIndex] = ionWeight;
-			
-			/*if((channelIndex + 11) % 16 == 0)
-			{
-				std::cout << "T=" << startTimeIndex << ", ch=" << channelIndex << ", gain=" << std::abs(ionTerm) << ", phase=" << std::atan2(ionTerm.imag(), ionTerm.real()) << " (w=" << ionWeight << ")\n";
-			}*/
-		
-			// Subtract source from visibilities in mem
-			modelPtr = modelData.begin();
-			for(size_t row=_curStartRow; row!=_curEndRow; ++row)
-			{
-				const RowData& rowData = _rowData[row - _curStartRow];
-				if(rowData.a1 != rowData.a2)
-				{
-					Matrix2x2::ScalarMultiply(&*modelPtr, ionTerm);
-					
-					std::complex<double>* dataPtr = _dataArrays[channelIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimeIndex);
-					Matrix2x2::Subtract(dataPtr, &*modelPtr);
-					modelPtr += 4;
-				}
-			}
-		}
-		else {
-			_solutions[(_pass * _bandData.ChannelCount() + channelIndex)*_predictionModels.size() + sourceIndex] = 0.0;
-			_solutionWeights[(_pass * _bandData.ChannelCount() + channelIndex)*_predictionModels.size() + sourceIndex] = 0.0;
-		}
-	}
-}
-
-
-void IonPeeler::SaveSolutions(const string& filename) const
-{
-	std::ofstream str(filename.c_str());
-	Serializable::SerializeToUInt64(str, _passCount);
-	Serializable::SerializeToUInt64(str, _bandData.ChannelCount());
-	Serializable::SerializeToUInt64(str, _predictionModels.size());
-	str.write(reinterpret_cast<const char*>(_solutions.data()), sizeof(std::complex<double>) * _solutions.size());
-	str.write(reinterpret_cast<const char*>(_solutionWeights.data()), sizeof(double) * _solutionWeights.size());
 }
 
 std::string IonPeeler::radToString(double r)
