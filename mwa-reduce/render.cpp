@@ -120,6 +120,38 @@ int main(int argc, char* argv[])
 					x[2], y[2], source[2]->TotalFlux(frequency, 0)
 				);
 			}
+			
+			std::vector<double>
+				xs(triangulator.ConvexVerticesCount()),
+				ys(triangulator.ConvexVerticesCount());
+			std::vector<ModelSource*>
+				sources(triangulator.ConvexVerticesCount());
+			for(size_t i=0; i!=triangulator.ConvexVerticesCount(); ++i)
+			{
+				double curra, curdec;
+				triangulator.GetConvexVertex(i, curra, curdec, reinterpret_cast<void*&>(sources[i]));
+				double l, m;
+				ImageCoordinates::RaDecToLM(curra, curdec, ra, dec, l, m);
+				ImageCoordinates::LMToXYfloat(l, m, pixelSizeX, pixelSizeY, width, height, xs[i], ys[i]);
+			}
+			for(size_t i=0; i!=triangulator.ConvexVerticesCount(); ++i)
+			{
+				//int i = 4;
+				size_t
+					a = i,
+					b = (i+1) % triangulator.ConvexVerticesCount(),
+					c = (i+2) % triangulator.ConvexVerticesCount();
+				std::cout << "Interpolating " << xs[b] << ',' << ys[b] << '\n';
+				interpolator.InterpolateConvexHullEdge(&image[0], width, height,
+					xs[a], ys[a], sources[a]->TotalFlux(frequency, 0),
+					xs[b], ys[b], sources[b]->TotalFlux(frequency, 0)
+				);
+				interpolator.InterpolateConvexHullVertex(&image[0], width, height,
+					xs[a], ys[a],
+					xs[b], ys[b], sources[b]->TotalFlux(frequency, 0),
+					xs[c], ys[c]
+				);
+			}
 		}
 		
 		if(!outputFitsName.empty())

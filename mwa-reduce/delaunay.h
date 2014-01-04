@@ -307,6 +307,16 @@ public:
 		return t;
 	}
 	
+	size_t ConvexVerticesCount() const { return _convexHull.size(); }
+	
+	void GetConvexVertex(size_t vertexIndex, double& x, double& y, void*& userData) const
+	{
+		Vertex* v = _convexHull[vertexIndex]->vertices[0];
+		x = v->x;
+		y = v->y;
+		userData = v->userData;
+	}
+	
 	void Triangulate()
 	{
 		if(_vertices.size() < 2) return;
@@ -358,7 +368,7 @@ public:
 				convexVertices.pop_back();
 			convexVertices.push_back(_vertices[i]);
 		}
-		for(std::vector<Vertex*>::const_reverse_iterator i=_vertices.rbegin(); i!=_vertices.rend(); ++i)
+		for(std::vector<Vertex*>::const_reverse_iterator i=_vertices.rbegin()+1; i!=_vertices.rend(); ++i)
 		{
 			while((*i)->IsLeftTurn(convexVertices))
 				convexVertices.pop_back();
