@@ -14,8 +14,8 @@
 
 int main(int argc, char* argv[])
 {
-	if(argc < 3) {
-		std::cout << "syntax: ionpeel [options] <ms> <model>\n";
+	if(argc < 4) {
+		std::cout << "syntax: ionpeel [options] <ms> <model> <solutionfile>\n";
 		return -1;
 	}
 	
@@ -79,5 +79,5 @@ int main(int argc, char* argv[])
 	peeler.SetApplyBeam(applyBeam);
 	peeler.SetDataColumnName(dataColumnName);
 	peeler.SetWeighting(weightMode, weightGridSize, weightPixelScale);
-	peeler.Peel(argv[argi], argv[argi+1]);
+	peeler.Peel(argv[argi], argv[argi+1], argv[argi+2]);
 }

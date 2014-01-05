@@ -2,6 +2,7 @@
 
 #include "beamevaluator.h"
 #include "ionpeeler.h"
+#include "ionsolutionfile.h"
 #include "imageweights.h"
 #include "predicter.h"
 #include "progressbar.h"
@@ -34,7 +35,7 @@ void IonPeeler::initWeighting(casa::MeasurementSet& ms)
 	}
 }
 
-void IonPeeler::Peel(const char* msName, const char* modelName)
+void IonPeeler::Peel(const char* msName, const char* modelName, const char* solutionFilename)
 {
 	casa::MeasurementSet ms(msName, casa::MeasurementSet::Update);
 	_model = Model(modelName);
@@ -42,7 +43,6 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	initWeighting(ms);
 	
 	size_t startRow = 0;
-	std::string solutionFile;
 	
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
@@ -79,9 +79,9 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 		
 		_predicters[s] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
 		if(_applyBeam)
-			_predicters[s]->Initialize(_predictionModels[s], solutionFile, &beamEvaluator);
+			_predicters[s]->Initialize(_predictionModels[s], "", &beamEvaluator);
 		else
-			_predicters[s]->Initialize(_predictionModels[s], solutionFile);
+			_predicters[s]->Initialize(_predictionModels[s]);
 	}
 	_predicters.front()->ReportSources(_predictionModels.front());
 		
@@ -108,6 +108,15 @@ void IonPeeler::Peel(const char* msName, const char* modelName)
 	
 	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	_passCount = (_solutionInterval==0) ? 1 : (timestepCount + _solutionInterval - 1) / _solutionInterval;
+	
+	_solutionFile.reset(new IonSolutionFile());
+	_solutionFile->SetAntennaCount(1);
+	_solutionFile->SetChannelCount(channelCount);
+	_solutionFile->SetPolarizationCount(1);
+	_solutionFile->SetIntervalCount(_passCount);
+	_solutionFile->SetDirectionCount(_predictionModels.size());
+	_solutionFile->OpenForWriting(solutionFilename);
+	
 	casa::Array<std::complex<float> > data(dataShape);
 	casa::Array<float> weights(dataShape);
 	casa::Array<bool> flags(dataShape);

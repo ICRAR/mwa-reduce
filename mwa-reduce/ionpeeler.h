@@ -15,6 +15,7 @@
 #endif
 
 class ImageWeights;
+class IonSolutionFile;
 class Predicter;
 class ProgressBar;
 
@@ -36,7 +37,7 @@ public:
 		_weightPixelScale = pixelScale;
 	}
 	
-	void Peel(const char* msName, const char* modelName);
+	void Peel(const char* msName, const char* modelName, const char* solutionFilename);
 private:
 	struct RowData
 	{
@@ -116,6 +117,7 @@ private:
 	double _weightPixelScale;
 	std::unique_ptr<ImageWeights> _imageWeights;
 	std::unique_ptr<ProgressBar> _progressBar;
+	std::unique_ptr<IonSolutionFile> _solutionFile;
 };
 
 #endif
