@@ -7,6 +7,7 @@
 #include <complex>
 #include <stdexcept>
 #include <vector>
+#include <mutex>
 
 #include <stdint.h>
 
@@ -80,6 +81,7 @@ class IonSolutionFile
 	}
 
   void ReadSolution(Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction) {
+		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
 		size_t offset = sizeof(_header);
 		_inputStream->seekg(offset + sizeof(Solution) * index, std::ios::beg);
@@ -88,10 +90,20 @@ class IonSolutionFile
 
   void WriteSolution(const Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction)
   {
+		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
 		size_t offset = sizeof(_header);
 		_outputStream->seekp(offset + sizeof(Solution) * index, std::ios::beg);
 		_outputStream->write(reinterpret_cast<const char*>(&solution), sizeof(Solution));
+  }
+
+  void WriteChannelBlock(const Solution* solution, size_t interval, size_t channel, size_t polarization)
+  {
+		std::unique_lock<std::mutex> lock(_mutex);
+		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount;
+		size_t offset = sizeof(_header);
+		_outputStream->seekp(offset + sizeof(Solution) * index, std::ios::beg);
+		_outputStream->write(reinterpret_cast<const char*>(solution), sizeof(Solution) * _header.directionCount);
   }
 
  private:
@@ -105,6 +117,7 @@ class IonSolutionFile
   } _header;
   std::ofstream *_outputStream;
   std::ifstream *_inputStream;
+	std::mutex _mutex;
 };
 
 #endif
