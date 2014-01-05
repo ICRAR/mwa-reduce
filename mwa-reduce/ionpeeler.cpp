@@ -532,6 +532,15 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 		}
 	}
 	gsl_multifit_fdfsolver_free(solver);
+	
+	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
+	{
+		IonSolutionFile::Solution solution;
+		solution.gain = _solutionsG[sourceIndex];
+		solution.dl = _solutionsDL[sourceIndex];
+		solution.dm = _solutionsDM[sourceIndex];
+		_solutionFile->WriteSolution(solution, _pass, channelIndex, 0, sourceIndex);
+	}	
 }
 
 std::string IonPeeler::radToString(double r)

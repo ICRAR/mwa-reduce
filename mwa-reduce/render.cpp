@@ -13,12 +13,12 @@
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-delaunay] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] <model>\n";
+		std::cout << "syntax: render [-ion g/l/m <solutionfile>] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] <model>\n";
 	else {
 		std::string templateFits;
 		std::string outputFitsName;
-		bool restore = false, addToTemplate = false, delaunay = false;
-		
+		std::string ionParameter, ionSolutionFilename;
+		bool restore = false, addToTemplate = false, ionospheric = false;
 		int argi = 1;
 		while(argi < argc && argv[argi][0] == '-')
 		{
@@ -33,8 +33,12 @@ int main(int argc, char* argv[])
 			else if(param == "a") {
 				addToTemplate = true;
 			}
-			else if(param == "delaunay") {
-				delaunay = true;
+			else if(param == "ion") {
+				ionospheric = true;
+				++argi;
+				ionParameter = argv[argi];
+				++argi;
+				ionSolutionFilename = argv[argi];
 			}
 			else if(param == "o")
 			{
@@ -88,7 +92,7 @@ int main(int argc, char* argv[])
 			}
 		}
 		
-		if(delaunay)
+		if(ionospheric)
 		{
 			Delaunay triangulator;
 			for(Model::iterator i=model.begin(); i!=model.end(); ++i)
