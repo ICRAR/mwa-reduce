@@ -14,6 +14,8 @@
 class IonSolutionFile
 {
  public:
+	 enum IonSolutionType { GainSolution, DlSolution, DmSolution };
+	 
 	 struct Solution
 	 {
 		 double gain, dl, dm;
@@ -80,6 +82,19 @@ class IonSolutionFile
 		_inputStream->read(reinterpret_cast<char*>(&_header), sizeof(_header));
 	}
 
+	double ReadSolution(IonSolutionType type, size_t interval, size_t channel, size_t polarization, size_t direction)
+	{
+		Solution solution;
+		ReadSolution(solution, interval, channel, polarization, direction);
+		switch(type)
+		{
+			default:
+			case GainSolution: return solution.gain;
+			case DlSolution: return solution.dl;
+			case DmSolution: return solution.dm;
+		}
+	}
+	
   void ReadSolution(Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction) {
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
