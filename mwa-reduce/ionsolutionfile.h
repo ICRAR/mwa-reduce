@@ -112,13 +112,13 @@ class IonSolutionFile
 		_outputStream->write(reinterpret_cast<const char*>(&solution), sizeof(Solution));
   }
 
-  void WriteChannelBlock(const Solution* solution, size_t interval, size_t channel, size_t polarization)
+  void WriteChannelBlock(const Solution* solutions, size_t interval, size_t channel, size_t polarization)
   {
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount;
 		size_t offset = sizeof(_header);
 		_outputStream->seekp(offset + sizeof(Solution) * index, std::ios::beg);
-		_outputStream->write(reinterpret_cast<const char*>(solution), sizeof(Solution) * _header.directionCount);
+		_outputStream->write(reinterpret_cast<const char*>(solutions), sizeof(Solution) * _header.directionCount);
   }
 
  private:

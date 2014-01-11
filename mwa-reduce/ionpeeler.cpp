@@ -417,10 +417,10 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 		{
 			ao::uvector<std::complex<double>>& modelData = modelDataPerSource[sourceIndex];
 			fInfo.modelData = &modelData;
-			double&
-				g = _solutionsG[sourceIndex],
-				dl = _solutionsDL[sourceIndex],
-				dm = _solutionsDM[sourceIndex];
+			double
+				&g = _solutionsG[sourceIndex],
+				&dl = _solutionsDL[sourceIndex],
+				&dm = _solutionsDM[sourceIndex];
 			
 			// Add back if it was subtracted
 			if(fitIteration != 0)
