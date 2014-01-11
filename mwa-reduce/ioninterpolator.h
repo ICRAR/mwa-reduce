@@ -98,14 +98,13 @@ public:
 			std::vector<double>
 				xs(_triangulator.ConvexVerticesCount()),
 				ys(_triangulator.ConvexVerticesCount());
-			std::vector<ModelSource*>
-				sources(_triangulator.ConvexVerticesCount());
+			std::vector<size_t> indices(_triangulator.ConvexVerticesCount());
 			for(size_t i=0; i!=_triangulator.ConvexVerticesCount(); ++i)
 			{
 				size_t* sourceIndex;
 				double curra, curdec;
 				_triangulator.GetConvexVertex(i, curra, curdec, reinterpret_cast<void*&>(sourceIndex));
-				sources[i] = &_model.Source(*sourceIndex);
+				indices[i] = *sourceIndex;
 				double l, m;
 				ImageCoordinates::RaDecToLM(curra, curdec, _phaseCentreRA, _phaseCentreDec, l, m);
 				ImageCoordinates::LMToXYfloat(l, m, _pixelSizeX, _pixelSizeY, _width, _height, xs[i], ys[i]);
@@ -119,12 +118,12 @@ public:
 					c = (i+2) % _triangulator.ConvexVerticesCount();
 				std::cout << "Interpolating " << xs[b] << ',' << ys[b] << '\n';
 				interpolator.InterpolateConvexHullEdge(&image[0], _width, _height,
-					xs[a], ys[a], solutionValues[a],
-					xs[b], ys[b], solutionValues[b]
+					xs[a], ys[a], solutionValues[indices[a]],
+					xs[b], ys[b], solutionValues[indices[b]]
 				);
 				interpolator.InterpolateConvexHullVertex(&image[0], _width, _height,
 					xs[a], ys[a],
-					xs[b], ys[b], solutionValues[b],
+					xs[b], ys[b], solutionValues[indices[b]],
 					xs[c], ys[c]
 				);
 			}
