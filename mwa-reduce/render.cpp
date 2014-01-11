@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
 			ao::uvector<double> interpolatedImage(width * height);
 			for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 			{
-				interpolator.Initialize(solutionFile, interval, 0, solutionFile.ChannelCount(), 0);
+				interpolator.Initialize(solutionFile, interval, interval+1, 0, solutionFile.ChannelCount(), 0);
 				
 				std::ostringstream extStr;
 				extStr << "-i";

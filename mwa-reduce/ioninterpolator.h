@@ -32,9 +32,10 @@ public:
 	 * Initialize the ioninterpolator to be able to interpolate solutions
 	 * for a given ionospheric interval, channel and polarization.
 	 */
-	void Initialize(IonSolutionFile& solutions, size_t interval, size_t startChannel, size_t endChannel, size_t polarization)
+	void Initialize(IonSolutionFile& solutions, size_t startInterval, size_t endInterval, size_t startChannel, size_t endChannel, size_t polarization)
 	{
-		_interval = interval;
+		_startInterval = startInterval;
+		_endInterval = endInterval;
 		_startChannel = startChannel;
 		_endChannel = endChannel;
 		_polarization = polarization;
@@ -135,15 +136,18 @@ private:
 		solution.dl = 0.0;
 		solution.dm = 0.0;
 		solution.gain = 0.0;
-		for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
+		for(size_t interval=_startInterval; interval!=_endInterval; ++interval)
 		{
-			IonSolutionFile::Solution s;
-			solutionFile.ReadSolution(s, _interval, ch, _polarization, direction);
-			solution.dl += s.dl;
-			solution.dm += s.dm;
-			solution.gain += s.gain;
+			for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
+			{
+				IonSolutionFile::Solution s;
+				solutionFile.ReadSolution(s, interval, ch, _polarization, direction);
+				solution.dl += s.dl;
+				solution.dm += s.dm;
+				solution.gain += s.gain;
+			}
 		}
-		double count = _endChannel-_startChannel;
+		double count = (_endChannel-_startChannel) * (_endInterval-_startInterval);
 		solution.dl /= count;
 		solution.dm /= count;
 		solution.gain /= count;
@@ -152,11 +156,14 @@ private:
 	double getAverageSolution(IonSolutionFile& solutionFile, IonSolutionFile::IonSolutionType stype, size_t direction) const
 	{
 		double val = 0.0;
-		for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
+		for(size_t interval=_startInterval; interval!=_endInterval; ++interval)
 		{
-			val += solutionFile.ReadSolution(stype, _interval, ch, _polarization, direction);
+			for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
+			{
+				val += solutionFile.ReadSolution(stype, interval, ch, _polarization, direction);
+			}
 		}
-		return val / double(_endChannel - _startChannel);
+		return val / double((_endChannel - _startChannel) * (_endInterval - _startInterval));
 	}
 	
 	Model _model;
@@ -169,7 +176,7 @@ private:
 	const size_t
 		_width, _height;
 	
-	size_t _interval, _startChannel, _endChannel, _polarization;
+	size_t _startInterval, _endInterval, _startChannel, _endChannel, _polarization;
 };
 
 #endif
