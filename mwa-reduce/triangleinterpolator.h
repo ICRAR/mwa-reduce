@@ -156,8 +156,10 @@ public:
 			if(cx1 > cx2) std::swap(cx1, cx2);
 			if(cx1 < 0.0) cx1 = 0.0;
 			if(cx2 < 0.0) cx2 = 0.0;
-			if(cx2 > gridWidth) cx2 = gridWidth;
+			else if(cx2 > gridWidth) cx2 = gridWidth;
 			double cm = GetXForYCrossing(y, x1, y1, x2, y2);
+			if(cm < 0.0) cm = 0.0;
+			else if(cm > gridWidth) cm = gridWidth;
 			if(dx >= 0.0 && cm > cx1)
 				cx1 = cm;
 			else if(dx <= 0.0 && cm < cx2)
