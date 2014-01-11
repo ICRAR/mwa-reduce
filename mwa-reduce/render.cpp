@@ -118,9 +118,11 @@ int main(int argc, char* argv[])
 				
 				std::string dlfile = ionOutPrefix + "-dl" + extStr.str();
 				interpolator.Interpolate(interpolatedImage.data(), solutionFile, IonSolutionFile::DlSolution);
+				writer->Write(dlfile, interpolatedImage.data());
 				
 				std::string dmfile = ionOutPrefix + "-dm" + extStr.str();
 				interpolator.Interpolate(interpolatedImage.data(), solutionFile, IonSolutionFile::DmSolution);
+				writer->Write(dmfile, interpolatedImage.data());
 			}
 		}
 		
