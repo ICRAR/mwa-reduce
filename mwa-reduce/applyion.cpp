@@ -1,8 +1,33 @@
 #include <iostream>
+#include <limits>
+
 #include "fitsreader.h"
-#include "model.h"
+#include "fitswriter.h"
 #include "ioninterpolator.h"
 #include "ionsolutionfile.h"
+#include "model.h"
+
+double sample(const double* image, size_t width, size_t height, double x, double y)
+{
+	double xleft = floor(x), ytop = floor(y);
+	if(xleft < 0.0 || ytop < 0.0) return std::numeric_limits<double>::quiet_NaN();
+	
+	size_t x1 = size_t(xleft), y1 = size_t(ytop);
+	if(x1+1>=width || y1+1>=height) return std::numeric_limits<double>::quiet_NaN();
+	
+	size_t index = x1 + y1*width;
+	
+	// Do bilinair interpolation
+	double x1dist = x - xleft, y1dist = y - ytop, x2dist = 1.0 - x1dist;
+	double
+		v11 = image[index],
+		v12 = image[index+1],
+		v21 = image[index+width],
+		v22 = image[index+width+1];
+	return
+		(v11 * x1dist + v12 * x2dist) * y1dist +
+		(v21 * x1dist + v22 * x2dist) * (1.0 - y1dist);
+}
 
 int main(int argc, char* argv[])
 {
@@ -19,7 +44,8 @@ int main(int argc, char* argv[])
 	FitsReader reader(inputFilename);
 	Model model(modelFilename);
 	IonInterpolator interpolator(model, reader);
-	IonSolutionFile solutions(solutionsFilename);
+	IonSolutionFile solutions;
+	solutions.OpenForReading(solutionsFilename);
 	interpolator.Initialize(solutions, 0, solutions.IntervalCount(), 0, solutions.ChannelCount(), 0);
 	
 	const size_t width = reader.ImageWidth(), height = reader.ImageHeight();
@@ -31,6 +57,9 @@ int main(int argc, char* argv[])
 	interpolator.Interpolate(gainImage.data(), solutions, IonSolutionFile::GainSolution);
 	interpolator.Interpolate(dlImage.data(), solutions, IonSolutionFile::DlSolution);
 	interpolator.Interpolate(dmImage.data(), solutions, IonSolutionFile::DmSolution);
+	
+	ao::uvector<double> image(width * height);
+	reader.Read(image.data());
 	
 	double
 		*gainPtr = gainImage.data(),
@@ -48,7 +77,14 @@ int main(int argc, char* argv[])
 			
 			double l, m;
 			ImageCoordinates::XYToLM(x, y, reader.PixelSizeX(), reader.PixelSizeY(), width, height, l, m);
+			l += dl;
+			m += dm;
 			
+			double xf, yf;
+			ImageCoordinates::LMToXYfloat(l, m, reader.PixelSizeX(), reader.PixelSizeY(), width, height, xf, yf);
+			
+			double val = sample(image.data(), width, height, xf, yf);
+			*outPtr = val * gain;
 			
 			++gainPtr;
 			++dlPtr;
@@ -56,4 +92,7 @@ int main(int argc, char* argv[])
 			++outPtr;
 		}
 	}
+	
+	FitsWriter writer(reader);
+	writer.Write(outputFilename, image.data());
 }
