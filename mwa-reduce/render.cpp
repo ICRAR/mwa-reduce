@@ -100,6 +100,7 @@ int main(int argc, char* argv[])
 			ao::uvector<double> interpolatedImage(width * height);
 			for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 			{
+				std::cout << "Rendering interval " << interval << "...\n";
 				interpolator.Initialize(solutionFile, interval, interval+1, 0, solutionFile.ChannelCount(), 0);
 				
 				std::ostringstream extStr;
