@@ -40,6 +40,7 @@ public:
 		_endChannel = endChannel;
 		_polarization = polarization;
 		
+		_triangulator.Clear();
 		for(size_t i=0; i!=_model.SourceCount(); ++i)
 		{
 			const ModelSource& source = _model.Source(i);

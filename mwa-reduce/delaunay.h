@@ -280,7 +280,26 @@ public:
 		void* userData[3];
 	};
 	
-	Delaunay() { }
+	Delaunay() : _boundTop(0), _topNode(0)
+	{
+	}
+	
+	~Delaunay() {
+		Clear();
+	}
+	
+	void Clear()
+	{
+		for(std::vector<Vertex*>::iterator i=_vertices.begin(); i!=_vertices.end(); ++i)
+			delete *i;
+		_vertices.clear();
+		for(std::vector<Edge*>::iterator i=_convexHull.begin(); i!=_convexHull.end(); ++i)
+			delete *i;
+		_convexHull.clear();
+		_boundTop = 0;
+		delete _topNode;
+		_triangles.clear();
+	}
 	
 	void AddVertex(double ra, double dec, void* userData=0)
 	{
@@ -803,12 +822,17 @@ public:
 		} while(didErase);
 	}
 	
+	// Remove copy constructor
+	Delaunay(const Delaunay& delaunay) { }
+	
+	// Remove assignment operator
+	void operator=(const Delaunay& delaunay) { }
+	
 	std::vector<Vertex*> _vertices;
 	std::vector<Edge*> _convexHull;
 	Vertex _boundLeft, *_boundTop, _boundRight;
 	TriangleNode *_topNode;
 	std::vector<TriangleNode*> _triangles;
-	bool _fixBoundary;
 };
 
 #endif
