@@ -25,8 +25,8 @@ double sample(const double* image, size_t width, size_t height, double x, double
 		v21 = image[index+width],
 		v22 = image[index+width+1];
 	return
-		(v11 * x1dist + v12 * x2dist) * y1dist +
-		(v21 * x1dist + v22 * x2dist) * (1.0 - y1dist);
+		(v11 * x2dist + v12 * x1dist) * (1.0 - y1dist) +
+		(v21 * x2dist + v22 * x1dist) * y1dist;
 }
 
 int main(int argc, char* argv[])
