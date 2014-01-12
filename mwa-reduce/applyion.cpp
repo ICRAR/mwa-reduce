@@ -34,6 +34,7 @@ int main(int argc, char* argv[])
 	if(argc < 5)
 	{
 		std::cout << "Syntax:\n\tapplyion <input fits> <output fits> <model> <ion-solutions>\n";
+		return -1;
 	}
 	const char
 		*inputFilename = argv[1],

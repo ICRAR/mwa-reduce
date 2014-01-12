@@ -73,60 +73,57 @@ public:
 		}
 		
 		TriangleInterpolator interpolator;
-		for(size_t interval=0; interval!=file.IntervalCount(); ++interval)
+		for(size_t i=0; i!=_triangulator.TriangleCount(); ++i)
 		{
-			for(size_t i=0; i!=_triangulator.TriangleCount(); ++i)
-			{
-				Delaunay::Triangle triangle = _triangulator.GetTriangle(i);
-				size_t indices[3];
-				double x[3], y[3];
-				for(size_t j=0; j!=3; ++j) {
-					indices[j] = *reinterpret_cast<size_t*>(triangle.userData[j]);
-					double l, m;
-					ImageCoordinates::RaDecToLM(triangle.x[j], triangle.y[j], _phaseCentreRA, _phaseCentreDec, l, m);
-					ImageCoordinates::LMToXYfloat(l, m, _pixelSizeX, _pixelSizeY, _width, _height, x[j], y[j]);
-					std::cout << x[j] << ',' << y[j] << " -> ";
-				}
-				std::cout << "Interpolating\n";
-				interpolator.Interpolate(&image[0], _width, _height,
-					x[0], y[0], solutionValues[indices[0]],
-					x[1], y[1], solutionValues[indices[1]],
-					x[2], y[2], solutionValues[indices[2]]
-				);
-			}
-			
-			std::vector<double>
-				xs(_triangulator.ConvexVerticesCount()),
-				ys(_triangulator.ConvexVerticesCount());
-			std::vector<size_t> indices(_triangulator.ConvexVerticesCount());
-			for(size_t i=0; i!=_triangulator.ConvexVerticesCount(); ++i)
-			{
-				size_t* sourceIndex;
-				double curra, curdec;
-				_triangulator.GetConvexVertex(i, curra, curdec, reinterpret_cast<void*&>(sourceIndex));
-				indices[i] = *sourceIndex;
+			Delaunay::Triangle triangle = _triangulator.GetTriangle(i);
+			size_t indices[3];
+			double x[3], y[3];
+			for(size_t j=0; j!=3; ++j) {
+				indices[j] = *reinterpret_cast<size_t*>(triangle.userData[j]);
 				double l, m;
-				ImageCoordinates::RaDecToLM(curra, curdec, _phaseCentreRA, _phaseCentreDec, l, m);
-				ImageCoordinates::LMToXYfloat(l, m, _pixelSizeX, _pixelSizeY, _width, _height, xs[i], ys[i]);
+				ImageCoordinates::RaDecToLM(triangle.x[j], triangle.y[j], _phaseCentreRA, _phaseCentreDec, l, m);
+				ImageCoordinates::LMToXYfloat(l, m, _pixelSizeX, _pixelSizeY, _width, _height, x[j], y[j]);
+				std::cout << x[j] << ',' << y[j] << " -> ";
 			}
-			for(size_t i=0; i!=_triangulator.ConvexVerticesCount(); ++i)
-			{
-				//int i = 4;
-				size_t
-					a = i,
-					b = (i+1) % _triangulator.ConvexVerticesCount(),
-					c = (i+2) % _triangulator.ConvexVerticesCount();
-				std::cout << "Interpolating " << xs[b] << ',' << ys[b] << '\n';
-				interpolator.InterpolateConvexHullEdge(&image[0], _width, _height,
-					xs[a], ys[a], solutionValues[indices[a]],
-					xs[b], ys[b], solutionValues[indices[b]]
-				);
-				interpolator.InterpolateConvexHullVertex(&image[0], _width, _height,
-					xs[a], ys[a],
-					xs[b], ys[b], solutionValues[indices[b]],
-					xs[c], ys[c]
-				);
-			}
+			std::cout << "Interpolating\n";
+			interpolator.Interpolate(&image[0], _width, _height,
+				x[0], y[0], solutionValues[indices[0]],
+				x[1], y[1], solutionValues[indices[1]],
+				x[2], y[2], solutionValues[indices[2]]
+			);
+		}
+		
+		std::vector<double>
+			xs(_triangulator.ConvexVerticesCount()),
+			ys(_triangulator.ConvexVerticesCount());
+		std::vector<size_t> indices(_triangulator.ConvexVerticesCount());
+		for(size_t i=0; i!=_triangulator.ConvexVerticesCount(); ++i)
+		{
+			size_t* sourceIndex;
+			double curra, curdec;
+			_triangulator.GetConvexVertex(i, curra, curdec, reinterpret_cast<void*&>(sourceIndex));
+			indices[i] = *sourceIndex;
+			double l, m;
+			ImageCoordinates::RaDecToLM(curra, curdec, _phaseCentreRA, _phaseCentreDec, l, m);
+			ImageCoordinates::LMToXYfloat(l, m, _pixelSizeX, _pixelSizeY, _width, _height, xs[i], ys[i]);
+		}
+		for(size_t i=0; i!=_triangulator.ConvexVerticesCount(); ++i)
+		{
+			//int i = 4;
+			size_t
+				a = i,
+				b = (i+1) % _triangulator.ConvexVerticesCount(),
+				c = (i+2) % _triangulator.ConvexVerticesCount();
+			std::cout << "Interpolating " << xs[b] << ',' << ys[b] << '\n';
+			interpolator.InterpolateConvexHullEdge(&image[0], _width, _height,
+				xs[a], ys[a], solutionValues[indices[a]],
+				xs[b], ys[b], solutionValues[indices[b]]
+			);
+			interpolator.InterpolateConvexHullVertex(&image[0], _width, _height,
+				xs[a], ys[a],
+				xs[b], ys[b], solutionValues[indices[b]],
+				xs[c], ys[c]
+			);
 		}
 	}
 private:
