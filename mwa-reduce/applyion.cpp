@@ -95,5 +95,5 @@ int main(int argc, char* argv[])
 	}
 	
 	FitsWriter writer(reader);
-	writer.Write(outputFilename, image.data());
+	writer.Write(outputFilename, outImage.data());
 }
