@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
 			ImageCoordinates::LMToXYfloat(l, m, reader.PixelSizeX(), reader.PixelSizeY(), width, height, xf, yf);
 			
 			double val = sample(image.data(), width, height, xf, yf);
-			*outPtr = val * gain;
+			*outPtr = val / gain;
 			
 			++gainPtr;
 			++dlPtr;
