@@ -175,9 +175,9 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 			lmSq = maxL * maxL + maxM * maxM;
 		double radiansForAllLayers;
 		if(lmSq < 1.0)
-			radiansForAllLayers = 2 * M_PI * msData.maxW * (1.0 - sqrt(1.0 - lmSq));
+			radiansForAllLayers = 2 * M_PI * (msData.maxW - msData.minW) * (1.0 - sqrt(1.0 - lmSq));
 		else
-			radiansForAllLayers = 2 * M_PI * msData.maxW;
+			radiansForAllLayers = 2 * M_PI * (msData.maxW - msData.minW);
 		size_t suggestedGridSize = size_t(ceil(radiansForAllLayers));
 		if(!HasWGridSize())
 			SetWGridSize(suggestedGridSize);
