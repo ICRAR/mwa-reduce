@@ -21,13 +21,6 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_imageData(fftThreadCount),
 	_nFFTThreads(fftThreadCount)
 {
-	size_t imgSize = _height * _width;
-	for(size_t i=0; i!=_nFFTThreads; ++i)
-	{
-		posix_memalign(reinterpret_cast<void**>(&_imageData[i]), sizeof(double)*2, imgSize * sizeof(double));
-		memset(_imageData[i], 0, imgSize * sizeof(double));
-	}
-	
 	initializeSqrtLMLookupTable();
 	makeKernels();
 }
@@ -38,13 +31,38 @@ LayeredImager::~LayeredImager()
 		free(_imageData[i]);
 }
 
-void LayeredImager::PrepareWLayers(size_t nWLayers, size_t maxMem, double minW, double maxW)
+void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW)
 {
 	_minW = minW;
 	_maxW = maxW;
 	_nWLayers = nWLayers;
 	
-	size_t maxNWLayersPerPass = size_t((double) maxMem / (_width * _height * sizeof(double) * 2));
+	size_t nrCopies = _nFFTThreads;
+	double memPerImage = _width * _height * sizeof(double) * 2;
+	if(nrCopies > _nWLayers) nrCopies = _nWLayers;
+	double remainingMem = maxMem - nrCopies * memPerImage;
+	if(remainingMem <= memPerImage * _nFFTThreads)
+	{
+		_nFFTThreads = size_t(maxMem/(2.0 * memPerImage)); // times two to use half of mem for FFTing at most
+		if(_nFFTThreads==0) _nFFTThreads = 1;
+		remainingMem = _nFFTThreads * memPerImage;
+		
+		std::cout <<
+			"WARNING: the amount of available memory is too low for the image size,\n
+			"       : swapping might occur and not all cores might be used.\n"
+			"       : nr buffers avail for FFT: " << _nFFTThreads << " remaining mem: " << remainingMem << '\n';
+	}
+	
+	// Allocate FFT buffers
+	size_t imgSize = _height * _width;
+	for(size_t i=0; i!=_nFFTThreads; ++i)
+	{
+		posix_memalign(reinterpret_cast<void**>(&_imageData[i]), sizeof(double)*2, imgSize * sizeof(double));
+		memset(_imageData[i], 0, imgSize * sizeof(double));
+	}
+	
+	// Calculate nr wlayers per pass from remaining memory
+	size_t maxNWLayersPerPass = size_t((double) remainingMem / memPerImage);
 	_nPasses = (nWLayers+maxNWLayersPerPass-1)/maxNWLayersPerPass;
 	if(_nPasses == 0) _nPasses = 1;
 	std::cout << "Will process " << (_nWLayers / _nPasses) << " w-layers per pass.\n";

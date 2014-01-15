@@ -20,7 +20,7 @@ class LayeredImager
 		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount);
 		~LayeredImager();
 		
-		void PrepareWLayers(size_t nWLayers, size_t maxMem, double minW, double maxW);
+		void PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW);
 		
 		void PrepareBand(const MultiBandData &bandData)
 		{

@@ -682,7 +682,7 @@ void WSInversion::InvertToVisibilities(const double *image)
 
 	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
 	_imager->SetGridMode(_gridMode);
-	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
+	_imager->PrepareWLayers(WGridSize(), double(memSize)*9.0/10.0, minW, maxW);
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		countSamplesPerLayer(msDataVector[i]);
