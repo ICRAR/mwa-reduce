@@ -179,10 +179,17 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 		else
 			radiansForAllLayers = 2 * M_PI * (msData.maxW - msData.minW);
 		size_t suggestedGridSize = size_t(ceil(radiansForAllLayers));
-		if(!HasWGridSize())
-			SetWGridSize(suggestedGridSize);
+		if(suggestedGridSize < _cpuCount)
+		{
+			std::cout <<
+				"The theoretically suggested number of w-layers (" << suggestedGridSize << ") is less than the number of availables\n"
+				"cores (" << _cpuCount << "). Changing suggested number of w-layers to " << _cpuCount << ".\n";
+			suggestedGridSize = _cpuCount;
+		}
 		if(Verbose())
 			std::cout << "Suggested number of w-layers: " << ceil(suggestedGridSize) << '\n';
+		if(!HasWGridSize())
+			SetWGridSize(suggestedGridSize);
 	}
 }
 

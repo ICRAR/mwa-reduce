@@ -45,7 +45,7 @@ void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, 
 	{
 		_nFFTThreads = size_t(maxMem/(2.0 * memPerImage)); // times two to use half of mem for FFTing at most
 		if(_nFFTThreads==0) _nFFTThreads = 1;
-		remainingMem = _nFFTThreads * memPerImage;
+		remainingMem = (double(_nFFTThreads)+0.5) * memPerImage;
 		
 		std::cout <<
 			"WARNING: the amount of available memory is too low for the image size,\n"
