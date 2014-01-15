@@ -48,9 +48,9 @@ void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, 
 		remainingMem = _nFFTThreads * memPerImage;
 		
 		std::cout <<
-			"WARNING: the amount of available memory is too low for the image size,\n
+			"WARNING: the amount of available memory is too low for the image size,\n"
 			"       : swapping might occur and not all cores might be used.\n"
-			"       : nr buffers avail for FFT: " << _nFFTThreads << " remaining mem: " << remainingMem << '\n';
+			"       : nr buffers avail for FFT: " << _nFFTThreads << " remaining mem: " << round(remainingMem/1.0e9) << " GB \n";
 	}
 	
 	// Allocate FFT buffers
