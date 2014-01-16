@@ -17,6 +17,8 @@ class LayeredImager
 	public:
 		enum GridModeEnum { NearestNeighbour, KaiserBessel };
 		
+		typedef double imgnum_t;
+		
 		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount);
 		~LayeredImager();
 		

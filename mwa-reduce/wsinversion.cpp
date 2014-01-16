@@ -181,10 +181,22 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 		size_t suggestedGridSize = size_t(ceil(radiansForAllLayers));
 		if(suggestedGridSize < _cpuCount)
 		{
-			std::cout <<
-				"The theoretically suggested number of w-layers (" << suggestedGridSize << ") is less than the number of availables\n"
-				"cores (" << _cpuCount << "). Changing suggested number of w-layers to " << _cpuCount << ".\n";
-			suggestedGridSize = _cpuCount;
+			// When nwlayers is lower than the nr of cores, we cannot parallellize well. 
+			// However, we don't want extra w-layers if we are low on mem, as that might slow down the process
+			double memoryRequired = double(_cpuCount) * double(sizeof(LayeredImager::imgnum_t)) * double(ImageWidth()) * double(ImageHeight());
+			if(4.0 * memoryRequired < double(_memSize))
+			{
+				std::cout <<
+					"The theoretically suggested number of w-layers (" << suggestedGridSize << ") is less than the number of availables\n"
+					"cores (" << _cpuCount << "). Changing suggested number of w-layers to " << _cpuCount << ".\n";
+				suggestedGridSize = _cpuCount;
+			}
+			else {
+				std::cout <<
+					"The theoretically suggested number of w-layers (" << suggestedGridSize << ") is less than the number of availables\n"
+					"cores (" << _cpuCount << "), but there is not enough memory available to increase the number of w-layers.\n"
+					"Not all cores can be used efficiently.\n";
+			}
 		}
 		if(Verbose())
 			std::cout << "Suggested number of w-layers: " << ceil(suggestedGridSize) << '\n';
@@ -593,6 +605,11 @@ void WSInversion::visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkL
 
 void WSInversion::Invert()
 {
+	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
+	_memSize = (int64_t) pageCount * (int64_t) pageSize;
+	double memSizeInGB = (double) _memSize / (1024.0*1024.0*1024.0);
+	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
+
 	MSData msDataVector[MeasurementSetCount()];
 	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
@@ -606,14 +623,9 @@ void WSInversion::Invert()
 		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
 	}
 	
-	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
-	int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
-	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
-	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
-
 	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
 	_imager->SetGridMode(_gridMode);
-	_imager->PrepareWLayers(WGridSize(), memSize*2/4, minW, maxW);
+	_imager->PrepareWLayers(WGridSize(), _memSize*2/4, minW, maxW);
 	_imager->SetImageImaginaryPart(ImaginaryPart());
 	_imager->SetImageConjugatePart(Polarization() == Polarization::YX && ImaginaryPart());
 	

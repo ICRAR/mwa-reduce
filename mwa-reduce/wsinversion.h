@@ -141,6 +141,7 @@ class WSInversion : public InversionAlgorithm
 		double _startTime;
 		LayeredImager::GridModeEnum _gridMode;
 		size_t _cpuCount, _laneBufferSize;
+		int64_t _memSize;
 };
 
 #endif
