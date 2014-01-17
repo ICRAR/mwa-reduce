@@ -243,9 +243,9 @@ void LayeredImager::makeKernel(std::vector<double> &kernel, double alpha, size_t
 	for(size_t i=0; i!=mid; i++)
 		kernel[i] = kernel[n-1-i];
 	
-	std::ofstream file("kernel.txt");
-	for(size_t i=0; i!=n; i++)
-		file << i << '\t' << kernel[i] << '\t' << (bessel0(alpha * sqrt(1.0-(double(i*i)/nSquared)), 1e-8) * normFactor) << '\n';
+	//std::ofstream file("kernel.txt");
+	//for(size_t i=0; i!=n; i++)
+	//	file << i << '\t' << kernel[i] << '\t' << (bessel0(alpha * sqrt(1.0-(double(i*i)/nSquared)), 1e-8) * normFactor) << '\n';
 }
 
 double LayeredImager::bessel0(double x, double precision)
