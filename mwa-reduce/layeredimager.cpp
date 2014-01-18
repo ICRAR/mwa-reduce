@@ -69,7 +69,9 @@ void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, 
 	}
 	
 	// Calculate nr wlayers per pass from remaining memory
-	size_t maxNWLayersPerPass = size_t((double) remainingMem / (2.0*memPerImage));
+	int maxNWLayersPerPass = int((double) remainingMem / (2.0*memPerImage));
+	if(maxNWLayersPerPass < 1)
+		maxNWLayersPerPass=1;
 	_nPasses = (nWLayers+maxNWLayersPerPass-1)/maxNWLayersPerPass;
 	if(_nPasses == 0) _nPasses = 1;
 	std::cout << "Will process " << (_nWLayers / _nPasses) << " w-layers per pass.\n";
