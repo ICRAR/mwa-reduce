@@ -61,13 +61,13 @@ int main(int argc, char* argv[])
 	
 	std::cout << "Writing image... " << std::flush;
 	double
-		bandStart = inversionAlgorithm.ImageBandStart(),
-		bandEnd = inversionAlgorithm.ImageBandEnd();
+		bandStart = inversionAlgorithm.BandStart(),
+		bandEnd = inversionAlgorithm.BandEnd();
 		
 	FitsWriter writer;
-	writer.SetImageDimensions(imgWidth, imgHeight, inversionAlgorithm.ImageResultRA(), inversionAlgorithm.ImageResultDec(), -pixelScale, pixelScale);
+	writer.SetImageDimensions(imgWidth, imgHeight, inversionAlgorithm.PhaseCentreRA(), inversionAlgorithm.PhaseCentreDec(), -pixelScale, pixelScale);
 	writer.SetFrequency((bandStart + bandEnd) * 0.5, bandEnd - bandStart);
-	writer.SetDate(inversionAlgorithm.ImageStartTime());
+	writer.SetDate(inversionAlgorithm.StartTime());
 	writer.Write(fitsfileName, inversionAlgorithm.ImageResult());
 	std::cout << "DONE\n";
 }

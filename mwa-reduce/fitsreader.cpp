@@ -126,13 +126,18 @@ void FitsReader::initialize()
 	_pixelSizeX = readDoubleKey("CDELT1") * (-M_PI / 180.0);
 	if(readStringKey("CUNIT1") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT1");
-	
+	double centrePixelX = readDoubleKey("CRPIX1");
+	_phaseCentreDL = ((_imgWidth / 2.0)+1.0 - centrePixelX) * _pixelSizeX;
+
 	if(readStringKey("CTYPE2") != "DEC--SIN")
 		throw std::runtime_error("Invalid value for CTYPE2");
 	_phaseCentreDec = readDoubleKey("CRVAL2") * (M_PI / 180.0);
 	_pixelSizeY = readDoubleKey("CDELT2") * (M_PI / 180.0);
 	if(readStringKey("CUNIT2") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT2");
+	double centrePixelY = readDoubleKey("CRPIX2");
+	_phaseCentreDM = ((_imgHeight / 2.0)+1.0 - centrePixelY) * _pixelSizeY;
+	
 	readDoubleKeyIfExists("DATE-OBS", _dateObs);
 	if(naxis >= 3)
 	{

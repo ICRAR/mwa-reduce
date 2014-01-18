@@ -13,6 +13,7 @@ class FitsWriter
 		FitsWriter() :
 			_width(0), _height(0),
 			_phaseCentreRA(0.0), _phaseCentreDec(0.0), _pixelSizeX(0.0), _pixelSizeY(0.0),
+			_phaseCentreDL(0.0), _phaseCentreDM(0.0),
 			_frequency(0.0), _bandwidth(0.0),
 			_dateObs(0.0),
 			_hasBeam(false),
@@ -25,6 +26,7 @@ class FitsWriter
 		FitsWriter(const class FitsReader& reader) :
 			_width(0), _height(0),
 			_phaseCentreRA(0.0), _phaseCentreDec(0.0), _pixelSizeX(0.0), _pixelSizeY(0.0),
+			_phaseCentreDL(0.0), _phaseCentreDM(0.0),
 			_frequency(0.0), _bandwidth(0.0),
 			_dateObs(0.0),
 			_hasBeam(false),
@@ -111,9 +113,15 @@ class FitsWriter
 		{
 			_extraNumKeywords = keywords;
 		}
+		void SetPhaseCentreShift(double dl, double dm)
+		{
+			_phaseCentreDL = dl;
+			_phaseCentreDM = dm;
+		}
 	private:
 		std::size_t _width, _height;
 		double _phaseCentreRA, _phaseCentreDec, _pixelSizeX, _pixelSizeY;
+		double _phaseCentreDL, _phaseCentreDM;
 		double _frequency, _bandwidth;
 		double _dateObs;
 		bool _hasBeam;

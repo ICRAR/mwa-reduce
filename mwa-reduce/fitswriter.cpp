@@ -64,8 +64,11 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
 	fits_write_key(fptr, TSTRING, "BTYPE", (void*) "Intensity", "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) _origin.c_str(), _originComment.c_str(), &status); checkStatus(status, filename);
 	float phaseCentreRADeg = (_phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (_phaseCentreDec/M_PI)*180.0;
-	float centrePixelX = (_width / 2.0)+1, centrePixelY = (_height / 2.0)+1;
-	float stepXDeg = (-_pixelSizeX/M_PI)*180.0, stepYDeg = (_pixelSizeY/M_PI)*180.0;
+	float
+		centrePixelX = (_width / 2.0)+1.0 - _phaseCentreDL/_pixelSizeX,
+		centrePixelY = (_height / 2.0)+1.0 - _phaseCentreDM/_pixelSizeY,
+		stepXDeg = (-_pixelSizeX / M_PI)*180.0,
+		stepYDeg = ( _pixelSizeY / M_PI)*180.0;
 	fits_write_key(fptr, TSTRING, "CTYPE1", (void*) "RA---SIN", "Right ascension angle cosine", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TFLOAT, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TFLOAT, "CRVAL1", (void*) &phaseCentreRADeg, "", &status); checkStatus(status, filename);
@@ -184,6 +187,8 @@ void FitsWriter::SetMetadata(const FitsReader& reader)
 		_beamMinorAxisRad = reader.BeamMinorAxisRad();
 		_beamPositionAngle = reader.BeamPositionAngle();
 	}
+	_phaseCentreDL = reader.PhaseCentreDL();
+	_phaseCentreDM = reader.PhaseCentreDM();
 	_origin = reader.Origin();
 	_originComment = reader.OriginComment();
 	_history = reader.History();

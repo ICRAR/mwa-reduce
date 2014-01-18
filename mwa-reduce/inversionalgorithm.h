@@ -128,14 +128,17 @@ class InversionAlgorithm
 		virtual void InvertToVisibilities(const double *image) = 0;
 		
 		virtual const double *ImageResult() const = 0;
-		virtual double ImageResultRA() const = 0;
-		virtual double ImageResultDec() const = 0;
-		virtual double ImageHighestFrequencyChannel() const = 0;
-		virtual double ImageLowestFrequencyChannel() const = 0;
-		virtual double ImageBandStart() const = 0;
-		virtual double ImageBandEnd() const = 0;
-		virtual double ImageBeamSize() const = 0;
-		virtual double ImageStartTime() const = 0;
+		virtual double PhaseCentreRA() const = 0;
+		virtual double PhaseCentreDec() const = 0;
+		virtual bool HasDenormalPhaseCentre() const { return false; }
+		virtual double PhaseCentreDL() const = 0;
+		virtual double PhaseCentreDM() const = 0;
+		virtual double HighestFrequencyChannel() const = 0;
+		virtual double LowestFrequencyChannel() const = 0;
+		virtual double BandStart() const = 0;
+		virtual double BandEnd() const = 0;
+		virtual double BeamSize() const = 0;
+		virtual double StartTime() const = 0;
 		
 		virtual bool HasGriddingCorrectionImage() const = 0;
 		virtual void GetGriddingCorrectionImage(double *image) const = 0;

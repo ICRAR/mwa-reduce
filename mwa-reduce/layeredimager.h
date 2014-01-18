@@ -103,6 +103,8 @@ class LayeredImager
 		
 		void SetImageConjugatePart(bool imageConjugatePart) { _imageConjugatePart = imageConjugatePart; }
 		
+		void SetDenormalPhaseCentre(double dl, double dm) { _phaseCentreDL = dl; _phaseCentreDM = dm; }
+		
 		void GetGriddingCorrectionImage(double* image) const;
 	private:
 		size_t layerRangeStart(size_t layerRangeIndex) const
@@ -123,7 +125,7 @@ class LayeredImager
 		void correctImageForKernel(double *image) const;
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
-		double _minW, _maxW, _pixelSizeX, _pixelSizeY;
+		double _minW, _maxW, _pixelSizeX, _pixelSizeY, _phaseCentreDL, _phaseCentreDM;
 		bool _imageImaginaryPart, _imageConjugatePart;
 		MultiBandData _bandData;
 		

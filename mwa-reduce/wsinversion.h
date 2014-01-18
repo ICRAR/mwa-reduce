@@ -27,14 +27,17 @@ class WSInversion : public InversionAlgorithm
 		virtual void InvertToVisibilities(const double *image);
 		
 		virtual const double *ImageResult() const { return _imager->Image(); }
-		virtual double ImageResultRA() const { return _phaseCentreRA; }
-		virtual double ImageResultDec() const { return _phaseCentreDec; }
-		virtual double ImageHighestFrequencyChannel() const { return _freqHigh; }
-		virtual double ImageLowestFrequencyChannel() const { return _freqLow; }
-		virtual double ImageBandStart() const { return _bandStart; }
-		virtual double ImageBandEnd() const { return _bandEnd; }
-		virtual double ImageBeamSize() const { return _beamSize; }
-		virtual double ImageStartTime() const { return _startTime; }
+		virtual double PhaseCentreRA() const { return _phaseCentreRA; }
+		virtual double PhaseCentreDec() const { return _phaseCentreDec; }
+		virtual double HighestFrequencyChannel() const { return _freqHigh; }
+		virtual double LowestFrequencyChannel() const { return _freqLow; }
+		virtual double BandStart() const { return _bandStart; }
+		virtual double BandEnd() const { return _bandEnd; }
+		virtual double BeamSize() const { return _beamSize; }
+		virtual double StartTime() const { return _startTime; }
+		virtual bool HasDenormalPhaseCentre() const { return _denormalPhaseCentre; }
+		virtual double PhaseCentreDL() const { return _phaseCentreDL; }
+		virtual double PhaseCentreDM() const { return _phaseCentreDM; }
 		
 		enum LayeredImager::GridModeEnum GridMode() const { return _gridMode; }
 		void SetGridMode(LayeredImager::GridModeEnum gridMode) { _gridMode = gridMode; }
@@ -132,8 +135,8 @@ class WSInversion : public InversionAlgorithm
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<ao::lane<InversionWorkItem>> _inversionWorkLane;
 		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
-		double _phaseCentreRA, _phaseCentreDec;
-		bool _hasFrequencies;
+		double _phaseCentreRA, _phaseCentreDec, _phaseCentreDL, _phaseCentreDM;
+		bool _denormalPhaseCentre, _hasFrequencies;
 		double _freqHigh, _freqLow;
 		double _bandStart, _bandEnd;
 		double _beamSize;
