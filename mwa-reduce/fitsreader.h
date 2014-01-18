@@ -29,6 +29,9 @@ class FitsReader
 		double PixelSizeX() const { return _pixelSizeX; }
 		double PixelSizeY() const { return _pixelSizeY; }
 		
+		double PhaseCentreDL() const { return _phaseCentreDL; }
+		double PhaseCentreDM() const { return _phaseCentreDM; }
+		
 		double Frequency() const { return _frequency; }
 		double Bandwidth() const { return _bandwidth; }
 		
@@ -62,6 +65,7 @@ class FitsReader
 		size_t _imgWidth, _imgHeight;
 		double _phaseCentreRA, _phaseCentreDec;
 		double _pixelSizeX, _pixelSizeY;
+		double _phaseCentreDL, _phaseCentreDM;
 		double _frequency, _bandwidth, _dateObs;
 		bool _hasBeam;
 		double _beamMajorAxisRad, _beamMinorAxisRad, _beamPositionAngle;

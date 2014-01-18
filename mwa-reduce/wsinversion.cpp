@@ -24,7 +24,7 @@ WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
 WSInversion::MSData::~MSData()
 { }
 
-WSInversion::WSInversion() : InversionAlgorithm(), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour), _laneBufferSize(16)
+WSInversion::WSInversion() : InversionAlgorithm(), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour), _laneBufferSize(16)
 {
 	_cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -102,8 +102,18 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	casa::Vector<casa::Double> j2000Val = j2000.getValue().get();
 	_phaseCentreRA = j2000Val[0];
 	_phaseCentreDec = j2000Val[1];
+	if(fTable.keywordSet().isDefined("WSCLEAN_DL"))
+		_phaseCentreDL = fTable.keywordSet().asDouble(casa::RecordFieldId("WSCLEAN_DL"));
+	else _phaseCentreDL = 0.0;
+	if(fTable.keywordSet().isDefined("WSCLEAN_DM"))
+		_phaseCentreDM = fTable.keywordSet().asDouble(casa::RecordFieldId("WSCLEAN_DM"));
+	else _phaseCentreDM = 0.0;
 	std::cout << " DONE\n";
 
+	_denormalPhaseCentre = _phaseCentreDL != 0.0 || _phaseCentreDM != 0.0;
+	if(_denormalPhaseCentre && Verbose())
+		std::cout << "Set has denormal phase centre: dl=" << _phaseCentreDL << ", dm=" << _phaseCentreDM << '\n';
+	
 	msData.rowStart = 0;
 	msData.rowEnd = ms.nrow();
 	if(Selection().HasInterval())
@@ -170,8 +180,8 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	if(Verbose() || !HasWGridSize())
 	{
 		double
-			maxL = ImageWidth() * PixelSizeX() * 0.5,
-			maxM = ImageHeight() * PixelSizeY() * 0.5,
+			maxL = ImageWidth() * PixelSizeX() * 0.5 + fabs(_phaseCentreDL),
+			maxM = ImageHeight() * PixelSizeY() * 0.5 + fabs(_phaseCentreDM),
 			lmSq = maxL * maxL + maxM * maxM;
 		double radiansForAllLayers;
 		if(lmSq < 1.0)
@@ -625,6 +635,8 @@ void WSInversion::Invert()
 	
 	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
 	_imager->SetGridMode(_gridMode);
+	if(_denormalPhaseCentre)
+		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
 	_imager->PrepareWLayers(WGridSize(), _memSize*2/4, minW, maxW);
 	_imager->SetImageImaginaryPart(ImaginaryPart());
 	_imager->SetImageConjugatePart(Polarization() == Polarization::YX && ImaginaryPart());

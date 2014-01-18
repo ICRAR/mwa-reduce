@@ -13,6 +13,8 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_height(height),
 	_pixelSizeX(pixelSizeX),
 	_pixelSizeY(pixelSizeY),
+	_phaseCentreDL(0.0),
+	_phaseCentreDM(0.0),
 	_imageImaginaryPart(false),
 	_imageConjugatePart(false),
 	_gridMode(NearestNeighbour),
@@ -21,7 +23,6 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_imageData(fftThreadCount),
 	_nFFTThreads(fftThreadCount)
 {
-	initializeSqrtLMLookupTable();
 	makeKernels();
 }
 
@@ -33,6 +34,8 @@ LayeredImager::~LayeredImager()
 
 void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW)
 {
+	initializeSqrtLMLookupTable();
+	
 	_minW = minW;
 	_maxW = maxW;
 	_nWLayers = nWLayers;
@@ -243,9 +246,9 @@ void LayeredImager::makeKernel(std::vector<double> &kernel, double alpha, size_t
 	for(size_t i=0; i!=mid; i++)
 		kernel[i] = kernel[n-1-i];
 	
-	std::ofstream file("kernel.txt");
-	for(size_t i=0; i!=n; i++)
-		file << i << '\t' << kernel[i] << '\t' << (bessel0(alpha * sqrt(1.0-(double(i*i)/nSquared)), 1e-8) * normFactor) << '\n';
+	//std::ofstream file("kernel.txt");
+	//for(size_t i=0; i!=n; i++)
+	//	file << i << '\t' << kernel[i] << '\t' << (bessel0(alpha * sqrt(1.0-(double(i*i)/nSquared)), 1e-8) * normFactor) << '\n';
 }
 
 double LayeredImager::bessel0(double x, double precision)
@@ -492,10 +495,10 @@ void LayeredImager::FinalizeImage(double multiplicationFactor)
 	double *dataPtr = _imageData[0];
 	for(size_t y=0;y!=_height;++y)
 	{
-		double m = ((double) y-(_height/2)) * _pixelSizeY;
+		double m = ((double) y-(_height/2)) * _pixelSizeY + _phaseCentreDM;
 		for(size_t x=0;x!=_width;++x)
 		{
-			double l = ((double) x-(_width/2)) * _pixelSizeX;
+			double l = ((double) x-(_width/2)) * _pixelSizeX + _phaseCentreDL;
 			*dataPtr *= multiplicationFactor * sqrt(1.0 - l*l - m*m);
 			++dataPtr;
 		}
@@ -549,10 +552,10 @@ void LayeredImager::PrepareImageForVisibilitySampling(const double *image, doubl
 	double *dataPtr = _imageData[0];
 	for(size_t y=0;y!=_height;++y)
 	{
-		double m = ((double) y-(_height/2)) * _pixelSizeY;
+		double m = ((double) y-(_height/2)) * _pixelSizeY + _phaseCentreDM;
 		for(size_t x=0;x!=_width;++x)
 		{
-			double l = ((double) x-(_width/2)) * _pixelSizeX;
+			double l = ((double) x-(_width/2)) * _pixelSizeX + _phaseCentreDL;
 			if(std::isfinite(*dataPtr) && l*l + m*m < 1.0)
 				*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
 			else
@@ -575,14 +578,14 @@ void LayeredImager::initializeSqrtLMLookupTable()
 	{
 		size_t ySrc = (_height - 1 - y) + _height / 2;
 		if(ySrc >= _height) ySrc -= _height;
-		double m = ((double) ySrc-(_height/2)) * _pixelSizeY;
+		double m = ((double) ySrc-(_height/2)) * _pixelSizeY + _phaseCentreDM;
 		
 		for(size_t x=0;x!=_width;++x)
 		{
 			size_t xSrc = x + _width / 2;
 			if(xSrc >= _width) xSrc -= _width;
 			
-			double l = ((double) xSrc-(_width/2)) * _pixelSizeX;
+			double l = ((double) xSrc-(_width/2)) * _pixelSizeX + _phaseCentreDL;
 			if(l*l + m*m < 1.0)
 				*iter = sqrt(1.0 - l*l - m*m) - 1.0;
 			else

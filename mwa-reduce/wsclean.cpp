@@ -22,16 +22,16 @@ std::string commandLine;
 void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgorithm, double beamSizeArcmin)
 {
 	double
-		ra = inversionAlgorithm.ImageResultRA(),
-		dec = inversionAlgorithm.ImageResultDec(),
+		ra = inversionAlgorithm.PhaseCentreRA(),
+		dec = inversionAlgorithm.PhaseCentreDec(),
 		pixelScaleX = inversionAlgorithm.PixelSizeX(),
 		pixelScaleY = inversionAlgorithm.PixelSizeY(),
-		freqHigh = inversionAlgorithm.ImageHighestFrequencyChannel(),
-		freqLow = inversionAlgorithm.ImageLowestFrequencyChannel(),
+		freqHigh = inversionAlgorithm.HighestFrequencyChannel(),
+		freqLow = inversionAlgorithm.LowestFrequencyChannel(),
 		freqCentre = (freqHigh + freqLow) * 0.5,
-		bandwidth = inversionAlgorithm.ImageBandEnd() - inversionAlgorithm.ImageBandStart(),
-		beamSize = inversionAlgorithm.ImageBeamSize(),
-		dateObs = inversionAlgorithm.ImageStartTime();
+		bandwidth = inversionAlgorithm.BandEnd() - inversionAlgorithm.BandStart(),
+		beamSize = inversionAlgorithm.BeamSize(),
+		dateObs = inversionAlgorithm.StartTime();
 		
 	writer.SetImageDimensions(inversionAlgorithm.ImageWidth(), inversionAlgorithm.ImageHeight(), ra, dec, pixelScaleX, pixelScaleY);
 	writer.SetFrequency(freqCentre, bandwidth);
@@ -46,6 +46,8 @@ void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgor
 	else {
 		writer.SetBeamInfo(beamSize);
 	}
+	if(inversionAlgorithm.HasDenormalPhaseCentre())
+		writer.SetPhaseCentreShift(inversionAlgorithm.PhaseCentreDL(), inversionAlgorithm.PhaseCentreDM());
 	
 	writer.SetExtraKeyword("WSCNWLAY", inversionAlgorithm.WGridSize());
 	writer.SetExtraKeyword("WSCDATAC", inversionAlgorithm.DataColumnName());
@@ -422,7 +424,7 @@ int main(int argc, char *argv[])
 		inversionWatch.Pause();
 		
 		isFirstInversion = false;
-		std::cout << "Beam size is " << inversionAlgorithm->ImageBeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
+		std::cout << "Beam size is " << inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
 		
 		std::cout << "Writing psf image... " << std::flush;
 		FitsWriter fitsWriter;
@@ -483,7 +485,7 @@ int main(int argc, char *argv[])
 			AreaParser parser;
 			std::ifstream caFile(cleanAreasFilename.c_str());
 			parser.Parse(*cleanAreas, caFile);
-			cleanAreas->SetImageProperties(pixelScale, pixelScale, inversionAlgorithm->ImageResultRA(), inversionAlgorithm->ImageResultDec(), imgWidth, imgHeight);
+			cleanAreas->SetImageProperties(pixelScale, pixelScale, inversionAlgorithm->PhaseCentreRA(), inversionAlgorithm->PhaseCentreDec(), imgWidth, imgHeight);
 			cleanAlgorithm.SetCleanAreas(*cleanAreas);
 		}
 		
