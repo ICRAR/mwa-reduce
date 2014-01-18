@@ -43,7 +43,6 @@ public:
 	NumType* Allocate(size_t size)
 	{
 		std::lock_guard<std::mutex> guard(_mutex);
-		std::cout << "Allocating image of " << size << ".\n";
 		++_nReal;
 		if(_nReal > _nRealMax) _nRealMax = _nReal;
 		for(typename std::vector<Buffer>::iterator i=_buffers.begin(); i!=_buffers.end(); ++i)
@@ -70,7 +69,6 @@ public:
 	std::complex<NumType>* AllocateComplex(size_t size)
 	{
 		std::lock_guard<std::mutex> guard(_mutex);
-		std::cout << "Allocating image of " << size << ".\n";
 		++_nComplex;
 		if(_nComplex > _nComplexMax) _nComplexMax = _nComplex;
 		for(typename std::vector<Buffer>::iterator i=_buffers.begin(); i!=_buffers.end(); ++i)
@@ -88,13 +86,11 @@ public:
 		Buffer* newBuffer = allocateNewBuffer(size);
 		newBuffer->isFirstHalfUsed = true;
 		newBuffer->isSecondHalfUsed = true;
-		std::cout << newBuffer->ptr << '\n';
 		return reinterpret_cast<std::complex<NumType>*>(newBuffer->ptr);
 	}
 	
 	void Free(NumType* buffer)
 	{
-		std::cout << "Freeing image.\n";
 		if(buffer != 0)
 		{
 			std::lock_guard<std::mutex> guard(_mutex);
@@ -105,14 +101,12 @@ public:
 				{
 					found = true;
 					i->isFirstHalfUsed = false;
-					std::cout << "Freed image of " << i->size << ".\n";
 					break;
 				}
 				else if(i->ptr + i->size == buffer)
 				{
 					found = true;
 					i->isSecondHalfUsed = false;
-					std::cout << "Freed image of " << i->size << ".\n";
 					break;
 				}
 			}
@@ -124,7 +118,6 @@ public:
 	
 	void Free(std::complex<NumType>* buffer)
 	{
-		std::cout << "Freeing image " << buffer << ".\n";
 		if(buffer != 0)
 		{
 			std::lock_guard<std::mutex> guard(_mutex);
@@ -136,7 +129,6 @@ public:
 					found = true;
 					i->isFirstHalfUsed = false;
 					i->isSecondHalfUsed = false;
-					std::cout << "Freed image of " << i->size << ".\n";
 					break;
 				}
 			}

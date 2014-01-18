@@ -102,7 +102,6 @@ void LayeredImager::StartVisibilitySamplingPass(size_t passIndex)
 	_curLayerRangeIndex = passIndex;
 	size_t layerOffset = layerRangeStart(passIndex);
 	size_t nLayersInPass = layerRangeStart(passIndex+1) - layerOffset;
-	_layeredUVData.resize(nLayersInPass);
 	initializeLayeredUVData(nLayersInPass);
 	
 	std::stack<size_t> layers;
