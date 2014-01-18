@@ -1,4 +1,5 @@
 #include "layeredimager.h"
+#include "imagebufferallocator.h"
 
 #include <fftw3.h>
 
@@ -8,7 +9,7 @@
 
 #include <boost/thread/thread.hpp>
 
-LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount) :
+LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount, ImageBufferAllocator<double>* allocator) :
 	_width(width),
 	_height(height),
 	_pixelSizeX(pixelSizeX),
@@ -21,7 +22,8 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_overSamplingFactor(15),
 	_kernelSize(7),
 	_imageData(fftThreadCount),
-	_nFFTThreads(fftThreadCount)
+	_nFFTThreads(fftThreadCount),
+	_imageBufferAllocator(allocator)
 {
 	makeKernels();
 }
@@ -29,7 +31,8 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 LayeredImager::~LayeredImager()
 {
 	for(size_t i=0; i!=_nFFTThreads; ++i)
-		free(_imageData[i]);
+		_imageBufferAllocator->Free(_imageData[i]);
+	freeLayeredUVData();
 }
 
 void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW)
@@ -41,31 +44,32 @@ void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, 
 	_nWLayers = nWLayers;
 	
 	size_t nrCopies = _nFFTThreads;
-	double memPerImage = _width * _height * sizeof(double) * 2;
 	if(nrCopies > _nWLayers) nrCopies = _nWLayers;
-	double remainingMem = maxMem - nrCopies * memPerImage;
+	double memPerImage = _width * _height * sizeof(double);
+	double memPerCore = memPerImage * 5.0; // two complex ones for FFT, one for projecting on
+	double remainingMem = maxMem - nrCopies * memPerCore;
 	if(remainingMem <= memPerImage * _nFFTThreads)
 	{
-		_nFFTThreads = size_t(maxMem/(2.0 * memPerImage)); // times two to use half of mem for FFTing at most
+		_nFFTThreads = size_t(maxMem*3.0/(5.0*memPerCore)); // times 3/5 to use 3/5 of mem for FFTing at most
 		if(_nFFTThreads==0) _nFFTThreads = 1;
-		remainingMem = (double(_nFFTThreads)+0.5) * memPerImage;
+		remainingMem = maxMem - _nFFTThreads * memPerCore;
 		
 		std::cout <<
 			"WARNING: the amount of available memory is too low for the image size,\n"
-			"       : swapping might occur and not all cores might be used.\n"
-			"       : nr buffers avail for FFT: " << _nFFTThreads << " remaining mem: " << round(remainingMem/1.0e9) << " GB \n";
+			"       : not all cores might be used.\n"
+			"       : nr buffers avail for FFT: " << _nFFTThreads << " remaining mem: " << round(remainingMem/1.0e8)/10.0 << " GB \n";
 	}
 	
 	// Allocate FFT buffers
 	size_t imgSize = _height * _width;
 	for(size_t i=0; i!=_nFFTThreads; ++i)
 	{
-		posix_memalign(reinterpret_cast<void**>(&_imageData[i]), sizeof(double)*2, imgSize * sizeof(double));
+		_imageData[i] = _imageBufferAllocator->Allocate(imgSize);
 		memset(_imageData[i], 0, imgSize * sizeof(double));
 	}
 	
 	// Calculate nr wlayers per pass from remaining memory
-	size_t maxNWLayersPerPass = size_t((double) remainingMem / memPerImage);
+	size_t maxNWLayersPerPass = size_t((double) remainingMem / (2.0*memPerImage));
 	_nPasses = (nWLayers+maxNWLayersPerPass-1)/maxNWLayersPerPass;
 	if(_nPasses == 0) _nPasses = 1;
 	std::cout << "Will process " << (_nWLayers / _nPasses) << " w-layers per pass.\n";
@@ -73,15 +77,24 @@ void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, 
 	_curLayerRangeIndex = 0;
 }
 
+void LayeredImager::initializeLayeredUVData(size_t n)
+{
+	while(_layeredUVData.size() > n)
+	{
+		_imageBufferAllocator->Free(_layeredUVData.back());
+		_layeredUVData.pop_back();
+	}
+	while(_layeredUVData.size() < n)
+		_layeredUVData.push_back(_imageBufferAllocator->AllocateComplex(_width * _height));
+}
+
 void LayeredImager::StartInversionPass(size_t passIndex)
 {
 	_curLayerRangeIndex = passIndex;
 	size_t nLayersInPass = layerRangeStart(passIndex+1) - layerRangeStart(passIndex);
-	_layeredUVData.resize(nLayersInPass);
-	for(size_t l=0; l!=nLayersInPass; ++l)
-	{
-		_layeredUVData[l].assign(_width * _height, std::complex<double>());
-	}
+	initializeLayeredUVData(nLayersInPass);
+	for(size_t i=0; i!=nLayersInPass; ++i)
+		memset(_layeredUVData[i], 0, _width*_height * sizeof(double)*2);
 }
 
 void LayeredImager::StartVisibilitySamplingPass(size_t passIndex)
@@ -90,8 +103,7 @@ void LayeredImager::StartVisibilitySamplingPass(size_t passIndex)
 	size_t layerOffset = layerRangeStart(passIndex);
 	size_t nLayersInPass = layerRangeStart(passIndex+1) - layerOffset;
 	_layeredUVData.resize(nLayersInPass);
-	for(size_t l=0; l!=nLayersInPass; ++l)
-		_layeredUVData[l].resize(_width * _height);
+	initializeLayeredUVData(nLayersInPass);
 	
 	std::stack<size_t> layers;
 	for(size_t layer=0; layer!=nLayersInPass; ++layer)
@@ -104,11 +116,55 @@ void LayeredImager::StartVisibilitySamplingPass(size_t passIndex)
 	threadGroup.join_all();
 }
 
+void LayeredImager::fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex)
+{
+	const size_t imgSize = _width * _height;
+	std::complex<double> *fftwIn = _imageBufferAllocator->AllocateComplex(imgSize);
+	// reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
+	std::complex<double> *fftwOut = _imageBufferAllocator->AllocateComplex(imgSize);
+	// reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
+	
+	boost::mutex::scoped_lock lock(*mutex);
+	fftw_plan plan =
+		fftw_plan_dft_2d(_width, _height,
+			reinterpret_cast<fftw_complex*>(fftwIn), reinterpret_cast<fftw_complex*>(fftwOut),
+			FFTW_BACKWARD, FFTW_ESTIMATE);
+		
+	const size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
+
+	while(!tasks->empty())
+	{
+		size_t layer = tasks->top();
+		tasks->pop();
+		lock.unlock();
+		
+		// Fourier transform the layer
+		std::complex<double> *uvData = _layeredUVData[layer];
+		memcpy(fftwIn, uvData, imgSize * sizeof(double) * 2);
+		fftw_execute(plan);
+		
+		// Add layer to full image
+		if(_imageImaginaryPart)
+			projectOnImageAndCorrect<true>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
+		else
+			projectOnImageAndCorrect<false>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
+		
+		// lock for accessing tasks in guard
+		lock.lock();
+	}
+	lock.unlock();
+	
+	_imageBufferAllocator->Free(fftwIn);
+	_imageBufferAllocator->Free(fftwOut);
+}
+
 void LayeredImager::fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks)
 {
 	const size_t imgSize = _width * _height;
-	std::complex<double> *fftwIn = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
-	std::complex<double> *fftwOut = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
+	std::complex<double> *fftwIn = _imageBufferAllocator->AllocateComplex(imgSize);
+		// reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
+	std::complex<double> *fftwOut = _imageBufferAllocator->AllocateComplex(imgSize);
+		// reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
 	
 	boost::mutex::scoped_lock lock(*mutex);
 	fftw_plan plan =
@@ -129,56 +185,16 @@ void LayeredImager::fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t
 		
 		// Fourier transform the layer
 		fftw_execute(plan);
-		std::vector<std::complex<double>> &uvData = _layeredUVData[layer];
-		memcpy(&uvData[0], fftwOut, imgSize * sizeof(double) * 2);
+		std::complex<double> *uvData = _layeredUVData[layer];
+		memcpy(uvData, fftwOut, imgSize * sizeof(double) * 2);
 		
 		// lock for accessing tasks in guard
 		lock.lock();
 	}
 	lock.unlock();
 	
-	fftw_free(fftwIn);
-	fftw_free(fftwOut);
-}
-
-void LayeredImager::fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex)
-{
-	const size_t imgSize = _width * _height;
-	std::complex<double> *fftwIn = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
-	std::complex<double> *fftwOut = reinterpret_cast<std::complex<double>*>(fftw_malloc(imgSize * sizeof(double) * 2));
-	
-	boost::mutex::scoped_lock lock(*mutex);
-	fftw_plan plan =
-		fftw_plan_dft_2d(_width, _height,
-			reinterpret_cast<fftw_complex*>(fftwIn), reinterpret_cast<fftw_complex*>(fftwOut),
-			FFTW_BACKWARD, FFTW_ESTIMATE);
-		
-	const size_t layerOffset = layerRangeStart(_curLayerRangeIndex);
-
-	while(!tasks->empty())
-	{
-		size_t layer = tasks->top();
-		tasks->pop();
-		lock.unlock();
-		
-		// Fourier transform the layer
-		std::vector<std::complex<double>> &uvData = _layeredUVData[layer];
-		memcpy(fftwIn, &uvData[0], imgSize * sizeof(double) * 2);
-		fftw_execute(plan);
-		
-		// Add layer to full image
-		if(_imageImaginaryPart)
-			projectOnImageAndCorrect<true>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
-		else
-			projectOnImageAndCorrect<false>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
-		
-		// lock for accessing tasks in guard
-		lock.lock();
-	}
-	lock.unlock();
-	
-	fftw_free(fftwIn);
-	fftw_free(fftwOut);
+	_imageBufferAllocator->Free(fftwIn);
+	_imageBufferAllocator->Free(fftwOut);
 }
 
 void LayeredImager::FinishInversionPass()
@@ -305,7 +321,7 @@ void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, 
 	if(wLayer >= layerOffset && wLayer < layerRangeEnd)
 	{
 		size_t layerIndex = wLayer - layerOffset;
-		std::vector<std::complex<double>> &uvData = _layeredUVData[layerIndex];
+		std::complex<double>* uvData = _layeredUVData[layerIndex];
 		if(_gridMode == KaiserBessel)
 		{
 			double
@@ -399,7 +415,7 @@ void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, dou
 		if(wLayer >= layerOffset && wLayer < layerRangeEnd)
 		{
 			size_t layerIndex = wLayer - layerOffset;
-			std::vector<std::complex<double>> &uvData = _layeredUVData[layerIndex];
+			std::complex<double>* uvData = _layeredUVData[layerIndex];
 			int
 				x = int(round(u * _pixelSizeX * _width)),
 				y = int(round(v * _pixelSizeY * _height));
@@ -479,7 +495,7 @@ void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, dou
 
 void LayeredImager::FinalizeImage(double multiplicationFactor)
 {
-	_layeredUVData.clear();
+	freeLayeredUVData();
 
 	for(size_t i=1;i!=_nFFTThreads;++i)
 	{

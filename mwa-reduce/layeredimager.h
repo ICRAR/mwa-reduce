@@ -12,6 +12,9 @@
 #include <vector>
 #include <stack>
 
+template<typename NumType>
+class ImageBufferAllocator;
+
 class LayeredImager
 {
 	public:
@@ -19,7 +22,7 @@ class LayeredImager
 		
 		typedef double imgnum_t;
 		
-		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount);
+		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount, ImageBufferAllocator<double>* allocator);
 		~LayeredImager();
 		
 		void PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW);
@@ -115,6 +118,8 @@ class LayeredImager
 		void projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex);
 		void copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w);
 		void initializeSqrtLMLookupTable();
+		void initializeLayeredUVData(size_t n);
+		void freeLayeredUVData() { initializeLayeredUVData(0); }
 		void fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);
 		void fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks);
 		
@@ -134,10 +139,11 @@ class LayeredImager
 		std::vector<double> _1dKernel;
 		std::vector<std::vector<double>> _griddingKernels;
 		
-		std::vector<std::vector<std::complex<double>>> _layeredUVData;
+		std::vector<std::complex<double>*> _layeredUVData;
 		std::vector<double*> _imageData;
 		std::vector<double> _sqrtLMLookupTable;
 		size_t _nFFTThreads;
+		ImageBufferAllocator<double>* _imageBufferAllocator;
 };
 
 #endif

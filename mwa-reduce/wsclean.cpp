@@ -2,6 +2,7 @@
 #include "beamevaluator.h"
 #include "cleanalgorithm.h"
 #include "fitswriter.h"
+#include "imagebufferallocator.h"
 #include "imageweights.h"
 #include "inversionalgorithm.h"
 #include "modelrenderer.h"
@@ -346,7 +347,8 @@ int main(int argc, char *argv[])
 	if(argi == argc)
 		throw std::runtime_error("No input measurement sets given.");
 	
-	std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion());
+	ImageBufferAllocator<double> imageAllocator;
+	std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion(&imageAllocator));
 	static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 	
 	for(int i=argi; i != argc; ++i) {
@@ -407,7 +409,7 @@ int main(int argc, char *argv[])
 	inversionAlgorithm->SetImaginaryPart(imaginaryPart);
 	inversionAlgorithm->SetSelection(selection);
 	
-	std::vector<double> psf;
+	double* psf = 0;
 	bool isFirstInversion = true;
 	
 	Stopwatch inversionWatch(false), predictingWatch(false), cleaningWatch(false);
@@ -419,8 +421,20 @@ int main(int argc, char *argv[])
 		inversionAlgorithm->SetDoImagePSF(true);
 		inversionAlgorithm->SetVerbose(isFirstInversion);
 		inversionAlgorithm->Invert();
-		psf.resize(imgWidth * imgHeight);
-		memcpy(&psf[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+		if(inversionAlgorithm->HasGriddingCorrectionImage())
+		{
+			std::cout << "Writing gridding correction image... " << std::flush;
+			double* gridding = imageAllocator.Allocate(imgWidth * imgHeight);
+			inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
+			FitsWriter fitsWriter;
+			initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
+			fitsWriter.Write(std::string(prefixName) + "-gridding.fits", &gridding[0]);
+			imageAllocator.Free(gridding);
+			std::cout << "DONE\n";
+		}
+			
+		psf = imageAllocator.Allocate(imgWidth * imgHeight);
+		memcpy(psf, inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 		inversionWatch.Pause();
 		
 		isFirstInversion = false;
@@ -429,19 +443,10 @@ int main(int argc, char *argv[])
 		std::cout << "Writing psf image... " << std::flush;
 		FitsWriter fitsWriter;
 		initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-		fitsWriter.Write(std::string(prefixName) + "-psf.fits", &psf[0]);
+		fitsWriter.Write(std::string(prefixName) + "-psf.fits", psf);
 		std::cout << "DONE\n";
 		
-		CleanAlgorithm::RemoveNaNsInPSF(&psf[0], imgWidth, imgHeight);
-	
-		if(inversionAlgorithm->HasGriddingCorrectionImage())
-		{
-			std::cout << "Writing gridding correction image... " << std::flush;
-			std::vector<double> gridding(imgWidth * imgHeight);
-			inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
-			fitsWriter.Write(std::string(prefixName) + "-gridding.fits", &gridding[0]);
-			std::cout << "DONE\n";
-		}
+		CleanAlgorithm::RemoveNaNsInPSF(psf, imgWidth, imgHeight);
 	}
 	
 	std::cout << std::flush << " == Constructing image ==\n";
@@ -452,13 +457,16 @@ int main(int argc, char *argv[])
 	inversionWatch.Pause();
 	inversionAlgorithm->SetVerbose(false);
 	
-	std::vector<double> modelImage(imgWidth * imgHeight), residual(imgWidth * imgHeight);
-	memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+	double
+		*modelImage = imageAllocator.Allocate(imgWidth * imgHeight),
+		*residual = imageAllocator.Allocate(imgWidth * imgHeight);
+	memcpy(residual, inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+	memset(modelImage, 0, imgWidth * imgHeight * sizeof(double));
 	
 	std::cout << "Writing dirty image... " << std::flush;
 	FitsWriter fitsWriter;
 	initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-	fitsWriter.Write(std::string(prefixName) + "-dirty.fits", &residual[0]);
+	fitsWriter.Write(std::string(prefixName) + "-dirty.fits", residual);
 	std::cout << "DONE\n";
 	
 	if(mGain == 1.0)
@@ -495,7 +503,7 @@ int main(int argc, char *argv[])
 		do {
 			std::cout << std::flush << " == Cleaning (" << majorIterationNr << ") ==\n";
 			cleaningWatch.Start();
-			cleanAlgorithm.ExecuteMajorIteration(&residual[0], &modelImage[0], &psf[0], imgWidth, imgHeight, reachedMajorThreshold);
+			cleanAlgorithm.ExecuteMajorIteration(residual, modelImage, psf, imgWidth, imgHeight, reachedMajorThreshold);
 			cleaningWatch.Pause();
 			
 			UpdateCleanParameters(fitsWriter, cleanAlgorithm.IterationNumber(), majorIterationNr);
@@ -596,5 +604,10 @@ int main(int argc, char *argv[])
 	fitsWriter.Write(std::string(prefixName) + "-image.fits", &residual[0]);
 	std::cout << "DONE\n";
 	
+	imageAllocator.ReportStatistics();
 	std::cout << "Inversion: " << inversionWatch.ToString() << ", prediction: " << predictingWatch.ToString() << ", cleaning: " << cleaningWatch.ToString() << '\n';
+	
+	imageAllocator.Free(residual);
+	imageAllocator.Free(modelImage);
+	imageAllocator.Free(psf);
 }

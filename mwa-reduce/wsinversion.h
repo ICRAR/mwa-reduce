@@ -16,11 +16,13 @@
 namespace casa {
 	class MeasurementSet;
 }
+template<typename NumType>
+class ImageBufferAllocator;
 
 class WSInversion : public InversionAlgorithm
 {
 	public:
-		WSInversion();
+		WSInversion(class ImageBufferAllocator<double>* imageAllocator);
 	
 		virtual void Invert();
 		
@@ -145,6 +147,7 @@ class WSInversion : public InversionAlgorithm
 		LayeredImager::GridModeEnum _gridMode;
 		size_t _cpuCount, _laneBufferSize;
 		int64_t _memSize;
+		ImageBufferAllocator<double>* _imageBufferAllocator;
 };
 
 #endif

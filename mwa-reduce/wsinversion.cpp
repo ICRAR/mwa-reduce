@@ -24,7 +24,7 @@ WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
 WSInversion::MSData::~MSData()
 { }
 
-WSInversion::WSInversion() : InversionAlgorithm(), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour), _laneBufferSize(16)
+WSInversion::WSInversion(ImageBufferAllocator<double>* imageAllocator) : InversionAlgorithm(), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour), _laneBufferSize(16), _imageBufferAllocator(imageAllocator)
 {
 	_cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -633,11 +633,11 @@ void WSInversion::Invert()
 		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
 	}
 	
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator));
 	_imager->SetGridMode(_gridMode);
 	if(_denormalPhaseCentre)
 		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
-	_imager->PrepareWLayers(WGridSize(), _memSize*2/4, minW, maxW);
+	_imager->PrepareWLayers(WGridSize(), double(_memSize)*(7.0/10.0), minW, maxW);
 	_imager->SetImageImaginaryPart(ImaginaryPart());
 	_imager->SetImageConjugatePart(Polarization() == Polarization::YX && ImaginaryPart());
 	
@@ -693,6 +693,11 @@ void WSInversion::Invert()
 
 void WSInversion::InvertToVisibilities(const double *image)
 {
+	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
+	_memSize = (int64_t) pageCount * (int64_t) pageSize;
+	double memSizeInGB = (double) _memSize / (1024.0*1024.0*1024.0);
+	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
+	
 	MSData msDataVector[MeasurementSetCount()];
 	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
@@ -706,14 +711,9 @@ void WSInversion::InvertToVisibilities(const double *image)
 		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
 	}
 	
-	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
-	int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
-	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
-	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
-
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator));
 	_imager->SetGridMode(_gridMode);
-	_imager->PrepareWLayers(WGridSize(), double(memSize)*9.0/10.0, minW, maxW);
+	_imager->PrepareWLayers(WGridSize(), double(_memSize)*(7.0/10.0), minW, maxW);
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		countSamplesPerLayer(msDataVector[i]);
