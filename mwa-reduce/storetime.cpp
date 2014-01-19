@@ -24,7 +24,7 @@ struct TimingRecord {
 		newLine.precision(11);
 		newLine << description << '\t' << val
 			<< '\t' << average << '\t' << stddev
-			<< '\t' << n << '\t' << sum << '\t' << sumSq << '\n';
+			<< '\t' << n << '\t' << sum << '\t' << sumSq;
 		return newLine.str();
 	}
 };
