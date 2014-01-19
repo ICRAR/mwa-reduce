@@ -451,6 +451,10 @@ int main(int argc, char *argv[])
 	
 	std::cout << std::flush << " == Constructing image ==\n";
 	inversionWatch.Start();
+	if(nWLayers != 0)
+		inversionAlgorithm->SetWGridSize(nWLayers);
+	else
+		inversionAlgorithm->SetNoWGridSize();
 	inversionAlgorithm->SetDoImagePSF(false);
 	inversionAlgorithm->SetVerbose(isFirstInversion);
 	inversionAlgorithm->Invert();
