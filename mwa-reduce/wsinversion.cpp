@@ -102,16 +102,16 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	casa::Vector<casa::Double> j2000Val = j2000.getValue().get();
 	_phaseCentreRA = j2000Val[0];
 	_phaseCentreDec = j2000Val[1];
-	if(fTable.keywordSet().isDefined("WSCLEAN_DL"))
+	if(fTable.keywordSet().isDefined("WSCLEAN_DL") && !DoImagePSF())
 		_phaseCentreDL = fTable.keywordSet().asDouble(casa::RecordFieldId("WSCLEAN_DL"));
 	else _phaseCentreDL = 0.0;
-	if(fTable.keywordSet().isDefined("WSCLEAN_DM"))
+	if(fTable.keywordSet().isDefined("WSCLEAN_DM") && !DoImagePSF())
 		_phaseCentreDM = fTable.keywordSet().asDouble(casa::RecordFieldId("WSCLEAN_DM"));
 	else _phaseCentreDM = 0.0;
 	std::cout << " DONE\n";
 
 	_denormalPhaseCentre = _phaseCentreDL != 0.0 || _phaseCentreDM != 0.0;
-	if(_denormalPhaseCentre && Verbose())
+	if(_denormalPhaseCentre)
 		std::cout << "Set has denormal phase centre: dl=" << _phaseCentreDL << ", dm=" << _phaseCentreDM << '\n';
 	
 	msData.rowStart = 0;
