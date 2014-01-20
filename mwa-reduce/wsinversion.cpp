@@ -102,10 +102,10 @@ void WSInversion::initializeMeasurementSet(const string& measurementSet, WSInver
 	casa::Vector<casa::Double> j2000Val = j2000.getValue().get();
 	_phaseCentreRA = j2000Val[0];
 	_phaseCentreDec = j2000Val[1];
-	if(fTable.keywordSet().isDefined("WSCLEAN_DL") && !DoImagePSF())
+	if(fTable.keywordSet().isDefined("WSCLEAN_DL"))
 		_phaseCentreDL = fTable.keywordSet().asDouble(casa::RecordFieldId("WSCLEAN_DL"));
 	else _phaseCentreDL = 0.0;
-	if(fTable.keywordSet().isDefined("WSCLEAN_DM") && !DoImagePSF())
+	if(fTable.keywordSet().isDefined("WSCLEAN_DM"))
 		_phaseCentreDM = fTable.keywordSet().asDouble(casa::RecordFieldId("WSCLEAN_DM"));
 	else _phaseCentreDM = 0.0;
 	std::cout << " DONE\n";
@@ -344,6 +344,11 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				if(DoImagePSF())
 				{
 					copyWeights(newItem.data, msData.startChannel, msData.endChannel, msData.polarizationCount, msDataArr, msWeightsArr, msFlagsArr, rowWeight);
+					if(_denormalPhaseCentre)
+					{
+						double shiftFactor = 2.0*M_PI* (newItem.w * (sqrt(1.0-_phaseCentreDL*_phaseCentreDL- _phaseCentreDM*_phaseCentreDM)-1.0));
+						rotateVisibilities(curBand, shiftFactor, newItem.data);
+					}
 				}
 				else {
 					if(DoSubtractModel())
@@ -688,7 +693,10 @@ void WSInversion::Invert()
 		std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 	}
 	
-	_imager->FinalizeImage(1.0/_totalWeight);
+	if(_denormalPhaseCentre)
+		_imager->FinalizeImage(1.0/(_totalWeight * sqrt(1.0 - _phaseCentreDL*_phaseCentreDL - _phaseCentreDM*_phaseCentreDM)));
+	else
+		_imager->FinalizeImage(1.0/_totalWeight);
 }
 
 void WSInversion::InvertToVisibilities(const double *image)
@@ -713,6 +721,8 @@ void WSInversion::InvertToVisibilities(const double *image)
 	
 	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator));
 	_imager->SetGridMode(_gridMode);
+	if(_denormalPhaseCentre)
+		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
 	_imager->PrepareWLayers(WGridSize(), double(_memSize)*(7.0/10.0), minW, maxW);
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
@@ -721,7 +731,10 @@ void WSInversion::InvertToVisibilities(const double *image)
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
 		std::cout << "W-term correction & fourier transforming layers to uv space (in parallel)...\n";
-		_imager->PrepareImageForVisibilitySampling(image, 1.0);
+		if(_denormalPhaseCentre)
+			_imager->PrepareImageForVisibilitySampling(image, sqrt(1.0 - _phaseCentreDL*_phaseCentreDL - _phaseCentreDM*_phaseCentreDM));
+		else
+			_imager->PrepareImageForVisibilitySampling(image, 1.0);
 		
 		std::cout << "Starting visibility sampling pass " << pass << ".\n";
 		_imager->StartVisibilitySamplingPass(pass);
@@ -903,5 +916,21 @@ void WSInversion::copyWeights(std::complex<float>* dest, size_t startChannel, si
 			weightPtr += polCount;
 			flagPtr += polCount;
 		}
+	}
+}
+
+void WSInversion::rotateVisibilities(const BandData &bandData, double shiftFactor, std::complex<float>* dataIter)
+{
+	for(unsigned ch=0; ch!=bandData.ChannelCount(); ++ch)
+	{
+		const double wShiftRad = shiftFactor / bandData.ChannelWavelength(ch);
+		double rotSinD, rotCosD;
+		sincos(wShiftRad, &rotSinD, &rotCosD);
+		float rotSin = rotSinD, rotCos = rotCosD;
+		std::complex<float> v = *dataIter;
+		*dataIter = std::complex<float>(
+			v.real() * rotCos  -  v.imag() * rotSin,
+			v.real() * rotSin  +  v.imag() * rotCos);
+		++dataIter;
 	}
 }

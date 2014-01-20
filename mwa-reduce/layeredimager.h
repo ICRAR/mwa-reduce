@@ -118,6 +118,7 @@ class LayeredImager
 		void projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex);
 		void copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w);
 		void initializeSqrtLMLookupTable();
+		void initializeSqrtLMLookupTableForSampling();
 		void initializeLayeredUVData(size_t n);
 		void freeLayeredUVData() { initializeLayeredUVData(0); }
 		void fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);

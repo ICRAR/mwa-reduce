@@ -37,8 +37,6 @@ LayeredImager::~LayeredImager()
 
 void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW)
 {
-	initializeSqrtLMLookupTable();
-	
 	_minW = minW;
 	_maxW = maxW;
 	_nWLayers = nWLayers;
@@ -92,6 +90,8 @@ void LayeredImager::initializeLayeredUVData(size_t n)
 
 void LayeredImager::StartInversionPass(size_t passIndex)
 {
+	initializeSqrtLMLookupTable();
+	
 	_curLayerRangeIndex = passIndex;
 	size_t nLayersInPass = layerRangeStart(passIndex+1) - layerRangeStart(passIndex);
 	initializeLayeredUVData(nLayersInPass);
@@ -101,6 +101,8 @@ void LayeredImager::StartInversionPass(size_t passIndex)
 
 void LayeredImager::StartVisibilitySamplingPass(size_t passIndex)
 {
+	initializeSqrtLMLookupTableForSampling();
+	
 	_curLayerRangeIndex = passIndex;
 	size_t layerOffset = layerRangeStart(passIndex);
 	size_t nLayersInPass = layerRangeStart(passIndex+1) - layerOffset;
@@ -515,7 +517,7 @@ void LayeredImager::FinalizeImage(double multiplicationFactor)
 		double m = ((double) y-(_height/2)) * _pixelSizeY + _phaseCentreDM;
 		for(size_t x=0;x!=_width;++x)
 		{
-			double l = ((double) x-(_width/2)) * _pixelSizeX + _phaseCentreDL;
+			double l = ((_width/2)-(double) x) * _pixelSizeX + _phaseCentreDL;
 			*dataPtr *= multiplicationFactor * sqrt(1.0 - l*l - m*m);
 			++dataPtr;
 		}
@@ -572,7 +574,7 @@ void LayeredImager::PrepareImageForVisibilitySampling(const double *image, doubl
 		double m = ((double) y-(_height/2)) * _pixelSizeY + _phaseCentreDM;
 		for(size_t x=0;x!=_width;++x)
 		{
-			double l = ((double) x-(_width/2)) * _pixelSizeX + _phaseCentreDL;
+			double l = ((_width/2)-(double) x) * _pixelSizeX + _phaseCentreDL;
 			if(std::isfinite(*dataPtr) && l*l + m*m < 1.0)
 				*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
 			else
@@ -593,7 +595,7 @@ void LayeredImager::initializeSqrtLMLookupTable()
 	std::vector<double>::iterator iter = _sqrtLMLookupTable.begin();
 	for(size_t y=0;y!=_height;++y)
 	{
-		size_t ySrc = (_height - 1 - y) + _height / 2;
+		size_t ySrc = (_height - y) + _height / 2;
 		if(ySrc >= _height) ySrc -= _height;
 		double m = ((double) ySrc-(_height/2)) * _pixelSizeY + _phaseCentreDM;
 		
@@ -601,13 +603,13 @@ void LayeredImager::initializeSqrtLMLookupTable()
 		{
 			size_t xSrc = x + _width / 2;
 			if(xSrc >= _width) xSrc -= _width;
+			double l = ((_width/2)-(double) xSrc) * _pixelSizeX + _phaseCentreDL;
 			
-			double l = ((double) xSrc-(_width/2)) * _pixelSizeX + _phaseCentreDL;
 			if(l*l + m*m < 1.0)
 				*iter = sqrt(1.0 - l*l - m*m) - 1.0;
 			else
 				*iter = 0.0;
-			iter++;
+			++iter;
 		}
 	}
 }
@@ -651,6 +653,31 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 	}
 }
 
+void LayeredImager::initializeSqrtLMLookupTableForSampling()
+{
+	_sqrtLMLookupTable.resize(_width * _height);
+	std::vector<double>::iterator iter = _sqrtLMLookupTable.begin();
+	for(size_t y=0;y!=_height;++y)
+	{
+		size_t yDest = y + _height / 2;
+		if(yDest >= _height) yDest -= _height;
+		double m = ((double) yDest-(_height/2)) * _pixelSizeY + _phaseCentreDM;
+		
+		for(size_t x=0;x!=_width;++x)
+		{
+			size_t xDest = (_width - x) + _width / 2;
+			if(xDest >= _width) xDest -= _width;
+			double l = ((_width/2)-(double) xDest) * _pixelSizeX + _phaseCentreDL;
+			
+			if(l*l + m*m < 1.0)
+				*iter = sqrt(1.0 - l*l - m*m) - 1.0;
+			else
+				*iter = 0.0;
+			++iter;
+		}
+	}
+}
+
 void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w)
 {
 	double *data = _imageData[0];
@@ -658,6 +685,10 @@ void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest
 	std::vector<double>::const_iterator sqrtLMIter = _sqrtLMLookupTable.begin();
 	for(size_t y=0;y!=_height;++y)
 	{
+		// The fact that yDest is different than ySrc as above, is because of the way
+		// fftw expects the data to be ordered.
+		//size_t ySrc = (_height - y) + _height / 2;
+		//if(ySrc >= _height) ySrc -= _height;
 		size_t yDest = y + _height / 2;
 		if(yDest >= _height) yDest -= _height;
 		
@@ -665,6 +696,8 @@ void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest
 		{
 			size_t xDest = (_width - x) + _width / 2;
 			if(xDest >= _width) xDest -= _width;
+			//size_t xSrc = x + _width / 2;
+			//if(xSrc >= _width) xSrc -= _width;
 			
 			double rad = twoPiW * *sqrtLMIter;
 			double s, c;

@@ -107,6 +107,7 @@ class WSInversion : public InversionAlgorithm
 		void visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData);
 		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
+		static void rotateVisibilities(const BandData &bandData, double shiftFactor, std::complex<float>* dataIter);
 		int polarizationIndex(int polCount) const
 		{
 			if(polCount == 4)
