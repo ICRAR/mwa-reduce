@@ -9,7 +9,7 @@
 
 #include <boost/thread/thread.hpp>
 
-LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount, ImageBufferAllocator<double>* allocator) :
+LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount, ImageBufferAllocator<double>* allocator, size_t kernelSize) :
 	_width(width),
 	_height(height),
 	_pixelSizeX(pixelSizeX),
@@ -20,7 +20,7 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_imageConjugatePart(false),
 	_gridMode(NearestNeighbour),
 	_overSamplingFactor(15),
-	_kernelSize(7),
+	_kernelSize(kernelSize),
 	_imageData(fftThreadCount),
 	_nFFTThreads(fftThreadCount),
 	_imageBufferAllocator(allocator)

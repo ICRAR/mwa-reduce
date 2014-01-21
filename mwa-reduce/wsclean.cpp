@@ -53,6 +53,7 @@ void initFitsWriter(FitsWriter& writer, const InversionAlgorithm& inversionAlgor
 	writer.SetExtraKeyword("WSCNWLAY", inversionAlgorithm.WGridSize());
 	writer.SetExtraKeyword("WSCDATAC", inversionAlgorithm.DataColumnName());
 	writer.SetExtraKeyword("WSCWEIGH", inversionAlgorithm.Weighting().ToString());
+	writer.SetExtraKeyword("WSCGKRNL", inversionAlgorithm.AntialiasingKernelSize());
 	if(inversionAlgorithm.Selection().HasChannelRange())
 	{
 		writer.SetExtraKeyword("WSCCHANS", inversionAlgorithm.Selection().ChannelRangeStart());
@@ -149,6 +150,8 @@ int main(int argc, char *argv[])
 			"\t   saves the imaginary part instead of the real part; only sensible for xy/yx. Not the default.\n"
 			"\t-datacolumn <columnname>\n"
 			"\t   Default: CORRECTED_DATA if it exists, otherwise DATA will be used.\n"
+			"\t-gkernelsize <size>\n"
+			"\t   Gridding antialiasing kernel size. Default: 7.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
@@ -158,7 +161,7 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0;
-	size_t nWLayers = 0, nIter = 0;
+	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7;
 	MSSelection selection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
@@ -337,6 +340,11 @@ int main(int argc, char *argv[])
 			++argi;
 			beamSize = atof(argv[argi]);
 		}
+		else if(param == "gkernelsize")
+		{
+			++argi;
+			antialiasingKernelSize = atoi(argv[argi]);
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -403,6 +411,7 @@ int main(int argc, char *argv[])
 		inversionAlgorithm->SetWGridSize(nWLayers);
 	else
 		inversionAlgorithm->SetNoWGridSize();
+	inversionAlgorithm->SetAntialiasingKernelSize(antialiasingKernelSize);
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	inversionAlgorithm->SetWeighting(weightMode);
