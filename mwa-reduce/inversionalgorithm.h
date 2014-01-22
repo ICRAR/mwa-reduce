@@ -29,7 +29,8 @@ class InversionAlgorithm
 			_weighting(WeightMode::UniformWeighted),
 			_verbose(false),
 			_selection(),
-			_antialiasingKernelSize(7)
+			_antialiasingKernelSize(7),
+			_overSamplingFactor(15)
 		{
 		}
 		virtual ~InversionAlgorithm()
@@ -55,6 +56,7 @@ class InversionAlgorithm
 		bool ImaginaryPart() const { return _imaginaryPart; }
 		bool Verbose() const { return _verbose; }
 		size_t AntialiasingKernelSize() const { return _antialiasingKernelSize; }
+		size_t OverSamplingFactor() const { return _overSamplingFactor; }
 		
 		void SetImageWidth(size_t imageWidth)
 		{
@@ -128,6 +130,10 @@ class InversionAlgorithm
 		{
 			_antialiasingKernelSize = kernelSize;
 		}
+		void SetOverSamplingFactor(size_t factor)
+		{
+			_overSamplingFactor = factor;
+		}
 		
 		virtual void Invert() = 0;
 		
@@ -161,7 +167,7 @@ class InversionAlgorithm
 		WeightMode _weighting;
 		bool _verbose;
 		MSSelection _selection;
-		size_t _antialiasingKernelSize;
+		size_t _antialiasingKernelSize, _overSamplingFactor;
 };
 
 #endif

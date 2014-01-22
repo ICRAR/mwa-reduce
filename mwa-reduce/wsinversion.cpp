@@ -638,7 +638,7 @@ void WSInversion::Invert()
 		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
 	}
 	
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator, AntialiasingKernelSize()));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator, AntialiasingKernelSize(), OverSamplingFactor()));
 	_imager->SetGridMode(_gridMode);
 	if(_denormalPhaseCentre)
 		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
@@ -719,7 +719,7 @@ void WSInversion::InvertToVisibilities(const double *image)
 		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
 	}
 	
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator, AntialiasingKernelSize()));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator, AntialiasingKernelSize(), OverSamplingFactor()));
 	_imager->SetGridMode(_gridMode);
 	if(_denormalPhaseCentre)
 		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);

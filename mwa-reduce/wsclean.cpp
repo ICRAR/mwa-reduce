@@ -152,6 +152,8 @@ int main(int argc, char *argv[])
 			"\t   Default: CORRECTED_DATA if it exists, otherwise DATA will be used.\n"
 			"\t-gkernelsize <size>\n"
 			"\t   Gridding antialiasing kernel size. Default: 7.\n"
+			"\t-oversampling <factor>\n"
+			"\t   Oversampling factor used during gridding. Default: 15.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
@@ -161,7 +163,7 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0;
-	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7;
+	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7, overSamplingFactor = 15;
 	MSSelection selection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
@@ -345,6 +347,11 @@ int main(int argc, char *argv[])
 			++argi;
 			antialiasingKernelSize = atoi(argv[argi]);
 		}
+		else if(param == "oversampling")
+		{
+			++argi;
+			overSamplingFactor = atoi(argv[argi]);
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -412,6 +419,7 @@ int main(int argc, char *argv[])
 	else
 		inversionAlgorithm->SetNoWGridSize();
 	inversionAlgorithm->SetAntialiasingKernelSize(antialiasingKernelSize);
+	inversionAlgorithm->SetOverSamplingFactor(overSamplingFactor);
 	inversionAlgorithm->SetPolarization(polarization);
 	inversionAlgorithm->SetDataColumnName(columnName);
 	inversionAlgorithm->SetWeighting(weightMode);
