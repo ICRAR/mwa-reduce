@@ -23,6 +23,8 @@ class ModelParser : private Tokenizer
 			std::string line;
 			std::getline(stream, line);
 			parseVersionLine(line);
+			if(stream.bad())
+					throw std::runtime_error("Error parsing model");
 			
 			std::string token;
 			while(getToken(token))
