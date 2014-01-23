@@ -1,0 +1,16 @@
+skymodel fileformat 1.0
+source {
+  name "PKSJ0130-2610"
+  component {
+    type point
+    position 01h30m27.8s -26d09m56s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 23.5 0 0 23.5 
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 13.6 0 0 13.6
+    }
+  }
+}
