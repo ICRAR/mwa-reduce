@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 			"\t-gkernelsize <size>\n"
 			"\t   Gridding antialiasing kernel size. Default: 7.\n"
 			"\t-oversampling <factor>\n"
-			"\t   Oversampling factor used during gridding. Default: 15.\n"
+			"\t   Oversampling factor used during gridding. Default: 63.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0;
-	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7, overSamplingFactor = 15;
+	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7, overSamplingFactor = 63;
 	MSSelection selection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;

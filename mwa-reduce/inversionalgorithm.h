@@ -30,7 +30,7 @@ class InversionAlgorithm
 			_verbose(false),
 			_selection(),
 			_antialiasingKernelSize(7),
-			_overSamplingFactor(15)
+			_overSamplingFactor(63)
 		{
 		}
 		virtual ~InversionAlgorithm()

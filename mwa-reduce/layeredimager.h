@@ -22,7 +22,7 @@ class LayeredImager
 		
 		typedef double imgnum_t;
 		
-		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount, ImageBufferAllocator<double>* allocator, size_t kernelSize = 7, size_t overSamplingFactor = 15);
+		LayeredImager(size_t width, size_t height, double pixelSizeX, double pixelSizeY, size_t fftThreadCount, ImageBufferAllocator<double>* allocator, size_t kernelSize = 7, size_t overSamplingFactor = 63);
 		~LayeredImager();
 		
 		void PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW);
