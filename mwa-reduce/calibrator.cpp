@@ -61,7 +61,6 @@ void Calibrator::Perform()
 	casa::ROArrayColumn<complex_t> dataColumn(_ms, _dataColumnName);
 	casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
-	std::unique_ptr<casa::ROArrayColumn<complex_t>> modelColumn;
 	
 	casa::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
@@ -160,8 +159,10 @@ void Calibrator::Perform()
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
 			std::vector<std::complex<double>> beamValues;
 			if(_model.Empty()) {
-				std::cout << "Reading data and model column... " << std::flush;
-				modelColumn.reset(new casa::ROArrayColumn<complex_t>(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+				std::cout << "Reading data and model column...\n";
+				predicter.reset(new MSPredicter(_ms));
+				predicter->SetStartRow(intervalRowStart);
+				predicter->SetEndRow(intervalRowEnd);
 			}
 			else {
 				if(_beamOnSource || _applyBeam)
@@ -198,7 +199,7 @@ void Calibrator::Perform()
 			}
 			
 			std::vector<std::complex<double> > modelValues(4 * channelCount);
-			casa::Array<complex_t> data(dataShape), modelData(dataShape);
+			casa::Array<complex_t> data(dataShape);
 			casa::Array<float> weights(dataShape);
 			casa::Array<bool> flags(dataShape);
 			size_t timeIndex = 0;
@@ -228,8 +229,6 @@ void Calibrator::Perform()
 					dataColumn.get(rowIndex, data);
 					weightColumn.get(rowIndex, weights);
 					flagColumn.get(rowIndex, flags);
-					if(_model.Empty())
-						modelColumn->get(rowIndex, modelData);
 					lock.unlock();
 					
 					std::complex<float> *dataPtr = data.cbegin();
@@ -248,39 +247,25 @@ void Calibrator::Perform()
 					else
 						notSelected++;
 				
-					if(_model.Empty())
+					for(size_t ch = 0; ch!=partChannelCount; ++ch)
 					{
-						std::complex<float> *modelDataPtr = modelData.cbegin();
-						for(size_t ch = 0; ch!=channelCount; ++ch)
+						size_t chIndex = (ch + startChannel) * 4;
+						for(size_t p=0; p!=4; ++p)
 						{
-							for(size_t p=0; p!=4; ++p)
-							{
-								modelValues[ch*4+p] = *modelDataPtr;
-								++modelDataPtr;
-							}
+							modelValues[chIndex+p] = rowData.modelData[chIndex+p];
+							if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
 						}
-					}
-					else {
-						for(size_t ch = 0; ch!=partChannelCount; ++ch)
+						if(_beamOnSource)
 						{
-							size_t chIndex = (ch + startChannel) * 4;
-							for(size_t p=0; p!=4; ++p)
-							{
-								modelValues[chIndex+p] = rowData.modelData[chIndex+p];
-								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
-							}
-							if(_beamOnSource)
-							{
-								std::complex<double>
-									tempResult[4],
-									doubleData[4] = {dataPtr[chIndex],dataPtr[chIndex+1],dataPtr[chIndex+2],dataPtr[chIndex+3]};
-								Matrix2x2::ATimesB(tempResult, &beamValues[ch*4], doubleData);
-								Matrix2x2::ATimesHermB(doubleData, tempResult, &beamValues[ch*4]);
-								calMethods[ch]->AddData(doubleData, &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
-							}
-							else {
-								calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
-							}
+							std::complex<double>
+								tempResult[4],
+								doubleData[4] = {dataPtr[chIndex],dataPtr[chIndex+1],dataPtr[chIndex+2],dataPtr[chIndex+3]};
+							Matrix2x2::ATimesB(tempResult, &beamValues[ch*4], doubleData);
+							Matrix2x2::ATimesHermB(doubleData, tempResult, &beamValues[ch*4]);
+							calMethods[ch]->AddData(doubleData, &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
+						}
+						else {
+							calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
 						}
 					}
 				}

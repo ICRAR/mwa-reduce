@@ -39,16 +39,19 @@ void MSPredicter::Start(bool reportSources)
 	long double phaseCentreRA = *refDirIter; ++refDirIter;
 	long double phaseCentreDec = *refDirIter;
 	// By setting the time beforehand, we don't waste time calculating a time step we don't need.
-	casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-	casa::MEpoch startTime = timeColumn(_startRow);
-	_beamEvaluator.SetTime(startTime);
-	_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
-	if(_applyBeam)
-		_predicter->Initialize(_model, _solutionFile, &_beamEvaluator);
-	else
-		_predicter->Initialize(_model, _solutionFile);
-	if(reportSources)
-		_predicter->ReportSources(_model);
+	if(!_useModelColumn)
+	{
+		casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
+		casa::MEpoch startTime = timeColumn(_startRow);
+		_beamEvaluator.SetTime(startTime);
+		_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
+		if(_applyBeam)
+			_predicter->Initialize(_model, _solutionFile, &_beamEvaluator);
+		else
+			_predicter->Initialize(_model, _solutionFile);
+		if(reportSources)
+			_predicter->ReportSources(_model);
+	}
 	
 	// Create buffers
 	if(_buffers.empty())
@@ -64,17 +67,21 @@ void MSPredicter::Start(bool reportSources)
 	}
 
 	// Start all threads
-	_workThreadGroup.reset(new boost::thread_group());
+	if(!_useModelColumn)
+		_workThreadGroup.reset(new boost::thread_group());
 	_readThread.reset(new boost::thread(&MSPredicter::ReadThreadFunc, this));
 }
 	
 void MSPredicter::ReadThreadFunc()
 {
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-	if(_model.SourceCount() == 0)
-		cpuCount = 1;
-	for(size_t i=0; i!=cpuCount; ++i)
-		_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
+	if(!_useModelColumn)
+	{
+		if(_model.SourceCount() == 0)
+			cpuCount = 1;
+		for(size_t i=0; i!=cpuCount; ++i)
+			_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
+	}
 	
 	boost::mutex::scoped_lock lock(_mutex);
 
@@ -82,8 +89,16 @@ void MSPredicter::ReadThreadFunc()
 	casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
 	casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
+	std::unique_ptr<casa::ROArrayColumn<casa::Complex>> modelColumn;
 	
 	RowData rowData;
+	
+	casa::Array<casa::Complex> modelData;
+	if(_useModelColumn)
+	{
+		modelColumn.reset(new casa::ROArrayColumn<casa::Complex>(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+		modelData = casa::Array<casa::Complex>(modelColumn->shape(0));
+	}
 
 	for(size_t rowIndex=_startRow; rowIndex!=_endRow; ++rowIndex)
 	{
@@ -98,9 +113,11 @@ void MSPredicter::ReadThreadFunc()
 			double u = *uvwI; ++uvwI;
 			double v = *uvwI; ++uvwI;
 			double w = *uvwI;
+			if(_useModelColumn)
+				modelColumn->get(rowIndex, modelData);
 			lock.unlock();
 			
-			if(_beamEvaluator.Time().getValue() != time.getValue())
+			if(!_useModelColumn && _beamEvaluator.Time().getValue() != time.getValue())
 			{
 				// Stop all threads, then update beam values, then restart threads.
 				_workLane.write_end();
@@ -121,15 +138,31 @@ void MSPredicter::ReadThreadFunc()
 			rowData.rowIndex = rowIndex;
 			rowData.a1 = a1;
 			rowData.a2 = a2;
-			_workLane.write(rowData);
+			if(_useModelColumn)
+			{
+				std::complex<double> *outptr = rowData.modelData;
+				casa::Complex* inptr = modelData.cbegin();
+				for(size_t ch=0; ch!=_channelCount*4; ++ch)
+				{
+					*outptr = *inptr;
+					++outptr; ++inptr;
+				}
+				_outputLane.write(rowData);
+			}
+			else {
+				_workLane.write(rowData);
+			}
 			
 			lock.lock();
 		}
 	}
 	
 	lock.unlock();
-	_workLane.write_end();
-	_workThreadGroup->join_all();
+	if(!_useModelColumn)
+	{
+		_workThreadGroup->join_all();
+		_workLane.write_end();
+	}
 	_outputLane.write_end();
 }
 

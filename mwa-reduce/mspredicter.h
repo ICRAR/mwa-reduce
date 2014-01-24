@@ -30,7 +30,8 @@ public:
 	explicit MSPredicter(casa::MeasurementSet &ms) :
 		_ms(ms),
 		_beamEvaluator(ms, false),
-		_applyBeam(true),
+		_applyBeam(false),
+		_useModelColumn(true),
 		_model(),
 		_laneSize(64),
 		_workLane(_laneSize),
@@ -44,6 +45,7 @@ public:
 		_ms(ms),
 		_beamEvaluator(ms, false),
 		_applyBeam(true),
+		_useModelColumn(false),
 		_model(model),
 		_laneSize(64),
 		_workLane(_laneSize),
@@ -80,7 +82,7 @@ private:
 	casa::MeasurementSet &_ms;
 	BeamEvaluator _beamEvaluator;
 	size_t _channelCount;
-	bool _applyBeam;
+	bool _applyBeam, _useModelColumn;
 	
 	Model _model;
 	boost::mutex _mutex;
