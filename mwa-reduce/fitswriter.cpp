@@ -65,7 +65,7 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
 	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) _origin.c_str(), _originComment.c_str(), &status); checkStatus(status, filename);
 	float phaseCentreRADeg = (_phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (_phaseCentreDec/M_PI)*180.0;
 	float
-		centrePixelX = (_width / 2.0)+1.0 - _phaseCentreDL/_pixelSizeX,
+		centrePixelX = (_width / 2.0)+1.0 + _phaseCentreDL/_pixelSizeX,
 		centrePixelY = (_height / 2.0)+1.0 - _phaseCentreDM/_pixelSizeY,
 		stepXDeg = (-_pixelSizeX / M_PI)*180.0,
 		stepYDeg = ( _pixelSizeY / M_PI)*180.0;
