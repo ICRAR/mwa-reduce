@@ -168,6 +168,10 @@ target_link_libraries(testbugcasams ${CASA_LIBS})
 target_link_libraries(uvdist ${CASA_LIBS})
 target_link_libraries(wsctests ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
+if(NOT CBLAS_LIB)
+  message("CBLAS lib was not found. GSL needs CBLAS: disabling GSL.")
+endif(NOT CBLAS_LIB)
+
 if(GSL_LIB AND CBLAS_LIB AND GSL_INCLUDE_DIR)
   add_definitions(-DHAVE_GSL)
   target_link_libraries(ionpeel ${GSL_LIB} ${CBLAS_LIB})
