@@ -160,8 +160,8 @@ void MSPredicter::ReadThreadFunc()
 	lock.unlock();
 	if(!_useModelColumn)
 	{
-		_workThreadGroup->join_all();
 		_workLane.write_end();
+		_workThreadGroup->join_all();
 	}
 	_outputLane.write_end();
 }
