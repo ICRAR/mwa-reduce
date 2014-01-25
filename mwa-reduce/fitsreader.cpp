@@ -127,7 +127,7 @@ void FitsReader::initialize()
 	if(readStringKey("CUNIT1") != "deg")
 		throw std::runtime_error("Invalid value for CUNIT1");
 	double centrePixelX = readDoubleKey("CRPIX1");
-	_phaseCentreDL = ((_imgWidth / 2.0)+1.0 - centrePixelX) * _pixelSizeX;
+	_phaseCentreDL = (centrePixelX - ((_imgWidth / 2.0)+1.0)) * _pixelSizeX;
 
 	if(readStringKey("CTYPE2") != "DEC--SIN")
 		throw std::runtime_error("Invalid value for CTYPE2");
