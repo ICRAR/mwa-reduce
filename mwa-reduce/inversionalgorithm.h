@@ -18,7 +18,7 @@ class InversionAlgorithm
 			_pixelSizeX((1.0 / 60.0) * M_PI / 180.0),
 			_pixelSizeY((1.0 / 60.0) * M_PI / 180.0),
 			_wGridSize(0),
-			_measurementSetPaths(),
+			_measurementSets(),
 			_dataColumnName("DATA"),
 			_doImagePSF(false),
 			_doSubtractModel(false),
@@ -43,8 +43,8 @@ class InversionAlgorithm
 		double PixelSizeY() const { return _pixelSizeY; }
 		bool HasWGridSize() const { return _wGridSize != 0; }
 		size_t WGridSize() const { return _wGridSize; }
-		const std::string &MeasurementSetPath(size_t index) const { return _measurementSetPaths[index]; }
-		size_t MeasurementSetCount() const { return _measurementSetPaths.size(); }
+		class MSProvider &MeasurementSet(size_t index) const { return *_measurementSets[index]; }
+		size_t MeasurementSetCount() const { return _measurementSets.size(); }
 		const std::string &DataColumnName() const { return _dataColumnName; }
 		bool DoImagePSF() const { return _doImagePSF; }
 		bool DoSubtractModel() const { return _doSubtractModel; }
@@ -82,9 +82,9 @@ class InversionAlgorithm
 		{
 			_wGridSize = 0;
 		}
-		void AddMeasurementSetPath(const std::string &measurementSetPath)
+		void AddMeasurementSet(class MSProvider* msProvider)
 		{
-			_measurementSetPaths.push_back(measurementSetPath);
+			_measurementSets.push_back(msProvider);
 		}
 		void SetDataColumnName(const std::string &dataColumnName)
 		{
@@ -158,7 +158,7 @@ class InversionAlgorithm
 		size_t _imageWidth, _imageHeight;
 		double _pixelSizeX, _pixelSizeY;
 		size_t _wGridSize;
-		std::vector<std::string> _measurementSetPaths;
+		std::vector<MSProvider*> _measurementSets;
 		std::string _dataColumnName;
 		bool _doImagePSF, _doSubtractModel, _addToModel;
 		class ImageWeights *_precalculatedWeightInfo;

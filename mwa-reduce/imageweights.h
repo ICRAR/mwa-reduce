@@ -45,6 +45,7 @@ class ImageWeights
 		}
 
 		void Grid(casa::MeasurementSet& ms, WeightMode weightMode, const MSSelection& selection);
+		void Grid(class MSProvider& ms, WeightMode weightMode, const MSSelection& selection);
 		
 		double ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 

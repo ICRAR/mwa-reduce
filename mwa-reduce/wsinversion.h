@@ -62,7 +62,7 @@ class WSInversion : public InversionAlgorithm
 		{
 			double u, v, w;
 			std::complex<float> *data;
-			size_t rowIndex, dataDescId;
+			size_t rowId, dataDescId;
 		};
 		
 		struct MSData
@@ -70,7 +70,7 @@ class WSInversion : public InversionAlgorithm
 			public:
 				MSData();
 				~MSData();
-				std::unique_ptr<casa::MeasurementSet> ms;
+				class MSProvider *msProvider;
 				MultiBandData bandData;
 				size_t startChannel, endChannel;
 				size_t polarizationCount, matchingRows, totalRowsProcessed;
@@ -84,7 +84,7 @@ class WSInversion : public InversionAlgorithm
 				void operator=(const MSData &source);
 		};
 		
-		void initializeMeasurementSet(const std::string &measurementSet, MSData &msData);
+		void initializeMeasurementSet(MSProvider& msProvider, MSData &msData);
 		void gridMeasurementSet(MSData &msData);
 		void countSamplesPerLayer(MSData &msData);
 
@@ -108,32 +108,6 @@ class WSInversion : public InversionAlgorithm
 		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
 		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
 		static void rotateVisibilities(const BandData &bandData, double shiftFactor, std::complex<float>* dataIter);
-		int polarizationIndex(int polCount) const
-		{
-			if(polCount == 4)
-			{
-				switch(Polarization())
-				{
-					default: return 0;
-					case Polarization::XY: return 1;
-					case Polarization::YX: return 2;
-					case Polarization::YY: return 3;
-				}
-			}
-			else if(polCount == 2)
-			{
-				switch(Polarization())
-				{
-					default: return 0;
-					case Polarization::YY: return 1;
-					case Polarization::XY:
-					case Polarization::YX:
-						throw std::runtime_error("Invalid polarization");
-				}
-			}
-			else
-				return 0;
-		}
 
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<ao::lane<InversionWorkItem>> _inversionWorkLane;

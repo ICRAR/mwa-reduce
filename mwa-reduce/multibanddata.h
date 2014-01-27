@@ -102,6 +102,17 @@ class MultiBandData
 				freq = std::max(freq, std::max(_bandData[i].BandStart(), _bandData[i].BandEnd()));
 			return freq;
 		}
+		
+		size_t MaxChannels() const
+		{
+			size_t maxChannels = 0;
+			for(std::vector<BandData>::const_iterator i=_bandData.begin(); i!=_bandData.end(); ++i)
+			{
+				if(i->ChannelCount() > maxChannels)
+					maxChannels = i->ChannelCount();
+			}
+			return maxChannels;
+		}
 	private:
 		std::vector<size_t> _dataDescToBand;
 		std::vector<BandData> _bandData;

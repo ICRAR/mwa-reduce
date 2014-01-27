@@ -1,6 +1,7 @@
 #include "imageweights.h"
 #include "banddata.h"
 #include "multibanddata.h"
+#include "partitionedms.h"
 
 #include <cmath>
 #include <iostream>
@@ -141,6 +142,73 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 			}
 		}
 	}
+	// TODO this is not right: can't update Sum here since there might be more mses be gridded
+	if(weightMode.IsBriggs())
+	{
+		double avgW = 0.0;
+		for(ao::uvector<double>::const_iterator i=_sum.begin(); i!=_sum.end(); ++i)
+			avgW += *i * *i;
+		avgW /= totalSum;
+		double numeratorSqrt = 5.0 * exp10(-weightMode.BriggsRobustness());
+		double sSq = numeratorSqrt*numeratorSqrt / avgW;
+		for(ao::uvector<double>::iterator i=_sum.begin(); i!=_sum.end(); ++i)
+		{
+			*i = 1.0 / (1.0 + *i * sSq);
+		}
+	}
+}
+
+void ImageWeights::Grid(MSProvider& msProvider, WeightMode weightMode, const MSSelection& selection)
+{
+	const MultiBandData bandData(msProvider.MS().spectralWindow(), msProvider.MS().dataDescription());
+	double totalSum = 0.0;
+	std::vector<float> weightBuffer(bandData.MaxChannels());
+	
+	msProvider.Reset();
+	do
+	{
+		double uInM, vInM, wInM;
+		size_t dataDescId;
+		msProvider.ReadMeta(uInM, vInM, wInM, dataDescId);
+		msProvider.ReadWeights(weightBuffer.data());
+		const BandData& curBand = bandData[dataDescId];
+		if(vInM < 0.0)
+		{
+			uInM = -uInM;
+			vInM = -vInM;
+		}
+		
+		size_t startChannel, endChannel;
+		if(selection.HasChannelRange())
+		{
+			startChannel = selection.ChannelRangeStart();
+			endChannel = selection.ChannelRangeEnd();
+		}
+		else {
+			startChannel = 0;
+			endChannel = curBand.ChannelCount();
+		}
+
+		const float* weightIter = weightBuffer.data() + startChannel;
+		for(size_t ch=startChannel; ch!=endChannel; ++ch)
+		{
+			double
+				u = uInM / curBand.ChannelWavelength(ch),
+				v = vInM / curBand.ChannelWavelength(ch);
+			double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
+			double y = round(v*_imageHeight*_pixelScale);
+				
+			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
+			{
+				size_t index = (size_t) x + (size_t) y*_imageWidth;
+				_sum[index] += *weightIter;
+				if(weightMode.IsBriggs())
+					totalSum += *weightIter;
+			}
+			++weightIter;
+		}
+	} while(msProvider.NextRow());
+	
 	// TODO this is not right: can't update Sum here since there might be more mses be gridded
 	if(weightMode.IsBriggs())
 	{
