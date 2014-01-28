@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	int argi = 1;
-	bool doExecute = false, doSelfCal = true, doPeel = true, doSubtract = true, verboseOnPolarizations = false,
+	bool doExecute = false, doSelfCal = false, doPeel = true, doSubtract = false, verboseOnPolarizations = false,
 		noPeelingRunnerupCheck = false;
 	double
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
