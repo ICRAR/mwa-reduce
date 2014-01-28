@@ -39,19 +39,18 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 	/**
 		* Read some meta data from the measurement set
 		*/
-	std::cout << 'A' << std::flush;
 	casa::MSAntenna aTable = ms.antenna();
 	size_t antennaCount = aTable.nrow();
 	if(antennaCount == 0) throw std::runtime_error("No antennae in set");
 	casa::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casa::MSAntennaEnums::POSITION));
 	casa::MPosition ant1Pos = antPosColumn(0);
 	
-	std::cout << 'B' << std::flush;
 	msData.bandData = MultiBandData(ms.spectralWindow(), ms.dataDescription());
 	if(Selection().HasChannelRange())
 	{
 		msData.startChannel = Selection().ChannelRangeStart();
 		msData.endChannel = Selection().ChannelRangeEnd();
+		std::cout << "Selected channels: " << msData.startChannel << '-' << msData.endChannel << '\n';
 		const BandData& firstBand = msData.bandData.FirstBand();
 		if(msData.startChannel >= firstBand.ChannelCount() || msData.endChannel > firstBand.ChannelCount()
 			|| msData.startChannel == msData.endChannel)
@@ -66,24 +65,23 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		msData.endChannel = msData.bandData.FirstBand().ChannelCount();
 	}
 	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-	const MultiBandData partBandData = MultiBandData(msData.bandData, msData.startChannel, msData.endChannel);
+	const MultiBandData selectedBand = msData.SelectedBand();
 	if(_hasFrequencies)
 	{
-		_freqLow = std::min(_freqLow, partBandData.LowestFrequency());
-		_freqHigh = std::max(_freqHigh, partBandData.HighestFrequency());
-		_bandStart = std::min(_bandStart, partBandData.BandStart());
-		_bandEnd = std::max(_bandEnd, partBandData.BandEnd());
+		_freqLow = std::min(_freqLow, selectedBand.LowestFrequency());
+		_freqHigh = std::max(_freqHigh, selectedBand.HighestFrequency());
+		_bandStart = std::min(_bandStart, selectedBand.BandStart());
+		_bandEnd = std::max(_bandEnd, selectedBand.BandEnd());
 		_startTime = std::min(_startTime, timeColumn(0).getValue().get());
 	} else {
-		_freqLow = partBandData.LowestFrequency();
-		_freqHigh = partBandData.HighestFrequency();
-		_bandStart = partBandData.BandStart();
-		_bandEnd = partBandData.BandEnd();
+		_freqLow = selectedBand.LowestFrequency();
+		_freqHigh = selectedBand.HighestFrequency();
+		_bandStart = selectedBand.BandStart();
+		_bandEnd = selectedBand.BandEnd();
 		_startTime = timeColumn(0).getValue().get();
 		_hasFrequencies = true;
 	}
 	
-	std::cout << 'F' << std::flush;
 	casa::MSField fTable(ms.field());
 	casa::MDirection::ROScalarColumn refDirColumn(fTable, fTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
 	casa::MDirection refDir = refDirColumn(Selection().FieldId());
@@ -100,7 +98,6 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 	if(fTable.keywordSet().isDefined("WSCLEAN_DM"))
 		_phaseCentreDM = fTable.keywordSet().asDouble(casa::RecordFieldId("WSCLEAN_DM"));
 	else _phaseCentreDM = 0.0;
-	std::cout << " DONE\n";
 
 	_denormalPhaseCentre = _phaseCentreDL != 0.0 || _phaseCentreDM != 0.0;
 	if(_denormalPhaseCentre)
@@ -110,26 +107,26 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 	msData.maxW= -1e100;
 	msData.minW = 1e100;
 	double maxBaseline = 0.0;
-	std::vector<float> weightArray(partBandData.MaxChannels());
+	std::vector<float> weightArray(selectedBand.MaxChannels());
 	msProvider.Reset();
 	do
 	{
 		size_t dataDescId;
 		double uInM, vInM, wInM;
 		msProvider.ReadMeta(uInM, vInM, wInM, dataDescId);
-		const BandData& curBand = partBandData[dataDescId];
+		const BandData& curBand = selectedBand[dataDescId];
 		double wHi = fabs(wInM / curBand.SmallestWavelength());
 		double wLo = fabs(wInM / curBand.LongestWavelength());
 		double baselineInM = sqrt(uInM*uInM + vInM*vInM + wInM*wInM);
 		if(wHi > msData.maxW || wLo < msData.minW || baselineInM / curBand.SmallestWavelength() > maxBaseline)
 		{
 			msProvider.ReadWeights(weightArray.data());
-			const float* weightPtr = weightArray.data() + msData.startChannel;
+			const float* weightPtr = weightArray.data();
 			for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
 			{
 				if(*weightPtr != 0.0)
 				{
-					const double wavelength = curBand.ChannelWavelength(ch - msData.startChannel);
+					const double wavelength = curBand.ChannelWavelength(ch);
 					msData.maxW = std::max(msData.maxW, fabs(wInM / wavelength));
 					msData.minW = std::min(msData.minW, fabs(wInM / wavelength));
 					maxBaseline = std::max(maxBaseline, baselineInM / wavelength);
@@ -213,6 +210,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	_imager->PrepareBand(selectedBand);
 	std::vector<std::complex<float>> modelBuffer(selectedBand.MaxChannels());
 	std::vector<float> weightBuffer(selectedBand.MaxChannels());
+	std::cout << "Gridding " << selectedBand.LowestFrequency() << '-' << selectedBand.HighestFrequency() << '\n';
 	
 	size_t rowsRead = 0;
 	msData.msProvider->Reset();
@@ -251,7 +249,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 			{
 				msData.msProvider->ReadModel(modelBuffer.data());
 				std::complex<float>* modelIter = modelBuffer.data();
-				for(casa::Array<casa::Complex>::contiter iter = newItem.data; iter!=newItem.data+curBand.ChannelCount(); ++iter)
+				for(std::complex<float>* iter = newItem.data; iter!=newItem.data+curBand.ChannelCount(); ++iter)
 				{
 					*iter -= *modelIter;
 					modelIter++;
@@ -362,7 +360,6 @@ void WSInversion::workThreadPerSample(ao::lane<InversionWorkSample>* workLane)
 	}
 }
 
-
 void WSInversion::sampleToMeasurementSet(MSData &msData)
 {
 	casa::MeasurementSet &ms(msData.msProvider->MS());
@@ -376,7 +373,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 	msData.polarizationCount = dataColumn.shape(0)[0];
 	
-	const MultiBandData selectedBandData(msData.bandData, msData.startChannel, msData.endChannel);
+	const MultiBandData selectedBandData(msData.SelectedBand());
 	_imager->PrepareBand(selectedBandData);
 	
 	size_t rowsProcessed = 0;
@@ -528,6 +525,7 @@ void WSInversion::Invert()
 		std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 	}
 	
+	std::cout << "Total weight: " << _totalWeight << '\n';
 	if(_denormalPhaseCentre)
 		_imager->FinalizeImage(1.0/(_totalWeight * sqrt(1.0 - _phaseCentreDL*_phaseCentreDL - _phaseCentreDM*_phaseCentreDM)));
 	else

@@ -6,10 +6,11 @@
 
 #include <tables/Tables/ArrColDesc.h>
 
+#define REDUNDANT_VALIDATION 1
+
 ContiguousMS::ContiguousMS(const string& msPath, MSSelection selection, PolarizationEnum polOut, bool includeModel) :
 	_timestep(0),
 	_time(0.0),
-	_totalWeight(0.0),
 	_dataDescId(0),
 	_isModelColumnPrepared(false),
 	_selection(selection),
@@ -52,14 +53,8 @@ ContiguousMS::ContiguousMS(const string& msPath, MSSelection selection, Polariza
 
 void ContiguousMS::Reset()
 {
-	_totalWeight = 0.0;
 	_row = _startRow - 1;
 	NextRow();
-}
-
-double ContiguousMS::TotalWeight()
-{
-	return _totalWeight;
 }
 
 bool ContiguousMS::NextRow()
@@ -114,7 +109,7 @@ void ContiguousMS::ReadData(std::complex<float>* buffer)
 		startChannel = 0;
 		endChannel = _bandData[_dataDescId].ChannelCount();
 	}
-	copyWeightedData(buffer,  startChannel, endChannel, _polarizationCount, _dataArray, _weightArray, _flagArray, _polOut, _totalWeight);
+	copyWeightedData(buffer,  startChannel, endChannel, _polarizationCount, _dataArray, _weightArray, _flagArray, _polOut);
 }
 
 void ContiguousMS::prepareModelColumn()
@@ -185,10 +180,10 @@ void ContiguousMS::ReadModel(std::complex<float>* buffer)
 		startChannel = 0;
 		endChannel = _bandData[_dataDescId].ChannelCount();
 	}
-	copyWeightedData(buffer,  startChannel, endChannel, _polarizationCount, _modelArray, _weightArray, _flagArray, _polOut, _totalWeight);
+	copyWeightedData(buffer,  startChannel, endChannel, _polarizationCount, _modelArray, _weightArray, _flagArray, _polOut);
 }
 
-void ContiguousMS::WriteModel(size_t rowId, const std::complex<float>* buffer)
+void ContiguousMS::WriteModel(size_t rowId, std::complex<float>* buffer)
 {
 	if(!_isModelColumnPrepared)
 		prepareModelColumn();
@@ -206,7 +201,7 @@ void ContiguousMS::WriteModel(size_t rowId, const std::complex<float>* buffer)
 	}
 	
 	_modelColumn->get(rowId, _modelArray);
-	reverseCopyData(_modelArray, startChannel, endChannel, _polarizationCount, buffer, _polOut, _totalWeight);
+	reverseCopyData(_modelArray, startChannel, endChannel, _polarizationCount, buffer, _polOut);
 	_modelColumn->put(rowId, _modelArray);
 }
 
@@ -256,15 +251,18 @@ PartitionedMS::PartitionedMS(const string& metaFilename, size_t partIndex) :
 	std::vector<char> msPath(_metaHeader.filenameLength+1, char(0));
 	_metaFile.read(msPath.data(), _metaHeader.filenameLength);
 	std::cout << "Opening reordered part " << partIndex << " for " << msPath.data() << '\n';
+	_ms = casa::MeasurementSet(msPath.data());
 	
 	_dataFile.open(getPartPrefix(msPath.data(), partIndex)+".tmp", std::ios::in | std::ios::out);
 	if(_dataFile.bad())
 		throw std::runtime_error("Error opening temporary data file");
 	_dataFile.read(reinterpret_cast<char*>(&_partHeader), sizeof(PartHeader));
+	std::cout << "Channels " << _partHeader.channelStart << "-" << _partHeader.channelStart+_partHeader.channelCount << " are in part.\n";
 	
 	_weightFile.open(getPartPrefix(msPath.data(), partIndex)+"-w.tmp", std::ios::in | std::ios::out);
 	if(_weightFile.bad())
 		throw std::runtime_error("Error opening temporary data file");
+	_weightBuffer.resize(_partHeader.channelCount);
 }
 
 void PartitionedMS::Reset()
@@ -273,6 +271,10 @@ void PartitionedMS::Reset()
 	_metaFile.seekg(sizeof(MetaHeader) + _metaHeader.filenameLength, std::ios::beg);
 	_dataFile.seekg(sizeof(PartHeader), std::ios::beg);
 	_weightFile.seekg(0, std::ios::beg);
+	_readPtrIsOnData = true;
+	_readPtrIsOnModel = false;
+	_metaPtrIsOk = true;
+	_weightPtrIsOk = true;
 }
 
 bool PartitionedMS::NextRow()
@@ -297,7 +299,8 @@ bool PartitionedMS::NextRow()
 	
 	if(_metaPtrIsOk)
 		_metaFile.seekg(sizeof(MetaRecord), std::ios::cur);
-	_metaPtrIsOk = true;
+	else
+		_metaPtrIsOk = true;
 	
 	if(_weightPtrIsOk && _partHeader.hasWeights)
 		_weightFile.seekg(_partHeader.channelCount * sizeof(float), std::ios::cur);
@@ -328,6 +331,17 @@ void PartitionedMS::ReadData(std::complex<float>* buffer)
 		else
 			_dataFile.seekg(-2 * _partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
 	}
+#ifdef REDUNDANT_VALIDATION
+	size_t pos = size_t(_dataFile.tellg()) - sizeof(PartHeader);
+	size_t fact = _partHeader.hasModel ? 2 : 1;
+	if(pos != fact * _currentRow * _partHeader.channelCount * sizeof(std::complex<float>))
+	{
+		std::ostringstream s;
+		s << "Not on right pos: " << pos << " instead of " << fact * _currentRow * _partHeader.channelCount * sizeof(std::complex<float>) <<
+			" (row " << (pos / (fact * _partHeader.channelCount * sizeof(std::complex<float>))) << " instead of " << _currentRow << ")";
+		throw std::runtime_error(s.str());
+	}
+#endif
 	_dataFile.read(reinterpret_cast<char*>(buffer), _partHeader.channelCount * sizeof(std::complex<float>));
 	_readPtrIsOnData = false;
 	_readPtrIsOnModel = true;
@@ -335,6 +349,10 @@ void PartitionedMS::ReadData(std::complex<float>* buffer)
 
 void PartitionedMS::ReadModel(std::complex<float>* buffer)
 {
+#ifdef REDUNDANT_VALIDATION
+	if(!_partHeader.hasModel)
+		throw std::runtime_error("Partitioned MS initialized without model");
+#endif
 	if(!_readPtrIsOnModel)
 	{
 		if(_readPtrIsOnData)
@@ -347,9 +365,21 @@ void PartitionedMS::ReadModel(std::complex<float>* buffer)
 	_readPtrIsOnModel = false;
 }
 
-void PartitionedMS::WriteModel(size_t rowId, const std::complex<float>* buffer)
+void PartitionedMS::WriteModel(size_t rowId, std::complex<float>* buffer)
 {
-	size_t pos = sizeof(PartHeader) + _partHeader.channelCount * sizeof(std::complex<float>) * 2 * rowId;
+#ifdef REDUNDANT_VALIDATION
+	if(!_partHeader.hasModel)
+		throw std::runtime_error("Partitioned MS initialized without model");
+#endif
+	
+	_weightFile.seekg(_partHeader.channelCount * sizeof(float) * rowId, std::ios::beg);
+	_weightFile.read(reinterpret_cast<char*>(_weightBuffer.data()), _partHeader.channelCount * sizeof(float));
+	for(size_t i=0; i!=_partHeader.channelCount; ++i)
+	{
+		buffer[i] *= _weightBuffer[i];
+	}
+	
+	size_t pos = sizeof(PartHeader) + _partHeader.channelCount * sizeof(std::complex<float>) * (2 * rowId + 1);
 	_dataFile.seekp(pos, std::ios::beg);
 	_dataFile.write(reinterpret_cast<const char*>(buffer), _partHeader.channelCount * sizeof(std::complex<float>));
 }
@@ -412,14 +442,12 @@ string PartitionedMS::getMetaFilename(const string& msPath)
  */
 std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, PolarizationEnum polOut)
 {
-	std::cout << "Reordering measurement set...\n";
 	casa::MeasurementSet ms(msPath);
 
 	std::vector<std::ofstream*> dataFiles(channelParts), weightFiles(channelParts);
 	for(size_t part=0; part!=channelParts; ++part)
 	{
 		std::string partPrefix = getPartPrefix(msPath, part);
-		std::cout << "Creating " << partPrefix + ".tmp\n";
 		dataFiles[part] = new std::ofstream(partPrefix + ".tmp");
 		if(includeWeights)
 			weightFiles[part] = new std::ofstream(partPrefix + "-w.tmp");
@@ -468,7 +496,7 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 		if(selection.IsSelected(fieldId, timestep, a1, a2))
 			++selectedRowCount;
 	}
-	std::cout << "Reordering " << selectedRowCount << " selected rows.\n";
+	std::cout << "Reordering " << selectedRowCount << " selected rows into " << channelParts << " parts.\n";
 
 	// Write header of meta file
 	std::string metaFilename = getMetaFilename(msPath);
@@ -483,7 +511,6 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 	// Write actual data
 	timestep = 0;
 	time = timeColumn(0);
-	std::vector<double> totalWeightPerPart(channelParts, 0.0);
 	
 	std::vector<std::complex<float>> dataBuffer(polarizationCount * (1 + channelCount / channelParts));
 	std::vector<float> weightBuffer(polarizationCount * (1 + channelCount / channelParts));
@@ -495,17 +522,7 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 	{
 		const int
 			a1 = antenna1Column(row), a2 = antenna2Column(row),
-			fieldId = fieldIdColumn(row), dataDescId = dataDescIdColumn(row);
-		casa::Vector<double> uvwArray = uvwColumn(row);
-			
-		MetaRecord meta;
-		meta.u = uvwArray(0);
-		meta.v = uvwArray(1);
-		meta.w = uvwArray(2);
-		meta.dataDescId = dataDescId;
-		metaFile.write(reinterpret_cast<char*>(&meta), sizeof(MetaRecord));
-		if(metaFile.bad())
-			throw std::runtime_error("Error writing to temporary file");
+			fieldId = fieldIdColumn(row);
 			
 		if(time != timeColumn(row))
 		{
@@ -514,6 +531,17 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 		}
 		if(selection.IsSelected(fieldId, timestep, a1, a2))
 		{
+			size_t dataDescId = dataDescIdColumn(row);
+			casa::Vector<double> uvwArray = uvwColumn(row);
+			MetaRecord meta;
+			meta.u = uvwArray(0);
+			meta.v = uvwArray(1);
+			meta.w = uvwArray(2);
+			meta.dataDescId = dataDescId;
+			metaFile.write(reinterpret_cast<char*>(&meta), sizeof(MetaRecord));
+			if(metaFile.bad())
+				throw std::runtime_error("Error writing to temporary file");
+				
 			dataColumn.get(row, dataArray);
 			weightColumn.get(row, weightArray);
 			flagColumn.get(row, flagArray);
@@ -524,7 +552,7 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 					partStartCh = channelStart + channelCount*part/channelParts,
 					partEndCh = channelStart + channelCount*(part+1)/channelParts;
 				
-				copyWeightedData(dataBuffer.data(), partStartCh, partEndCh, polarizationCount, dataArray, weightArray, flagArray, polOut, totalWeightPerPart[part]);
+				copyWeightedData(dataBuffer.data(), partStartCh, partEndCh, polarizationCount, dataArray, weightArray, flagArray, polOut);
 				dataFiles[part]->write(reinterpret_cast<char*>(dataBuffer.data()), (partEndCh - partStartCh) * sizeof(std::complex<float>));
 				
 				if(includeModel)
@@ -552,7 +580,6 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 		PartHeader header;
 		header.channelStart = channelStart + channelCount*part/channelParts,
 		header.channelCount = (channelStart + channelCount*(part+1)/channelParts) - header.channelStart;
-		header.totalWeight = totalWeightPerPart[part];
 		header.hasModel = includeModel;
 		header.hasWeights = includeWeights;
 		dataFiles[part]->seekp(0, std::ios::beg);
@@ -568,9 +595,7 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 	return metaFilename;
 }
 
-
-
-void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut, double& totalWeight)
+void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
 {
 	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
 	casa::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
@@ -584,7 +609,6 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
 				dest[ch] = *inPtr * (*weightPtr);
-				totalWeight += (*weightPtr);
 			} else {
 				dest[ch] = 0;
 			}
@@ -594,7 +618,6 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
 				dest[ch] += *inPtr * (*weightPtr);
-				totalWeight += (*weightPtr);
 			}
 			++weightPtr;
 			++inPtr;
@@ -642,7 +665,6 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
 			{
 				dest[ch] = *inPtr * (*weightPtr);
-				totalWeight += (*weightPtr);
 			}
 			else {
 				dest[ch] = 0;
@@ -733,7 +755,7 @@ void MSProvider::copyWeights<float>(float* dest, size_t startChannel, size_t end
 template
 void MSProvider::copyWeights<std::complex<float>>(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
 
-void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, size_t polCount, const std::complex<float>* source, PolarizationEnum polSource, bool addData)
+void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, size_t polCount, const std::complex<float>* source, PolarizationEnum polSource)
 {
 	const size_t selectedChannelCount = endChannel - startChannel;
 	casa::Array<std::complex<float>>::contiter dataIter = dest.cbegin() + startChannel * polCount;
@@ -744,14 +766,8 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 		{
 			if(std::isfinite(source[ch].real()))
 			{
-				if(addData)
-				{
-					*dataIter += source[ch];
-					*(dataIter + (polCount-1)) += source[ch];
-				} else {
-					*dataIter = source[ch];
-					*(dataIter + (polCount-1)) = source[ch];
-				}
+				*dataIter = source[ch];
+				*(dataIter + (polCount-1)) = source[ch];
 			}
 			dataIter += polCount;
 		}
@@ -761,10 +777,7 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 		{
 			if(std::isfinite(source[ch].real()))
 			{
-				if(addData)
-					*(dataIter+polIndex) += source[ch];
-				else
-					*(dataIter+polIndex) = source[ch];
+				*(dataIter+polIndex) = source[ch];
 			}
 			dataIter += polCount;
 		}

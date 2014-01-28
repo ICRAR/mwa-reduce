@@ -161,8 +161,13 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 void ImageWeights::Grid(MSProvider& msProvider, WeightMode weightMode, const MSSelection& selection)
 {
 	const MultiBandData bandData(msProvider.MS().spectralWindow(), msProvider.MS().dataDescription());
+	MultiBandData selectedBand;
+	if(selection.HasChannelRange())
+		selectedBand = MultiBandData(bandData, selection.ChannelRangeStart(), selection.ChannelRangeEnd());
+	else
+		selectedBand = bandData;
 	double totalSum = 0.0;
-	std::vector<float> weightBuffer(bandData.MaxChannels());
+	std::vector<float> weightBuffer(selectedBand.MaxChannels());
 	
 	msProvider.Reset();
 	do
@@ -171,26 +176,15 @@ void ImageWeights::Grid(MSProvider& msProvider, WeightMode weightMode, const MSS
 		size_t dataDescId;
 		msProvider.ReadMeta(uInM, vInM, wInM, dataDescId);
 		msProvider.ReadWeights(weightBuffer.data());
-		const BandData& curBand = bandData[dataDescId];
+		const BandData& curBand = selectedBand[dataDescId];
 		if(vInM < 0.0)
 		{
 			uInM = -uInM;
 			vInM = -vInM;
 		}
 		
-		size_t startChannel, endChannel;
-		if(selection.HasChannelRange())
-		{
-			startChannel = selection.ChannelRangeStart();
-			endChannel = selection.ChannelRangeEnd();
-		}
-		else {
-			startChannel = 0;
-			endChannel = curBand.ChannelCount();
-		}
-
-		const float* weightIter = weightBuffer.data() + startChannel;
-		for(size_t ch=startChannel; ch!=endChannel; ++ch)
+		const float* weightIter = weightBuffer.data();
+		for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
 		{
 			double
 				u = uInM / curBand.ChannelWavelength(ch),

@@ -31,20 +31,18 @@ public:
 	
 	virtual void ReadModel(std::complex<float>* buffer) = 0;
 	
-	virtual void WriteModel(size_t rowId, const std::complex<float>* buffer) = 0;
+	virtual void WriteModel(size_t rowId, std::complex<float>* buffer) = 0;
 	
 	virtual void ReadWeights(float* buffer) = 0;
 	
 	virtual void ReadWeights(std::complex<float>* buffer) = 0;
-	
-	virtual double TotalWeight() = 0;
 protected:
-	static void copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut, double& totalWeight);
+	static void copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
 	
 	template<typename NumType>
 	static void copyWeights(NumType* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
 	
-	static void reverseCopyData(casa::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, size_t polCount, const std::complex<float>* source, PolarizationEnum polSource, bool addData);
+	static void reverseCopyData(casa::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, size_t polCount, const std::complex<float>* source, PolarizationEnum polSource);
 	
 	static void getRowRange(casa::MeasurementSet& ms, const MSSelection& selection, size_t& startRow, size_t& endRow);
 	
@@ -84,17 +82,15 @@ public:
 	
 	virtual void ReadModel(std::complex<float>* buffer);
 	
-	virtual void WriteModel(size_t rowId, const std::complex<float>* buffer);
+	virtual void WriteModel(size_t rowId, std::complex<float>* buffer);
 	
 	virtual void ReadWeights(float* buffer);
 	
 	virtual void ReadWeights(std::complex<float>* buffer);
-	
-	virtual double TotalWeight();
 private:
 	size_t _row;
 	size_t _timestep;
-	double _time, _totalWeight;
+	double _time;
 	int _dataDescId;
 	bool _isMetaRead, _isDataRead, _isModelRead, _isWeightRead;
 	bool _isModelColumnPrepared;
@@ -173,13 +169,11 @@ public:
 	
 	virtual void ReadModel(std::complex<float>* buffer);
 	
-	virtual void WriteModel(size_t rowId, const std::complex<float>* buffer);
+	virtual void WriteModel(size_t rowId, std::complex<float>* buffer);
 	
 	virtual void ReadWeights(float* buffer);
 	
 	virtual void ReadWeights(std::complex<float>* buffer);
-	
-	virtual double TotalWeight() { return _partHeader.totalWeight; }
 	
 	static std::string Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, PolarizationEnum polOut);
 private:
@@ -188,6 +182,7 @@ private:
 	std::fstream _dataFile;
 	size_t _currentRow;
 	bool _readPtrIsOnData, _readPtrIsOnModel, _metaPtrIsOk, _weightPtrIsOk;
+	std::vector<float> _weightBuffer;
 	
 	struct MetaHeader
 	{
@@ -204,7 +199,6 @@ private:
 	{
 		uint64_t channelCount;
 		uint64_t channelStart;
-		double totalWeight;
 		bool hasModel, hasWeights;
 	} _partHeader;
 	

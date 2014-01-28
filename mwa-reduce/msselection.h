@@ -49,6 +49,11 @@ public:
 		_startChannel = startChannel;
 		_endChannel = endChannel;
 	}
+	void SetNoChannelRange()
+	{
+		_startChannel = 0;
+		_endChannel = 0;
+	}
 	void SetInterval(size_t startTimestep, size_t endTimestep)
 	{
 		_startTimestep = startTimestep;

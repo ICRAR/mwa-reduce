@@ -157,6 +157,11 @@ int main(int argc, char *argv[])
 			"\t   Gridding antialiasing kernel size. Default: 7.\n"
 			"\t-oversampling <factor>\n"
 			"\t   Oversampling factor used during gridding. Default: 63.\n"
+			"\t-reorder\n"
+			"\t-no-reorder\n"
+			"\t   Force or disable reordering of Measurement Set. This can be faster when the measurement set needs to\n"
+			"\t   be iterated several times, such as with many major iterations or in channel imaging mode.\n"
+			"\t   Default: only reorder when in channel imaging mode.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n";
@@ -167,12 +172,13 @@ int main(int argc, char *argv[])
 	size_t imgWidth = 2048, imgHeight = 2048, channelsOut = 1;
 	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0;
 	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7, overSamplingFactor = 63;
-	MSSelection selection;
+	MSSelection globalSelection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
 	PolarizationEnum polarization = Polarization::StokesI;
 	WeightMode weightMode(WeightMode::UniformWeighted);
 	std::string prefixName = "wsclean";
 	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false, makePsf = false;
+	bool forceReorder = false, forceNoReorder = false;
 	enum LayeredImager::GridModeEnum gridMode = LayeredImager::KaiserBessel;
 	std::vector<std::string> filenames;
 	
@@ -304,12 +310,12 @@ int main(int argc, char *argv[])
 		}
 		else if(param == "interval")
 		{
-			selection.SetInterval(atoi(argv[argi+1]), atoi(argv[argi+2]));
+			globalSelection.SetInterval(atoi(argv[argi+1]), atoi(argv[argi+2]));
 			argi += 2;
 		}
 		else if(param == "channelrange")
 		{
-			selection.SetChannelRange(atoi(argv[argi+1]), atoi(argv[argi+2]));
+			globalSelection.SetChannelRange(atoi(argv[argi+1]), atoi(argv[argi+2]));
 			argi += 2;
 		}
 		else if(param == "channelsout")
@@ -320,7 +326,7 @@ int main(int argc, char *argv[])
 		else if(param == "field")
 		{
 			++argi;
-			selection.SetFieldId(atoi(argv[argi]));
+			globalSelection.SetFieldId(atoi(argv[argi]));
 		}
 		else if(param == "weight")
 		{
@@ -360,6 +366,16 @@ int main(int argc, char *argv[])
 			++argi;
 			overSamplingFactor = atoi(argv[argi]);
 		}
+		else if(param == "reorder")
+		{
+			forceReorder = true;
+			forceNoReorder = false;
+		}
+		else if(param == "no-reorder")
+		{
+			forceNoReorder = true;
+			forceReorder = false;
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -387,28 +403,62 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	bool doReorder = ((channelsOut != 1) || forceReorder) && !forceNoReorder;
+	
 	std::vector<std::string> partitionedMSHandles;
-	if(channelsOut != 1)
+	if(doReorder)
 	{
 		for(int i=argi; i != argc; ++i)
 		{
-			partitionedMSHandles.push_back(PartitionedMS::Partition(argv[i], channelsOut, selection, columnName, nIter > 0 || makePsf, mGain != 1.0, polarization));
+			partitionedMSHandles.push_back(PartitionedMS::Partition(argv[i], channelsOut, globalSelection, columnName, true, mGain != 1.0, polarization));
 		}
 	}
 	
 	for(size_t outChannelIndex=0; outChannelIndex!=channelsOut; ++outChannelIndex)
 	{
+		MSSelection partSelection = globalSelection;
 		std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion(&imageAllocator));
 		static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 		
 		for(int i=argi; i != argc; ++i) {
 			MSProvider* msProvider;
-			if(channelsOut == 1)
-				msProvider = new ContiguousMS(argv[i], selection, polarization, mGain != 1.0);
-			else
+			if(doReorder)
 				msProvider = new PartitionedMS(partitionedMSHandles[i-argi], outChannelIndex);
+			else
+				msProvider = new ContiguousMS(argv[i], partSelection, polarization, mGain != 1.0);
 			inversionAlgorithm->AddMeasurementSet(msProvider);
 			filenames.push_back(argv[i]);
+		}
+		if(doReorder)
+		{
+			size_t startCh, endCh;
+			if(globalSelection.HasChannelRange())
+			{
+				startCh = globalSelection.ChannelRangeStart();
+				endCh = globalSelection.ChannelRangeEnd();
+			}
+			else {
+				BandData band(inversionAlgorithm->MeasurementSet(0).MS().spectralWindow());
+				startCh = 0;
+				endCh = band.ChannelCount();
+			}
+			size_t newStart = startCh + (endCh - startCh) * outChannelIndex / channelsOut;
+			size_t newEnd = startCh + (endCh - startCh) * (outChannelIndex+1) / channelsOut;
+			partSelection.SetChannelRange(newStart, newEnd);
+		}
+		std::string partPrefixName;
+		if(channelsOut != 1)
+		{
+			std::ostringstream partPrefixNameStr;
+			partPrefixNameStr << prefixName << '-';
+			if(outChannelIndex < 1000) partPrefixNameStr << '0';
+			if(outChannelIndex < 100) partPrefixNameStr << '0';
+			if(outChannelIndex < 10) partPrefixNameStr << '0';
+			partPrefixNameStr << outChannelIndex;
+			partPrefixName = partPrefixNameStr.str();
+		}
+		else {
+			partPrefixName = prefixName;
 		}
 		
 		// Store command line, to write later in fits file
@@ -426,7 +476,7 @@ int main(int argc, char *argv[])
 			imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale, weightMode.SuperWeight()));
 			for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
 			{
-				imageWeights->Grid(inversionAlgorithm->MeasurementSet(i), weightMode, selection);
+				imageWeights->Grid(inversionAlgorithm->MeasurementSet(i), weightMode, partSelection);
 				if(inversionAlgorithm->MeasurementSetCount() > 1)
 					std::cout << i << ' ' << std::flush;
 			}
@@ -448,7 +498,7 @@ int main(int argc, char *argv[])
 		inversionAlgorithm->SetDataColumnName(columnName);
 		inversionAlgorithm->SetWeighting(weightMode);
 		inversionAlgorithm->SetImaginaryPart(imaginaryPart);
-		inversionAlgorithm->SetSelection(selection);
+		inversionAlgorithm->SetSelection(partSelection);
 		
 		double* psf = 0;
 		bool isFirstInversion = true;
@@ -469,7 +519,7 @@ int main(int argc, char *argv[])
 				inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
 				FitsWriter fitsWriter;
 				initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-				fitsWriter.Write(std::string(prefixName) + "-gridding.fits", &gridding[0]);
+				fitsWriter.Write(std::string(partPrefixName) + "-gridding.fits", &gridding[0]);
 				imageAllocator.Free(gridding);
 				std::cout << "DONE\n";
 			}
@@ -484,7 +534,7 @@ int main(int argc, char *argv[])
 			std::cout << "Writing psf image... " << std::flush;
 			FitsWriter fitsWriter;
 			initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-			fitsWriter.Write(std::string(prefixName) + "-psf.fits", psf);
+			fitsWriter.Write(std::string(partPrefixName) + "-psf.fits", psf);
 			std::cout << "DONE\n";
 			
 			CleanAlgorithm::RemoveNaNsInPSF(psf, imgWidth, imgHeight);
@@ -511,7 +561,7 @@ int main(int argc, char *argv[])
 		std::cout << "Writing dirty image... " << std::flush;
 		FitsWriter fitsWriter;
 		initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-		fitsWriter.Write(std::string(prefixName) + "-dirty.fits", residual);
+		fitsWriter.Write(std::string(partPrefixName) + "-dirty.fits", residual);
 		std::cout << "DONE\n";
 		
 		if(mGain == 1.0)
@@ -558,11 +608,11 @@ int main(int argc, char *argv[])
 					if(mGain == 1.0)
 					{
 						std::cout << "Writing residual image... " << std::flush;
-						fitsWriter.Write(std::string(prefixName) + "-residual.fits", &residual[0]);
+						fitsWriter.Write(std::string(partPrefixName) + "-residual.fits", &residual[0]);
 					}
 					else {
 						std::cout << "Writing first iteration image... " << std::flush;
-						fitsWriter.Write(std::string(prefixName) + "-first-residual.fits", &residual[0]);
+						fitsWriter.Write(std::string(partPrefixName) + "-first-residual.fits", &residual[0]);
 					}
 					std::cout << "DONE\n";
 				}
@@ -570,7 +620,7 @@ int main(int argc, char *argv[])
 				if(!reachedMajorThreshold)
 				{
 					std::cout << "Writing model image... " << std::flush;
-					fitsWriter.Write(std::string(prefixName) + "-model.fits", &modelImage[0]);
+					fitsWriter.Write(std::string(partPrefixName) + "-model.fits", &modelImage[0]);
 					std::cout << "DONE\n";
 				}
 				
@@ -596,7 +646,7 @@ int main(int argc, char *argv[])
 						inversionAlgorithm.reset();
 						
 						std::cout << "Writing residual image... " << std::flush;
-						fitsWriter.Write(std::string(prefixName) + "-residual.fits", &residual[0]);
+						fitsWriter.Write(std::string(partPrefixName) + "-residual.fits", &residual[0]);
 						std::cout << "DONE\n";
 					}
 					
@@ -646,7 +696,7 @@ int main(int argc, char *argv[])
 		std::cout << "DONE\n";
 		
 		std::cout << "Writing restored image... " << std::flush;
-		fitsWriter.Write(std::string(prefixName) + "-image.fits", &residual[0]);
+		fitsWriter.Write(std::string(partPrefixName) + "-image.fits", &residual[0]);
 		std::cout << "DONE\n";
 		
 		imageAllocator.ReportStatistics();
