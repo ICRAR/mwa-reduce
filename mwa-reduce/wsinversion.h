@@ -111,7 +111,6 @@ class WSInversion : public InversionAlgorithm
 
 		std::unique_ptr<LayeredImager> _imager;
 		std::unique_ptr<ao::lane<InversionWorkItem>> _inversionWorkLane;
-		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
 		double _phaseCentreRA, _phaseCentreDec, _phaseCentreDL, _phaseCentreDM;
 		bool _denormalPhaseCentre, _hasFrequencies;
 		double _freqHigh, _freqLow;

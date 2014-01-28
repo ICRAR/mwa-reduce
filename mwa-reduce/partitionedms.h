@@ -96,6 +96,8 @@ private:
 	size_t _timestep;
 	double _time, _totalWeight;
 	int _dataDescId;
+	bool _isMetaRead, _isDataRead, _isModelRead, _isWeightRead;
+	bool _isModelColumnPrepared;
 	size_t _startRow, _endRow, _polarizationCount;
 	MSSelection _selection;
 	PolarizationEnum _polOut;
@@ -114,6 +116,42 @@ private:
 	casa::Array<std::complex<float>> _dataArray, _modelArray;
 	casa::Array<float> _weightArray;
 	casa::Array<bool> _flagArray;
+	
+	void prepareModelColumn();
+	void readMeta()
+	{
+		if(!_isMetaRead)
+		{
+			_dataDescId = _dataDescIdColumn(_row);
+			_isMetaRead = true;
+		}
+	}
+	void readData()
+	{
+		if(!_isDataRead)
+		{
+			_dataColumn.get(_row, _dataArray);
+			_isDataRead = true;
+		}
+	}
+	void readWeights()
+	{
+		if(!_isWeightRead)
+		{
+			_flagColumn.get(_row, _flagArray);
+			if(_msHasWeights)
+				_weightColumn.get(_row, _weightArray);
+			_isWeightRead = true;
+		}
+	}
+	void readModel()
+	{
+		if(!_isModelRead)
+		{
+			_modelColumn->get(_row, _modelArray);
+			_isModelRead = true;
+		}
+	}
 };
 
 class PartitionedMS : public MSProvider

@@ -83,14 +83,6 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		_hasFrequencies = true;
 	}
 	
-	std::cout << 'C' << std::flush;
-	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
-	casa::ROScalarColumn<int> fieldIdColumn(ms, ms.columnName(casa::MSMainEnums::FIELD_ID));
-	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
-	
 	std::cout << 'F' << std::flush;
 	casa::MSField fTable(ms.field());
 	casa::MDirection::ROScalarColumn refDirColumn(fTable, fTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
@@ -217,21 +209,6 @@ void WSInversion::countSamplesPerLayer(MSData& msData)
 
 void WSInversion::gridMeasurementSet(MSData &msData)
 {
-	casa::MeasurementSet &ms(msData.msProvider->MS());
-	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
-	casa::ROScalarColumn<int> fieldIdColumn(ms, ms.columnName(casa::MSMainEnums::FIELD_ID));
-	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
-	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, DataColumnName());
-	std::unique_ptr<casa::ROArrayColumn<casa::Complex>> modelColumn;
-	if(DoSubtractModel() && !DoImagePSF())
-		modelColumn.reset(new casa::ROArrayColumn<std::complex<float>>(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-	
-	casa::IPosition dataShape = dataColumn.shape(0);
-	
 	const MultiBandData selectedBand(msData.SelectedBand());
 	_imager->PrepareBand(selectedBand);
 	std::vector<std::complex<float>> modelBuffer(selectedBand.MaxChannels());
@@ -270,6 +247,16 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				msData.msProvider->ReadData(newItem.data);
 			}
 			
+			if(DoSubtractModel())
+			{
+				msData.msProvider->ReadModel(modelBuffer.data());
+				std::complex<float>* modelIter = modelBuffer.data();
+				for(casa::Array<casa::Complex>::contiter iter = newItem.data; iter!=newItem.data+curBand.ChannelCount(); ++iter)
+				{
+					*iter -= *modelIter;
+					modelIter++;
+				}
+			}
 			msData.msProvider->ReadWeights(weightBuffer.data());
 			switch(Weighting().Mode())
 			{
@@ -313,23 +300,12 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				} break;
 			}
 			
-			if(DoSubtractModel())
-			{
-				msData.msProvider->ReadModel(modelBuffer.data());
-				std::complex<float>* modelIter = modelBuffer.data();
-				for(casa::Array<casa::Complex>::contiter iter = newItem.data; iter!=newItem.data+curBand.ChannelCount(); ++iter)
-				{
-					*iter -= *modelIter;
-					modelIter++;
-				}
-			}
 			_inversionWorkLane->write(newItem);
 			
 			++rowsRead;
 		}
 	} while(msData.msProvider->NextRow());
 	
-	modelColumn.reset();
 	if(Verbose())
 		std::cout << "Rows that were required: " << rowsRead << '/' << msData.matchingRows << '\n';
 	msData.totalRowsProcessed += rowsRead;
@@ -400,54 +376,6 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 	msData.polarizationCount = dataColumn.shape(0)[0];
 	
-	if(ms.isColumn(casa::MSMainEnums::MODEL_DATA))
-	{
-		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-		casa::IPosition dataShape = dataColumn.shape(0);
-		bool isDefined = _modelColumn->isDefined(0);
-		bool isSameShape = false;
-		if(isDefined)
-		{
-			casa::IPosition modelShape = _modelColumn->shape(0);
-			isSameShape = modelShape == dataShape;
-		}
-		if(!isDefined || !isSameShape)
-		{
-			std::cout << "WARNING: Your model column does not have the same shape as your data column: resetting MODEL column.\n";
-			casa::Array<casa::Complex> zeroArray(dataShape);
-			for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
-				*i = std::complex<float>(0.0, 0.0);
-			for(size_t row=0; row!=ms.nrow(); ++row)
-				_modelColumn->put(row, zeroArray);
-		}
-	}
-	if(!ms.isColumn(casa::MSMainEnums::MODEL_DATA))
-	{
-		std::cout << "Adding model data column... " << std::flush;
-		casa::IPosition shape = dataColumn.shape(0);
-		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(ms.columnName(casa::MSMainEnums::MODEL_DATA), shape);
-		try {
-			ms.addColumn(modelColumnDesc, "StandardStMan", true, true);
-		} catch(std::exception& e)
-		{
-			ms.addColumn(modelColumnDesc, "StandardStMan", false, true);
-		}
-		
-		casa::Array<casa::Complex> zeroArray(shape);
-		for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
-			*i = std::complex<float>(0.0, 0.0);
-		
-		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-		
-		for(size_t row=0; row!=ms.nrow(); ++row)
-			_modelColumn->put(row, zeroArray);
-		
-		std::cout << "DONE\n";
-	}
-	else {
-		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(ms, ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-	}
-	
 	const MultiBandData selectedBandData(msData.bandData, msData.startChannel, msData.endChannel);
 	_imager->PrepareBand(selectedBandData);
 	
@@ -504,8 +432,6 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	calcThreads.join_all();
 	writeLane.write_end();
 	writeThread.join();
-		
-	_modelColumn.reset();
 }
 
 void WSInversion::visSampleCalcThread(ao::lane<SamplingWorkItem>* inputLane, ao::lane<SamplingWorkItem>* outputLane)
