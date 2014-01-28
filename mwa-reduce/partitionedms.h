@@ -153,7 +153,9 @@ private:
 class PartitionedMS : public MSProvider
 {
 public:
-	PartitionedMS(const string& metaFilename, size_t partIndex);
+	class Handle;
+	
+	PartitionedMS(const Handle& handle, size_t partIndex);
 	
 	virtual casa::MeasurementSet &MS() { return _ms; }
 	
@@ -175,7 +177,36 @@ public:
 	
 	virtual void ReadWeights(std::complex<float>* buffer);
 	
-	static std::string Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, PolarizationEnum polOut);
+	static Handle Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, PolarizationEnum polOut);
+	
+	class Handle {
+	public:
+		friend class PartitionedMS;
+		
+		Handle(const Handle& handle) : _metaFile(handle._metaFile), _msPath(handle._msPath), _channelParts(handle._channelParts), _referenceCount(handle._referenceCount)
+		{
+			++(*_referenceCount);
+		}
+		~Handle() { decrease(); }
+		void operator=(const Handle& handle)
+		{
+			if(handle._referenceCount != _referenceCount)
+			{
+				decrease();
+				_metaFile = handle._metaFile;
+				_msPath = handle._msPath;
+				_channelParts = handle._channelParts;
+				_referenceCount = handle._referenceCount;
+				++(*_referenceCount);
+			}
+		}
+	private:
+		void decrease();
+		Handle(const std::string& metaFile, const std::string& msPath, size_t channelParts) : _metaFile(metaFile), _msPath(msPath), _channelParts(channelParts), _referenceCount(new size_t(1)) { }
+		std::string _metaFile, _msPath;
+		size_t _channelParts;
+		size_t *_referenceCount;
+	}; 
 private:
 	casa::MeasurementSet _ms;
 	std::ifstream _metaFile, _weightFile;

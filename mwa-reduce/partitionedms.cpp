@@ -1,6 +1,7 @@
 #include "partitionedms.h"
 #include "multibanddata.h"
 
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 
@@ -239,8 +240,8 @@ void ContiguousMS::ReadWeights(float* buffer)
 	copyWeights(buffer,  startChannel, endChannel, _polarizationCount, _dataArray, _weightArray, _flagArray, _polOut);
 }
 
-PartitionedMS::PartitionedMS(const string& metaFilename, size_t partIndex) :
-	_metaFile(metaFilename),
+PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex) :
+	_metaFile(handle._metaFile),
 	_currentRow(0),
 	_readPtrIsOnData(true),
 	_readPtrIsOnModel(false),
@@ -440,7 +441,7 @@ string PartitionedMS::getMetaFilename(const string& msPath)
  * - Weights (single, only needed when imaging PSF)
  * - Model, optionally
  */
-std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, PolarizationEnum polOut)
+PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, PolarizationEnum polOut)
 {
 	casa::MeasurementSet ms(msPath);
 
@@ -592,7 +593,7 @@ std::string PartitionedMS::Partition(const string& msPath, size_t channelParts, 
 			delete weightFiles[part];
 	}
 	
-	return metaFilename;
+	return Handle(metaFilename, msPath, channelParts);
 }
 
 void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
@@ -810,5 +811,22 @@ void MSProvider::getRowRange(casa::MeasurementSet& ms, const MSSelection& select
 			}
 		}
 		std::cout << "DONE (" << startRow << '-' << endRow << ")\n";
+	}
+}
+
+void PartitionedMS::Handle::decrease()
+{
+	--(*_referenceCount);
+	if((*_referenceCount) == 0)
+	{
+		std::cout << "Cleaning up temporary files...\n";
+		for(size_t part=0; part!=_channelParts; ++part)
+		{
+			std::string prefix = getPartPrefix(_msPath, part);
+			std::remove((prefix + ".tmp").c_str());
+			std::remove((prefix + "-w.tmp").c_str());
+		}
+		std::remove(_metaFile.c_str());
+		delete _referenceCount;
 	}
 }

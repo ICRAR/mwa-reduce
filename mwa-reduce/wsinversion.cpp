@@ -525,7 +525,6 @@ void WSInversion::Invert()
 		std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 	}
 	
-	std::cout << "Total weight: " << _totalWeight << '\n';
 	if(_denormalPhaseCentre)
 		_imager->FinalizeImage(1.0/(_totalWeight * sqrt(1.0 - _phaseCentreDL*_phaseCentreDL - _phaseCentreDM*_phaseCentreDM)));
 	else

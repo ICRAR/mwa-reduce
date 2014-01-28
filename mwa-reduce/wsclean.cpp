@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
 
 	bool doReorder = ((channelsOut != 1) || forceReorder) && !forceNoReorder;
 	
-	std::vector<std::string> partitionedMSHandles;
+	std::vector<PartitionedMS::Handle> partitionedMSHandles;
 	if(doReorder)
 	{
 		for(int i=argi; i != argc; ++i)
