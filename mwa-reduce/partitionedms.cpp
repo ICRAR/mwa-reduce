@@ -7,7 +7,7 @@
 
 #include <tables/Tables/ArrColDesc.h>
 
-#define REDUNDANT_VALIDATION 1
+// #define REDUNDANT_VALIDATION 1
 
 ContiguousMS::ContiguousMS(const string& msPath, MSSelection selection, PolarizationEnum polOut, bool includeModel) :
 	_timestep(0),
@@ -258,7 +258,6 @@ PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex) :
 	if(_dataFile.bad())
 		throw std::runtime_error("Error opening temporary data file");
 	_dataFile.read(reinterpret_cast<char*>(&_partHeader), sizeof(PartHeader));
-	std::cout << "Channels " << _partHeader.channelStart << "-" << _partHeader.channelStart+_partHeader.channelCount << " are in part.\n";
 	
 	_weightFile.open(getPartPrefix(msPath.data(), partIndex)+"-w.tmp", std::ios::in | std::ios::out);
 	if(_weightFile.bad())
@@ -503,6 +502,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	std::string metaFilename = getMetaFilename(msPath);
 	std::ofstream metaFile(metaFilename);
 	MetaHeader metaHeader;
+	memset(&metaHeader, 0, sizeof(MetaHeader));
 	metaHeader.selectedRowCount = selectedRowCount;
 	metaHeader.filenameLength = msPath.size();
 	metaHeader.fill = 0;
@@ -535,6 +535,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 			size_t dataDescId = dataDescIdColumn(row);
 			casa::Vector<double> uvwArray = uvwColumn(row);
 			MetaRecord meta;
+			memset(&meta, 0, sizeof(MetaRecord));
 			meta.u = uvwArray(0);
 			meta.v = uvwArray(1);
 			meta.w = uvwArray(2);
@@ -579,6 +580,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	for(size_t part=0; part!=channelParts; ++part)
 	{
 		PartHeader header;
+		memset(&header, 0, sizeof(PartHeader));
 		header.channelStart = channelStart + channelCount*part/channelParts,
 		header.channelCount = (channelStart + channelCount*(part+1)/channelParts) - header.channelStart;
 		header.hasModel = includeModel;
