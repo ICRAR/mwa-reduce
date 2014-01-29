@@ -406,7 +406,7 @@ void PartitionedMS::ReadWeights(float* buffer)
 std::string PartitionedMS::getPartPrefix(const std::string& msPath, size_t partIndex)
 {
 	std::string prefix(msPath);
-	while(!prefix.empty() && prefix.back() == '/')
+	while(!prefix.empty() && *prefix.rbegin() == '/')
 		prefix.resize(prefix.size()-1);
 	
 	std::ostringstream partPrefix;
@@ -421,7 +421,7 @@ std::string PartitionedMS::getPartPrefix(const std::string& msPath, size_t partI
 string PartitionedMS::getMetaFilename(const string& msPath)
 {
 	std::string prefix(msPath);
-	while(!prefix.empty() && prefix.back() == '/')
+	while(!prefix.empty() && *prefix.rbegin() == '/')
 		prefix.resize(prefix.size()-1);
 	return prefix + "-parted-meta.tmp";
 }
