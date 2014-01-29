@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <cmath>
 
 #include "polarizationenum.h"
 
@@ -119,6 +120,11 @@ class FitsWriter
 			_phaseCentreDM = dm;
 		}
 	private:
+		template<typename T>
+		static T setNotFiniteToZero(T num)
+		{
+			return std::isfinite(num) ? num : 0.0;
+		}
 		std::size_t _width, _height;
 		double _phaseCentreRA, _phaseCentreDec, _pixelSizeX, _pixelSizeY;
 		double _phaseCentreDL, _phaseCentreDM;

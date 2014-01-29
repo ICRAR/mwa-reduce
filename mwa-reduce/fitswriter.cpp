@@ -51,13 +51,13 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
 	
 	if(_hasBeam)
 	{
-		float
-			majDeg = _beamMajorAxisRad * 180.0 / M_PI,
-			minDeg = _beamMinorAxisRad * 180.0 / M_PI, 
-			posAngle = _beamPositionAngle * 180.0 / M_PI;
-		fits_write_key(fptr, TFLOAT, "BMAJ", (void*) &majDeg, "", &status); checkStatus(status, filename);
-		fits_write_key(fptr, TFLOAT, "BMIN", (void*) &minDeg, "", &status); checkStatus(status, filename);
-		fits_write_key(fptr, TFLOAT, "BPA", (void*) &posAngle, "", &status); checkStatus(status, filename);
+		double
+			majDeg = setNotFiniteToZero(_beamMajorAxisRad * 180.0 / M_PI),
+			minDeg = setNotFiniteToZero(_beamMinorAxisRad * 180.0 / M_PI), 
+			posAngle = setNotFiniteToZero(_beamPositionAngle * 180.0 / M_PI);
+		fits_write_key(fptr, TDOUBLE, "BMAJ", (void*) &majDeg, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "BMIN", (void*) &minDeg, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "BPA", (void*) &posAngle, "", &status); checkStatus(status, filename);
 	}
 	
 	fits_write_key(fptr, TFLOAT, "EQUINOX", (void*) &equinox, "J2000", &status); checkStatus(status, filename);
