@@ -104,7 +104,7 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		std::cout << "Set has denormal phase centre: dl=" << _phaseCentreDL << ", dm=" << _phaseCentreDM << '\n';
 	
 	std::cout << "Determining min and max w & beam size... " << std::flush;
-	msData.maxW= -1e100;
+	msData.maxW = 0.0;
 	msData.minW = 1e100;
 	double maxBaseline = 0.0;
 	std::vector<float> weightArray(selectedBand.MaxChannels());
@@ -135,6 +135,11 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 			}
 		}
 	} while(msProvider.NextRow());
+	if(msData.minW == 1e100)
+	{
+		msData.minW = 0.0;
+		msData.maxW = 0.0;
+	}
 	_beamSize = 1.0 / maxBaseline;
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
 
@@ -150,6 +155,7 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		else
 			radiansForAllLayers = 2 * M_PI * (msData.maxW - msData.minW);
 		size_t suggestedGridSize = size_t(ceil(radiansForAllLayers));
+		if(suggestedGridSize == 0) suggestedGridSize = 1;
 		if(suggestedGridSize < _cpuCount)
 		{
 			// When nwlayers is lower than the nr of cores, we cannot parallellize well. 
