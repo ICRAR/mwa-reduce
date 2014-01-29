@@ -33,6 +33,7 @@ LayeredImager::~LayeredImager()
 	for(size_t i=0; i!=_nFFTThreads; ++i)
 		_imageBufferAllocator->Free(_imageData[i]);
 	freeLayeredUVData();
+	fftw_cleanup();
 }
 
 void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, double maxW)
@@ -156,7 +157,7 @@ void LayeredImager::fftToImageThreadFunction(boost::mutex *mutex, std::stack<siz
 		lock.lock();
 	}
 	lock.unlock();
-	
+	fftw_destroy_plan(plan);
 	_imageBufferAllocator->Free(fftwIn);
 	_imageBufferAllocator->Free(fftwOut);
 }
@@ -552,6 +553,7 @@ void LayeredImager::correctImageForKernel(double *image) const
 		}
 	}
 	
+	fftw_destroy_plan(plan);
 	fftw_free(fftwOut);
 }
 

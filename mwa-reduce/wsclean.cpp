@@ -420,6 +420,7 @@ int main(int argc, char *argv[])
 		std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion(&imageAllocator));
 		static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 		
+		std::vector<MSProvider*> msProviders;
 		for(int i=argi; i != argc; ++i) {
 			MSProvider* msProvider;
 			if(doReorder)
@@ -427,6 +428,7 @@ int main(int argc, char *argv[])
 			else
 				msProvider = new ContiguousMS(argv[i], partSelection, polarization, mGain != 1.0);
 			inversionAlgorithm->AddMeasurementSet(msProvider);
+			msProviders.push_back(msProvider);
 			filenames.push_back(argv[i]);
 		}
 		if(doReorder)
@@ -705,5 +707,8 @@ int main(int argc, char *argv[])
 		imageAllocator.Free(residual);
 		imageAllocator.Free(modelImage);
 		imageAllocator.Free(psf);
+		
+		for(std::vector<MSProvider*>::iterator i=msProviders.begin(); i != msProviders.end(); ++i)
+			delete *i;
 	}
 }

@@ -17,6 +17,8 @@
 class MSProvider
 {
 public:
+	virtual ~MSProvider() { }
+	
 	virtual casa::MeasurementSet &MS() = 0;
 	
 	virtual size_t RowId() const = 0;
