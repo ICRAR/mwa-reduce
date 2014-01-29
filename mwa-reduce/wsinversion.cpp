@@ -216,7 +216,6 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 	_imager->PrepareBand(selectedBand);
 	std::vector<std::complex<float>> modelBuffer(selectedBand.MaxChannels());
 	std::vector<float> weightBuffer(selectedBand.MaxChannels());
-	std::cout << "Gridding " << selectedBand.LowestFrequency() << '-' << selectedBand.HighestFrequency() << '\n';
 	
 	size_t rowsRead = 0;
 	msData.msProvider->Reset();
