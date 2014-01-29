@@ -14,7 +14,7 @@ ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelSc
 	_pixelScale = pixelScale;
 	if(_imageWidth%2 != 0) ++_imageWidth;
 	if(_imageHeight%2 != 0) ++_imageHeight;
-	_sum.resize(_imageWidth*_imageHeight/2);
+	_sum.assign(_imageWidth*_imageHeight/2, 0.0);
 }
 
 double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep)
