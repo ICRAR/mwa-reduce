@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 		" ** without explicit permission from the author (offringa@gmail.com).          **\n"
 		" ** The intension is to make the code public at a later time.                  **\n\n";
 	
-	if(argc < 3)
+	if(argc < 2)
 	{
 		std::cout << "Syntax:\twsclean [options] <input-ms> [<2nd-ms> [..]]\n"
 			"Will create cleaned images of the input ms(es).\n"
