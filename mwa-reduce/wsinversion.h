@@ -73,7 +73,7 @@ class WSInversion : public InversionAlgorithm
 				class MSProvider *msProvider;
 				MultiBandData bandData;
 				size_t startChannel, endChannel;
-				size_t polarizationCount, matchingRows, totalRowsProcessed;
+				size_t matchingRows, totalRowsProcessed;
 				double minW, maxW;
 				size_t rowStart, rowEnd;
 			

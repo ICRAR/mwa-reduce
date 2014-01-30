@@ -368,10 +368,6 @@ void WSInversion::workThreadPerSample(ao::lane<InversionWorkSample>* workLane)
 void WSInversion::sampleToMeasurementSet(MSData &msData)
 {
 	msData.msProvider->ReopenRW();
-	casa::MeasurementSet &ms(msData.msProvider->MS());
-	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
-	msData.polarizationCount = dataColumn.shape(0)[0];
-	
 	const MultiBandData selectedBandData(msData.SelectedBand());
 	_imager->PrepareBand(selectedBandData);
 	
