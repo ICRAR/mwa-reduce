@@ -263,6 +263,7 @@ PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex) :
 	if(_weightFile.bad())
 		throw std::runtime_error("Error opening temporary data file");
 	_weightBuffer.resize(_partHeader.channelCount);
+	_modelBuffer.resize(_partHeader.channelCount);
 }
 
 void PartitionedMS::Reset()
@@ -371,17 +372,23 @@ void PartitionedMS::WriteModel(size_t rowId, std::complex<float>* buffer)
 	if(!_partHeader.hasModel)
 		throw std::runtime_error("Partitioned MS initialized without model");
 #endif
-	
 	_weightFile.seekg(_partHeader.channelCount * sizeof(float) * rowId, std::ios::beg);
 	_weightFile.read(reinterpret_cast<char*>(_weightBuffer.data()), _partHeader.channelCount * sizeof(float));
 	for(size_t i=0; i!=_partHeader.channelCount; ++i)
-	{
 		buffer[i] *= _weightBuffer[i];
-	}
 	
 	size_t pos = sizeof(PartHeader) + _partHeader.channelCount * sizeof(std::complex<float>) * (2 * rowId + 1);
+	_dataFile.seekg(pos, std::ios::beg);
+	_dataFile.read(reinterpret_cast<char*>(_modelBuffer.data()), _partHeader.channelCount * sizeof(std::complex<float>));
+	// In case the value was not sampled in this pass, it will be set to infinite and should not overwrite the current
+	// value in the set.
+	for(size_t i=0; i!=_partHeader.channelCount; ++i)
+	{
+		if(std::isfinite(buffer[i].real()))
+			_modelBuffer[i] = buffer[i];
+	}
 	_dataFile.seekp(pos, std::ios::beg);
-	_dataFile.write(reinterpret_cast<const char*>(buffer), _partHeader.channelCount * sizeof(std::complex<float>));
+	_dataFile.write(reinterpret_cast<const char*>(_modelBuffer.data()), _partHeader.channelCount * sizeof(std::complex<float>));
 }
 
 void PartitionedMS::ReadWeights(std::complex<float>* buffer)

@@ -3,7 +3,6 @@
 
 #include <fstream>
 #include <string>
-#include <vector>
 #include <memory>
 
 #include <ms/MeasurementSets/MeasurementSet.h>
@@ -13,6 +12,7 @@
 #include "msselection.h"
 #include "polarizationenum.h"
 #include "multibanddata.h"
+#include "uvector.h"
 
 class MSProvider
 {
@@ -38,6 +38,8 @@ public:
 	virtual void ReadWeights(float* buffer) = 0;
 	
 	virtual void ReadWeights(std::complex<float>* buffer) = 0;
+	
+	virtual void ReopenRW() = 0;
 protected:
 	static void copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
 	
@@ -89,6 +91,11 @@ public:
 	virtual void ReadWeights(float* buffer);
 	
 	virtual void ReadWeights(std::complex<float>* buffer);
+	
+	virtual void ReopenRW()
+	{
+		_ms.reopenRW();
+	}
 private:
 	size_t _row;
 	size_t _timestep;
@@ -179,6 +186,8 @@ public:
 	
 	virtual void ReadWeights(std::complex<float>* buffer);
 	
+	virtual void ReopenRW() { }
+	
 	static Handle Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, PolarizationEnum polOut);
 	
 	class Handle {
@@ -215,7 +224,8 @@ private:
 	std::fstream _dataFile;
 	size_t _currentRow;
 	bool _readPtrIsOnData, _readPtrIsOnModel, _metaPtrIsOk, _weightPtrIsOk;
-	std::vector<float> _weightBuffer;
+	ao::uvector<float> _weightBuffer;
+	ao::uvector<std::complex<float>> _modelBuffer;
 	
 	struct MetaHeader
 	{

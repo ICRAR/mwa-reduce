@@ -367,14 +367,8 @@ void WSInversion::workThreadPerSample(ao::lane<InversionWorkSample>* workLane)
 
 void WSInversion::sampleToMeasurementSet(MSData &msData)
 {
+	msData.msProvider->ReopenRW();
 	casa::MeasurementSet &ms(msData.msProvider->MS());
-	ms.reopenRW();
-	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
-	casa::ROScalarColumn<int> fieldIdColumn(ms, ms.columnName(casa::MSMainEnums::FIELD_ID));
-	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
-	
 	casa::ROArrayColumn<std::complex<float> > dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 	msData.polarizationCount = dataColumn.shape(0)[0];
 	
