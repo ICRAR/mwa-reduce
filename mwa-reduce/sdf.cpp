@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] <model> [<more models>..] [-collect <name>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -67,9 +67,11 @@ int main(int argc, char *argv[])
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false, doAppSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
-	bool excludeArea = false, logNlogS = false;
+	bool excludeArea = false, logNlogS = false, sourceStats = false;
 	std::unique_ptr<AreaSet> areaSet;
-	while(argv[argi][0]=='-')
+	size_t rndN = 0;
+	double rndRA = 0.0, rndDec = 0.0, rndDist = 0.0;
+	while(argi!=argc && argv[argi][0]=='-')
 	{
 		if(strcmp(argv[argi], "-p") == 0)
 		{
@@ -83,6 +85,16 @@ int main(int argc, char *argv[])
 			++argi;
 			nearFilterDist = atof(argv[argi]) * (M_PI/180.0);
 			nearFilter = true;
+		} else if(strcmp(argv[argi], "-rnd") == 0)
+		{
+			++argi;
+			rndN = atof(argv[argi]);
+			++argi;
+			rndRA = RaDecCoord::ParseRA(argv[argi]);
+			++argi;
+			rndDec = RaDecCoord::ParseDec(argv[argi]);
+			++argi;
+			rndDist = atof(argv[argi]) * (M_PI/180.0);
 		} else if(strcmp(argv[argi], "-collect") == 0)
 		{
 			doCollect = true;
@@ -189,6 +201,9 @@ int main(int argc, char *argv[])
 			++argi;
 			logNlogSBinCount = atoi(argv[argi]);
 			logNlogS = true;
+		} else if(strcmp(argv[argi], "-stats") == 0)
+		{
+			sourceStats = true;
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: ") + argv[argi]);
 		}
@@ -343,7 +358,27 @@ int main(int argc, char *argv[])
 		for(std::set<size_t>::reverse_iterator i=sourcesToDelete.rbegin(); i!=sourcesToDelete.rend(); ++i)
 			model.RemoveSource(*i);
 	}
-	
+	if(rndN != 0)
+	{
+		for(size_t i=0; i!=rndN; ++i)
+		{
+			double ra, dec;
+			do {
+				ra = 2.0 * M_PI * (double) rand() / (double) RAND_MAX,
+				dec = M_PI * ((double) rand() / (double) RAND_MAX - 0.5);
+			} while(ImageCoordinates::AngularDistance(rndRA, rndDec, ra, dec) >= rndDist);
+			ModelComponent component;
+			component.SetPosRA(ra);
+			component.SetPosDec(dec);
+			component.SetSED(SpectralEnergyDistribution(1.0, 150000000.0));
+			ModelSource source;
+			source.AddComponent(component);
+			std::ostringstream name;
+			name << "rnd" << i;
+			source.SetName(name.str());
+			model.AddSource(source);
+		}
+	}
 	if(nearFilter)
 	{
 		for(size_t i = model.SourceCount(); i>0; --i)
@@ -499,6 +534,31 @@ int main(int argc, char *argv[])
 	if(unpolarized)
 	{
 		model.SetUnpolarized();
+	}
+	
+	if(sourceStats)
+	{
+		const size_t n = model.SourceCount();
+		double sum = 0.0, diffSq = 0.0;
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			const ModelSource& source = *sourcePtr;
+			double stokesI = 0.5 * (source.TotalFlux(150000000.0,0) + source.TotalFlux(150000000.0,3));
+			sum += stokesI;
+			diffSq += (stokesI - 1.0) * (stokesI - 1.0);
+		}
+		double mean = sum / n, stdDevSum = 0.0;
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			const ModelSource& source = *sourcePtr;
+			double stokesI = 0.5 * (source.TotalFlux(150000000.0,0) + source.TotalFlux(150000000.0,3));
+			stdDevSum += (stokesI - mean) * (stokesI - mean);
+		}
+		std::cout <<
+			"Source statistics:\n"
+			" Mean: " << mean << "\n"
+			" Standard deviation: " << sqrt(stdDevSum/n) << "\n"
+			" Deviation from 1: " << sqrt(diffSq/n) << '\n';
 	}
 	
 	if(logNlogS)

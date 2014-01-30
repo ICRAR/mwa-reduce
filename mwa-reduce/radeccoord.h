@@ -116,7 +116,7 @@ class RaDecCoord
 		
 		static std::string RAToString(long double ra)
 		{
-			long double hrs = ra * (12.0L / M_PIl);
+			long double hrs = fmodl(ra * (12.0L / M_PIl), 24.0L);
 			hrs = round(hrs * 60.0L*60.0L*10.0L)/(60.0L*60.0L*10.0L);
 			std::stringstream s;
 			if(hrs < 0) {
