@@ -566,7 +566,13 @@ void LayeredImager::GetGriddingCorrectionImage(double *image) const
 
 void LayeredImager::PrepareImageForVisibilitySampling(const double *image, double multiplicationFactor)
 {
-	double *dataPtr = _imageData[0];
+	double* imageCopy = _imageBufferAllocator->Allocate(_width * _height);
+	memcpy(imageCopy, image, _width * _height * sizeof(double));
+	if(_gridMode == KaiserBessel)
+	{
+		correctImageForKernel<false>(imageCopy);
+	}
+	double *dataPtr = _imageData[0], *inPtr = imageCopy;
 	for(size_t y=0;y!=_height;++y)
 	{
 		double m = ((double) y-(_height/2)) * _pixelSizeY + _phaseCentreDM;
@@ -574,17 +580,14 @@ void LayeredImager::PrepareImageForVisibilitySampling(const double *image, doubl
 		{
 			double l = ((_width/2)-(double) x) * _pixelSizeX + _phaseCentreDL;
 			if(std::isfinite(*dataPtr) && l*l + m*m < 1.0)
-				*dataPtr = *image * multiplicationFactor / sqrt(1.0 - l*l - m*m);
+				*dataPtr = *inPtr * multiplicationFactor / sqrt(1.0 - l*l - m*m);
 			else
 				*dataPtr = 0.0;
 			++dataPtr;
-			++image;
+			++inPtr;
 		}
 	}
-	if(_gridMode == KaiserBessel)
-	{
-		correctImageForKernel<true>(_imageData[0]);
-	}
+	_imageBufferAllocator->Free(imageCopy);
 }
 
 void LayeredImager::initializeSqrtLMLookupTable()
