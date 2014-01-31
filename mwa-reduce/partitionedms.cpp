@@ -9,7 +9,7 @@
 
 // #define REDUNDANT_VALIDATION 1
 
-ContiguousMS::ContiguousMS(const string& msPath, MSSelection selection, PolarizationEnum polOut, bool includeModel) :
+ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnName, MSSelection selection, PolarizationEnum polOut, bool includeModel) :
 	_timestep(0),
 	_time(0.0),
 	_dataDescId(0),
@@ -24,7 +24,7 @@ ContiguousMS::ContiguousMS(const string& msPath, MSSelection selection, Polariza
 	_timeColumn(_ms, casa::MS::columnName(casa::MSMainEnums::TIME)),
 	_uvwColumn(_ms, casa::MS::columnName(casa::MSMainEnums::UVW)),
 	_weightColumn(_ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM)),
-	_dataColumn(_ms, casa::MS::columnName(casa::MSMainEnums::DATA)),
+	_dataColumn(_ms, dataColumnName),
 	_flagColumn(_ms, casa::MS::columnName(casa::MSMainEnums::FLAG))
 {
 	std::cout << "Opening " << msPath << " with contiguous MS reader.\n";

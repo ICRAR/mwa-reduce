@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
 			if(doReorder)
 				msProvider = new PartitionedMS(partitionedMSHandles[i-argi], outChannelIndex);
 			else
-				msProvider = new ContiguousMS(argv[i], partSelection, polarization, mGain != 1.0);
+				msProvider = new ContiguousMS(argv[i], columnName, partSelection, polarization, mGain != 1.0);
 			inversionAlgorithm->AddMeasurementSet(msProvider);
 			msProviders.push_back(msProvider);
 			filenames.push_back(argv[i]);

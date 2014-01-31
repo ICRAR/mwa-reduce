@@ -70,7 +70,7 @@ private:
 class ContiguousMS : public MSProvider
 {
 public:
-	ContiguousMS(const string& msPath, MSSelection selection, PolarizationEnum polOut, bool includeModel);
+	ContiguousMS(const string& msPath, const std::string& dataColumnName, MSSelection selection, PolarizationEnum polOut, bool includeModel);
 	
 	virtual casa::MeasurementSet &MS() { return _ms; }
 	
