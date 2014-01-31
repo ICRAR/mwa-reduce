@@ -36,7 +36,7 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 			//std::cout << "Source: " << comp->PosRA() << "," << comp->PosDec() << " Phase centre: " << _phaseCentreRA << "," << _phaseCentreDec << " beamsize: " << beamSize << "\n";
 				
 			int sourceX, sourceY;
-			ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
+			ImageCoordinates::LMToXY<long double>(sourceL-_phaseCentreDL, sourceM-_phaseCentreDM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
 			//std::cout << "Adding source " << comp->Name() << " at " << sourceX << "," << sourceY << " of "
 			//	<< intFlux << " Jy ("
 			//	<< startFrequency/1000000.0 << "-" << endFrequency/1000000.0 << " MHz).\n";
@@ -61,6 +61,7 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 				{
 					long double l, m;
 					ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, l, m);
+					l += _phaseCentreDL; m += _phaseCentreDM;
 					long double dist = sqrt((l-sourceL)*(l-sourceL) + (m-sourceM)*(m-sourceM));
 					long double g = gaus(dist, sigma);
 					(*imageDataPtr) += NumType(g * intFlux);

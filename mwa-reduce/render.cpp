@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 		Model model(argv[argi]);
 	
 		size_t width = 1024, height = 1024;
-		double ra = 0.0, dec = 0.0;
+		double ra = 0.0, dec = 0.0, dl = 0.0, dm = 0.0;
 		double pixelSizeX = 0.01, pixelSizeY = 0.01;
 		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
 		double beamSize = 10.0*(M_PI/180.0/60.0);
@@ -67,6 +67,8 @@ int main(int argc, char* argv[])
 			image.resize(width * height);
 			ra = reader->PhaseCentreRA();
 			dec = reader->PhaseCentreDec();
+			dl = reader->PhaseCentreDL();
+			dm = reader->PhaseCentreDM();
 			pixelSizeX = reader->PixelSizeX();
 			pixelSizeY = reader->PixelSizeY();
 			bandwidth = reader->Bandwidth();
@@ -82,7 +84,7 @@ int main(int argc, char* argv[])
 		
 		if(!outputFitsName.empty())
 		{
-			ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY);
+			ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY, dl, dm);
 			if(restore)
 			{
 				renderer.Restore(&image[0], width, height, model, beamSize, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);

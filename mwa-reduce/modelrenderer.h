@@ -6,8 +6,8 @@
 class ModelRenderer
 {
 	public:
-		ModelRenderer(long double phaseCentreRA, long double phaseCentreDec, long double pixelScaleL, long double pixelScaleM) :
-			_phaseCentreRA(phaseCentreRA), _phaseCentreDec(phaseCentreDec), _pixelScaleL(pixelScaleL), _pixelScaleM(pixelScaleM)
+		ModelRenderer(long double phaseCentreRA, long double phaseCentreDec, long double pixelScaleL, long double pixelScaleM, long double phaseCentreDL=0.0, long double phaseCentreDM=0.0) :
+			_phaseCentreRA(phaseCentreRA), _phaseCentreDec(phaseCentreDec), _pixelScaleL(pixelScaleL), _pixelScaleM(pixelScaleM), _phaseCentreDL(phaseCentreDL), _phaseCentreDM(phaseCentreDM)
 		{
 		}
 		
@@ -19,8 +19,8 @@ class ModelRenderer
 	private:
 		long double _phaseCentreRA;
 		long double _phaseCentreDec;
-		long double _pixelScaleL;
-		long double _pixelScaleM;
+		long double _pixelScaleL, _pixelScaleM;
+		long double _phaseCentreDL, _phaseCentreDM;
 		template<typename T>
 		T gaus(T x, T sigma) const;
 		
