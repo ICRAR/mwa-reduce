@@ -22,7 +22,7 @@ class ImageBufferAllocator;
 class WSInversion : public InversionAlgorithm
 {
 	public:
-		WSInversion(class ImageBufferAllocator<double>* imageAllocator);
+		WSInversion(class ImageBufferAllocator<double>* imageAllocator, double memFraction = 1.0);
 	
 		virtual void Invert();
 		

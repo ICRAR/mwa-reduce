@@ -164,13 +164,16 @@ int main(int argc, char *argv[])
 			"\t   Default: only reorder when in channel imaging mode.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
-			"\t-savemodel <modelfile>\n";
+			"\t-savemodel <modelfile>\n"
+			"\t-mem <percentage>\n"
+			"\t   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
+			"\t   Default: 1.\n";
 		return -1;
 	}
 	
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048, channelsOut = 1;
-	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0;
+	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0, memFraction = 1.0;
 	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7, overSamplingFactor = 63;
 	MSSelection globalSelection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
@@ -376,6 +379,11 @@ int main(int argc, char *argv[])
 			forceNoReorder = true;
 			forceReorder = false;
 		}
+		else if(param == "mem")
+		{
+			++argi;
+			memFraction = atof(argv[argi]) / 100.0;
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -417,7 +425,7 @@ int main(int argc, char *argv[])
 	for(size_t outChannelIndex=0; outChannelIndex!=channelsOut; ++outChannelIndex)
 	{
 		MSSelection partSelection = globalSelection;
-		std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion(&imageAllocator));
+		std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion(&imageAllocator, memFraction));
 		static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 		
 		std::vector<MSProvider*> msProviders;

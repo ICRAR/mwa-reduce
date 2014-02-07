@@ -25,9 +25,19 @@ WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
 WSInversion::MSData::~MSData()
 { }
 
-WSInversion::WSInversion(ImageBufferAllocator<double>* imageAllocator) : InversionAlgorithm(), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour), _laneBufferSize(16), _imageBufferAllocator(imageAllocator)
+WSInversion::WSInversion(ImageBufferAllocator<double>* imageAllocator, double memFraction) : InversionAlgorithm(), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _gridMode(LayeredImager::NearestNeighbour), _laneBufferSize(16), _imageBufferAllocator(imageAllocator)
 {
 	_cpuCount = sysconf(_SC_NPROCESSORS_ONLN);
+	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
+	_memSize = (int64_t) pageCount * (int64_t) pageSize;
+	double memSizeInGB = (double) _memSize / (1024.0*1024.0*1024.0);
+	if(memFraction == 1.0) {
+		std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory, usage not limited.\n";
+	}
+	else {
+		std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory, usage limited to " << round(memSizeInGB*memFraction*10.0)/10.0 << " GB (" << round(memFraction*1000.0)/10.0 << "%)\n";
+		_memSize = int64_t((double) pageCount * (double) pageSize * memFraction);
+	}
 }
 		
 void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::MSData& msData)
@@ -448,11 +458,6 @@ void WSInversion::visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkL
 
 void WSInversion::Invert()
 {
-	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
-	_memSize = (int64_t) pageCount * (int64_t) pageSize;
-	double memSizeInGB = (double) _memSize / (1024.0*1024.0*1024.0);
-	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
-
 	MSData msDataVector[MeasurementSetCount()];
 	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
@@ -528,11 +533,6 @@ void WSInversion::Invert()
 
 void WSInversion::InvertToVisibilities(const double *image)
 {
-	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
-	_memSize = (int64_t) pageCount * (int64_t) pageSize;
-	double memSizeInGB = (double) _memSize / (1024.0*1024.0*1024.0);
-	std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
-	
 	MSData msDataVector[MeasurementSetCount()];
 	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
