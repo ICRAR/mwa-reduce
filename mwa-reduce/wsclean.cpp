@@ -522,17 +522,6 @@ int main(int argc, char *argv[])
 			inversionAlgorithm->SetDoImagePSF(true);
 			inversionAlgorithm->SetVerbose(isFirstInversion);
 			inversionAlgorithm->Invert();
-			if(inversionAlgorithm->HasGriddingCorrectionImage())
-			{
-				std::cout << "Writing gridding correction image... " << std::flush;
-				double* gridding = imageAllocator.Allocate(imgWidth * imgHeight);
-				inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
-				FitsWriter fitsWriter;
-				initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-				fitsWriter.Write(std::string(partPrefixName) + "-gridding.fits", &gridding[0]);
-				imageAllocator.Free(gridding);
-				std::cout << "DONE\n";
-			}
 				
 			psf = imageAllocator.Allocate(imgWidth * imgHeight);
 			memcpy(psf, inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
@@ -562,6 +551,18 @@ int main(int argc, char *argv[])
 		inversionWatch.Pause();
 		inversionAlgorithm->SetVerbose(false);
 		
+		if(inversionAlgorithm->HasGriddingCorrectionImage())
+		{
+			std::cout << "Writing gridding correction image... " << std::flush;
+			double* gridding = imageAllocator.Allocate(imgWidth * imgHeight);
+			inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
+			FitsWriter fitsWriter;
+			initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
+			fitsWriter.Write(std::string(partPrefixName) + "-gridding.fits", &gridding[0]);
+			imageAllocator.Free(gridding);
+			std::cout << "DONE\n";
+		}
+			
 		double
 			*modelImage = imageAllocator.Allocate(imgWidth * imgHeight),
 			*residual = imageAllocator.Allocate(imgWidth * imgHeight);
