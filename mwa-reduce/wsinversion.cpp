@@ -458,7 +458,7 @@ void WSInversion::visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkL
 
 void WSInversion::Invert()
 {
-	MSData msDataVector[MeasurementSetCount()];
+	MSData* msDataVector = new MSData[MeasurementSetCount()];
 	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		initializeMeasurementSet(MeasurementSet(i), msDataVector[i]);
@@ -529,11 +529,12 @@ void WSInversion::Invert()
 		_imager->FinalizeImage(1.0/(_totalWeight * sqrt(1.0 - _phaseCentreDL*_phaseCentreDL - _phaseCentreDM*_phaseCentreDM)));
 	else
 		_imager->FinalizeImage(1.0/_totalWeight);
+	delete[] msDataVector;
 }
 
 void WSInversion::InvertToVisibilities(const double *image)
 {
-	MSData msDataVector[MeasurementSetCount()];
+	MSData* msDataVector = new MSData[MeasurementSetCount()];
 	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		initializeMeasurementSet(MeasurementSet(i), msDataVector[i]);
@@ -578,6 +579,7 @@ void WSInversion::InvertToVisibilities(const double *image)
 	}
 	
 	std::cout << "Total rows written: " << totalRowsWritten << " (overhead: " << round(totalRowsWritten * 100.0 / totalMatchingRows - 100.0) << "%)\n";
+	delete[] msDataVector;
 }
 
 void WSInversion::rotateVisibilities(const BandData &bandData, double shiftFactor, std::complex<float>* dataIter)
