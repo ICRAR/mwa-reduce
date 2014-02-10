@@ -658,12 +658,14 @@ void LayeredImager::initializeSqrtLMLookupTableForSampling()
 	std::vector<double>::iterator iter = _sqrtLMLookupTable.begin();
 	for(size_t y=0;y!=_height;++y)
 	{
+		//size_t yDest = (_height - y) + _height / 2;
 		size_t yDest = y + _height / 2;
 		if(yDest >= _height) yDest -= _height;
 		double m = ((double) yDest-(_height/2)) * _pixelSizeY + _phaseCentreDM;
 		
 		for(size_t x=0;x!=_width;++x)
 		{
+			//size_t xDest = x + _width / 2;
 			size_t xDest = (_width - x) + _width / 2;
 			if(xDest >= _width) xDest -= _width;
 			double l = ((_width/2)-(double) xDest) * _pixelSizeX + _phaseCentreDL;
