@@ -56,7 +56,7 @@ double CleanAlgorithm::PartialFindPeak(const double *image, size_t width, size_t
 template<bool AllowNegativeComponent>
 double CleanAlgorithm::FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y)
 {
-	double peakMax = std::fabs(*image);
+	double peakMax = std::numeric_limits<double>::min();
 	const double* imgIter = image;
 	const double* const endPtr = image + width * height - 4;
 	size_t peakIndex = 0;
