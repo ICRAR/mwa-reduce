@@ -252,8 +252,9 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 				msData.msProvider->ReadWeights(newItem.data);
 				if(_denormalPhaseCentre)
 				{
-					double shiftFactor = 2.0*M_PI* (newItem.w * (sqrt(1.0-_phaseCentreDL*_phaseCentreDL- _phaseCentreDM*_phaseCentreDM)-1.0));
-					rotateVisibilities(curBand, shiftFactor, newItem.data);
+					double lmsqrt = sqrt(1.0-_phaseCentreDL*_phaseCentreDL- _phaseCentreDM*_phaseCentreDM);
+					double shiftFactor = 2.0*M_PI* (newItem.w * (lmsqrt-1.0));
+					rotateVisibilities(curBand, shiftFactor, 1.0/lmsqrt, newItem.data);
 				}
 			}
 			else {
@@ -525,10 +526,7 @@ void WSInversion::Invert()
 		std::cout << "Total rows read: " << totalRowsRead << " (overhead: " << round(totalRowsRead * 100.0 / totalMatchingRows - 100.0) << "%)\n";
 	}
 	
-	if(_denormalPhaseCentre)
-		_imager->FinalizeImage(1.0/(_totalWeight * sqrt(1.0 - _phaseCentreDL*_phaseCentreDL - _phaseCentreDM*_phaseCentreDM)));
-	else
-		_imager->FinalizeImage(1.0/_totalWeight);
+	_imager->FinalizeImage(1.0/_totalWeight);
 	delete[] msDataVector;
 }
 
@@ -559,10 +557,7 @@ void WSInversion::InvertToVisibilities(const double *image)
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
 		std::cout << "W-term correction & fourier transforming layers to uv space (in parallel)...\n";
-		if(_denormalPhaseCentre)
-			_imager->PrepareImageForVisibilitySampling(image, sqrt(1.0 - _phaseCentreDL*_phaseCentreDL - _phaseCentreDM*_phaseCentreDM));
-		else
-			_imager->PrepareImageForVisibilitySampling(image, 1.0);
+		_imager->PrepareImageForVisibilitySampling(image, 1.0);
 		
 		std::cout << "Starting visibility sampling pass " << pass << ".\n";
 		_imager->StartVisibilitySamplingPass(pass);
@@ -582,14 +577,14 @@ void WSInversion::InvertToVisibilities(const double *image)
 	delete[] msDataVector;
 }
 
-void WSInversion::rotateVisibilities(const BandData &bandData, double shiftFactor, std::complex<float>* dataIter)
+void WSInversion::rotateVisibilities(const BandData &bandData, double shiftFactor, double multFactor, std::complex<float>* dataIter)
 {
 	for(unsigned ch=0; ch!=bandData.ChannelCount(); ++ch)
 	{
 		const double wShiftRad = shiftFactor / bandData.ChannelWavelength(ch);
 		double rotSinD, rotCosD;
 		sincos(wShiftRad, &rotSinD, &rotCosD);
-		float rotSin = rotSinD, rotCos = rotCosD;
+		float rotSin = rotSinD * multFactor, rotCos = rotCosD * multFactor;
 		std::complex<float> v = *dataIter;
 		*dataIter = std::complex<float>(
 			v.real() * rotCos  -  v.imag() * rotSin,

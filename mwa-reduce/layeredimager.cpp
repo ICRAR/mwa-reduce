@@ -507,7 +507,6 @@ void LayeredImager::FinalizeImage(double multiplicationFactor)
 			++primaryData;
 		}
 	}
-	
 	double *dataPtr = _imageData[0];
 	for(size_t y=0;y!=_height;++y)
 	{
