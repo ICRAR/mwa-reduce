@@ -34,18 +34,26 @@ class LayeredImager
 		
 		size_t WToLayer(double wInLambda) const
 		{
-			if(_imageImaginaryPart)
-				return size_t(round((wInLambda + _maxW) * (_nWLayers-1) / (_maxW + _maxW)));
-			else
-				return size_t(round((fabs(wInLambda) - _minW) * (_nWLayers-1) / (_maxW - _minW)));
+			if(_nWLayers == 1)
+				return 0;
+			else {
+				if(_imageImaginaryPart)
+					return size_t(round((wInLambda + _maxW) * (_nWLayers-1) / (_maxW + _maxW)));
+				else
+					return size_t(round((fabs(wInLambda) - _minW) * (_nWLayers-1) / (_maxW - _minW)));
+			}
 		}
 		
 		double LayerToW(size_t layer) const
 		{
-			if(_imageImaginaryPart)
-				return layer * (_maxW + _maxW) / (_nWLayers-1) - _maxW;
-			else
-				return layer * (_maxW - _minW) / (_nWLayers-1) + _minW;
+			if(_nWLayers == 1)
+				return 0.0;
+			else {
+				if(_imageImaginaryPart)
+					return layer * (_maxW + _maxW) / (_nWLayers-1) - _maxW;
+				else
+					return layer * (_maxW - _minW) / (_nWLayers-1) + _minW;
+			}
 		}
 		
 		size_t NWLayers() const { return _nWLayers; }
