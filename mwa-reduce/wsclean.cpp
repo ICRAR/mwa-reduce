@@ -165,6 +165,9 @@ int main(int argc, char *argv[])
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n"
+			"\t-wlimit <percentage>\n"
+			"\t   Do not grid visibilities with a w-value higher than the given percentage of the max w, to save speed\n"
+			"\t   (see Tasse et al., 2013, App C),.  Default: grid everything\n"
 			"\t-mem <percentage>\n"
 			"\t   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
 			"\t   Default: 1.\n";
@@ -173,7 +176,7 @@ int main(int argc, char *argv[])
 	
 	int argi = 1;
 	size_t imgWidth = 2048, imgHeight = 2048, channelsOut = 1;
-	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0, memFraction = 1.0;
+	double pixelScale = 0.01 * M_PI / 180.0, threshold = 0.0, gain = 0.1, mGain = 1.0, beamSize = 0.0, memFraction = 1.0, wLimit = 0.0;
 	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7, overSamplingFactor = 63;
 	MSSelection globalSelection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
@@ -384,6 +387,11 @@ int main(int argc, char *argv[])
 			++argi;
 			memFraction = atof(argv[argi]) / 100.0;
 		}
+		else if(param == "wlimit")
+		{
+			++argi;
+			wLimit = atof(argv[argi]);
+		}
 		else {
 			throw std::runtime_error("Unknown parameter: " + param);
 		}
@@ -509,6 +517,7 @@ int main(int argc, char *argv[])
 		inversionAlgorithm->SetWeighting(weightMode);
 		inversionAlgorithm->SetImaginaryPart(imaginaryPart);
 		inversionAlgorithm->SetSelection(partSelection);
+		inversionAlgorithm->SetWLimit(wLimit/100.0);
 		
 		double* psf = 0;
 		bool isFirstInversion = true;

@@ -23,6 +23,7 @@ class InversionAlgorithm
 			_doImagePSF(false),
 			_doSubtractModel(false),
 			_addToModel(false),
+			_wLimit(0.0),
 			_precalculatedWeightInfo(0),
 			_polarization(Polarization::StokesI),
 			_imaginaryPart(false),
@@ -57,6 +58,8 @@ class InversionAlgorithm
 		bool Verbose() const { return _verbose; }
 		size_t AntialiasingKernelSize() const { return _antialiasingKernelSize; }
 		size_t OverSamplingFactor() const { return _overSamplingFactor; }
+		bool HasWLimit() const { return _wLimit != 0.0; }
+		double WLimit() const { return _wLimit; }
 		
 		void SetImageWidth(size_t imageWidth)
 		{
@@ -134,6 +137,10 @@ class InversionAlgorithm
 		{
 			_overSamplingFactor = factor;
 		}
+		void SetWLimit(double wLimit)
+		{
+			_wLimit = wLimit;
+		}
 		
 		virtual void Invert() = 0;
 		
@@ -161,6 +168,7 @@ class InversionAlgorithm
 		std::vector<MSProvider*> _measurementSets;
 		std::string _dataColumnName;
 		bool _doImagePSF, _doSubtractModel, _addToModel;
+		double _wLimit;
 		class ImageWeights *_precalculatedWeightInfo;
 		PolarizationEnum _polarization;
 		bool _imaginaryPart;

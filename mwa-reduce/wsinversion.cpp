@@ -152,6 +152,10 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 	}
 	_beamSize = 1.0 / maxBaseline;
 	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
+	if(HasWLimit()) {
+		msData.maxW *= (1.0 - WLimit());
+		if(msData.maxW < msData.minW) msData.maxW = msData.minW;
+	}
 
 	if(Verbose() || !HasWGridSize())
 	{
