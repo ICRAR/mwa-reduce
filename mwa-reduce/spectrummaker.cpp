@@ -344,7 +344,7 @@ void SpectrumMaker::initWeighting()
 	if(_weightMode.RequiresGridding())
 	{
 		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting... " << std::flush;
-		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale));
+		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
 		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
 		{
 			casa::MeasurementSet ms(i->first);

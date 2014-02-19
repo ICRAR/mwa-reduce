@@ -87,7 +87,7 @@ public:
 	static std::vector<PolarizationEnum> ParseList(const std::string& listStr)
 	{
 		std::vector<PolarizationEnum> list;
-		enum { StartSt, GotXSt, GotYSt, GotLSt, GotRSt, GotSeperatorSt } state;
+		enum { StartSt, GotXSt, GotYSt, GotLSt, GotRSt, GotSeperatorSt } state = StartSt;
 		for(std::string::const_iterator i=listStr.begin(); i!=listStr.end(); ++i)
 		{
 			char c = (*i>='a' && *i<='z') ? *i-('a'-'A') : *i;

@@ -8,11 +8,12 @@
 #include <iostream>
 #include <cstring>
 
-ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale, double superWeight)
+ImageWeights::ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScaleX, double pixelScaleY, double superWeight) :
+	_imageWidth(round(double(imageWidth) / superWeight)),
+	_imageHeight(round(double(imageHeight) / superWeight)),
+	_pixelScaleX(pixelScaleX),
+	_pixelScaleY(pixelScaleY)
 {
-	_imageWidth = round(double(imageWidth) / superWeight);
-	_imageHeight = round(double(imageHeight) / superWeight);
-	_pixelScale = pixelScale;
 	if(_imageWidth%2 != 0) ++_imageWidth;
 	if(_imageHeight%2 != 0) ++_imageHeight;
 	_sum.assign(_imageWidth*_imageHeight/2, 0.0);
@@ -115,8 +116,8 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 				double
 					u = uInM / curBand.ChannelWavelength(ch),
 					v = vInM / curBand.ChannelWavelength(ch);
-				double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
-				double y = round(v*_imageHeight*_pixelScale);
+				double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
+				double y = round(v*_imageHeight*_pixelScaleY);
 					
 				if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 				{
@@ -190,8 +191,8 @@ void ImageWeights::Grid(MSProvider& msProvider, WeightMode weightMode, const MSS
 			double
 				u = uInM / curBand.ChannelWavelength(ch),
 				v = vInM / curBand.ChannelWavelength(ch);
-			double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
-			double y = round(v*_imageHeight*_pixelScale);
+			double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
+			double y = round(v*_imageHeight*_pixelScaleY);
 				
 			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 			{
@@ -233,8 +234,8 @@ void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, doub
 			}
 			
 			double wavelength = frequencyToWavelength(lowestFrequency + frequencyStep*ch);
-			double x = round(uTimesLambda*_imageWidth*_pixelScale/wavelength + _imageWidth/2);
-			double y = round(vTimesLambda*_imageHeight*_pixelScale/wavelength);
+			double x = round(uTimesLambda*_imageWidth*_pixelScaleX/wavelength + _imageWidth/2);
+			double y = round(vTimesLambda*_imageHeight*_pixelScaleY/wavelength);
 			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 			{
 				size_t index = (size_t) x + (size_t) y*_imageWidth;

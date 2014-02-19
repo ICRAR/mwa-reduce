@@ -30,7 +30,7 @@ void IonPeeler::initWeighting(casa::MeasurementSet& ms)
 	if(_weightMode.RequiresGridding())
 	{
 		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
-		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale));
+		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
 		_imageWeights->Grid(ms, _weightMode, MSSelection::Everything());
 	}
 }

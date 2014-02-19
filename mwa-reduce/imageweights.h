@@ -14,7 +14,7 @@
 class ImageWeights
 {
 	public:
-		ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScale, double superWeight=1.0);
+		ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScaleX, double pixelScaleY, double superWeight=1.0);
 		
 		double GetWeight(double u, double v)
 		{
@@ -61,8 +61,8 @@ class ImageWeights
 				u = -u;
 				v = -v;
 			}
-			double x = round(u*_imageWidth*_pixelScale + _imageWidth/2);
-			double y = round(v*_imageHeight*_pixelScale);
+			double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
+			double y = round(v*_imageHeight*_pixelScaleY);
 			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
 				return _sum[(size_t) x + (size_t) y*_imageWidth];
 			else {
@@ -80,7 +80,7 @@ class ImageWeights
 			return 299792458.0L;
 		}
 		std::size_t _imageWidth, _imageHeight;
-		double _pixelScale;
+		double _pixelScaleX, _pixelScaleY;
 		
 		ao::uvector<double> _sum;
 };
