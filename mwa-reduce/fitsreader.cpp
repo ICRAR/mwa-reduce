@@ -101,8 +101,8 @@ void FitsReader::initialize()
 	checkStatus(status);
 	if(naxis < 2) throw std::runtime_error("NAxis in image < 2");
 	
-	long naxes[naxis];
-	fits_get_img_size(_fitsPtr, naxis, naxes, &status);
+	std::vector<long> naxes(naxis);
+	fits_get_img_size(_fitsPtr, naxis, &naxes[0], &status);
 	checkStatus(status);
 	for(int i=2;i!=naxis;++i)
 		if(naxes[i] != 1) throw std::runtime_error("Multiple images in fits file");
@@ -162,6 +162,10 @@ void FitsReader::initialize()
 				case 2: _polarization = Polarization::StokesQ; break;
 				case 3: _polarization = Polarization::StokesU; break;
 				case 4: _polarization = Polarization::StokesV; break;
+				case -1: _polarization = Polarization::RR; break;
+				case -2: _polarization = Polarization::LL; break;
+				case -3: _polarization = Polarization::RL; break;
+				case -4: _polarization = Polarization::LR; break;
 				case -5: _polarization = Polarization::XX; break;
 				case -6: _polarization = Polarization::YY; break;
 				case -7: _polarization = Polarization::XY; break;
@@ -196,11 +200,11 @@ void FitsReader::Read(NumType* image)
 	int naxis = 0;
 	fits_get_img_dim(_fitsPtr, &naxis, &status);
 	checkStatus(status);
-	long firstPixel[naxis];
+	std::vector<long> firstPixel(naxis);
 	for(int i=0;i!=naxis;++i) firstPixel[i] = 1;
 	
 	if(sizeof(NumType)==8)
-		fits_read_pix(_fitsPtr, TDOUBLE, firstPixel, _imgWidth*_imgHeight, 0, image, 0, &status);
+		fits_read_pix(_fitsPtr, TDOUBLE, &firstPixel[0], _imgWidth*_imgHeight, 0, image, 0, &status);
 	else
 		throw std::runtime_error("sizeof(NumType)!=8 not implemented");
 	checkStatus(status);

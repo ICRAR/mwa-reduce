@@ -2,7 +2,7 @@
 #include "uvwdistribution.h"
 #include "imageweights.h"
 #include "buffered_lane.h"
-#include "partitionedms.h"
+#include "msprovider/msprovider.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <measures/Measures/MDirection.h>

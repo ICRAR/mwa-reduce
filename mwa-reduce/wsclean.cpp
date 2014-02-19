@@ -8,9 +8,12 @@
 #include "modelrenderer.h"
 #include "model.h"
 #include "msselection.h"
-#include "partitionedms.h"
 #include "stopwatch.h"
 #include "wsinversion.h"
+
+#include "msprovider/contiguousms.h"
+#include "msprovider/msprovider.h"
+#include "msprovider/partitionedms.h"
 
 #include "parser/areaparser.h"
 
@@ -167,7 +170,7 @@ int main(int argc, char *argv[])
 			"\t-savemodel <modelfile>\n"
 			"\t-wlimit <percentage>\n"
 			"\t   Do not grid visibilities with a w-value higher than the given percentage of the max w, to save speed\n"
-			"\t   (see Tasse et al., 2013, App C),.  Default: grid everything\n"
+			"\t   Default: grid everything\n"
 			"\t-mem <percentage>\n"
 			"\t   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
 			"\t   Default: 1.\n";
@@ -180,7 +183,7 @@ int main(int argc, char *argv[])
 	size_t nWLayers = 0, nIter = 0, antialiasingKernelSize = 7, overSamplingFactor = 63;
 	MSSelection globalSelection;
 	std::string columnName, addModelFilename, saveModelFilename, cleanAreasFilename;
-	PolarizationEnum polarization = Polarization::StokesI;
+	std::vector<PolarizationEnum> polarizations(1, Polarization::StokesI);
 	WeightMode weightMode(WeightMode::UniformWeighted);
 	std::string prefixName = "wsclean";
 	bool allowNegative = true, smallPSF = false, addApparentModel = false, stopOnNegative = false, imaginaryPart = false, makePsf = false;
@@ -237,20 +240,7 @@ int main(int argc, char *argv[])
 		else if(param == "pol")
 		{
 			++argi;
-			std::string polStr = argv[argi];
-			boost::to_lower(polStr);
-			if(polStr == "xx")
-				polarization = Polarization::XX;
-			else if(polStr == "xy")
-				polarization = Polarization::XY;
-			else if(polStr == "yx")
-				polarization = Polarization::YX;
-			else if(polStr == "yy")
-				polarization = Polarization::YY;
-			else if(polStr == "stokesi" || polStr == "i")
-				polarization = Polarization::StokesI;
-			else
-				throw std::runtime_error("Unknown polarization given in -pol parameter");
+			polarizations = Polarization::ParseList(argv[argi]);
 		}
 		else if(param == "imaginarypart")
 		{
@@ -389,6 +379,7 @@ int main(int argc, char *argv[])
 		}
 		else if(param == "wlimit")
 		{
+			// This was to test the optimization suggested in Tasse et al., 2013, Appendix C.
 			++argi;
 			wLimit = atof(argv[argi]);
 		}
@@ -426,7 +417,7 @@ int main(int argc, char *argv[])
 	{
 		for(int i=argi; i != argc; ++i)
 		{
-			partitionedMSHandles.push_back(PartitionedMS::Partition(argv[i], channelsOut, globalSelection, columnName, true, mGain != 1.0, polarization));
+			partitionedMSHandles.push_back(PartitionedMS::Partition(argv[i], channelsOut, globalSelection, columnName, true, mGain != 1.0, polarizations));
 		}
 	}
 	
@@ -436,297 +427,300 @@ int main(int argc, char *argv[])
 		std::unique_ptr<InversionAlgorithm> inversionAlgorithm(new WSInversion(&imageAllocator, memFraction));
 		static_cast<WSInversion&>(*inversionAlgorithm).SetGridMode(gridMode);
 		
-		std::vector<MSProvider*> msProviders;
-		for(int i=argi; i != argc; ++i) {
-			MSProvider* msProvider;
-			if(doReorder)
-				msProvider = new PartitionedMS(partitionedMSHandles[i-argi], outChannelIndex);
-			else
-				msProvider = new ContiguousMS(argv[i], columnName, partSelection, polarization, mGain != 1.0);
-			inversionAlgorithm->AddMeasurementSet(msProvider);
-			msProviders.push_back(msProvider);
-			filenames.push_back(argv[i]);
-		}
-		if(doReorder)
+		for(std::vector<PolarizationEnum>::const_iterator curPol=polarizations.begin(); curPol!=polarizations.end(); ++curPol)
 		{
-			size_t startCh, endCh;
-			if(globalSelection.HasChannelRange())
+			std::vector<MSProvider*> msProviders;
+			for(int i=argi; i != argc; ++i) {
+				MSProvider* msProvider;
+				if(doReorder)
+					msProvider = new PartitionedMS(partitionedMSHandles[i-argi], outChannelIndex, *curPol);
+				else
+					msProvider = new ContiguousMS(argv[i], columnName, partSelection, *curPol, mGain != 1.0);
+				inversionAlgorithm->AddMeasurementSet(msProvider);
+				msProviders.push_back(msProvider);
+				filenames.push_back(argv[i]);
+			}
+			if(doReorder)
 			{
-				startCh = globalSelection.ChannelRangeStart();
-				endCh = globalSelection.ChannelRangeEnd();
+				size_t startCh, endCh;
+				if(globalSelection.HasChannelRange())
+				{
+					startCh = globalSelection.ChannelRangeStart();
+					endCh = globalSelection.ChannelRangeEnd();
+				}
+				else {
+					BandData band(inversionAlgorithm->MeasurementSet(0).MS().spectralWindow());
+					startCh = 0;
+					endCh = band.ChannelCount();
+				}
+				size_t newStart = startCh + (endCh - startCh) * outChannelIndex / channelsOut;
+				size_t newEnd = startCh + (endCh - startCh) * (outChannelIndex+1) / channelsOut;
+				partSelection.SetChannelRange(newStart, newEnd);
+			}
+			std::string partPrefixName;
+			if(channelsOut != 1)
+			{
+				std::ostringstream partPrefixNameStr;
+				partPrefixNameStr << prefixName << '-';
+				if(outChannelIndex < 1000) partPrefixNameStr << '0';
+				if(outChannelIndex < 100) partPrefixNameStr << '0';
+				if(outChannelIndex < 10) partPrefixNameStr << '0';
+				partPrefixNameStr << outChannelIndex;
+				partPrefixName = partPrefixNameStr.str();
 			}
 			else {
-				BandData band(inversionAlgorithm->MeasurementSet(0).MS().spectralWindow());
-				startCh = 0;
-				endCh = band.ChannelCount();
+				partPrefixName = prefixName;
 			}
-			size_t newStart = startCh + (endCh - startCh) * outChannelIndex / channelsOut;
-			size_t newEnd = startCh + (endCh - startCh) * (outChannelIndex+1) / channelsOut;
-			partSelection.SetChannelRange(newStart, newEnd);
-		}
-		std::string partPrefixName;
-		if(channelsOut != 1)
-		{
-			std::ostringstream partPrefixNameStr;
-			partPrefixNameStr << prefixName << '-';
-			if(outChannelIndex < 1000) partPrefixNameStr << '0';
-			if(outChannelIndex < 100) partPrefixNameStr << '0';
-			if(outChannelIndex < 10) partPrefixNameStr << '0';
-			partPrefixNameStr << outChannelIndex;
-			partPrefixName = partPrefixNameStr.str();
-		}
-		else {
-			partPrefixName = prefixName;
-		}
-		
-		// Store command line, to write later in fits file
-		std::ostringstream commandLineStr;
-		commandLineStr << "wsclean";
-		for(int i=1; i!=argc; ++i)
-			commandLineStr << ' ' << argv[i];
-		commandLine = commandLineStr.str();
-		
-		// Initialize weight grid if necessary.
-		std::unique_ptr<ImageWeights> imageWeights;
-		if(weightMode.RequiresGridding())
-		{
-			std::cout << "Precalculating weights for " << weightMode.ToString() << " weighting... " << std::flush;
-			imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale, weightMode.SuperWeight()));
-			for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
+			
+			// Store command line, to write later in fits file
+			std::ostringstream commandLineStr;
+			commandLineStr << "wsclean";
+			for(int i=1; i!=argc; ++i)
+				commandLineStr << ' ' << argv[i];
+			commandLine = commandLineStr.str();
+			
+			// Initialize weight grid if necessary.
+			std::unique_ptr<ImageWeights> imageWeights;
+			if(weightMode.RequiresGridding())
 			{
-				imageWeights->Grid(inversionAlgorithm->MeasurementSet(i), weightMode, partSelection);
-				if(inversionAlgorithm->MeasurementSetCount() > 1)
-					std::cout << i << ' ' << std::flush;
+				std::cout << "Precalculating weights for " << weightMode.ToString() << " weighting... " << std::flush;
+				imageWeights.reset(new ImageWeights(imgWidth, imgHeight, pixelScale, weightMode.SuperWeight()));
+				for(size_t i=0; i!=inversionAlgorithm->MeasurementSetCount(); ++i)
+				{
+					imageWeights->Grid(inversionAlgorithm->MeasurementSet(i), weightMode, partSelection);
+					if(inversionAlgorithm->MeasurementSetCount() > 1)
+						std::cout << i << ' ' << std::flush;
+				}
+				std::cout << "DONE\n";
+				inversionAlgorithm->SetPrecalculatedWeightInfo(imageWeights.get());
 			}
-			std::cout << "DONE\n";
-			inversionAlgorithm->SetPrecalculatedWeightInfo(imageWeights.get());
-		}
-		
-		inversionAlgorithm->SetImageWidth(imgWidth);
-		inversionAlgorithm->SetImageHeight(imgHeight);
-		inversionAlgorithm->SetPixelSizeX(pixelScale);
-		inversionAlgorithm->SetPixelSizeY(pixelScale);
-		if(nWLayers != 0)
-			inversionAlgorithm->SetWGridSize(nWLayers);
-		else
-			inversionAlgorithm->SetNoWGridSize();
-		inversionAlgorithm->SetAntialiasingKernelSize(antialiasingKernelSize);
-		inversionAlgorithm->SetOverSamplingFactor(overSamplingFactor);
-		inversionAlgorithm->SetPolarization(polarization);
-		inversionAlgorithm->SetDataColumnName(columnName);
-		inversionAlgorithm->SetWeighting(weightMode);
-		inversionAlgorithm->SetImaginaryPart(imaginaryPart);
-		inversionAlgorithm->SetSelection(partSelection);
-		inversionAlgorithm->SetWLimit(wLimit/100.0);
-		
-		double* psf = 0;
-		bool isFirstInversion = true;
-		
-		Stopwatch inversionWatch(false), predictingWatch(false), cleaningWatch(false);
-		
-		if(nIter > 0 || makePsf)
-		{
-			std::cout << std::flush << " == Constructing PSF ==\n";
+			
+			inversionAlgorithm->SetImageWidth(imgWidth);
+			inversionAlgorithm->SetImageHeight(imgHeight);
+			inversionAlgorithm->SetPixelSizeX(pixelScale);
+			inversionAlgorithm->SetPixelSizeY(pixelScale);
+			if(nWLayers != 0)
+				inversionAlgorithm->SetWGridSize(nWLayers);
+			else
+				inversionAlgorithm->SetNoWGridSize();
+			inversionAlgorithm->SetAntialiasingKernelSize(antialiasingKernelSize);
+			inversionAlgorithm->SetOverSamplingFactor(overSamplingFactor);
+			inversionAlgorithm->SetPolarization(*curPol);
+			inversionAlgorithm->SetDataColumnName(columnName);
+			inversionAlgorithm->SetWeighting(weightMode);
+			inversionAlgorithm->SetImaginaryPart(imaginaryPart);
+			inversionAlgorithm->SetSelection(partSelection);
+			inversionAlgorithm->SetWLimit(wLimit/100.0);
+			
+			double* psf = 0;
+			bool isFirstInversion = true;
+			
+			Stopwatch inversionWatch(false), predictingWatch(false), cleaningWatch(false);
+			
+			if(nIter > 0 || makePsf)
+			{
+				std::cout << std::flush << " == Constructing PSF ==\n";
+				inversionWatch.Start();
+				inversionAlgorithm->SetDoImagePSF(true);
+				inversionAlgorithm->SetVerbose(isFirstInversion);
+				inversionAlgorithm->Invert();
+					
+				psf = imageAllocator.Allocate(imgWidth * imgHeight);
+				memcpy(psf, inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+				inversionWatch.Pause();
+				
+				isFirstInversion = false;
+				std::cout << "Beam size is " << inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
+				
+				std::cout << "Writing psf image... " << std::flush;
+				FitsWriter fitsWriter;
+				initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
+				fitsWriter.Write(std::string(partPrefixName) + "-psf.fits", psf);
+				std::cout << "DONE\n";
+				
+				CleanAlgorithm::RemoveNaNsInPSF(psf, imgWidth, imgHeight);
+			}
+			
+			std::cout << std::flush << " == Constructing image ==\n";
 			inversionWatch.Start();
-			inversionAlgorithm->SetDoImagePSF(true);
+			if(nWLayers != 0)
+				inversionAlgorithm->SetWGridSize(nWLayers);
+			else
+				inversionAlgorithm->SetNoWGridSize();
+			inversionAlgorithm->SetDoImagePSF(false);
 			inversionAlgorithm->SetVerbose(isFirstInversion);
 			inversionAlgorithm->Invert();
-				
-			psf = imageAllocator.Allocate(imgWidth * imgHeight);
-			memcpy(psf, inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
 			inversionWatch.Pause();
+			inversionAlgorithm->SetVerbose(false);
 			
-			isFirstInversion = false;
-			std::cout << "Beam size is " << inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
-			
-			std::cout << "Writing psf image... " << std::flush;
-			FitsWriter fitsWriter;
-			initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-			fitsWriter.Write(std::string(partPrefixName) + "-psf.fits", psf);
-			std::cout << "DONE\n";
-			
-			CleanAlgorithm::RemoveNaNsInPSF(psf, imgWidth, imgHeight);
-		}
-		
-		std::cout << std::flush << " == Constructing image ==\n";
-		inversionWatch.Start();
-		if(nWLayers != 0)
-			inversionAlgorithm->SetWGridSize(nWLayers);
-		else
-			inversionAlgorithm->SetNoWGridSize();
-		inversionAlgorithm->SetDoImagePSF(false);
-		inversionAlgorithm->SetVerbose(isFirstInversion);
-		inversionAlgorithm->Invert();
-		inversionWatch.Pause();
-		inversionAlgorithm->SetVerbose(false);
-		
-		if(inversionAlgorithm->HasGriddingCorrectionImage())
-		{
-			std::cout << "Writing gridding correction image... " << std::flush;
-			double* gridding = imageAllocator.Allocate(imgWidth * imgHeight);
-			inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
-			FitsWriter fitsWriter;
-			initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-			fitsWriter.Write(std::string(partPrefixName) + "-gridding.fits", &gridding[0]);
-			imageAllocator.Free(gridding);
-			std::cout << "DONE\n";
-		}
-			
-		double
-			*modelImage = imageAllocator.Allocate(imgWidth * imgHeight),
-			*residual = imageAllocator.Allocate(imgWidth * imgHeight);
-		memcpy(residual, inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
-		memset(modelImage, 0, imgWidth * imgHeight * sizeof(double));
-		
-		std::cout << "Writing dirty image... " << std::flush;
-		FitsWriter fitsWriter;
-		initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
-		fitsWriter.Write(std::string(partPrefixName) + "-dirty.fits", residual);
-		std::cout << "DONE\n";
-		
-		if(mGain == 1.0)
-			inversionAlgorithm.reset();
-		
-		CleanAlgorithm cleanAlgorithm;
-		cleanAlgorithm.SetMaxNIter(nIter);
-		cleanAlgorithm.SetThreshold(threshold);
-		cleanAlgorithm.SetSubtractionGain(gain);
-		cleanAlgorithm.SetStopGain(mGain);
-		cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
-		cleanAlgorithm.SetStopOnNegativeComponents(stopOnNegative);
-		cleanAlgorithm.SetResizePSF(smallPSF);
-
-		SetCleanParameters(fitsWriter, cleanAlgorithm);
-		UpdateCleanParameters(fitsWriter, 0, 0);
-			
-		if(nIter > 0)
-		{
-			std::unique_ptr<AreaSet> cleanAreas;
-			if(!cleanAreasFilename.empty())
+			if(inversionAlgorithm->HasGriddingCorrectionImage())
 			{
-				cleanAreas.reset(new AreaSet());
-				AreaParser parser;
-				std::ifstream caFile(cleanAreasFilename.c_str());
-				parser.Parse(*cleanAreas, caFile);
-				cleanAreas->SetImageProperties(pixelScale, pixelScale, inversionAlgorithm->PhaseCentreRA(), inversionAlgorithm->PhaseCentreDec(), imgWidth, imgHeight);
-				cleanAlgorithm.SetCleanAreas(*cleanAreas);
+				std::cout << "Writing gridding correction image... " << std::flush;
+				double* gridding = imageAllocator.Allocate(imgWidth * imgHeight);
+				inversionAlgorithm->GetGriddingCorrectionImage(&gridding[0]);
+				FitsWriter fitsWriter;
+				initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
+				fitsWriter.Write(std::string(partPrefixName) + "-gridding.fits", &gridding[0]);
+				imageAllocator.Free(gridding);
+				std::cout << "DONE\n";
 			}
+				
+			double
+				*modelImage = imageAllocator.Allocate(imgWidth * imgHeight),
+				*residual = imageAllocator.Allocate(imgWidth * imgHeight);
+			memcpy(residual, inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+			memset(modelImage, 0, imgWidth * imgHeight * sizeof(double));
 			
-			// Start major cleaning loop
-			size_t majorIterationNr = 1;
-			bool reachedMajorThreshold = false;
-			do {
-				std::cout << std::flush << " == Cleaning (" << majorIterationNr << ") ==\n";
-				cleaningWatch.Start();
-				cleanAlgorithm.ExecuteMajorIteration(residual, modelImage, psf, imgWidth, imgHeight, reachedMajorThreshold);
-				cleaningWatch.Pause();
+			std::cout << "Writing dirty image... " << std::flush;
+			FitsWriter fitsWriter;
+			initFitsWriter(fitsWriter, *inversionAlgorithm, beamSize);
+			fitsWriter.Write(std::string(partPrefixName) + "-dirty.fits", residual);
+			std::cout << "DONE\n";
+			
+			if(mGain == 1.0)
+				inversionAlgorithm.reset();
+			
+			CleanAlgorithm cleanAlgorithm;
+			cleanAlgorithm.SetMaxNIter(nIter);
+			cleanAlgorithm.SetThreshold(threshold);
+			cleanAlgorithm.SetSubtractionGain(gain);
+			cleanAlgorithm.SetStopGain(mGain);
+			cleanAlgorithm.SetAllowNegativeComponents(allowNegative);
+			cleanAlgorithm.SetStopOnNegativeComponents(stopOnNegative);
+			cleanAlgorithm.SetResizePSF(smallPSF);
+
+			SetCleanParameters(fitsWriter, cleanAlgorithm);
+			UpdateCleanParameters(fitsWriter, 0, 0);
 				
-				UpdateCleanParameters(fitsWriter, cleanAlgorithm.IterationNumber(), majorIterationNr);
-				
-				if(majorIterationNr == 1)
+			if(nIter > 0)
+			{
+				std::unique_ptr<AreaSet> cleanAreas;
+				if(!cleanAreasFilename.empty())
 				{
-					if(mGain == 1.0)
-					{
-						std::cout << "Writing residual image... " << std::flush;
-						fitsWriter.Write(std::string(partPrefixName) + "-residual.fits", &residual[0]);
-					}
-					else {
-						std::cout << "Writing first iteration image... " << std::flush;
-						fitsWriter.Write(std::string(partPrefixName) + "-first-residual.fits", &residual[0]);
-					}
-					std::cout << "DONE\n";
+					cleanAreas.reset(new AreaSet());
+					AreaParser parser;
+					std::ifstream caFile(cleanAreasFilename.c_str());
+					parser.Parse(*cleanAreas, caFile);
+					cleanAreas->SetImageProperties(pixelScale, pixelScale, inversionAlgorithm->PhaseCentreRA(), inversionAlgorithm->PhaseCentreDec(), imgWidth, imgHeight);
+					cleanAlgorithm.SetCleanAreas(*cleanAreas);
 				}
 				
-				if(!reachedMajorThreshold)
-				{
-					std::cout << "Writing model image... " << std::flush;
-					fitsWriter.Write(std::string(partPrefixName) + "-model.fits", &modelImage[0]);
-					std::cout << "DONE\n";
-				}
-				
-				if(mGain != 1.0)
-				{
-					std::cout << std::flush << " == Converting model image to visibilities ==\n";
-					predictingWatch.Start();
-					inversionAlgorithm->SetAddToModel(false);
-					inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
-					predictingWatch.Pause();
+				// Start major cleaning loop
+				size_t majorIterationNr = 1;
+				bool reachedMajorThreshold = false;
+				do {
+					std::cout << std::flush << " == Cleaning (" << majorIterationNr << ") ==\n";
+					cleaningWatch.Start();
+					cleanAlgorithm.ExecuteMajorIteration(residual, modelImage, psf, imgWidth, imgHeight, reachedMajorThreshold);
+					cleaningWatch.Pause();
 					
-					std::cout << std::flush << " == Constructing image ==\n";
-					inversionWatch.Start();
-					inversionAlgorithm->SetDoSubtractModel(true);
-					inversionAlgorithm->Invert();
-					inversionWatch.Pause();
+					UpdateCleanParameters(fitsWriter, cleanAlgorithm.IterationNumber(), majorIterationNr);
 					
-					memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
-					
-					if(!reachedMajorThreshold)
+					if(majorIterationNr == 1)
 					{
-						// This was the final major iteration: clean up & save results
-						inversionAlgorithm.reset();
-						
-						std::cout << "Writing residual image... " << std::flush;
-						fitsWriter.Write(std::string(partPrefixName) + "-residual.fits", &residual[0]);
+						if(mGain == 1.0)
+						{
+							std::cout << "Writing residual image... " << std::flush;
+							fitsWriter.Write(std::string(partPrefixName) + "-residual.fits", &residual[0]);
+						}
+						else {
+							std::cout << "Writing first iteration image... " << std::flush;
+							fitsWriter.Write(std::string(partPrefixName) + "-first-residual.fits", &residual[0]);
+						}
 						std::cout << "DONE\n";
 					}
 					
-					++majorIterationNr;
-				}
+					if(!reachedMajorThreshold)
+					{
+						std::cout << "Writing model image... " << std::flush;
+						fitsWriter.Write(std::string(partPrefixName) + "-model.fits", &modelImage[0]);
+						std::cout << "DONE\n";
+					}
+					
+					if(mGain != 1.0)
+					{
+						std::cout << std::flush << " == Converting model image to visibilities ==\n";
+						predictingWatch.Start();
+						inversionAlgorithm->SetAddToModel(false);
+						inversionAlgorithm->InvertToVisibilities(&modelImage[0]);
+						predictingWatch.Pause();
+						
+						std::cout << std::flush << " == Constructing image ==\n";
+						inversionWatch.Start();
+						inversionAlgorithm->SetDoSubtractModel(true);
+						inversionAlgorithm->Invert();
+						inversionWatch.Pause();
+						
+						memcpy(&residual[0], inversionAlgorithm->ImageResult(), imgWidth * imgHeight * sizeof(double));
+						
+						if(!reachedMajorThreshold)
+						{
+							// This was the final major iteration: clean up & save results
+							inversionAlgorithm.reset();
+							
+							std::cout << "Writing residual image... " << std::flush;
+							fitsWriter.Write(std::string(partPrefixName) + "-residual.fits", &residual[0]);
+							std::cout << "DONE\n";
+						}
+						
+						++majorIterationNr;
+					}
+					
+				} while(reachedMajorThreshold);
 				
-			} while(reachedMajorThreshold);
-			
-			std::cout << majorIterationNr << " major iterations were performed.\n";
-		}
-		
-		Model model;
-		if(!addModelFilename.empty())
-		{
-			std::cout << "Reading model from " << addModelFilename << "... " << std::flush;
-			model = Model(addModelFilename.c_str());
-			if(addApparentModel)
-			{
-				casa::MeasurementSet ms(filenames[0]);
-				BeamEvaluator beamEval(ms, false);
-				beamEval.AbsToApparent(model);
+				std::cout << majorIterationNr << " major iterations were performed.\n";
 			}
+			
+			Model model;
+			if(!addModelFilename.empty())
+			{
+				std::cout << "Reading model from " << addModelFilename << "... " << std::flush;
+				model = Model(addModelFilename.c_str());
+				if(addApparentModel)
+				{
+					casa::MeasurementSet ms(filenames[0]);
+					BeamEvaluator beamEval(ms, false);
+					beamEval.AbsToApparent(model);
+				}
+			}
+			CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, fitsWriter.RA(), fitsWriter.Dec(), pixelScale, pixelScale, 0.0, fitsWriter.Frequency(), *curPol);
+			if(!saveModelFilename.empty())
+			{
+				std::cout << "Saving model to " << saveModelFilename << "... " << std::flush;
+				model.Save(saveModelFilename.c_str());
+			}
+			
+			std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
+			ModelRenderer renderer(fitsWriter.RA(), fitsWriter.Dec(), pixelScale, pixelScale);
+			size_t polarizationIndex;
+			switch(*curPol)
+			{
+				case Polarization::StokesI:
+				case Polarization::XX: polarizationIndex = 0; break;
+				case Polarization::XY: polarizationIndex = 1; break;
+				case Polarization::YX: polarizationIndex = 2; break;
+				case Polarization::YY: polarizationIndex = 3; break;
+				default: throw std::runtime_error("Unsupported polarization");
+			}
+			double
+				freqLow = fitsWriter.Frequency() - fitsWriter.Bandwidth()*0.5,
+				freqHigh = fitsWriter.Frequency() + fitsWriter.Bandwidth()*0.5;
+			renderer.Restore(&residual[0], imgWidth, imgHeight, model, fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, polarizationIndex);
+			std::cout << "DONE\n";
+			
+			std::cout << "Writing restored image... " << std::flush;
+			fitsWriter.Write(std::string(partPrefixName) + "-image.fits", &residual[0]);
+			std::cout << "DONE\n";
+			
+			imageAllocator.ReportStatistics();
+			std::cout << "Inversion: " << inversionWatch.ToString() << ", prediction: " << predictingWatch.ToString() << ", cleaning: " << cleaningWatch.ToString() << '\n';
+			
+			imageAllocator.Free(residual);
+			imageAllocator.Free(modelImage);
+			imageAllocator.Free(psf);
+			
+			for(std::vector<MSProvider*>::iterator i=msProviders.begin(); i != msProviders.end(); ++i)
+				delete *i;
 		}
-		CleanAlgorithm::GetModelFromImage(model, &modelImage[0], imgWidth, imgHeight, fitsWriter.RA(), fitsWriter.Dec(), pixelScale, pixelScale, 0.0, fitsWriter.Frequency(), polarization);
-		if(!saveModelFilename.empty())
-		{
-			std::cout << "Saving model to " << saveModelFilename << "... " << std::flush;
-			model.Save(saveModelFilename.c_str());
-		}
-		
-		std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
-		ModelRenderer renderer(fitsWriter.RA(), fitsWriter.Dec(), pixelScale, pixelScale);
-		size_t polarizationIndex;
-		switch(polarization)
-		{
-			case Polarization::StokesI:
-			case Polarization::XX: polarizationIndex = 0; break;
-			case Polarization::XY: polarizationIndex = 1; break;
-			case Polarization::YX: polarizationIndex = 2; break;
-			case Polarization::YY: polarizationIndex = 3; break;
-			default: throw std::runtime_error("Unsupported polarization");
-		}
-		double
-			freqLow = fitsWriter.Frequency() - fitsWriter.Bandwidth()*0.5,
-			freqHigh = fitsWriter.Frequency() + fitsWriter.Bandwidth()*0.5;
-		renderer.Restore(&residual[0], imgWidth, imgHeight, model, fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, polarizationIndex);
-		std::cout << "DONE\n";
-		
-		std::cout << "Writing restored image... " << std::flush;
-		fitsWriter.Write(std::string(partPrefixName) + "-image.fits", &residual[0]);
-		std::cout << "DONE\n";
-		
-		imageAllocator.ReportStatistics();
-		std::cout << "Inversion: " << inversionWatch.ToString() << ", prediction: " << predictingWatch.ToString() << ", cleaning: " << cleaningWatch.ToString() << '\n';
-		
-		imageAllocator.Free(residual);
-		imageAllocator.Free(modelImage);
-		imageAllocator.Free(psf);
-		
-		for(std::vector<MSProvider*>::iterator i=msProviders.begin(); i != msProviders.end(); ++i)
-			delete *i;
 	}
 }

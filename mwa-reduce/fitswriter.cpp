@@ -94,6 +94,10 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
 		case Polarization::StokesQ: pol = 2.0; break;
 		case Polarization::StokesU: pol = 3.0; break;
 		case Polarization::StokesV: pol = 4.0; break;
+		case Polarization::RR: pol = -1.0; break;
+		case Polarization::LL: pol = -2.0; break;
+		case Polarization::RL: pol = -3.0; break;
+		case Polarization::LR: pol = -4.0; break;
 		case Polarization::XX: pol = -5.0; break;
 		case Polarization::YY: pol = -6.0; break; //yup, this is really the right value
 		case Polarization::XY: pol = -7.0; break;

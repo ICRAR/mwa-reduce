@@ -1,7 +1,8 @@
 #include "imageweights.h"
 #include "banddata.h"
 #include "multibanddata.h"
-#include "partitionedms.h"
+
+#include "msprovider/msprovider.h"
 
 #include <cmath>
 #include <iostream>
