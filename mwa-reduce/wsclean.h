@@ -1,15 +1,21 @@
 #ifndef WSCLEAN_H
 #define WSCLEAN_H
 
+#include "msprovider/msprovider.h"
+#include "msprovider/partitionedms.h"
+
 #include "layeredimager.h"
 #include "msselection.h"
 #include "polarizationenum.h"
 #include "weightmode.h"
+#include "imagebufferallocator.h"
+#include "stopwatch.h"
 
 class WSClean
 {
 public:
 	WSClean();
+	~WSClean();
 	
 	void SetImageSize(size_t width, size_t height) { _imgWidth = width; _imgHeight = height; }
 	void SetPixelScale(double pixelScale) { _pixelScaleX = pixelScale; _pixelScaleY = pixelScale; }
@@ -61,10 +67,25 @@ public:
 	
 	void Run();
 private:
+	void runChannel(size_t outChannelIndex);
+	void runPolarization(size_t outChannelIndex, PolarizationEnum polarization);
+	void prepareInversionAlgorithm(PolarizationEnum polarization);
+	
+	void initFitsWriter(class FitsWriter& writer);
+	void setCleanParameters(class FitsWriter& writer, const class CleanAlgorithm& clean);
+	void updateCleanParameters(class FitsWriter& writer, size_t minorIterationNr, size_t majorIterationNr);
+	void initializeImageWeights(const MSSelection& partSelection);
+	
+	void imagePSF();
+	void imageGridding();
+	void imageMainFirst();
+	void imageMainNonFirst();
+	void predict(const double* modelImage);
+	
 	size_t _imgWidth, _imgHeight, _channelsOut;
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _beamSize, _memFraction, _wLimit;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor;
-	MSSelection _globalSelection;
+	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _addModelFilename, _saveModelFilename, _cleanAreasFilename;
 	std::vector<PolarizationEnum> _polarizations;
 	WeightMode _weightMode;
@@ -74,6 +95,14 @@ private:
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;
 	std::string _commandLine;
+	
+	std::unique_ptr<class InversionAlgorithm> _inversionAlgorithm;
+	std::unique_ptr<class ImageWeights> _imageWeights;
+	ImageBufferAllocator<double> _imageAllocator;
+	Stopwatch _inversionWatch, _predictingWatch, _cleaningWatch;
+	bool _isFirstInversion, _doReorder;
+	double *_psfImage;
+	std::vector<PartitionedMS::Handle> _partitionedMSHandles;
 };
 
 #endif
