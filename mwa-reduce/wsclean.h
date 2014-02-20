@@ -87,16 +87,26 @@ private:
 	void imageMainNonFirst(PolarizationEnum polarization, bool isImaginary);
 	void predict(PolarizationEnum polarization, bool isImaginary);
 	
+	std::string polPrefix(PolarizationEnum polarization, bool isImaginary) const
+	{
+		if(_polarizations.size() == 1)
+			return _prefixName;
+		else if(isImaginary)
+			return _prefixName + "-" + Polarization::TypeToShortString(polarization) + "i";
+		else
+			return _prefixName + "-" + Polarization::TypeToShortString(polarization);
+	}
+	
 	size_t _imgWidth, _imgHeight, _channelsOut;
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _beamSize, _memFraction, _wLimit;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor;
 	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _addModelFilename, _saveModelFilename, _cleanAreasFilename;
-	std::vector<PolarizationEnum> _polarizations;
+	std::set<PolarizationEnum> _polarizations;
 	WeightMode _weightMode;
 	std::string _prefixName;
 	bool _allowNegative, _smallPSF, _addApparentModel, _stopOnNegative, _imaginaryPart, _makePSF;
-	bool _forceReorder, _forceNoReorder;
+	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;
 	std::string _commandLine;
@@ -112,6 +122,7 @@ private:
 	std::vector<PartitionedMS::Handle> _partitionedMSHandles;
 	FitsWriter _fitsWriter;
 	std::vector<MSProvider*> _currentPolMSes;
+	BandData _firstMSBand;
 };
 
 #endif

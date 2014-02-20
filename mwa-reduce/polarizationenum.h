@@ -2,7 +2,7 @@
 #define POLARIZATION_ENUM_H
 
 #include <stdexcept>
-#include <vector>
+#include <set>
 
 class Polarization
 {
@@ -84,9 +84,22 @@ public:
 		}
 	}
 	
-	static std::vector<PolarizationEnum> ParseList(const std::string& listStr)
+	static bool Has4Polarizations(const std::set<PolarizationEnum>& polarizations)
 	{
-		std::vector<PolarizationEnum> list;
+		return
+			(polarizations.count(XX)>0 && polarizations.count(XY)>0 &&
+			 polarizations.count(YX)>0 && polarizations.count(YY)>0)
+			||
+			(polarizations.count(StokesI)>0 && polarizations.count(StokesQ)>0 &&
+			 polarizations.count(StokesU)>0 && polarizations.count(StokesV)>0)
+			||
+			(polarizations.count(RR)>0 && polarizations.count(RL)>0 &&
+			 polarizations.count(LR)>0 && polarizations.count(LL)>0);
+	}
+	
+	static std::set<PolarizationEnum> ParseList(const std::string& listStr)
+	{
+		std::set<PolarizationEnum> list;
 		enum { StartSt, GotXSt, GotYSt, GotLSt, GotRSt, GotSeperatorSt } state = StartSt;
 		for(std::string::const_iterator i=listStr.begin(); i!=listStr.end(); ++i)
 		{
@@ -96,8 +109,8 @@ public:
 				case 'X':
 					if(state == StartSt || state == GotSeperatorSt) state=GotXSt;
 					else {
-						if(state==GotXSt) list.push_back(XX);
-						else if(state==GotYSt) list.push_back(YX);
+						if(state==GotXSt) list.insert(XX);
+						else if(state==GotYSt) list.insert(YX);
 						else throw std::runtime_error("Invalid polarization list: parse error near 'X'");
 						state=StartSt;
 					}
@@ -105,8 +118,8 @@ public:
 				case 'Y':
 					if(state == StartSt || state == GotSeperatorSt) state=GotYSt;
 					else {
-						if(state==GotXSt) list.push_back(XY);
-						else if(state==GotYSt) list.push_back(YY);
+						if(state==GotXSt) list.insert(XY);
+						else if(state==GotYSt) list.insert(YY);
 						else throw std::runtime_error("Invalid polarization list: parse error near 'Y'");
 						state=StartSt;
 					}
@@ -114,8 +127,8 @@ public:
 				case 'R':
 					if(state == StartSt || state == GotSeperatorSt) state=GotRSt;
 					else {
-						if(state==GotRSt) list.push_back(RR);
-						else if(state==GotLSt) list.push_back(LR);
+						if(state==GotRSt) list.insert(RR);
+						else if(state==GotLSt) list.insert(LR);
 						else throw std::runtime_error("Invalid polarization list: parse error near 'R'");
 						state=StartSt;
 					}
@@ -123,29 +136,29 @@ public:
 				case 'L':
 					if(state == StartSt || state == GotSeperatorSt) state=GotLSt;
 					else {
-						if(state==GotRSt) list.push_back(RL);
-						else if(state==GotLSt) list.push_back(LL);
+						if(state==GotRSt) list.insert(RL);
+						else if(state==GotLSt) list.insert(LL);
 						else throw std::runtime_error("Invalid polarization list: parse error near 'L'");
 						state=StartSt;
 					}
 					break;
 				case 'I':
-					if(state == StartSt || state == GotSeperatorSt) list.push_back(StokesI);
+					if(state == StartSt || state == GotSeperatorSt) list.insert(StokesI);
 					else throw std::runtime_error("Invalid polarization list: parse error near 'I'");
 					state = StartSt;
 					break;
 				case 'Q':
-					if(state == StartSt || state == GotSeperatorSt) list.push_back(StokesQ);
+					if(state == StartSt || state == GotSeperatorSt) list.insert(StokesQ);
 					else throw std::runtime_error("Invalid polarization list: parse error near 'Q'");
 					state = StartSt;
 					break;
 				case 'U':
-					if(state == StartSt || state == GotSeperatorSt) list.push_back(StokesU);
+					if(state == StartSt || state == GotSeperatorSt) list.insert(StokesU);
 					else throw std::runtime_error("Invalid polarization list: parse error near 'U'");
 					state = StartSt;
 					break;
 				case 'V':
-					if(state == StartSt || state == GotSeperatorSt) list.push_back(StokesV);
+					if(state == StartSt || state == GotSeperatorSt) list.insert(StokesV);
 					else throw std::runtime_error("Invalid polarization list: parse error near 'V'");
 					state = StartSt;
 					break;

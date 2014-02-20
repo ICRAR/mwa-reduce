@@ -43,9 +43,8 @@ public:
 				memcpy(image, _image, _writer.Width() * _writer.Height() * sizeof(value_t));
 		else {
 			FitsReader reader(name(polarization, isImaginary));
-			reader.Read(_image);
+			reader.Read(image);
 		}
-		std::cout << "Loaded\n";
 	}
 	
 	void Store(const value_t* image, PolarizationEnum polarization, bool isImaginary)
@@ -59,10 +58,9 @@ public:
 		}
 		else {
 			std::string n = name(polarization, isImaginary);
-			_writer.Write(n, _image);
+			_writer.Write(n, image);
 			_storedNames.insert(n);
 		}
-		std::cout << "Stored\n";
 	}
 	
 private:
