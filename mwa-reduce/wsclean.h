@@ -10,6 +10,7 @@
 #include "weightmode.h"
 #include "imagebufferallocator.h"
 #include "stopwatch.h"
+#include "cachedimageset.h"
 
 class WSClean
 {
@@ -68,19 +69,23 @@ public:
 	void Run();
 private:
 	void runChannel(size_t outChannelIndex);
-	void runPolarization(size_t outChannelIndex, PolarizationEnum polarization);
+	void runPolarizationStart(size_t outChannelIndex, PolarizationEnum polarization, bool isImaginary);
+	void runClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void prepareInversionAlgorithm(PolarizationEnum polarization);
 	
 	void initFitsWriter(class FitsWriter& writer);
 	void setCleanParameters(class FitsWriter& writer, const class CleanAlgorithm& clean);
 	void updateCleanParameters(class FitsWriter& writer, size_t minorIterationNr, size_t majorIterationNr);
 	void initializeImageWeights(const MSSelection& partSelection);
+	void initializeCleanAlgorithm();
+	void initializeCurMSProviders(size_t outChannelIndex, PolarizationEnum polarization);
+	void clearCurMSProviders();
 	
 	void imagePSF();
 	void imageGridding();
-	void imageMainFirst();
-	void imageMainNonFirst();
-	void predict(const double* modelImage);
+	void imageMainFirst(PolarizationEnum polarization, bool isImaginary);
+	void imageMainNonFirst(PolarizationEnum polarization, bool isImaginary);
+	void predict(PolarizationEnum polarization, bool isImaginary);
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _beamSize, _memFraction, _wLimit;
@@ -98,11 +103,15 @@ private:
 	
 	std::unique_ptr<class InversionAlgorithm> _inversionAlgorithm;
 	std::unique_ptr<class ImageWeights> _imageWeights;
+	std::unique_ptr<class CleanAlgorithm> _cleanAlgorithm;
+	std::unique_ptr<class AreaSet> _cleanAreas;
 	ImageBufferAllocator<double> _imageAllocator;
 	Stopwatch _inversionWatch, _predictingWatch, _cleaningWatch;
 	bool _isFirstInversion, _doReorder;
-	double *_psfImage;
+	CachedImageSet _psfImages, _modelImages, _residualImages;
 	std::vector<PartitionedMS::Handle> _partitionedMSHandles;
+	FitsWriter _fitsWriter;
+	std::vector<MSProvider*> _currentPolMSes;
 };
 
 #endif

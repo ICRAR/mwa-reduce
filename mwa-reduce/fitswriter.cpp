@@ -11,7 +11,7 @@
 #include <limits>
 #include <iostream>
 
-void FitsWriter::checkStatus(int status, const std::string& filename) 
+void FitsWriter::checkStatus(int status, const std::string& filename) const
 {
 	if(status) {
 		/* fits_get_errstatus returns at most 30 characters */
@@ -28,7 +28,7 @@ void FitsWriter::checkStatus(int status, const std::string& filename)
 }
 
 template<typename NumType>
-void FitsWriter::Write(const std::string& filename, const NumType* image)
+void FitsWriter::Write(const std::string& filename, const NumType* image) const
 {
 	int status = 0;
 	fitsfile *fptr;
@@ -168,9 +168,9 @@ void FitsWriter::Write(const std::string& filename, const NumType* image)
 	checkStatus(status, filename);
 }
 
-template void FitsWriter::Write<long double>(const std::string& filename, const long double* image);
-template void FitsWriter::Write<double>(const std::string& filename, const double* image);
-template void FitsWriter::Write<float>(const std::string& filename, const float* image);
+template void FitsWriter::Write<long double>(const std::string& filename, const long double* image) const;
+template void FitsWriter::Write<double>(const std::string& filename, const double* image) const;
+template void FitsWriter::Write<float>(const std::string& filename, const float* image) const;
 
 void FitsWriter::SetMetadata(const FitsReader& reader)
 {
@@ -198,7 +198,7 @@ void FitsWriter::SetMetadata(const FitsReader& reader)
 	_history = reader.History();
 }
 
-void FitsWriter::julianDateToYMD(double jd, int &year, int &month, int &day)
+void FitsWriter::julianDateToYMD(double jd, int &year, int &month, int &day) const
 {
   int z = jd+0.5;
   int w = (z-1867216.25)/36524.25;
@@ -215,7 +215,7 @@ void FitsWriter::julianDateToYMD(double jd, int &year, int &month, int &day)
   year = c-4715-((e-1)>2?1:0);
 }
 
-void FitsWriter::mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec)
+void FitsWriter::mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec) const
 {
 	hour = int(fmod(mjd * 24.0, 24.0));
 	minutes = int(fmod(mjd*60.0 * 24.0, 60.0));

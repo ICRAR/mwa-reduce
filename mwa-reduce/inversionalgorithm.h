@@ -44,6 +44,7 @@ class InversionAlgorithm
 		double PixelSizeY() const { return _pixelSizeY; }
 		bool HasWGridSize() const { return _wGridSize != 0; }
 		size_t WGridSize() const { return _wGridSize; }
+		void ClearMeasurementSetList() { _measurementSets.clear(); }
 		class MSProvider &MeasurementSet(size_t index) const { return *_measurementSets[index]; }
 		size_t MeasurementSetCount() const { return _measurementSets.size(); }
 		const std::string &DataColumnName() const { return _dataColumnName; }
@@ -146,7 +147,7 @@ class InversionAlgorithm
 		
 		virtual void InvertToVisibilities(const double *image) = 0;
 		
-		virtual const double *ImageResult() const = 0;
+		virtual double *ImageResult() const = 0;
 		virtual double PhaseCentreRA() const = 0;
 		virtual double PhaseCentreDec() const = 0;
 		virtual bool HasDenormalPhaseCentre() const { return false; }

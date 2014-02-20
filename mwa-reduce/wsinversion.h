@@ -28,7 +28,7 @@ class WSInversion : public InversionAlgorithm
 		
 		virtual void InvertToVisibilities(const double *image);
 		
-		virtual const double *ImageResult() const { return _imager->Image(); }
+		virtual double *ImageResult() const { return _imager->Image(); }
 		virtual double PhaseCentreRA() const { return _phaseCentreRA; }
 		virtual double PhaseCentreDec() const { return _phaseCentreDec; }
 		virtual double HighestFrequencyChannel() const { return _freqHigh; }

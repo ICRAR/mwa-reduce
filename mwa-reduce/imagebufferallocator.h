@@ -17,11 +17,20 @@ public:
 	~ImageBufferAllocator()
 	{
 		std::lock_guard<std::mutex> guard(_mutex);
+		size_t usedCount = 0;
 		for(typename std::vector<Buffer>::iterator i=_buffers.begin(); i!=_buffers.end(); ++i)
 		{
-			if(i->isFirstHalfUsed || i->isSecondHalfUsed)
-				throw std::runtime_error("An image buffer was still in use when image buffer allocator was destroyed!");
+			if(i->isFirstHalfUsed)
+				++usedCount;
+			if(i->isSecondHalfUsed)
+				++usedCount;
 			free(i->ptr);
+		}
+		if(usedCount != 0)
+		{
+			std::ostringstream str;
+			str << usedCount << " image buffer(s) were still in use when image buffer allocator was destroyed!";
+			throw std::runtime_error(str.str());
 		}
 	}
 	

@@ -102,7 +102,7 @@ class LayeredImager
 		
 		void SampleData(std::complex<float>* data, size_t dataDescId, double uInM, double vInM, double wInM);
 		
-		const double *Image() { return _imageData[0]; }
+		double *Image() { return _imageData[0]; }
 		
 		size_t NFFTThreads() const { return _nFFTThreads; }
 		void SetNFFTThreads(size_t nfftThreads) { _nFFTThreads = nfftThreads; }

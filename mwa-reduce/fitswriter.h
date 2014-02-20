@@ -38,7 +38,7 @@ class FitsWriter
 			SetMetadata(reader);
 		}
 		
-		template<typename NumType> void Write(const std::string& filename, const NumType* image);
+		template<typename NumType> void Write(const std::string& filename, const NumType* image) const;
 		
 		void SetBeamInfo(double widthRad)
 		{
@@ -119,6 +119,8 @@ class FitsWriter
 			_phaseCentreDL = dl;
 			_phaseCentreDM = dm;
 		}
+		size_t Width() const { return _width; }
+		size_t Height() const { return _height; }
 	private:
 		template<typename T>
 		static T setNotFiniteToZero(T num)
@@ -138,9 +140,9 @@ class FitsWriter
 		std::map<std::string, std::string> _extraStringKeywords;
 		std::map<std::string, double> _extraNumKeywords;
 		
-		void checkStatus(int status, const std::string& filename);
-		void julianDateToYMD(double jd, int &year, int &month, int &day);
-		void mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec);
+		void checkStatus(int status, const std::string& filename) const;
+		void julianDateToYMD(double jd, int &year, int &month, int &day) const;
+		void mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec) const;
 };
 
 #endif
