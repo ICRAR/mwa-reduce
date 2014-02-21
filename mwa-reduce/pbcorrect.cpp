@@ -26,16 +26,16 @@ int main(int argc, char *argv[])
 {
 	if(argc != 19)
 		std::cout << "Syntax:\n"
-			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yx.fits> <yxi.fits> <yy.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outi.fits> <outq.fits> <outu.fits> <outv.fits>\n";
+			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yx.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outi.fits> <outq.fits> <outu.fits> <outv.fits>\n";
 		
 	const char
-		*inpFilename[6] = { argv[1], argv[2], argv[3], argv[4], argv[5], argv[6] },
+		*inpFilename[4] = { argv[1], argv[2], argv[3], argv[4] },
 		*beamFilename[8] = { argv[7], argv[8], argv[9], argv[10], argv[11], argv[12], argv[13], argv[14] },
 		*outFilename[4] = { argv[15], argv[16], argv[17], argv[18] };
 	
 	FitsReader firstImage(argv[1]);
-	std::vector<double> inputData[6], beamData[8];
-	for(size_t i=0; i!=6; ++i)
+	std::vector<double> inputData[4], beamData[8];
+	for(size_t i=0; i!=4; ++i)
 		read(firstImage, inpFilename[i], inputData[i]);
 	for(size_t i=0; i!=8; ++i)
 		read(firstImage, beamFilename[i], beamData[i]);
@@ -48,9 +48,9 @@ int main(int argc, char *argv[])
 	{
 		std::complex<double> imgValues[4], beamValues[4];
 		imgValues[0] = inputData[0][i];
-		imgValues[1] = std::complex<double>((inputData[1][i] + inputData[3][i])*0.5, (inputData[2][i] + inputData[4][i])*0.5);
+		imgValues[1] = std::complex<double>(inputData[1][i], inputData[2][i]);
 		imgValues[2] = std::conj(imgValues[1]);
-		imgValues[3] = inputData[5][i];
+		imgValues[3] = inputData[3][i];
 		
 		beamValues[0] = std::complex<double>(beamData[0][i], beamData[1][i]);
 		beamValues[1] = std::complex<double>(beamData[2][i], beamData[3][i]);
