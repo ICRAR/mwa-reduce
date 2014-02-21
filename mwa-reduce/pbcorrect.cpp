@@ -24,7 +24,7 @@ void read(const FitsReader& templateReader, const char* filename, std::vector<do
 
 int main(int argc, char *argv[])
 {
-	if(argc != 19)
+	if(argc != 17)
 		std::cout << "Syntax:\n"
 			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yx.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outi.fits> <outq.fits> <outu.fits> <outv.fits>\n";
 		
