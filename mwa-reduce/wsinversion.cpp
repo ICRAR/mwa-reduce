@@ -163,11 +163,12 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 			maxL = ImageWidth() * PixelSizeX() * 0.5 + fabs(_phaseCentreDL),
 			maxM = ImageHeight() * PixelSizeY() * 0.5 + fabs(_phaseCentreDM),
 			lmSq = maxL * maxL + maxM * maxM;
+		double cMinW = IsComplex() ? -msData.maxW : msData.minW;
 		double radiansForAllLayers;
 		if(lmSq < 1.0)
-			radiansForAllLayers = 2 * M_PI * (msData.maxW - msData.minW) * (1.0 - sqrt(1.0 - lmSq));
+			radiansForAllLayers = 2 * M_PI * (msData.maxW - cMinW) * (1.0 - sqrt(1.0 - lmSq));
 		else
-			radiansForAllLayers = 2 * M_PI * (msData.maxW - msData.minW);
+			radiansForAllLayers = 2 * M_PI * (msData.maxW - cMinW);
 		size_t suggestedGridSize = size_t(ceil(radiansForAllLayers));
 		if(suggestedGridSize == 0) suggestedGridSize = 1;
 		if(suggestedGridSize < _cpuCount)
@@ -452,10 +453,10 @@ void WSInversion::predictCalcThread(ao::lane<PredictionWorkItem>* inputLane, ao:
 	}
 }
 
-void WSInversion::predictWriteThread(ao::lane<PredictionWorkItem>* samplingWorkLane, const MSData* msData)
+void WSInversion::predictWriteThread(ao::lane<PredictionWorkItem>* predictionWorkLane, const MSData* msData)
 {
 	PredictionWorkItem workItem;
-	while(samplingWorkLane->read(workItem))
+	while(predictionWorkLane->read(workItem))
 	{
 		msData->msProvider->WriteModel(workItem.rowId, workItem.data);
 	}
@@ -493,7 +494,9 @@ void WSInversion::Invert()
 	_totalWeight = 0.0;
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
-		std::cout << "Starting gridding pass " << pass << ".\n";
+		std::cout << "Gridding pass " << pass << "... ";
+		if(Verbose()) std::cout << '\n';
+		else std::cout << std::flush;
 		_inversionWorkLane.reset(new ao::lane<InversionWorkItem>(16));
 		
 		_imager->StartInversionPass(pass);
@@ -514,7 +517,7 @@ void WSInversion::Invert()
 			thread.join();
 		}
 		
-		std::cout << "Fourier transforming layers, w-term correction & summing in parallel...\n";
+		std::cout << "Fourier transforms...\n";
 		_imager->FinishInversionPass();
 	}
 	
@@ -562,13 +565,15 @@ void WSInversion::Predict(const double* real, const double* imaginary)
 	
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
-		std::cout << "W-term correction & fourier transforming layers to uv space (in parallel)...\n";
+		std::cout << "Fourier transforms... ";
+		if(Verbose()) std::cout << '\n';
+		else std::cout << std::flush;
 		if(imaginary == 0)
 			_imager->InitializePrediction(real, 1.0);
 		else
 			_imager->InitializePrediction(real, imaginary, 1.0);
 		
-		std::cout << "Starting visibility sampling pass " << pass << ".\n";
+		std::cout << "Prediction pass " << pass << "...\n";
 		_imager->StartPredictionPass(pass);
 		
 		for(size_t i=0; i!=MeasurementSetCount(); ++i)

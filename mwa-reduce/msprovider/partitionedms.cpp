@@ -384,6 +384,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 			delete dataFiles[fileIndex];
 			if(includeWeights)
 				delete weightFiles[fileIndex];
+			++fileIndex;
 		}
 	}
 	

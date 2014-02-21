@@ -320,12 +320,11 @@ void WSClean::Run()
 	
 	_doReorder = ((_channelsOut != 1) || _forceReorder) && !_forceNoReorder;
 	
-	std::vector<PartitionedMS::Handle> partitionedMSHandles;
 	if(_doReorder)
 	{
 		for(std::vector<std::string>::const_iterator i=_filenames.begin(); i != _filenames.end(); ++i)
 		{
-			partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0, _polarizations));
+			_partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0, _polarizations));
 		}
 	}
 	

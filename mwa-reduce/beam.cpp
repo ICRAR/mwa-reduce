@@ -5,6 +5,7 @@
 #include "banddata.h"
 #include "matrix2x2.h"
 #include "numberlist.h"
+#include "progressbar.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -182,6 +183,7 @@ int main(int argc, char *argv[])
 		j2000ToHaDecRef(j2000Ref, hadecRef),
 		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
 
+	ProgressBar progressBar("Constructing beam");
 	for(size_t y=0;y!=height;++y)
 	{
 		for(size_t x=0;x!=width;++x)
@@ -206,8 +208,9 @@ int main(int argc, char *argv[])
 				++imgPtr[i*2 + 1];
 			}
 		}
-		std::cout << '.' << std::flush;
+		progressBar.SetProgress(y, height);
 	}
+	progressBar.SetProgress(height, height);
 	
 	std::cout << "\nWriting...\n";
 	
