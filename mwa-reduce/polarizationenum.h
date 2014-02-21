@@ -97,6 +97,11 @@ public:
 			 polarizations.count(LR)>0 && polarizations.count(LL)>0);
 	}
 	
+	static bool IsComplex(PolarizationEnum polarization)
+	{
+		return polarization==XY || polarization==YX;
+	}
+	
 	static std::set<PolarizationEnum> ParseList(const std::string& listStr)
 	{
 		std::set<PolarizationEnum> list;

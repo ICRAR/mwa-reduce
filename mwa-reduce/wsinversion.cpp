@@ -380,7 +380,7 @@ void WSInversion::workThreadPerSample(ao::lane<InversionWorkSample>* workLane)
 	}
 }
 
-void WSInversion::sampleToMeasurementSet(MSData &msData)
+void WSInversion::predictMeasurementSet(MSData &msData)
 {
 	msData.msProvider->ReopenRW();
 	const MultiBandData selectedBandData(msData.SelectedBand());
@@ -388,11 +388,11 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	
 	size_t rowsProcessed = 0;
 	
-	ao::lane<SamplingWorkItem> calcLane(_laneBufferSize+_cpuCount), writeLane(_laneBufferSize);
-	boost::thread writeThread(&WSInversion::visSampleWriteThread, this, &writeLane, &msData);
+	ao::lane<PredictionWorkItem> calcLane(_laneBufferSize+_cpuCount), writeLane(_laneBufferSize);
+	boost::thread writeThread(&WSInversion::predictWriteThread, this, &writeLane, &msData);
 	boost::thread_group calcThreads;
 	for(size_t i=0; i!=_cpuCount; ++i)
-		calcThreads.add_thread(new boost::thread(&WSInversion::visSampleCalcThread, this, &calcLane, &writeLane));
+		calcThreads.add_thread(new boost::thread(&WSInversion::predictCalcThread, this, &calcLane, &writeLane));
 
 		
 	/* Start by reading the u,v,ws in, so we don't need IO access
@@ -422,7 +422,7 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	
 	for(size_t i=0; i!=us.size(); ++i)
 	{
-		SamplingWorkItem newItem;
+		PredictionWorkItem newItem;
 		newItem.u = us[i];
 		newItem.v = vs[i];
 		newItem.w = ws[i];
@@ -441,9 +441,9 @@ void WSInversion::sampleToMeasurementSet(MSData &msData)
 	writeThread.join();
 }
 
-void WSInversion::visSampleCalcThread(ao::lane<SamplingWorkItem>* inputLane, ao::lane<SamplingWorkItem>* outputLane)
+void WSInversion::predictCalcThread(ao::lane<PredictionWorkItem>* inputLane, ao::lane<PredictionWorkItem>* outputLane)
 {
-	SamplingWorkItem item;
+	PredictionWorkItem item;
 	while(inputLane->read(item))
 	{
 		_imager->SampleData(item.data, item.dataDescId, item.u, item.v, item.w);
@@ -452,9 +452,9 @@ void WSInversion::visSampleCalcThread(ao::lane<SamplingWorkItem>* inputLane, ao:
 	}
 }
 
-void WSInversion::visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData)
+void WSInversion::predictWriteThread(ao::lane<PredictionWorkItem>* samplingWorkLane, const MSData* msData)
 {
-	SamplingWorkItem workItem;
+	PredictionWorkItem workItem;
 	while(samplingWorkLane->read(workItem))
 	{
 		msData->msProvider->WriteModel(workItem.rowId, workItem.data);
@@ -480,9 +480,9 @@ void WSInversion::Invert()
 	_imager->SetGridMode(_gridMode);
 	if(_denormalPhaseCentre)
 		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
+	_imager->SetIsComplex(IsComplex());
+	//_imager->SetImageConjugatePart(Polarization() == Polarization::YX && IsComplex());
 	_imager->PrepareWLayers(WGridSize(), double(_memSize)*(7.0/10.0), minW, maxW);
-	_imager->SetImageImaginaryPart(ImaginaryPart());
-	_imager->SetImageConjugatePart(Polarization() == Polarization::YX && ImaginaryPart());
 	
 	if(Verbose())
 	{
@@ -534,7 +534,7 @@ void WSInversion::Invert()
 	delete[] msDataVector;
 }
 
-void WSInversion::InvertToVisibilities(const double *image)
+void WSInversion::Predict(const double* real, const double* imaginary)
 {
 	MSData* msDataVector = new MSData[MeasurementSetCount()];
 	_hasFrequencies = false;
@@ -553,6 +553,8 @@ void WSInversion::InvertToVisibilities(const double *image)
 	_imager->SetGridMode(_gridMode);
 	if(_denormalPhaseCentre)
 		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
+	_imager->SetIsComplex(IsComplex());
+	//_imager->SetImageConjugatePart(Polarization() == Polarization::YX && IsComplex());
 	_imager->PrepareWLayers(WGridSize(), double(_memSize)*(7.0/10.0), minW, maxW);
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
@@ -561,13 +563,16 @@ void WSInversion::InvertToVisibilities(const double *image)
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
 		std::cout << "W-term correction & fourier transforming layers to uv space (in parallel)...\n";
-		_imager->PrepareImageForVisibilitySampling(image, 1.0);
+		if(imaginary == 0)
+			_imager->InitializePrediction(real, 1.0);
+		else
+			_imager->InitializePrediction(real, imaginary, 1.0);
 		
 		std::cout << "Starting visibility sampling pass " << pass << ".\n";
-		_imager->StartVisibilitySamplingPass(pass);
+		_imager->StartPredictionPass(pass);
 		
 		for(size_t i=0; i!=MeasurementSetCount(); ++i)
-			sampleToMeasurementSet(msDataVector[i]);
+			predictMeasurementSet(msDataVector[i]);
 	}
 	
 	size_t totalRowsWritten = 0, totalMatchingRows = 0;

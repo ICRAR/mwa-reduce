@@ -16,12 +16,13 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 	_pixelSizeY(pixelSizeY),
 	_phaseCentreDL(0.0),
 	_phaseCentreDM(0.0),
-	_imageImaginaryPart(false),
+	_isComplex(false),
 	_imageConjugatePart(false),
 	_gridMode(NearestNeighbour),
 	_overSamplingFactor(overSamplingFactor),
 	_kernelSize(kernelSize),
 	_imageData(fftThreadCount),
+	_imageDataImaginary(fftThreadCount),
 	_nFFTThreads(fftThreadCount),
 	_imageBufferAllocator(allocator)
 {
@@ -31,7 +32,10 @@ LayeredImager::LayeredImager(size_t width, size_t height, double pixelSizeX, dou
 LayeredImager::~LayeredImager()
 {
 	for(size_t i=0; i!=_nFFTThreads; ++i)
+	{
 		_imageBufferAllocator->Free(_imageData[i]);
+		_imageBufferAllocator->Free(_imageDataImaginary[i]);
+	}
 	freeLayeredUVData();
 	fftw_cleanup();
 }
@@ -65,6 +69,11 @@ void LayeredImager::PrepareWLayers(size_t nWLayers, double maxMem, double minW, 
 	{
 		_imageData[i] = _imageBufferAllocator->Allocate(imgSize);
 		memset(_imageData[i], 0, imgSize * sizeof(double));
+		if(_isComplex)
+		{
+			_imageDataImaginary[i] = _imageBufferAllocator->Allocate(imgSize);
+			memset(_imageDataImaginary[i], 0, imgSize * sizeof(double));
+		}
 	}
 	
 	// Calculate nr wlayers per pass from remaining memory
@@ -100,7 +109,7 @@ void LayeredImager::StartInversionPass(size_t passIndex)
 		memset(_layeredUVData[i], 0, _width*_height * sizeof(double)*2);
 }
 
-void LayeredImager::StartVisibilitySamplingPass(size_t passIndex)
+void LayeredImager::StartPredictionPass(size_t passIndex)
 {
 	initializeSqrtLMLookupTableForSampling();
 	
@@ -148,7 +157,7 @@ void LayeredImager::fftToImageThreadFunction(boost::mutex *mutex, std::stack<siz
 		fftw_execute(plan);
 		
 		// Add layer to full image
-		if(_imageImaginaryPart)
+		if(_isComplex)
 			projectOnImageAndCorrect<true>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
 		else
 			projectOnImageAndCorrect<false>(fftwOut, LayerToW(layer + layerOffset), threadIndex);
@@ -185,7 +194,10 @@ void LayeredImager::fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t
 		lock.unlock();
 		
 		// Make copy of input and w-correct it
-		copyImageToLayerAndInverseCorrect(fftwIn, LayerToW(layer + layerOffset));
+		if(_isComplex)
+			copyImageToLayerAndInverseCorrect<true>(fftwIn, LayerToW(layer + layerOffset));
+		else
+			copyImageToLayerAndInverseCorrect<false>(fftwIn, LayerToW(layer + layerOffset));
 		
 		// Fourier transform the layer
 		fftw_execute(plan);
@@ -309,7 +321,7 @@ void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, 
 		vInLambda = -vInLambda;
 		sample = std::conj(sample);
 	}
-	if(wInLambda < 0.0 && !_imageImaginaryPart)
+	if(wInLambda < 0.0 && !_isComplex)
 	{
 		uInLambda = -uInLambda;
 		vInLambda = -vInLambda;
@@ -496,18 +508,24 @@ void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, dou
 void LayeredImager::FinalizeImage(double multiplicationFactor)
 {
 	freeLayeredUVData();
+	finalizeImage(multiplicationFactor, _imageData);
+	if(_isComplex)
+		finalizeImage(multiplicationFactor, _imageDataImaginary);
+}
 
+void LayeredImager::finalizeImage(double multiplicationFactor, std::vector<double*>& dataArray)
+{
 	for(size_t i=1;i!=_nFFTThreads;++i)
 	{
-		double *primaryData = _imageData[0];
-		double *endPtr = _imageData[i] + (_width * _height);
-		for(double *dataPtr = _imageData[i]; dataPtr!=endPtr; ++dataPtr)
+		double *primaryData = dataArray[0];
+		double *endPtr = dataArray[i] + (_width * _height);
+		for(double *dataPtr = dataArray[i]; dataPtr!=endPtr; ++dataPtr)
 		{
 			*primaryData += *dataPtr;
 			++primaryData;
 		}
 	}
-	double *dataPtr = _imageData[0];
+	double *dataPtr = dataArray[0];
 	for(size_t y=0;y!=_height;++y)
 	{
 		double m = ((double) y-(_height/2)) * _pixelSizeY + _phaseCentreDM;
@@ -520,7 +538,7 @@ void LayeredImager::FinalizeImage(double multiplicationFactor)
 	}
 	
 	if(_gridMode == KaiserBessel)
-		correctImageForKernel<false>(_imageData[0]);
+		correctImageForKernel<false>(dataArray[0]);
 }
 
 template<bool Inverse>
@@ -563,9 +581,9 @@ void LayeredImager::GetGriddingCorrectionImage(double *image) const
 	correctImageForKernel<true>(image);
 }
 
-void LayeredImager::PrepareImageForVisibilitySampling(const double *image, double multiplicationFactor)
+void LayeredImager::initializePrediction(const double* image, double multiplicationFactor, std::vector<double*>& dataArray)
 {
-	double *dataPtr = _imageData[0];
+	double *dataPtr = dataArray[0];
 	const double *inPtr = image;
 	for(size_t y=0;y!=_height;++y)
 	{
@@ -583,7 +601,7 @@ void LayeredImager::PrepareImageForVisibilitySampling(const double *image, doubl
 	}
 	if(_gridMode == KaiserBessel)
 	{
-		correctImageForKernel<false>(_imageData[0]);
+		correctImageForKernel<false>(dataArray[0]);
 	}
 }
 
@@ -612,10 +630,13 @@ void LayeredImager::initializeSqrtLMLookupTable()
 	}
 }
 
-template<bool ImageImaginaryPart>
+template<bool IsComplex>
 void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex)
 {
-	double *data = _imageData[threadIndex];
+	double *dataReal = _imageData[threadIndex], *dataImaginary;
+	if(IsComplex)
+		dataImaginary = _imageDataImaginary[threadIndex];
+	
 	const double twoPiW = -2.0 * M_PI * w;
 	std::vector<double>::const_iterator sqrtLMIter = _sqrtLMLookupTable.begin();
 	for(size_t y=0;y!=_height;++y)
@@ -635,15 +656,14 @@ void LayeredImager::projectOnImageAndCorrect(const std::complex<double> *source,
 				source->real() * c - source->imag() * s,
 				source->real() * s + source->imag() * c
 			);*/
-			if(ImageImaginaryPart)
+			dataReal[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
+			if(IsComplex)
 			{
 				if(_imageConjugatePart)
-					data[xSrc + ySrc*_width] += -source->real()*s + source->imag()*c;
+					dataImaginary[xSrc + ySrc*_width] += -source->real()*s + source->imag()*c;
 				else
-					data[xSrc + ySrc*_width] += source->real()*s + source->imag()*c;
+					dataImaginary[xSrc + ySrc*_width] += source->real()*s + source->imag()*c;
 			}
-			else
-				data[xSrc + ySrc*_width] += source->real()*c - source->imag()*s;
 			
 			++source;
 			++sqrtLMIter;
@@ -678,9 +698,13 @@ void LayeredImager::initializeSqrtLMLookupTableForSampling()
 	}
 }
 
+template<bool IsComplex>
 void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w)
 {
-	double *data = _imageData[0];
+	double *dataReal = _imageData[0], *dataImaginary;
+	if(IsComplex)
+		dataImaginary = _imageDataImaginary[0];
+	
 	const double twoPiW = 2.0 * M_PI * w;
 	std::vector<double>::const_iterator sqrtLMIter = _sqrtLMLookupTable.begin();
 	for(size_t y=0;y!=_height;++y)
@@ -702,8 +726,14 @@ void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest
 			double rad = twoPiW * *sqrtLMIter;
 			double s, c;
 			sincos(rad, &s, &c);
-			double dataVal = data[xDest + yDest*_width];
-			*dest = std::complex<double>(dataVal*c, -dataVal*s);
+			double realVal = dataReal[xDest + yDest*_width];
+			if(IsComplex)
+			{
+				double imagVal = dataImaginary[xDest + yDest*_width];
+				*dest = std::complex<double>(realVal*c + imagVal*s, imagVal*c - realVal*s);
+			}
+			else
+				*dest = std::complex<double>(realVal*c, -realVal*s);
 			
 			++dest;
 			++sqrtLMIter;

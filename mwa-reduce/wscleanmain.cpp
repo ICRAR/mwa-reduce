@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 		}
 		else if(param == "imaginarypart")
 		{
-			wsclean.SetImaginaryPart(true);
+			throw std::runtime_error("-imaginarypart is deprecated: imaging xy/yx will always make imaginary part.");
 		}
 		else if(param == "negative")
 		{

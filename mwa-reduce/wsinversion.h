@@ -26,9 +26,11 @@ class WSInversion : public InversionAlgorithm
 	
 		virtual void Invert();
 		
-		virtual void InvertToVisibilities(const double *image);
+		virtual void Predict(const double* image) { Predict(image, 0); }
+		virtual void Predict(const double* real, const double* imaginary);
 		
-		virtual double *ImageResult() const { return _imager->Image(); }
+		virtual double *ImageRealResult() const { return _imager->RealImage(); }
+		virtual double *ImageImaginaryResult() const { return _imager->ImaginaryImage(); }
 		virtual double PhaseCentreRA() const { return _phaseCentreRA; }
 		virtual double PhaseCentreDec() const { return _phaseCentreDec; }
 		virtual double HighestFrequencyChannel() const { return _freqHigh; }
@@ -58,7 +60,7 @@ class WSInversion : public InversionAlgorithm
 			double uInLambda, vInLambda, wInLambda;
 			std::complex<float> sample;
 		};
-		struct SamplingWorkItem
+		struct PredictionWorkItem
 		{
 			double u, v, w;
 			std::complex<float> *data;
@@ -88,7 +90,7 @@ class WSInversion : public InversionAlgorithm
 		void gridMeasurementSet(MSData &msData);
 		void countSamplesPerLayer(MSData &msData);
 
-		void sampleToMeasurementSet(MSData &msData);
+		void predictMeasurementSet(MSData &msData);
 
 		void workThread(ao::lane<InversionWorkItem>* workLane)
 		{
@@ -103,10 +105,10 @@ class WSInversion : public InversionAlgorithm
 		void workThreadParallel(const MultiBandData* selectedBand);
 		void workThreadPerSample(ao::lane<InversionWorkSample>* workLane);
 		
-		void visSampleCalcThread(ao::lane<SamplingWorkItem>* inputLane, ao::lane<SamplingWorkItem>* outputLane);
-		void visSampleWriteThread(ao::lane<SamplingWorkItem>* samplingWorkLane, const MSData* msData);
-		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
-		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
+		void predictCalcThread(ao::lane<PredictionWorkItem>* inputLane, ao::lane<PredictionWorkItem>* outputLane);
+		void predictWriteThread(ao::lane<PredictionWorkItem>* samplingWorkLane, const MSData* msData);
+//		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
+//		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
 		static void rotateVisibilities(const BandData &bandData, double shiftFactor, double multFactor, std::complex<float>* dataIter);
 
 		std::unique_ptr<LayeredImager> _imager;

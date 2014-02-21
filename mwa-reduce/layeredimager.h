@@ -37,7 +37,7 @@ class LayeredImager
 			if(_nWLayers == 1)
 				return 0;
 			else {
-				if(_imageImaginaryPart)
+				if(_isComplex)
 					return size_t(round((wInLambda + _maxW) * (_nWLayers-1) / (_maxW + _maxW)));
 				else
 					return size_t(round((fabs(wInLambda) - _minW) * (_nWLayers-1) / (_maxW - _minW)));
@@ -49,7 +49,7 @@ class LayeredImager
 			if(_nWLayers == 1)
 				return 0.0;
 			else {
-				if(_imageImaginaryPart)
+				if(_isComplex)
 					return layer * (_maxW + _maxW) / (_nWLayers-1) - _maxW;
 				else
 					return layer * (_maxW - _minW) / (_nWLayers-1) + _minW;
@@ -96,13 +96,23 @@ class LayeredImager
 		void FinalizeImage(double multiplicationFactor);
 		
 		// Sampling (image to uv) methods
-		void PrepareImageForVisibilitySampling(const double *image, double multiplicationFactor);
+		void InitializePrediction(const double *image, double multiplicationFactor)
+		{
+			initializePrediction(image, multiplicationFactor, _imageData);
+		}
 		
-		void StartVisibilitySamplingPass(size_t passIndex);
+		void InitializePrediction(const double *real, const double *imaginary, double multiplicationFactor)
+		{
+			initializePrediction(real, multiplicationFactor, _imageData);
+			initializePrediction(imaginary, multiplicationFactor, _imageDataImaginary);
+		}
+
+		void StartPredictionPass(size_t passIndex);
 		
 		void SampleData(std::complex<float>* data, size_t dataDescId, double uInM, double vInM, double wInM);
 		
-		double *Image() { return _imageData[0]; }
+		double *RealImage() { return _imageData[0]; }
+		double *ImaginaryImage() { return _imageDataImaginary[0]; }
 		
 		size_t NFFTThreads() const { return _nFFTThreads; }
 		void SetNFFTThreads(size_t nfftThreads) { _nFFTThreads = nfftThreads; }
@@ -110,7 +120,7 @@ class LayeredImager
 		enum GridModeEnum GridMode() const { return _gridMode; }
 		void SetGridMode(enum GridModeEnum mode) { _gridMode = mode; }
 		
-		void SetImageImaginaryPart(bool imageImaginaryPart) { _imageImaginaryPart = imageImaginaryPart; }
+		void SetIsComplex(bool isComplex) { _isComplex = isComplex; }
 		
 		void SetImageConjugatePart(bool imageConjugatePart) { _imageConjugatePart = imageConjugatePart; }
 		
@@ -122,8 +132,9 @@ class LayeredImager
 		{
 			return (_nWLayers * layerRangeIndex) / _nPasses;
 		}
-		template<bool ImageImaginaryPart>
+		template<bool IsComplex>
 		void projectOnImageAndCorrect(const std::complex<double> *source, double w, size_t threadIndex);
+		template<bool IsComplex>
 		void copyImageToLayerAndInverseCorrect(std::complex<double> *dest, double w);
 		void initializeSqrtLMLookupTable();
 		void initializeSqrtLMLookupTableForSampling();
@@ -131,6 +142,8 @@ class LayeredImager
 		void freeLayeredUVData() { initializeLayeredUVData(0); }
 		void fftToImageThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks, size_t threadIndex);
 		void fftToUVThreadFunction(boost::mutex *mutex, std::stack<size_t> *tasks);
+		void finalizeImage(double multiplicationFactor, std::vector<double*>& dataArray);
+		void initializePrediction(const double *image, double multiplicationFactor, std::vector<double*>& dataArray);
 		
 		void makeKernels();
 		void makeKernel(std::vector<double> &kernel, double alpha, size_t overSamplingFactor);
@@ -140,7 +153,7 @@ class LayeredImager
 		
 		size_t _width, _height, _nWLayers, _nPasses, _curLayerRangeIndex;
 		double _minW, _maxW, _pixelSizeX, _pixelSizeY, _phaseCentreDL, _phaseCentreDM;
-		bool _imageImaginaryPart, _imageConjugatePart;
+		bool _isComplex, _imageConjugatePart;
 		MultiBandData _bandData;
 		
 		enum GridModeEnum _gridMode;
@@ -149,7 +162,7 @@ class LayeredImager
 		std::vector<std::vector<double>> _griddingKernels;
 		
 		std::vector<std::complex<double>*> _layeredUVData;
-		std::vector<double*> _imageData;
+		std::vector<double*> _imageData, _imageDataImaginary;
 		std::vector<double> _sqrtLMLookupTable;
 		size_t _nFFTThreads;
 		ImageBufferAllocator<double>* _imageBufferAllocator;

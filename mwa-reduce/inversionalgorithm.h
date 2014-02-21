@@ -26,7 +26,7 @@ class InversionAlgorithm
 			_wLimit(0.0),
 			_precalculatedWeightInfo(0),
 			_polarization(Polarization::StokesI),
-			_imaginaryPart(false),
+			_isComplex(false),
 			_weighting(WeightMode::UniformWeighted),
 			_verbose(false),
 			_selection(),
@@ -55,7 +55,7 @@ class InversionAlgorithm
 		WeightMode Weighting() const { return _weighting; }
 		class ImageWeights* PrecalculatedWeightInfo() const { return _precalculatedWeightInfo; }
 		const MSSelection& Selection() const { return _selection; }
-		bool ImaginaryPart() const { return _imaginaryPart; }
+		bool IsComplex() const { return _isComplex; }
 		bool Verbose() const { return _verbose; }
 		size_t AntialiasingKernelSize() const { return _antialiasingKernelSize; }
 		size_t OverSamplingFactor() const { return _overSamplingFactor; }
@@ -102,9 +102,9 @@ class InversionAlgorithm
 		{
 			_polarization = polarization;
 		}
-		void SetImaginaryPart(bool imaginaryPart)
+		void SetIsComplex(bool isComplex)
 		{
-			_imaginaryPart = imaginaryPart;
+			_isComplex = isComplex;
 		}
 		void SetWeighting(WeightMode weighting)
 		{
@@ -145,9 +145,11 @@ class InversionAlgorithm
 		
 		virtual void Invert() = 0;
 		
-		virtual void InvertToVisibilities(const double *image) = 0;
+		virtual void Predict(const double* image) = 0;
+		virtual void Predict(const double* real, const double* imaginary) = 0;
 		
-		virtual double *ImageResult() const = 0;
+		virtual double *ImageRealResult() const = 0;
+		virtual double *ImageImaginaryResult() const = 0;
 		virtual double PhaseCentreRA() const = 0;
 		virtual double PhaseCentreDec() const = 0;
 		virtual bool HasDenormalPhaseCentre() const { return false; }
@@ -172,7 +174,7 @@ class InversionAlgorithm
 		double _wLimit;
 		class ImageWeights *_precalculatedWeightInfo;
 		PolarizationEnum _polarization;
-		bool _imaginaryPart;
+		bool _isComplex;
 		WeightMode _weighting;
 		bool _verbose;
 		MSSelection _selection;

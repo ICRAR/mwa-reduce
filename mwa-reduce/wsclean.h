@@ -29,7 +29,6 @@ public:
 	void SetThreshold(double threshold) { _threshold = threshold; }
 	void SetColumnName(const std::string& columnName) { _columnName = columnName; }
 	void SetPolarizations(const std::set<PolarizationEnum>& polarizations) { _polarizations = polarizations; }
-	void SetImaginaryPart(bool imagPart) { _imaginaryPart = imagPart; }
 	void SetAllowNegative(bool allowNegative) { _allowNegative = allowNegative; }
 	void SetStopOnNegative(bool stopOnNegative) { _stopOnNegative = stopOnNegative; }
 	void SetMakePSF(bool makePSF) { _makePSF = makePSF; }
@@ -71,7 +70,7 @@ public:
 	void Run();
 private:
 	void runChannel(size_t outChannelIndex);
-	void runPolarizationStart(size_t outChannelIndex, PolarizationEnum polarization, bool isImaginary);
+	void runPolarizationStart(size_t outChannelIndex, PolarizationEnum polarization);
 	void performClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void performSimpleClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIterationNr);
@@ -88,9 +87,9 @@ private:
 	
 	void imagePSF();
 	void imageGridding();
-	void imageMainFirst(PolarizationEnum polarization, bool isImaginary);
-	void imageMainNonFirst(PolarizationEnum polarization, bool isImaginary);
-	void predict(PolarizationEnum polarization, bool isImaginary);
+	void imageMainFirst(PolarizationEnum polarization);
+	void imageMainNonFirst(PolarizationEnum polarization);
+	void predict(PolarizationEnum polarization);
 	
 	std::string polPrefix(PolarizationEnum polarization, bool isImaginary) const
 	{
@@ -110,7 +109,7 @@ private:
 	std::set<PolarizationEnum> _polarizations;
 	WeightMode _weightMode;
 	std::string _prefixName;
-	bool _allowNegative, _smallPSF, _addApparentModel, _stopOnNegative, _imaginaryPart, _makePSF;
+	bool _allowNegative, _smallPSF, _addApparentModel, _stopOnNegative, _makePSF;
 	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;
