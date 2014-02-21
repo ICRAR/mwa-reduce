@@ -218,7 +218,7 @@ string PartitionedMS::getMetaFilename(const string& msPath)
  * - Weights (single, only needed when imaging PSF)
  * - Model, optionally
  */
-PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::vector<PolarizationEnum>& polsOut)
+PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::set<PolarizationEnum>& polsOut)
 {
 	casa::MeasurementSet ms(msPath);
 
@@ -226,7 +226,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	size_t fileIndex = 0;
 	for(size_t part=0; part!=channelParts; ++part)
 	{
-		for(std::vector<PolarizationEnum>::const_iterator p=polsOut.begin(); p!=polsOut.end(); ++p)
+		for(std::set<PolarizationEnum>::const_iterator p=polsOut.begin(); p!=polsOut.end(); ++p)
 		{
 			std::string partPrefix = getPartPrefix(msPath, part, *p);
 			dataFiles[fileIndex] = new std::ofstream(partPrefix + ".tmp");
@@ -338,7 +338,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 					partStartCh = channelStart + channelCount*part/channelParts,
 					partEndCh = channelStart + channelCount*(part+1)/channelParts;
 				
-				for(std::vector<PolarizationEnum>::const_iterator p=polsOut.begin(); p!=polsOut.end(); ++p)
+				for(std::set<PolarizationEnum>::const_iterator p=polsOut.begin(); p!=polsOut.end(); ++p)
 				{
 					copyWeightedData(dataBuffer.data(), partStartCh, partEndCh, polarizationCount, dataArray, weightArray, flagArray, *p);
 					dataFiles[fileIndex]->write(reinterpret_cast<char*>(dataBuffer.data()), (partEndCh - partStartCh) * sizeof(std::complex<float>));
@@ -374,7 +374,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	{
 		header.channelStart = channelStart + channelCount*part/channelParts,
 		header.channelCount = (channelStart + channelCount*(part+1)/channelParts) - header.channelStart;
-		for(std::vector<PolarizationEnum>::const_iterator p=polsOut.begin(); p!=polsOut.end(); ++p)
+		for(std::set<PolarizationEnum>::const_iterator p=polsOut.begin(); p!=polsOut.end(); ++p)
 		{
 			dataFiles[fileIndex]->seekp(0, std::ios::beg);
 			dataFiles[fileIndex]->write(reinterpret_cast<char*>(&header), sizeof(PartHeader));
@@ -398,7 +398,7 @@ void PartitionedMS::Handle::decrease()
 		std::cout << "Cleaning up temporary files...\n";
 		for(size_t part=0; part!=_channelParts; ++part)
 		{
-			for(std::vector<PolarizationEnum>::const_iterator p=_polarizations.begin(); p!=_polarizations.end(); ++p)
+			for(std::set<PolarizationEnum>::const_iterator p=_polarizations.begin(); p!=_polarizations.end(); ++p)
 			{
 				std::string prefix = getPartPrefix(_msPath, part, *p);
 				std::remove((prefix + ".tmp").c_str());

@@ -1,20 +1,18 @@
-#ifndef CLEAN_ALGORITHM_H
-#define CLEAN_ALGORITHM_H
+#ifndef SIMPLE_CLEAN_H
+#define SIMPLE_CLEAN_H
 
 #include <string>
 #include <cmath>
 
-#include "polarizationenum.h"
+#include "cleanalgorithm.h"
 
 namespace ao {
 	template<typename T> class lane;
 }
 
-class CleanAlgorithm
+class SimpleClean : public CleanAlgorithm
 {
 	public:
-		CleanAlgorithm();
-		
 #ifdef __AVX__
 		template<bool AllowNegativeComponent>
 		static double FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y);
@@ -73,7 +71,6 @@ class CleanAlgorithm
 			return PartialFindPeakAVX(image, width, height, x, y, allowNegativeComponents, startY, endY);
 		}
 #else
-#warning "Not using AVX optimized version of PartialFindPeak()!"
 		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY)
 		{
 			return PartialFindPeakSimple(image, width, height, x, y, allowNegativeComponents, startY, endY);
@@ -105,41 +102,6 @@ class CleanAlgorithm
 		void ExecuteMajorIterationST(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height);
 		
 		void ExecuteMajorIteration(double* dataImage, double* modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain);
-		
-		void SetMaxNIter(size_t nIter) { _maxIter = nIter; }
-		
-		void SetThreshold(double threshold) { _threshold = threshold; }
-		
-		void SetSubtractionGain(double gain) { _subtractionGain = gain; }
-		
-		void SetStopGain(double stopGain) { _stopGain = stopGain; }
-		
-		void SetAllowNegativeComponents(bool allowNegativeComponents) { _allowNegativeComponents = allowNegativeComponents; }
-		
-		void SetStopOnNegativeComponents(bool stopOnNegative) { _stopOnNegativeComponent = stopOnNegative; }
-		
-		void SetResizePSF(bool resizePSF) { _resizePSF = resizePSF; }
-		
-		size_t MaxNIter() const { return _maxIter; }
-		double Threshold() const { return _threshold; }
-		double SubtractionGain() const { return _subtractionGain; }
-		double StopGain() const { return _stopGain; }
-		bool AllowNegativeComponents() const { return _allowNegativeComponents; }
-		bool StopOnNegativeComponents() const { return _allowNegativeComponents; }
-		bool ResizePSF() const { return _resizePSF; }
-		
-		static void ResizeImage(double* dest, size_t newWidth, size_t newHeight, const double* source, size_t width, size_t height);
-		
-		static void GetModelFromImage(class Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq, 
-																	PolarizationEnum polarization = Polarization::StokesI);
-
-		void SetCleanAreas(const class AreaSet& cleanAreas) { _cleanAreas = &cleanAreas; }
-		
-		static void RemoveNaNsInPSF(double* psf, size_t width, size_t height);
-		
-		static void CalculateFastCleanPSFSize(size_t& psfWidth, size_t& psfHeight, size_t imageWidth, size_t imageHeight);
-		
-		size_t IterationNumber() const { return _iterationNumber; }
 	private:
 		struct CleanTask
 		{
@@ -162,11 +124,6 @@ class CleanAlgorithm
 			size_t psfWidth, psfHeight;
 		};
 		void cleanThreadFunc(ao::lane<CleanTask>* taskLane, ao::lane<CleanResult>* resultLane, CleanThreadData cleanData);
-		
-		double _threshold, _subtractionGain, _stopGain;
-		size_t _maxIter, _iterationNumber;
-		bool _allowNegativeComponents, _stopOnNegativeComponent, _resizePSF;
-		const class AreaSet *_cleanAreas;
 };
 
 #endif

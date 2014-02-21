@@ -42,7 +42,7 @@ public:
 	
 	virtual void ReopenRW() { }
 	
-	static Handle Partition(const string& msPath, size_t channelParts, class MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::vector<PolarizationEnum>& polsOut);
+	static Handle Partition(const string& msPath, size_t channelParts, class MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::set<PolarizationEnum>& polsOut);
 	
 	class Handle {
 	public:
@@ -71,7 +71,7 @@ public:
 		Handle(const std::string& metaFile, const std::string& msPath, size_t channelParts) : _metaFile(metaFile), _msPath(msPath), _channelParts(channelParts), _referenceCount(new size_t(1)) { }
 		std::string _metaFile, _msPath;
 		size_t _channelParts;
-		std::vector<PolarizationEnum> _polarizations;
+		std::set<PolarizationEnum> _polarizations;
 		size_t *_referenceCount;
 	}; 
 private:

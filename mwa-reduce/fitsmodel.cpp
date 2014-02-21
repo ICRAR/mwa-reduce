@@ -8,7 +8,8 @@
 #include "model.h"
 #include "fitsreader.h"
 #include "imagecoordinates.h"
-#include "cleanalgorithm.h"
+#include "cleanalgorithms/simpleclean.h"
+
 #include "areaset.h"
 
 int main(int argc, char **argv)

@@ -12,6 +12,8 @@
 #include "stopwatch.h"
 #include "cachedimageset.h"
 
+#include <set>
+
 class WSClean
 {
 public:
@@ -26,7 +28,7 @@ public:
 	void SetNIter(size_t nIter) { _nIter = nIter; }
 	void SetThreshold(double threshold) { _threshold = threshold; }
 	void SetColumnName(const std::string& columnName) { _columnName = columnName; }
-	void SetPolarizations(const std::vector<PolarizationEnum>& polarizations) { _polarizations = polarizations; }
+	void SetPolarizations(const std::set<PolarizationEnum>& polarizations) { _polarizations = polarizations; }
 	void SetImaginaryPart(bool imagPart) { _imaginaryPart = imagPart; }
 	void SetAllowNegative(bool allowNegative) { _allowNegative = allowNegative; }
 	void SetStopOnNegative(bool stopOnNegative) { _stopOnNegative = stopOnNegative; }
@@ -70,7 +72,9 @@ public:
 private:
 	void runChannel(size_t outChannelIndex);
 	void runPolarizationStart(size_t outChannelIndex, PolarizationEnum polarization, bool isImaginary);
-	void runClean(bool& reachedMajorThreshold, size_t majorIterationNr);
+	void performClean(bool& reachedMajorThreshold, size_t majorIterationNr);
+	void performSimpleClean(bool& reachedMajorThreshold, size_t majorIterationNr);
+	void performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void prepareInversionAlgorithm(PolarizationEnum polarization);
 	
 	void initFitsWriter(class FitsWriter& writer);
@@ -80,6 +84,7 @@ private:
 	void initializeCleanAlgorithm();
 	void initializeCurMSProviders(size_t outChannelIndex, PolarizationEnum polarization);
 	void clearCurMSProviders();
+	void storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum polarization, bool isImaginary, const double* image);
 	
 	void imagePSF();
 	void imageGridding();

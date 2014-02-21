@@ -1,4 +1,5 @@
-#include "cleanalgorithm.h"
+#include "cleanalgorithms/simpleclean.h"
+
 #include "fitsreader.h"
 #include "fitswriter.h"
 #include "imagecoordinates.h"
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
 	inpReader.Read<double>(&image[0]);
 	
 	size_t componentX, componentY;
-	double peak = CleanAlgorithm::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
+	double peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
 	if(onlyFindPeak)
 	{
 		double l, m, ra, dec;
@@ -74,11 +75,11 @@ int main(int argc, char *argv[])
 		{
 			if(iterationNumber % 10 == 0)
 				std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
-			CleanAlgorithm::SubtractImage(&image[0], &psf[0], width, height, componentX, componentY, subtractionFactor * peak);
+			SimpleClean::SubtractImage(&image[0], &psf[0], width, height, componentX, componentY, subtractionFactor * peak);
 			model[componentX + componentY*width] += subtractionFactor * peak;
 			
 			lastPeak = peak;
-			peak = CleanAlgorithm::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
+			peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
 			++iterationNumber;
 		}
 		std::cout << "Stopped on peak " << peak << '\n';
