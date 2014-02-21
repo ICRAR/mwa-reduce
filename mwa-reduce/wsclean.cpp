@@ -185,11 +185,11 @@ void WSClean::storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum pola
 		if(isImaginary)
 		{
 			for(size_t i=0; i!=count; ++i)
-				xyImage[i] -= image[i];
+				xyImage[i] = (xyImage[i]-image[i])*0.5;
 		}
 		else {
 			for(size_t i=0; i!=count; ++i)
-				xyImage[i] += image[i];
+				xyImage[i] = (xyImage[i]+image[i])*0.5;
 		}
 		dest.Store(xyImage, Polarization::XY, isImaginary);
 		_imageAllocator.Free(xyImage);
