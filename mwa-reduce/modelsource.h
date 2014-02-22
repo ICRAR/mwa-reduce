@@ -177,20 +177,20 @@ class ModelSource
 			_components.clear();
 		}
 		
-		double TotalFlux(double frequencyStartHz, double frequencyEndHz, size_t polarizationIndex) const
+		double TotalFlux(double frequencyStartHz, double frequencyEndHz, PolarizationEnum polarization) const
 		{
 			double flux = 0.0;
 			for(const_iterator i=begin(); i!=end(); ++i)
-				flux += i->SED().IntegratedFlux(frequencyStartHz, frequencyEndHz, polarizationIndex);
+				flux += i->SED().IntegratedFlux(frequencyStartHz, frequencyEndHz, polarization);
 			
 			return flux;
 		}
 		
-		double TotalFlux(double frequency, size_t polarizationIndex) const
+		double TotalFlux(double frequency, PolarizationEnum polarization) const
 		{
 			double flux = 0.0;
 			for(const_iterator i=begin(); i!=end(); ++i)
-				flux += i->SED().FluxAtFrequency(frequency, polarizationIndex);
+				flux += i->SED().FluxAtFrequency(frequency, polarization);
 			
 			return flux;
 		}
@@ -206,11 +206,11 @@ class ModelSource
 			double freq = (Peak().SED().LowestFrequency() + Peak().SED().HighestFrequency()) * 0.5;
 			for(iterator i=begin(); i!=end(); ++i)
 			{
-				totalFlux += TotalFlux(freq, 0) + TotalFlux(freq, 3);
+				totalFlux += TotalFlux(freq, Polarization::StokesI);
 			}
 			for(iterator i=begin(); i!=end(); ++i)
 			{
-				double thisFlux = i->SED().FluxAtFrequency(freq, 0) + i->SED().FluxAtFrequency(freq, 3);
+				double thisFlux = i->SED().FluxAtFrequency(freq, Polarization::StokesI);
 				i->SetSED(SpectralEnergyDistribution(thisFlux / totalFlux, freq));
 			}
 		}
@@ -220,19 +220,19 @@ class ModelSource
 			double totalFlux = 0.0;
 			for(iterator i=begin(); i!=end(); ++i)
 			{
-				totalFlux += TotalFlux(frequency, 0) + TotalFlux(frequency, 3);
+				totalFlux += TotalFlux(frequency, Polarization::StokesI);
 			}
 			double scaleFactor = newFlux / totalFlux;
 			for(iterator i=begin(); i!=end(); ++i)
 			{
-				double thisFlux = i->SED().FluxAtFrequency(frequency, 0) + i->SED().FluxAtFrequency(frequency, 3);
+				double thisFlux = i->SED().FluxAtFrequency(frequency, Polarization::StokesI);
 				i->SetSED(SpectralEnergyDistribution(thisFlux * scaleFactor, frequency));
 			}
 		}
 		
 		void SetConstantTotalFlux(const double* newFluxes, double frequency)
 		{
-			double totalFlux = fabs(TotalFlux(frequency, 0)) + fabs(TotalFlux(frequency, 3));
+			double totalFlux = fabs(TotalFlux(frequency, Polarization::StokesI));
 			
 			if(totalFlux == 0.0)
 			{
@@ -241,7 +241,7 @@ class ModelSource
 					Measurement m;
 					m.SetFrequencyHz(frequency);
 					for(size_t p=0; p!=4; ++p)
-						m.SetFluxDensity(p, newFluxes[p] / (double) ComponentCount());
+						m.SetFluxDensityFromIndex(p, newFluxes[p] / (double) ComponentCount());
 					SpectralEnergyDistribution sed;
 					sed.AddMeasurement(m);
 					i->SetSED(sed);
@@ -258,10 +258,10 @@ class ModelSource
 				{
 					Measurement m;
 					m.SetFrequencyHz(frequency);
-					double thisFlux = 0.5*(i->SED().FluxAtFrequency(frequency, 0) + i->SED().FluxAtFrequency(frequency, 3));
+					double thisFlux = 0.5*(i->SED().FluxAtFrequency(frequency, Polarization::StokesI));
 					for(size_t p=0; p!=4; ++p)
 					{
-						m.SetFluxDensity(p, thisFlux * scaleFactor[p]);
+						m.SetFluxDensityFromIndex(p, thisFlux * scaleFactor[p]);
 					}
 					SpectralEnergyDistribution sed;
 					sed.AddMeasurement(m);

@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 				x = l / fitsReader.PixelSizeX() + fitsReader.ImageWidth()/2,
 				y = m / fitsReader.PixelSizeY() + fitsReader.ImageHeight()/2;
 			//std::cout << x << ',' << y << '\n';
-			bool aboveThreshold = (source.Peak().SED().FluxAtFrequency(refFreq, 0) > threshold);
+			bool aboveThreshold = (source.Peak().SED().FluxAtFrequency(refFreq, Polarization::StokesI) > threshold);
 			if(aboveThreshold && x > 0.0 && y > 0.0 && x < fitsReader.ImageWidth() && y < fitsReader.ImageHeight())
 			{
 				double value = 0.0;

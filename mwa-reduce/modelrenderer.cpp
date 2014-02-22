@@ -12,10 +12,10 @@ T ModelRenderer::gaus(T x, T sigma) const
 	return exp(T(-0.5) * xi * xi);// / (sigma * sqrt(T(2.0) * M_PIl));
 }
 
-template void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex);
+template void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 
 template<typename NumType>
-void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex)
+void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamSize, long double startFrequency, long double endFrequency, PolarizationEnum polarization)
 {
 	// Using the FWHM formula for a Gaussian:
 	long double sigma = beamSize / (2.0L * sqrtl(2.0L * logl(2.0L)));
@@ -31,7 +31,7 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 				sourceL, sourceM;
 			ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
 			const SpectralEnergyDistribution &sed = comp->SED();
-			const long double intFlux = sed.IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
+			const long double intFlux = sed.IntegratedFlux(startFrequency, endFrequency, polarization);
 			
 			//std::cout << "Source: " << comp->PosRA() << "," << comp->PosDec() << " Phase centre: " << _phaseCentreRA << "," << _phaseCentreDec << " beamsize: " << beamSize << "\n";
 				
@@ -72,10 +72,10 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 	}
 }
 
-template void ModelRenderer::RenderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, size_t polarizationIndex);
+template void ModelRenderer::RenderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 
 template<typename NumType>
-void ModelRenderer::RenderModel(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, size_t polarizationIndex)
+void ModelRenderer::RenderModel(NumType* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization)
 {
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
@@ -90,7 +90,7 @@ void ModelRenderer::RenderModel(NumType* imageData, size_t imageWidth, size_t im
 			ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
 			ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
 			
-			const long double intFlux = comp->SED().IntegratedFlux(startFrequency, endFrequency, polarizationIndex);
+			const long double intFlux = comp->SED().IntegratedFlux(startFrequency, endFrequency, polarization);
 			
 			if(sourceX >= 0 && sourceX < (int) imageWidth && sourceY >= 0 && sourceY < (int) imageHeight)
 			{

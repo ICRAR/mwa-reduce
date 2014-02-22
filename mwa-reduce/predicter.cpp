@@ -12,26 +12,26 @@ void Predicter::initialize(ModelComponent& component)
 	ImageCoordinates::RaDecToLM<NumType>(component.PosRA(), component.PosDec(), _ra0, _dec0, l, m);
 	parameters->l = l;
 	parameters->m = m;
-	parameters->brightness = new NumType[_channelCount*4];
+	parameters->brightness = new CNumType[_channelCount*4];
 	parameters->beamValues = new CNumType[_channelCount*4];
 	parameters->appBrightness = new CNumType[_channelCount*4];
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
+		NumType stokesValues[4];
+		
 		for(size_t p=0; p!=4; ++p)
 		{
-			parameters->brightness[ch*4+p] =
-				component.SED().FluxAtChannel(ch, _channelCount, _startFrequency, _endFrequency, p);
+			stokesValues[p] = component.SED().FluxAtChannel(ch, _channelCount, _startFrequency, _endFrequency, Polarization::IndexToStokes(p));
 		}
+		Polarization::StokesToLinear(stokesValues, &parameters->brightness[ch*4]);
 	}
 
 	updateBeam(component);
 	
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
-		CNumType temp[4], brightness[4];
-		brightness[0] = parameters->brightness[ch*4+0]; brightness[1] = parameters->brightness[ch*4+2];
-		brightness[2] = parameters->brightness[ch*4+1]; brightness[3] = parameters->brightness[ch*4+3];
-		Matrix2x2::ATimesB(temp, &parameters->beamValues[ch*4], brightness);
+		CNumType temp[4];
+		Matrix2x2::ATimesB(temp, &parameters->beamValues[ch*4], &parameters->brightness[ch*4]);
 		Matrix2x2::PlusATimesHermB(_totalFlux, temp, &parameters->beamValues[ch*4]);
 	}
 	parameters->lmsqrt = sqrt(1.0 - l*l - m*m);
@@ -101,10 +101,11 @@ void Predicter::ReportSources(Model& model)
 	std::cout << "]\n";
 	
 	std::cout << "(absolute brightness: [";
-	std::cout << model.TotalFlux(_startFrequency, _endFrequency, 0);
-	for(size_t p=1; p!=4; ++p)
-		std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, p);
-	std::cout << "], app at low freq: " << model.TotalFlux(_startFrequency, 0) << ", app at high freq: " << model.TotalFlux(_endFrequency, 0) << ")\n";
+	std::cout << model.TotalFlux(_startFrequency, _endFrequency, Polarization::StokesI);
+	std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, Polarization::StokesQ);
+	std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, Polarization::StokesU);
+	std::cout << ',' << model.TotalFlux(_startFrequency, _endFrequency, Polarization::StokesV);
+	std::cout << "], abs at low freq: " << model.TotalFlux(_startFrequency, Polarization::StokesI) << ", abs at high freq: " << model.TotalFlux(_endFrequency, Polarization::StokesI) << ")\n";
 }
 
 void Predicter::predict4(CNumType *dest, const ModelComponent& component, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2)
@@ -134,8 +135,9 @@ void Predicter::predict4(CNumType *dest, const ModelComponent& component, NumTyp
 			else {
 				for(size_t p=0; p!=4; ++p)
 				{
-					NumType fact = parameters->brightness[channelIndex*4+p];
-					dest[p] = CNumType(fact * cosangleOverLMS, fact * sinangleOverLMS);
+					CNumType fact = parameters->brightness[channelIndex*4+p];
+					dest[p] = CNumType(fact.real() * cosangleOverLMS - fact.imag() * sinangleOverLMS,
+														 fact.real() * sinangleOverLMS + fact.imag() * cosangleOverLMS);
 				}
 			}
 		}

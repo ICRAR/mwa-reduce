@@ -145,7 +145,7 @@ void SpectrumSubtractor::Perform()
 			flux[p] = _totalFluxPerSource[s*4 + p] / _totalFluxWeightPerSource[s*4 + p];
 		
 		source.SetConstantTotalFlux(flux, _bandData.CentreFrequency());
-		if(_applyBeam)
+		/*if(_applyBeam)
 		{
 			for(ModelSource::iterator comp=source.begin(); comp!=source.end(); ++comp)
 			{
@@ -154,12 +154,13 @@ void SpectrumSubtractor::Perform()
 				beamEval->ApparentToAbs(comp->PosRA(), comp->PosDec(), flux);
 				comp->SED() = SpectralEnergyDistribution(flux, _bandData.CentreFrequency());
 			}
-		}
+		} TODO the above is not correct
+		*/
 		
 		std::cout << source.Name() << '\t';
 		for(size_t p=0; p!=4; ++p)
 		{
-			std::cout << source.TotalFlux(_bandData.CentreFrequency(), p);
+			std::cout << source.TotalFlux(_bandData.CentreFrequency(), Polarization::IndexToStokes(p));
 			if(p == 3)
 				std::cout << '\n';
 			else

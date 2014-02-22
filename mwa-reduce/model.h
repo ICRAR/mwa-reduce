@@ -56,20 +56,20 @@ class Model
 		
 		enum PolarizationType { FullXY };
 		
-		double TotalFlux(double frequencyStartHz, double frequencyEndHz, size_t polarizationIndex) const
+		double TotalFlux(double frequencyStartHz, double frequencyEndHz, PolarizationEnum polarization) const
 		{
 			double flux = 0.0;
 			for(const_iterator i=begin(); i!=end(); ++i)
-				flux += i->TotalFlux(frequencyStartHz, frequencyEndHz, polarizationIndex);
+				flux += i->TotalFlux(frequencyStartHz, frequencyEndHz, polarization);
 			
 			return flux;
 		}
 		
-		double TotalFlux(double frequency, size_t polarizationIndex) const
+		double TotalFlux(double frequency, PolarizationEnum polarization) const
 		{
 			double flux = 0.0;
 			for(const_iterator i=begin(); i!=end(); ++i)
-				flux += i->TotalFlux(frequency, polarizationIndex);
+				flux += i->TotalFlux(frequency, polarization);
 			
 			return flux;
 		}
@@ -85,23 +85,8 @@ class Model
 					SpectralEnergyDistribution &sed = compPtr->SED();
 					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 					{
-						long double totalFlux = 0.0;
-						long double xx = m->second.FluxDensity(0);
-						size_t count = 0;
-						if(std::isfinite(xx)) {
-							totalFlux += xx;
-							++count;
-						}
-						long double yy = m->second.FluxDensity(3);
-						if(std::isfinite(yy)) {
-							totalFlux += yy;
-							++count;
-						}
-						totalFlux /= count;
-						m->second.SetFluxDensity(0, totalFlux);
-						m->second.SetFluxDensity(1, 0.0);
-						m->second.SetFluxDensity(2, 0.0);
-						m->second.SetFluxDensity(3, totalFlux);
+						long double totalFlux = m->second.FluxDensity(Polarization::StokesI);
+						m->second.SetZeroExceptSinglePol(Polarization::StokesI, totalFlux);
 					}
 				}
 			}

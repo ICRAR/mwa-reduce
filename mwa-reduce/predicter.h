@@ -41,8 +41,8 @@ class Predicter
 		void predict4(CNumType *dest, const class ModelComponent& component, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);
 		struct SourceParameters
 		{
-			NumType l, m, lmsqrt, *brightness;
-			CNumType *beamValues, *appBrightness;
+			NumType l, m, lmsqrt;
+			CNumType *brightness, *beamValues, *appBrightness;
 		};
 		void readSolutions(const std::string& solutionFile);
 		

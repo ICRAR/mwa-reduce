@@ -2,6 +2,7 @@
 #define MODELRENDERER_H
 
 #include <cstring>
+#include "polarizationenum.h"
 
 class ModelRenderer
 {
@@ -12,10 +13,10 @@ class ModelRenderer
 		}
 		
 		template<typename NumType>
-		void Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamSize, long double startFrequency, long double endFrequency, size_t polarizationIndex);
+		void Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamSize, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 		
 		template<typename NumType>
-		void RenderModel(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, size_t polarizationIndex);
+		void RenderModel(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 	private:
 		long double _phaseCentreRA;
 		long double _phaseCentreDec;

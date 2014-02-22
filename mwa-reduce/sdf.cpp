@@ -31,11 +31,13 @@ public:
 	
 	double totalAppFlux(const ModelComponent& c) const
 	{
-		double flux[4];
+		double stokesFlux[4];
 		for(size_t p=0; p!=4; ++p)
-			flux[p] = c.SED().FluxAtFrequency(_frequency, p);
-		_beam->AbsToApparent(c.PosRA(), c.PosDec(), _frequency, flux);
-		return (flux[0] + flux[3]) * 0.5;
+			stokesFlux[p] = c.SED().FluxAtFrequency(_frequency, Polarization::IndexToStokes(p));
+		std::complex<double> linFlux[4];
+		Polarization::StokesToLinear(stokesFlux, linFlux);
+		_beam->AbsToApparent(c.PosRA(), c.PosDec(), _frequency, linFlux);
+		return (std::abs(linFlux[0]) + std::abs(linFlux[3])) * 0.5;
 	}
 	
 	double totalAppFlux(const ModelSource& s) const
@@ -53,14 +55,14 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-delnoisysources <fluxlimit>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]]\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, unpolarized = false, delNoisySources = false;
+	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, unpolarized = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
-	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, delNoisySourceLimit = 0.0, logNlogSFrequency = 0.0;
+	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0;
 	std::string outputModel, collectName, appThresholdMS, appSortMS;
@@ -104,11 +106,6 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			outputModel = argv[argi];
-		} else if(strcmp(argv[argi], "-delnoisysources") == 0)
-		{
-			++argi;
-			delNoisySources = true;
-			delNoisySourceLimit = atof(argv[argi]);
 		} else if(strcmp(argv[argi], "-s") == 0)
 		{
 			++argi;
@@ -237,7 +234,7 @@ int main(int argc, char *argv[])
 				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 				{
 					for(size_t p=0; p!=4; ++p)
-						m->second.SetFluxDensity(p, m->second.FluxDensity(p) * fact);
+						m->second.SetFluxDensityFromIndex(p, m->second.FluxDensityFromIndex(p) * fact);
 				}
 			}
 		}
@@ -293,11 +290,11 @@ int main(int argc, char *argv[])
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
 			const SpectralEnergyDistribution& sed = sourcePtr->Peak().SED();
-			double flux = sourcePtr->TotalFlux(sed.LowestFrequency(), sed.HighestFrequency(), 0);
+			double flux = sourcePtr->TotalFlux(sed.LowestFrequency(), sed.HighestFrequency(), Polarization::StokesI);
 			if(!std::isfinite(flux))
 			{
 				long double f, e;
-				sed.FitPowerlaw(f, e, 0);
+				sed.FitPowerlaw(f, e, Polarization::StokesI);
 				double lowFlux = f * std::pow(sed.LowestFrequency(), e);
 				double hiFlux = f * std::pow(sed.HighestFrequency(), e);
 				flux = (lowFlux + hiFlux) * 0.5;
@@ -317,47 +314,30 @@ int main(int argc, char *argv[])
 		BandData bandData(ms.spectralWindow());
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			double flux[4];
+			double stokesFlux[4];
 			for(size_t p=0; p!=4; ++p)
 			{
 				const SpectralEnergyDistribution& sed = sourcePtr->Peak().SED();
-				flux[p] = sourcePtr->TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
-				if(!std::isfinite(flux[p]))
+				stokesFlux[p] = sourcePtr->TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), Polarization::IndexToStokes(p));
+				if(!std::isfinite(stokesFlux[p]))
 				{
 					long double f, e;
-					sed.FitPowerlaw(f, e, p);
+					sed.FitPowerlaw(f, e, Polarization::IndexToStokes(p));
 					double lowFlux = f * std::pow(bandData.LowestFrequency(), e);
 					double hiFlux = f * std::pow(bandData.HighestFrequency(), e);
-					flux[p] = (lowFlux + hiFlux) * 0.5;
+					stokesFlux[p] = (lowFlux + hiFlux) * 0.5;
 				}
 			}
-			beam.AbsToApparent(sourcePtr->Peak().PosRA(), sourcePtr->Peak().PosDec(), bandData.CentreFrequency(), flux);
-			double stokesIFlux = (flux[0] + flux[3]) * 0.5;
-			if(stokesIFlux >= appThreshold)
+			std::complex<double> linFlux[4];
+			Polarization::StokesToLinear(stokesFlux, linFlux);
+			beam.AbsToApparent(sourcePtr->Peak().PosRA(), sourcePtr->Peak().PosDec(), bandData.CentreFrequency(), linFlux);
+			double appStokesIFlux = (std::abs(linFlux[0]) + std::abs(linFlux[3])) * 0.5;
+			if(appStokesIFlux >= appThreshold)
 				temp.AddSource(*sourcePtr);
 		}
 		model = temp;
 	}
 	
-	if(delNoisySources)
-	{
-		std::set<size_t> sourcesToDelete;
-		for(size_t p=0; p!=4; ++p)
-		{
-			for(size_t i = 0; i!=model.SourceCount(); ++i)
-			{
-				SpectralEnergyDistribution &sed = model.Source(i).Peak().SED();
-				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
-				{
-					long double flux = m->second.FluxDensity(p);
-					if(flux > delNoisySourceLimit || flux < -delNoisySourceLimit)
-						sourcesToDelete.insert(i);
-				}
-			}
-		}
-		for(std::set<size_t>::reverse_iterator i=sourcesToDelete.rbegin(); i!=sourcesToDelete.rend(); ++i)
-			model.RemoveSource(*i);
-	}
 	if(rndN != 0)
 	{
 		for(size_t i=0; i!=rndN; ++i)
@@ -422,9 +402,9 @@ int main(int argc, char *argv[])
 				
 				for(size_t p=0; p!=4; ++p)
 				{
-					sed.FitPowerlaw(f, e, p);
-					m1.SetFluxDensity(p, f * std::pow(startFreq, e));
-					m2.SetFluxDensity(p, f * std::pow(endFreq, e));
+					sed.FitPowerlaw(f, e, Polarization::IndexToStokes(p));
+					m1.SetFluxDensityFromIndex(p, f * std::pow(startFreq, e));
+					m2.SetFluxDensityFromIndex(p, f * std::pow(endFreq, e));
 				}
 				newSED.AddMeasurement(m1);
 				newSED.AddMeasurement(m2);
@@ -440,9 +420,9 @@ int main(int argc, char *argv[])
 					long double chEndFreq = endFreq + newBandSize*(newChIndex+1.0);
 					long double flux;
 					if(newChannelCount < sed.MeasurementCount())
-						flux = sed.IntegratedFlux(chStartFreq, chEndFreq, 0);
+						flux = sed.IntegratedFlux(chStartFreq, chEndFreq, Polarization::StokesI);
 					else
-						flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, 0);
+						flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, Polarization::StokesI);
 					
 					newSED.AddMeasurement(flux, (chStartFreq+chEndFreq)*0.5);
 				}
@@ -463,7 +443,7 @@ int main(int argc, char *argv[])
 					SpectralEnergyDistribution &sed = compPtr->SED();
 					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 					{
-						m->second.SetFluxDensity(p, setPolFlux[p]);
+						m->second.SetFluxDensityFromIndex(p, setPolFlux[p]);
 					}
 				}
 			}
@@ -477,7 +457,7 @@ int main(int argc, char *argv[])
 					SpectralEnergyDistribution &sed = compPtr->SED();
 					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
 					{
-						m->second.SetFluxDensity(p, m->second.FluxDensity(p) * scale);
+						m->second.SetFluxDensityFromIndex(p, m->second.FluxDensityFromIndex(p) * scale);
 					}
 				}
 			}
@@ -494,14 +474,14 @@ int main(int argc, char *argv[])
 				if(scalePeak)
 				{
 					long double
-						oldFluxA = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqA, p),
-						oldFluxB = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqB, p);
+						oldFluxA = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqA, Polarization::IndexToStokes(p)),
+						oldFluxB = sourcePtr->Peak().SED().FluxAtFrequency(scaleFreqB, Polarization::IndexToStokes(p));
 					factorA[p] = oldFluxA==0.0 ? 0.0 : scalePeakA / oldFluxA;
 					factorB[p] = oldFluxB==0.0 ? 0.0 : scalePeakB / oldFluxB;
 				} else {
 					long double
-						oldFluxA = sourcePtr->TotalFlux(scaleFreqA, p),
-						oldFluxB = sourcePtr->TotalFlux(scaleFreqB, p);
+						oldFluxA = sourcePtr->TotalFlux(scaleFreqA, Polarization::IndexToStokes(p)),
+						oldFluxB = sourcePtr->TotalFlux(scaleFreqB, Polarization::IndexToStokes(p));
 					factorA[p] = oldFluxA==0.0 ? 0.0 : scalePeakA / oldFluxA;
 					factorB[p] = oldFluxB==0.0 ? 0.0 : scalePeakB / oldFluxB;
 				}
@@ -518,10 +498,10 @@ int main(int argc, char *argv[])
 				measB.SetFrequencyHz(scaleFreqB);
 				for(size_t p=0; p!=4; ++p)
 				{
-					long double oldFluxA = compPtr->SED().FluxAtFrequency(scaleFreqA, p);
-					long double oldFluxB = compPtr->SED().FluxAtFrequency(scaleFreqB, p);
-					measA.SetFluxDensity(p, oldFluxA*factorA[p]);
-					measB.SetFluxDensity(p, oldFluxB*factorB[p]);
+					long double oldFluxA = compPtr->SED().FluxAtFrequency(scaleFreqA, Polarization::IndexToStokes(p));
+					long double oldFluxB = compPtr->SED().FluxAtFrequency(scaleFreqB, Polarization::IndexToStokes(p));
+					measA.SetFluxDensityFromIndex(p, oldFluxA*factorA[p]);
+					measB.SetFluxDensityFromIndex(p, oldFluxB*factorB[p]);
 				}
 				SpectralEnergyDistribution sed;
 				sed.AddMeasurement(measA);
@@ -543,7 +523,7 @@ int main(int argc, char *argv[])
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
 			const ModelSource& source = *sourcePtr;
-			double stokesI = 0.5 * (source.TotalFlux(150000000.0,0) + source.TotalFlux(150000000.0,3));
+			double stokesI = source.TotalFlux(150000000.0, Polarization::StokesI);
 			sum += stokesI;
 			diffSq += (stokesI - 1.0) * (stokesI - 1.0);
 		}
@@ -551,7 +531,7 @@ int main(int argc, char *argv[])
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
 			const ModelSource& source = *sourcePtr;
-			double stokesI = 0.5 * (source.TotalFlux(150000000.0,0) + source.TotalFlux(150000000.0,3));
+			double stokesI = source.TotalFlux(150000000.0, Polarization::StokesI);
 			stdDevSum += (stokesI - mean) * (stokesI - mean);
 		}
 		std::cout <<
@@ -567,8 +547,8 @@ int main(int argc, char *argv[])
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
 			const ModelSource& source = *sourcePtr;
-			double x = source.TotalFlux(logNlogSFrequency*1000000.0, 0), y = source.TotalFlux(logNlogSFrequency*1000000.0, 1);
-			histogram.Add(0.5 * (x + y));
+			double v = source.TotalFlux(logNlogSFrequency*1000000.0, Polarization::StokesI);
+			histogram.Add(v);
 		}
 		long double max = histogram.MaxAmplitude(), min = histogram.MinPositiveAmplitude();
 		long double step = powl(max/min, 1.0/logNlogSBinCount);
@@ -654,10 +634,9 @@ int main(int argc, char *argv[])
 				plotIStream << "\"" << dataStreamName.str() << "\" using 1:((column(2)+column(5))*0.5) with lines lw 2.0 title \"\",\\\n";
 				
 				const SpectralEnergyDistribution &sed = compPtr->SED();
-				long double e1, e2, f1, f2;
-				sed.FitPowerlaw(f1, e1, 0);
-				sed.FitPowerlaw(f2, e2, 3);
-				plotIStream << (f1/2.0) << " * (x*1000000)**" << e1 << " + " << (f2/2.0) << " * (x*1000000)**" << e2 << " with lines lw 1.0 title \"\"";
+				long double e, f;
+				sed.FitPowerlaw(f, e, Polarization::StokesI);
+				plotIStream << (f/2.0) << " * (x*1000000)**" << e << " with lines lw 1.0 title \"\"";
 				
 				if(sourceIndex != model.ComponentCount()-1)
 				{
@@ -674,10 +653,10 @@ int main(int argc, char *argv[])
 				{
 					dataStream
 						<< i->FrequencyHz()/1000000.0 << '\t'
-						<< i->FluxDensity(0) << '\t'
-						<< i->FluxDensity(1) << '\t'
-						<< i->FluxDensity(2) << '\t'
-						<< i->FluxDensity(3) << '\n';
+						<< i->FluxDensity(Polarization::StokesI) << '\t'
+						<< i->FluxDensity(Polarization::StokesQ) << '\t'
+						<< i->FluxDensity(Polarization::StokesU) << '\t'
+						<< i->FluxDensity(Polarization::StokesV) << '\n';
 				}
 				++sourceIndex;
 			}

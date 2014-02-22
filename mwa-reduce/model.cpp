@@ -83,7 +83,7 @@ void Model::Save(const char* filename)
 
 void Model::Save(std::ostream& stream)
 {
-	stream << "skymodel fileformat 1.0\n";
+	stream << "skymodel fileformat 1.1\n";
 	for(const_iterator i=begin(); i!=end(); ++i)
 	{
 		stream << i->ToString();

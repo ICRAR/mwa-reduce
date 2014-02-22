@@ -117,11 +117,13 @@ int main(int argc, char* argv[])
 	for(Model::iterator srcIter=catalogue.begin(); srcIter!=catalogue.end(); ++srcIter)
 	{
 		ModelSource& source = *srcIter;
-		std::complex<double> fluxMatrix[4];
+		std::complex<double> fluxLinMatrix[4];
+		double fluxStokesMatrix[4];
 		for(size_t p=0; p!=4; ++p)
-			fluxMatrix[p] = source.TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
-		beamEvaluator.AbsToApparent(source.Peak().PosRA(), source.Peak().PosDec(), fluxMatrix);
-		double fluxStokesI = (fluxMatrix[0].real() + fluxMatrix[3].real()) * 0.5;
+			fluxStokesMatrix[p] = source.TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), Polarization::IndexToStokes(p));
+		Polarization::StokesToLinear(fluxStokesMatrix, fluxLinMatrix);
+		beamEvaluator.AbsToApparent(source.Peak().PosRA(), source.Peak().PosDec(), fluxLinMatrix);
+		double fluxStokesI = (fluxLinMatrix[0].real() + fluxLinMatrix[3].real()) * 0.5;
 		sources.push_back(std::make_pair(fluxStokesI, &source));
 	}
 	
@@ -142,14 +144,16 @@ int main(int argc, char* argv[])
 		
 		std::cout << src.second->Name() << " (" << fluxNice << " Jy/beam, distance=" << distanceNice << " deg)\n";
 		if(verboseOnPolarizations) {
-			std::complex<double> fluxMatrix[4];
+			std::complex<double> fluxLinMatrix[4];
+			double fluxStokesMatrix[4];
 			const ModelSource& source = *src.second;
 			for(size_t p=0; p!=4; ++p)
-				fluxMatrix[p] = source.TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), p);
-			beamEvaluator.AbsToApparent(source.Peak().PosRA(), source.Peak().PosDec(), fluxMatrix);
-			std::cout << round(fluxMatrix[0].real()*10.0)*0.1;
+				fluxStokesMatrix[p] = source.TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), Polarization::IndexToStokes(p));
+			Polarization::StokesToLinear(fluxStokesMatrix, fluxLinMatrix);
+			beamEvaluator.AbsToApparent(source.Peak().PosRA(), source.Peak().PosDec(), fluxLinMatrix);
+			std::cout << round(fluxLinMatrix[0].real()*10.0)*0.1;
 			for(size_t p=1; p!=4; ++p)
-				std::cout << ' ' << round(fluxMatrix[p].real()*10.0)*0.1;
+				std::cout << ' ' << round(fluxLinMatrix[p].real()*10.0)*0.1;
 			std::cout << '\n';
 		}
 		

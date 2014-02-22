@@ -99,7 +99,7 @@ public:
 		double sum = 0.0;
 		for(std::vector<const ModelSource*>::const_iterator s=_sources.begin(); s!=_sources.end(); ++s)
 		{
-			double flux = (*s)->TotalFlux(150000000.0, 0);
+			double flux = (*s)->TotalFlux(150000000.0, Polarization::StokesI);
 			sum += flux;
 		}
 		return sum;
@@ -140,12 +140,14 @@ void Output(const std::vector<Cluster>& clusters)
 		if(clusters[i].SourceCount() > 0)
 		{
 			double sum = 0.0;
-			double maxSource = clusters[i].Source(0)->TotalFlux(150000000.0, 0), minSource = maxSource;
+			double
+				maxSource = clusters[i].Source(0)->TotalFlux(150000000.0, Polarization::StokesI),
+				minSource = maxSource;
 			double maxDist = 0.0;
 			for(size_t s=0; s!=clusters[i].SourceCount(); ++s)
 			{
 				const ModelSource& source = *clusters[i].Source(s);
-				double flux = source.TotalFlux(150000000.0, 0);
+				double flux = source.TotalFlux(150000000.0, Polarization::StokesI);
 				double dist = clusters[i].AngularDistance(source)*180.0/M_PI;
 				sumDist += dist;
 				sumDistSq += dist*dist;
