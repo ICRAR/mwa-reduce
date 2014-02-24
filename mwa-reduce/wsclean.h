@@ -56,7 +56,7 @@ public:
 		_weightMode.SetMode(WeightMode::Briggs(robustness));
 	}
 	void SetSuperWeight(double superWeight) { _weightMode.SetSuperWeight(superWeight); }
-	void SetBeamSize(double beamSize) { _beamSize = beamSize; }
+	void SetBeamSize(double beamSize) { _manualBeamSize = beamSize; }
 	void SetAntialiasingKernelSize(size_t kernelSize) { _antialiasingKernelSize = kernelSize; }
 	void SetOversamplingFactor(size_t oversampling) { _overSamplingFactor = oversampling; }
 	void SetForceReorder(bool forceReorder) { _forceReorder = forceReorder; }
@@ -102,7 +102,7 @@ private:
 	}
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
-	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _beamSize, _memFraction, _wLimit;
+	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _manualBeamSize, _memFraction, _wLimit;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor;
 	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _addModelFilename, _saveModelFilename, _cleanAreasFilename;
