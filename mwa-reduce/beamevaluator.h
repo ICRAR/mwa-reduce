@@ -123,7 +123,7 @@ class BeamEvaluator
 			_tileBeam->AnalyticJones(posInfo, frequency, gains);
 		}
 	
-		void AbsToApparent(ModelSource& source, double frequency)
+		/*void AbsToApparent(ModelSource& source, double frequency)
 		{
 			for(ModelSource::iterator i=source.begin(); i!=source.end(); ++i)
 			{
@@ -150,7 +150,7 @@ class BeamEvaluator
 		void AbsToApparent(Model& model)
 		{
 			AbsToApparent(model, _frequency);
-		}
+		}*/
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
 		casa::MPosition _ant1Pos;

@@ -68,10 +68,10 @@ int main(int argc, char *argv[])
 				inputData[p][i] = std::numeric_limits<double>::quiet_NaN();
 		}
 			
-		inputData[0][i] = 0.5 * (imgValues[0].real() + imgValues[3].real());
-		inputData[1][i] = 0.5 * (imgValues[0].real() - imgValues[3].real());
-		inputData[2][i] = 0.5 * (imgValues[1].real() + imgValues[2].real());
-		inputData[3][i] = 0.5 * (-imgValues[1].imag() + imgValues[2].imag());
+		inputData[0][i] = 0.5 * (imgValues[3].real() + imgValues[0].real());
+		inputData[1][i] = 0.5 * (imgValues[3].real() - imgValues[0].real());
+		inputData[2][i] = 0.5 * (imgValues[2].real() + imgValues[1].real());
+		inputData[3][i] = 0.5 * (-imgValues[2].imag() + imgValues[1].imag());
 	}
 	
 	FitsWriter writer(firstImage);

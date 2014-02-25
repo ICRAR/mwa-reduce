@@ -87,10 +87,10 @@ int main(int argc, char* argv[])
 			ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY, dl, dm);
 			if(restore)
 			{
-				renderer.Restore(&image[0], width, height, model, beamSize, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);
+				renderer.Restore(&image[0], width, height, model, beamSize, frequency-bandwidth*0.5, frequency+bandwidth*0.5, Polarization::StokesI);
 			}
 			else {
-				renderer.RenderModel(&image[0], width, height, model, frequency-bandwidth*0.5, frequency+bandwidth*0.5, 0);
+				renderer.RenderModel(&image[0], width, height, model, frequency-bandwidth*0.5, frequency+bandwidth*0.5, Polarization::StokesI);
 			}
 		}
 		

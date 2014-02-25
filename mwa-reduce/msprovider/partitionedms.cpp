@@ -388,7 +388,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 		}
 	}
 	
-	return Handle(metaFilename, msPath, channelParts);
+	return Handle(metaFilename, msPath, channelParts, polsOut);
 }
 
 void PartitionedMS::Handle::decrease()

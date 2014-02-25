@@ -1,6 +1,7 @@
 #ifndef POLARIZATION_ENUM_H
 #define POLARIZATION_ENUM_H
 
+#include <complex>
 #include <stdexcept>
 #include <set>
 
@@ -50,6 +51,31 @@ public:
 			}
 			default: throw std::runtime_error("TypeTo4PolIndex(): can't convert given polarization to index");
 		}
+	}
+	
+	static size_t StokesToIndex(enum PolarizationEnum polarization)
+	{
+		switch(polarization)
+		{
+			default:
+			case StokesI: return 0;
+			case StokesQ: return 1;
+			case StokesU: return 2;
+			case StokesV: return 3;
+		}
+	}
+	
+	static PolarizationEnum IndexToStokes(size_t index)
+	{
+		const static PolarizationEnum arr[4] = { StokesI, StokesQ, StokesU, StokesV };
+		return arr[index];
+	}
+	
+	static bool IsStokes(enum PolarizationEnum polarization)
+	{
+		return
+			polarization == StokesI || polarization == StokesQ ||
+			polarization == StokesU || polarization == StokesV;
 	}
 	
 	static size_t TypeTo4PolIndex(enum PolarizationEnum polarization)
@@ -177,6 +203,27 @@ public:
 		if(state!=StartSt)
 			throw std::runtime_error("Invalid polarization list: parse error near string end");
 		return list;
+	}
+	
+	template<typename NumType>
+	static void LinearToStokes(const std::complex<NumType> *linear, NumType* stokes)
+	{
+		// In UVFits, X is defined as parallel to the celestial equator. This is
+		// also done in Casa files. However, the common definition of Stokes
+		// equations use X = North-South. Therefore, X and Y are swapped.
+		stokes[0] = 0.5 * (linear[3].real() + linear[0].real());
+		stokes[1] = 0.5 * (linear[3].real() - linear[0].real());
+		stokes[2] = 0.5 * (linear[2].real() + linear[1].real());
+		stokes[3] = 0.5 * (-linear[2].imag() + linear[1].imag());
+	}
+	
+	template<typename NumType>
+	static void StokesToLinear(const NumType* stokes, std::complex<NumType> *linear)
+	{
+		linear[3] = stokes[0] + stokes[1];
+		linear[2] = std::complex<NumType>(stokes[2], -stokes[3]);
+		linear[1] = std::complex<NumType>(stokes[2], stokes[3]);
+		linear[0] = stokes[0] - stokes[1];
 	}
 };
 

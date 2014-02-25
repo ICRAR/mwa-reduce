@@ -361,23 +361,16 @@ void SpectrumMaker::ToModel(Model& model) const
 	for(size_t sourceIndex = 0; sourceIndex!=_sources.size(); ++sourceIndex)
 	{
 		SpectralEnergyDistribution sed;
-		std::map<double, double> spectrum[4];
-		for(size_t p=0; p!=4; ++p)
-			FluxPerFrequency(spectrum[p], sourceIndex, p);
+		std::map<double, StokesValues> spectrum;
+		FluxesPerFrequency(spectrum, sourceIndex);
 		
-		std::map<double, double>::const_iterator
-			chIter1 = spectrum[1].begin(), chIter2 = spectrum[2].begin(), chIter3 = spectrum[3].begin();
-		for(std::map<double, double>::const_iterator chIter0=spectrum[0].begin(); chIter0!=spectrum[0].end(); ++chIter0)
+		for(std::map<double, StokesValues>::const_iterator chIter=spectrum.begin(); chIter!=spectrum.end(); ++chIter)
 		{
 			::Measurement m;
-			m.SetFluxDensity(0, chIter0->second);
-			m.SetFluxDensity(1, chIter1->second);
-			m.SetFluxDensity(2, chIter2->second);
-			m.SetFluxDensity(3, chIter3->second);
-			m.SetFrequencyHz(chIter0->first);
+			for(size_t p=0; p!=4; ++p)
+				m.SetFluxDensityFromIndex(p, chIter->second.fluxes[p]);
+			m.SetFrequencyHz(chIter->first);
 			sed.AddMeasurement(m);
-			
-			++chIter1; ++chIter2; ++chIter3;
 		}
 		ModelComponent component = _sources[sourceIndex].Peak();
 		component.SetSED(sed);

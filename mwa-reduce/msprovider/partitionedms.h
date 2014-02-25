@@ -68,7 +68,7 @@ public:
 		}
 	private:
 		void decrease();
-		Handle(const std::string& metaFile, const std::string& msPath, size_t channelParts) : _metaFile(metaFile), _msPath(msPath), _channelParts(channelParts), _referenceCount(new size_t(1)) { }
+		Handle(const std::string& metaFile, const std::string& msPath, size_t channelParts, const std::set<PolarizationEnum>& polarizations) : _metaFile(metaFile), _msPath(msPath), _channelParts(channelParts), _polarizations(polarizations), _referenceCount(new size_t(1)) { }
 		std::string _metaFile, _msPath;
 		size_t _channelParts;
 		std::set<PolarizationEnum> _polarizations;

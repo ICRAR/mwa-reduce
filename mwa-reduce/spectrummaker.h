@@ -92,8 +92,14 @@ public:
 		}
 	}		
 	
-	void FluxPerFrequency(std::map<double, double>& dest, size_t sourceIndex, size_t polIndex) const
-	{ _spectrumPerSource[sourceIndex].ToMap(dest, polIndex); }
+	struct StokesValues {
+		double fluxes[4];
+	};
+	
+	void FluxesPerFrequency(std::map<double, StokesValues>& fluxes, size_t sourceIndex) const
+	{ 
+		_spectrumPerSource[sourceIndex].ToMap(fluxes);
+	}
 	
 	void ToModel(Model& model) const;
 			
@@ -262,11 +268,16 @@ private:
 				}
 			}
 		
-			void ToMap(std::map<double, double>& dest, size_t polIndex) const
+			void ToMap(std::map<double, StokesValues>& dest) const
 			{
 				for(const_iterator i=begin(); i!=end(); ++i)
 				{
-					dest.insert(std::make_pair(i->first, i->second.flux[polIndex].real()));
+					std::complex<double> flux[4];
+					for(size_t p=0; p!=4; ++p)
+						flux[p] = i->second.flux[p];
+					StokesValues v;
+					Polarization::LinearToStokes(flux, v.fluxes);
+					dest.insert(std::make_pair(i->first, v));
 				}
 			}
 			

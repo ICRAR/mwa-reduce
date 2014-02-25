@@ -39,8 +39,26 @@ class ModelParser : private Tokenizer
 		}
 		
 	private:
+		bool _fileVersion1_0;
+		
 		void parseVersionLine(const std::string &line)
 		{
+			const std::string headerStart = "skymodel fileformat ";
+			if(line.substr(0, headerStart.size()) != headerStart)
+				throw std::runtime_error("The model file didn't start with a skymodel header");
+			std::string version = line.substr(headerStart.size());
+			if(version == "1.0")
+			{
+				_fileVersion1_0 = true;
+				std::cout << "Warning: this model is written in the old sky-model file format. The old format does \n"
+				             "         not properly support polarization, so is deprecated.\n"
+										 "         Use \"editmodel -m new_model.txt old_model.txt\" to convert the model.\n";
+			}
+			else if(version != "1.1")
+			{
+				throw std::runtime_error("This model specified file version \"" + version + "\": don't know how to read.\n");
+			}
+			else _fileVersion1_0 = false;
 		}
 		
 		void parseSource(ModelSource &source)
@@ -102,13 +120,26 @@ class ModelParser : private Tokenizer
 				}
 				else if(token == "fluxdensity") {
 					getToken(token); // unit
-					for(size_t p=0; p!=4; ++p)
-						measurement.SetFluxDensity(p, getTokenAsDouble());
+					if(_fileVersion1_0)
+					{
+						std::complex<double> linFluxes[4];
+						for(size_t p=0; p!=4; ++p)
+							linFluxes[p] = getTokenAsDouble();
+						double stokesFluxes[4];
+						Polarization::LinearToStokes(linFluxes, stokesFluxes);
+						for(size_t p=0; p!=4; ++p)
+							measurement.SetFluxDensityFromIndex(p, stokesFluxes[p]);
+					}
+					else {
+						for(size_t p=0; p!=4; ++p)
+							measurement.SetFluxDensityFromIndex(p, getTokenAsDouble());
+					}
 				}
 				else if(token == "type") {
 					getToken(token);
-					if(token == "absolute") measurement.SetIsApparent(false);
-					else if(token == "apparent") measurement.SetIsApparent(true);
+					if(token == "absolute") ; // ignore
+					else if(token == "apparent")
+						throw std::runtime_error("Model no longer allows apparent values");
 					else throw std::runtime_error("Measurement type should be absolute or apparent");
 				}
 				else if(token == "bandwidth") {
@@ -118,11 +149,10 @@ class ModelParser : private Tokenizer
 				else if(token == "fluxdensity-stddev") {
 					getToken(token);
 					for(size_t p=0; p!=4; ++p)
-						measurement.SetFluxDensityStddev(p, getTokenAsDouble());
+						measurement.SetFluxDensityStddevFromIndex(p, getTokenAsDouble());
 				}
 				else if(token == "beam-value") {
-					for(size_t p=0; p!=4; ++p)
-						measurement.SetBeamValue(p, getTokenAsDouble());
+					// ignore
 				}
 				else throw std::runtime_error("Unknown token");
 			}

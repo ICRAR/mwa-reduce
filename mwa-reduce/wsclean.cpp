@@ -26,14 +26,14 @@ std::string commandLine;
 WSClean::WSClean() :
 	_imgWidth(2048), _imgHeight(2048), _channelsOut(1),
 	_pixelScaleX(0.01 * M_PI / 180.0), _pixelScaleY(0.01 * M_PI / 180.0),
-	_threshold(0.0), _gain(0.1), _mGain(1.0), _beamSize(0.0), _memFraction(1.0), _wLimit(0.0),
+	_threshold(0.0), _gain(0.1), _mGain(1.0), _manualBeamSize(0.0), _memFraction(1.0), _wLimit(0.0),
 	_nWLayers(0), _nIter(0), _antialiasingKernelSize(7), _overSamplingFactor(63),
 	_globalSelection(),
 	_columnName(), _addModelFilename(), _saveModelFilename(), _cleanAreasFilename(),
 	_polarizations(),
 	_weightMode(WeightMode::UniformWeighted),
 	_prefixName("wsclean"),
-	_allowNegative(true), _smallPSF(false), _addApparentModel(false), _stopOnNegative(false), _makePSF(false),
+	_allowNegative(true), _smallPSF(false), _stopOnNegative(false), _makePSF(false),
 	_forceReorder(false), _forceNoReorder(false), _joinedPolarizationCleaning(false),
 	_gridMode(LayeredImager::KaiserBessel),
 	_filenames(),
@@ -67,8 +67,8 @@ void WSClean::initFitsWriter(FitsWriter& writer)
 	writer.SetPolarization(_inversionAlgorithm->Polarization());
 	writer.SetOrigin("WSClean", "W-stacking imager written by Andre Offringa");
 	writer.AddHistory(commandLine);
-	if(_beamSize != 0.0) {
-		double beamSizeRad = _beamSize * (M_PI / 60.0 / 180.0);
+	if(_manualBeamSize != 0.0) {
+		double beamSizeRad = _manualBeamSize * (M_PI / 60.0 / 180.0);
 		writer.SetBeamInfo(beamSizeRad, beamSizeRad, 0.0);
 	}
 	else {
@@ -441,16 +441,11 @@ void WSClean::runChannel(size_t outChannelIndex)
 				{
 					std::cout << "Reading model from " << _addModelFilename << "... " << std::flush;
 					model = Model(_addModelFilename.c_str());
-					if(_addApparentModel)
-					{
-						casa::MeasurementSet ms(_filenames.front());
-						BeamEvaluator beamEval(ms, false);
-						beamEval.AbsToApparent(model);
-					}
 				}
 				double* modelImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
 				_modelImages.Load(modelImage, *curPol, *isImaginary);
-				CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, 0.0, _fitsWriter.Frequency(), *curPol);
+				// A model cannot hold instrumental pols (xx/xy/yx/yy), hence always use Stokes I here
+				CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, 0.0, _fitsWriter.Frequency(), Polarization::StokesI);
 				_imageAllocator.Free(modelImage);
 				
 				if(!_saveModelFilename.empty())
@@ -460,23 +455,13 @@ void WSClean::runChannel(size_t outChannelIndex)
 				}
 			
 				ModelRenderer renderer(_fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY);
-				size_t polarizationIndex;
-				switch(*curPol)
-				{
-					case Polarization::StokesI:
-					case Polarization::XX: polarizationIndex = 0; break;
-					case Polarization::XY: polarizationIndex = 1; break;
-					case Polarization::YX: polarizationIndex = 2; break;
-					case Polarization::YY: polarizationIndex = 3; break;
-					default: throw std::runtime_error("Unsupported polarization");
-				}
 				double
 					freqLow = _fitsWriter.Frequency() - _fitsWriter.Bandwidth()*0.5,
 					freqHigh = _fitsWriter.Frequency() + _fitsWriter.Bandwidth()*0.5;
 				double* restoredImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
 				_residualImages.Load(restoredImage, *curPol, *isImaginary);
 				std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
-				renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, polarizationIndex);
+				renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, Polarization::StokesI);
 				std::cout << "DONE\n";
 				
 				std::cout << "Writing restored image... " << std::flush;
