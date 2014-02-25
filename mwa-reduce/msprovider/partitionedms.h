@@ -19,6 +19,7 @@ public:
 	class Handle;
 	
 	PartitionedMS(const Handle& handle, size_t partIndex, PolarizationEnum polarization);
+	virtual ~PartitionedMS();
 	
 	virtual casa::MeasurementSet &MS() { return _ms; }
 	
@@ -76,10 +77,10 @@ public:
 	}; 
 private:
 	casa::MeasurementSet _ms;
-	std::ifstream _metaFile, _weightFile;
-	std::fstream _dataFile;
+	std::ifstream _metaFile, _weightFile, _dataFile;
+	char *_modelFileMap;
 	size_t _currentRow;
-	bool _readPtrIsOnData, _readPtrIsOnModel, _metaPtrIsOk, _weightPtrIsOk;
+	bool _readPtrIsOk, _metaPtrIsOk, _weightPtrIsOk;
 	ao::uvector<float> _weightBuffer;
 	ao::uvector<std::complex<float>> _modelBuffer;
 	

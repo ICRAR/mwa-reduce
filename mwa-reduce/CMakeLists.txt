@@ -116,7 +116,7 @@ add_executable(tests tests.cpp nlplfitter.cpp tilebeam.cpp)
 add_executable(testbugcasams testbugcasams.cpp)
 add_executable(uvdist uvdist.cpp nlplfitter.cpp)
 add_executable(storetime storetime.cpp stopwatch.cpp)
-add_executable(wsclean wscleanmain.cpp wsclean.cpp beamevaluator.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp layeredimager.cpp model.cpp modelrenderer.cpp stopwatch.cpp tilebeam.cpp wsinversion.cpp cleanalgorithms/cleanalgorithm.cpp cleanalgorithms/joinedpolclean.cpp cleanalgorithms/simpleclean.cpp msprovider/contiguousms.cpp msprovider/msprovider.cpp msprovider/partitionedms.cpp)
+add_executable(wsclean wscleanmain.cpp wsclean.cpp beamevaluator.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp layeredimager.cpp model.cpp modelrenderer.cpp progressbar.cpp stopwatch.cpp tilebeam.cpp wsinversion.cpp cleanalgorithms/cleanalgorithm.cpp cleanalgorithms/joinedpolclean.cpp cleanalgorithms/simpleclean.cpp msprovider/contiguousms.cpp msprovider/msprovider.cpp msprovider/partitionedms.cpp)
 add_executable(wsctests wsctests.cpp cleanalgorithms/cleanalgorithm.cpp cleanalgorithms/simpleclean.cpp aocommon/stopwatch.cpp)
 add_executable(aoimage aoimage.cpp btpimager.cpp fitswriter.cpp imageweights.cpp model.cpp modelrenderer.cpp)
 

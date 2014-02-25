@@ -2,6 +2,12 @@
 
 #include "../multibanddata.h"
 #include "../msselection.h"
+#include "../progressbar.h"
+
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <cstdio>
 #include <fstream>
@@ -11,9 +17,9 @@
 
 PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex, PolarizationEnum polarization) :
 	_metaFile(handle._metaFile),
+	_modelFileMap(0),
 	_currentRow(0),
-	_readPtrIsOnData(true),
-	_readPtrIsOnModel(false),
+	_readPtrIsOk(true),
 	_metaPtrIsOk(true),
 	_weightPtrIsOk(true)
 {
@@ -23,16 +29,39 @@ PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex, Polarizatio
 	std::cout << "Opening reordered part " << partIndex << " for " << msPath.data() << '\n';
 	_ms = casa::MeasurementSet(msPath.data());
 	
-	_dataFile.open(getPartPrefix(msPath.data(), partIndex, polarization)+".tmp", std::ios::in | std::ios::out);
+	_dataFile.open(getPartPrefix(msPath.data(), partIndex, polarization)+".tmp", std::ios::in);
 	if(_dataFile.bad())
 		throw std::runtime_error("Error opening temporary data file");
 	_dataFile.read(reinterpret_cast<char*>(&_partHeader), sizeof(PartHeader));
 	
-	_weightFile.open(getPartPrefix(msPath.data(), partIndex, polarization)+"-w.tmp", std::ios::in | std::ios::out);
+	if(_partHeader.hasModel)
+	{
+		int fd = open((getPartPrefix(msPath.data(), partIndex, polarization)+"-m.tmp").c_str(), O_RDWR);
+		if(fd == -1)
+			throw std::runtime_error("Error opening temporary data file");
+		size_t length = _partHeader.channelCount * _metaHeader.selectedRowCount * sizeof(std::complex<float>);
+		_modelFileMap = reinterpret_cast<char*>( mmap(NULL, length, PROT_WRITE | PROT_WRITE, MAP_SHARED, fd, 0) );
+		if(_modelFileMap == MAP_FAILED)
+		{
+			_modelFileMap = 0;
+			throw std::runtime_error("Error creating memory map to temporary model file: mmap() return MAP_FAILED.");
+		}
+	}
+	
+	_weightFile.open(getPartPrefix(msPath.data(), partIndex, polarization)+"-w.tmp", std::ios::in);
 	if(_weightFile.bad())
 		throw std::runtime_error("Error opening temporary data file");
 	_weightBuffer.resize(_partHeader.channelCount);
 	_modelBuffer.resize(_partHeader.channelCount);
+}
+
+PartitionedMS::~PartitionedMS()
+{
+	if(_modelFileMap!=0)
+	{
+		size_t length = _partHeader.channelCount * _metaHeader.selectedRowCount * sizeof(std::complex<float>);
+		munmap(_modelFileMap, length);
+	}
 }
 
 void PartitionedMS::Reset()
@@ -41,8 +70,7 @@ void PartitionedMS::Reset()
 	_metaFile.seekg(sizeof(MetaHeader) + _metaHeader.filenameLength, std::ios::beg);
 	_dataFile.seekg(sizeof(PartHeader), std::ios::beg);
 	_weightFile.seekg(0, std::ios::beg);
-	_readPtrIsOnData = true;
-	_readPtrIsOnModel = false;
+	_readPtrIsOk = true;
 	_metaPtrIsOk = true;
 	_weightPtrIsOk = true;
 }
@@ -52,20 +80,11 @@ bool PartitionedMS::NextRow()
 	++_currentRow;
 	if(_currentRow >= _metaHeader.selectedRowCount)
 		return false;
-	if(_readPtrIsOnData)
-	{
-		if(_partHeader.hasModel)
-			_dataFile.seekg(_partHeader.channelCount * sizeof(std::complex<float>) * 2, std::ios::cur);
-		else
-			_dataFile.seekg(_partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
-	}
-	else if(_readPtrIsOnModel)
-	{
-		if(_partHeader.hasModel)
-			_dataFile.seekg(_partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
-	}
-	_readPtrIsOnData = true;
-	_readPtrIsOnModel = false;
+	
+	if(_readPtrIsOk)
+		_dataFile.seekg(_partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
+	else
+		_readPtrIsOk = true;
 	
 	if(_metaPtrIsOk)
 		_metaFile.seekg(sizeof(MetaRecord), std::ios::cur);
@@ -94,12 +113,9 @@ void PartitionedMS::ReadMeta(double& u, double& v, double& w, size_t& dataDescId
 
 void PartitionedMS::ReadData(std::complex<float>* buffer)
 {
-	if(!_readPtrIsOnData)
+	if(!_readPtrIsOk)
 	{
-		if(_readPtrIsOnModel)
-			_dataFile.seekg(-_partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
-		else
-			_dataFile.seekg(-2 * _partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
+		_dataFile.seekg(-_partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
 	}
 #ifdef REDUNDANT_VALIDATION
 	size_t pos = size_t(_dataFile.tellg()) - sizeof(PartHeader);
@@ -113,8 +129,7 @@ void PartitionedMS::ReadData(std::complex<float>* buffer)
 	}
 #endif
 	_dataFile.read(reinterpret_cast<char*>(buffer), _partHeader.channelCount * sizeof(std::complex<float>));
-	_readPtrIsOnData = false;
-	_readPtrIsOnModel = true;
+	_readPtrIsOk = false;
 }
 
 void PartitionedMS::ReadModel(std::complex<float>* buffer)
@@ -123,16 +138,8 @@ void PartitionedMS::ReadModel(std::complex<float>* buffer)
 	if(!_partHeader.hasModel)
 		throw std::runtime_error("Partitioned MS initialized without model");
 #endif
-	if(!_readPtrIsOnModel)
-	{
-		if(_readPtrIsOnData)
-			_dataFile.seekg(_partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
-		else
-			_dataFile.seekg(-_partHeader.channelCount * sizeof(std::complex<float>), std::ios::cur);
-	}
-	_dataFile.read(reinterpret_cast<char*>(buffer), _partHeader.channelCount * sizeof(std::complex<float>));
-	_readPtrIsOnData = false;
-	_readPtrIsOnModel = false;
+	size_t rowLength = _partHeader.channelCount * sizeof(std::complex<float>);
+	memcpy(reinterpret_cast<char*>(buffer), _modelFileMap + rowLength*_currentRow, rowLength);
 }
 
 void PartitionedMS::WriteModel(size_t rowId, std::complex<float>* buffer)
@@ -146,18 +153,16 @@ void PartitionedMS::WriteModel(size_t rowId, std::complex<float>* buffer)
 	for(size_t i=0; i!=_partHeader.channelCount; ++i)
 		buffer[i] *= _weightBuffer[i];
 	
-	size_t pos = sizeof(PartHeader) + _partHeader.channelCount * sizeof(std::complex<float>) * (2 * rowId + 1);
-	_dataFile.seekg(pos, std::ios::beg);
-	_dataFile.read(reinterpret_cast<char*>(_modelBuffer.data()), _partHeader.channelCount * sizeof(std::complex<float>));
+	size_t rowLength = _partHeader.channelCount * sizeof(std::complex<float>);
+	std::complex<float>* modelWritePtr = reinterpret_cast<std::complex<float>*>(_modelFileMap + rowLength*rowId);
+	
 	// In case the value was not sampled in this pass, it will be set to infinite and should not overwrite the current
 	// value in the set.
 	for(size_t i=0; i!=_partHeader.channelCount; ++i)
 	{
 		if(std::isfinite(buffer[i].real()))
-			_modelBuffer[i] = buffer[i];
+			modelWritePtr[i] = buffer[i];
 	}
-	_dataFile.seekp(pos, std::ios::beg);
-	_dataFile.write(reinterpret_cast<const char*>(_modelBuffer.data()), _partHeader.channelCount * sizeof(std::complex<float>));
 }
 
 void PartitionedMS::ReadWeights(std::complex<float>* buffer)
@@ -302,8 +307,10 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	casa::Array<std::complex<float>> dataArray(shape);
 	casa::Array<float> weightArray(shape);
 	casa::Array<bool> flagArray(shape);
+	ProgressBar progress1("Reordering");
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
+		progress1.SetProgress(row, ms.nrow());
 		const int
 			a1 = antenna1Column(row), a2 = antenna2Column(row),
 			fieldId = fieldIdColumn(row);
@@ -342,12 +349,6 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 				{
 					copyWeightedData(dataBuffer.data(), partStartCh, partEndCh, polarizationCount, dataArray, weightArray, flagArray, *p);
 					dataFiles[fileIndex]->write(reinterpret_cast<char*>(dataBuffer.data()), (partEndCh - partStartCh) * sizeof(std::complex<float>));
-					
-					if(includeModel)
-					{
-						// The initial model in the MS is never used, so we just have to reserve room for later
-						dataFiles[fileIndex]->write(reinterpret_cast<char*>(dataBuffer.data()), (partEndCh - partStartCh) * sizeof(std::complex<float>));
-					}
 					if(dataFiles[fileIndex]->bad())
 						throw std::runtime_error("Error writing to temporary data file");
 					
@@ -363,6 +364,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 			}
 		}
 	}
+	progress1.SetProgress(ms.nrow(), ms.nrow());
 	
 	// Write header to parts
 	PartHeader header;
@@ -370,6 +372,8 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	header.hasModel = includeModel;
 	header.hasWeights = includeWeights;
 	fileIndex = 0;
+	memset(reinterpret_cast<char*>(dataBuffer.data()), 0, sizeof(std::complex<float>)*(1 + channelCount / channelParts));
+	ProgressBar progress2("Initializing model visibilities");
 	for(size_t part=0; part!=channelParts; ++part)
 	{
 		header.channelStart = channelStart + channelCount*part/channelParts,
@@ -385,8 +389,21 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 			if(includeWeights)
 				delete weightFiles[fileIndex];
 			++fileIndex;
+			
+			// If model is requested, fill model file with zeros
+			if(includeModel)
+			{
+				std::string partPrefix = getPartPrefix(msPath, part, *p);
+				std::ofstream modelFile(partPrefix + "-m.tmp");
+				for(size_t i=0; i!=selectedRowCount; ++i)
+				{
+					modelFile.write(reinterpret_cast<char*>(dataBuffer.data()), header.channelCount * sizeof(std::complex<float>));
+					progress2.SetProgress(part*selectedRowCount + i, channelParts*selectedRowCount);
+				}
+			}
 		}
 	}
+	progress2.SetProgress(1,1);
 	
 	return Handle(metaFilename, msPath, channelParts, polsOut);
 }
@@ -397,6 +414,11 @@ void PartitionedMS::Handle::decrease()
 	if((*_referenceCount) == 0)
 	{
 		std::cout << "Cleaning up temporary files...\n";
+		
+		//MetaHeader metaHeader;
+		//std::ifstream metaFile(_metaFile);
+		//metaFile.read(reinterpret_cast<char*>(&metaHeader), sizeof(MetaHeader));
+		
 		for(size_t part=0; part!=_channelParts; ++part)
 		{
 			for(std::set<PolarizationEnum>::const_iterator p=_polarizations.begin(); p!=_polarizations.end(); ++p)
@@ -404,6 +426,7 @@ void PartitionedMS::Handle::decrease()
 				std::string prefix = getPartPrefix(_msPath, part, *p);
 				std::remove((prefix + ".tmp").c_str());
 				std::remove((prefix + "-w.tmp").c_str());
+				std::remove((prefix + "-m.tmp").c_str());
 			}
 		}
 		std::remove(_metaFile.c_str());
