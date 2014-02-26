@@ -127,6 +127,10 @@ class LayeredImager
 		void SetDenormalPhaseCentre(double dl, double dm) { _phaseCentreDL = dl; _phaseCentreDM = dm; }
 		
 		void GetGriddingCorrectionImage(double* image) const;
+		
+		void ReplaceRealImageBuffer(double* newBuffer);
+		
+		void ReplaceImaginaryImageBuffer(double* newBuffer);
 	private:
 		size_t layerRangeStart(size_t layerRangeIndex) const
 		{

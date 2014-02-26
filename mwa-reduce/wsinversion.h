@@ -26,8 +26,8 @@ class WSInversion : public InversionAlgorithm
 	
 		virtual void Invert();
 		
-		virtual void Predict(const double* image) { Predict(image, 0); }
-		virtual void Predict(const double* real, const double* imaginary);
+		virtual void Predict(double* image) { Predict(image, 0); }
+		virtual void Predict(double* real, double* imaginary);
 		
 		virtual double *ImageRealResult() const { return _imager->RealImage(); }
 		virtual double *ImageImaginaryResult() const { return _imager->ImaginaryImage(); }
@@ -124,6 +124,8 @@ class WSInversion : public InversionAlgorithm
 		size_t _cpuCount, _laneBufferSize;
 		int64_t _memSize;
 		ImageBufferAllocator<double>* _imageBufferAllocator;
+		size_t _actualInversionWidth, _actualInversionHeight;
+		double _actualPixelSizeX, _actualPixelSizeY;
 };
 
 #endif

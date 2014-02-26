@@ -33,7 +33,7 @@ WSClean::WSClean() :
 	_polarizations(),
 	_weightMode(WeightMode::UniformWeighted),
 	_prefixName("wsclean"),
-	_allowNegative(true), _smallPSF(false), _stopOnNegative(false), _makePSF(false),
+	_allowNegative(true), _smallPSF(false), _smallInversion(false), _stopOnNegative(false), _makePSF(false),
 	_forceReorder(false), _forceNoReorder(false), _joinedPolarizationCleaning(false),
 	_gridMode(LayeredImager::KaiserBessel),
 	_filenames(),
@@ -298,6 +298,7 @@ void WSClean::prepareInversionAlgorithm(PolarizationEnum polarization)
 	_inversionAlgorithm->SetWeighting(_weightMode);
 	_inversionAlgorithm->SetSelection(_currentPartSelection);
 	_inversionAlgorithm->SetWLimit(_wLimit/100.0);
+	_inversionAlgorithm->SetSmallInversion(_smallInversion);
 }
 
 void WSClean::Run()

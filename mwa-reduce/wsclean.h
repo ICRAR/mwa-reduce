@@ -39,6 +39,7 @@ public:
 	void SetPrefixName(const std::string& prefixName) { _prefixName = prefixName; }
 	void SetGridMode(LayeredImager::GridModeEnum gridMode) { _gridMode = gridMode; }
 	void SetSmallPSF(bool smallPSF) { _smallPSF = smallPSF; }
+	void SetSmallInversion(bool smallInversion) { _smallInversion = smallInversion; }
 	void SetIntervalSelection(size_t startTimestep, size_t endTimestep) {
 		_globalSelection.SetInterval(startTimestep, endTimestep);
 	}
@@ -109,7 +110,7 @@ private:
 	std::set<PolarizationEnum> _polarizations;
 	WeightMode _weightMode;
 	std::string _prefixName;
-	bool _allowNegative, _smallPSF, _addApparentModel, _stopOnNegative, _makePSF;
+	bool _allowNegative, _smallPSF, _smallInversion, _addApparentModel, _stopOnNegative, _makePSF;
 	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;

@@ -3,6 +3,8 @@
 #include "imageweights.h"
 #include "buffered_lane.h"
 #include "msprovider/msprovider.h"
+#include "fftresampler.h"
+#include "imagebufferallocator.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <measures/Measures/MDirection.h>
@@ -156,6 +158,32 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		if(msData.maxW < msData.minW) msData.maxW = msData.minW;
 	}
 
+	_actualInversionWidth = ImageWidth();
+	_actualInversionHeight = ImageHeight();
+	_actualPixelSizeX = PixelSizeX();
+	_actualPixelSizeY = PixelSizeY();
+	
+	if(SmallInversion())
+	{
+		double totalWidth = _actualInversionWidth * _actualPixelSizeX, totalHeight = _actualInversionHeight * _actualPixelSizeY;
+		// Calc min res based on Nyquist sampling rate
+		size_t minResX = size_t(ceil(totalWidth*2 / _beamSize));
+		if(minResX%4 != 0) minResX += 4 - (minResX%4);
+		size_t minResY = size_t(ceil(totalHeight*2 / _beamSize));
+		if(minResY%4 != 0) minResY += 4 - (minResY%4);
+		if(minResX < _actualInversionWidth || minResY < _actualInversionHeight)
+		{
+			_actualInversionWidth = std::min(minResX, _actualInversionWidth);
+			_actualInversionHeight = std::min(minResY, _actualInversionHeight);
+			std::cout << "Setting small inversion image size of " << _actualInversionWidth << " x " << _actualInversionHeight << "\n";
+			_actualPixelSizeX = totalWidth / _actualInversionWidth;
+			_actualPixelSizeY = totalHeight / _actualInversionHeight;
+		}
+		else {
+			std::cout << "Small inversion requested, but inversion resolution already smaller than beam size: not changing.\n";
+		}
+	}
+	
 	if(Verbose() || !HasWGridSize())
 	{
 		double
@@ -174,7 +202,7 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		{
 			// When nwlayers is lower than the nr of cores, we cannot parallellize well. 
 			// However, we don't want extra w-layers if we are low on mem, as that might slow down the process
-			double memoryRequired = double(_cpuCount) * double(sizeof(LayeredImager::imgnum_t)) * double(ImageWidth()) * double(ImageHeight());
+			double memoryRequired = double(_cpuCount) * double(sizeof(LayeredImager::imgnum_t))*double(_actualInversionWidth*_actualInversionHeight);
 			if(4.0 * memoryRequired < double(_memSize))
 			{
 				std::cout <<
@@ -476,7 +504,7 @@ void WSInversion::Invert()
 		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
 	}
 	
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator, AntialiasingKernelSize(), OverSamplingFactor()));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(_actualInversionWidth, _actualInversionHeight, _actualPixelSizeX, _actualPixelSizeY, _cpuCount, _imageBufferAllocator, AntialiasingKernelSize(), OverSamplingFactor()));
 	_imager->SetGridMode(_gridMode);
 	if(_denormalPhaseCentre)
 		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
@@ -533,10 +561,33 @@ void WSInversion::Invert()
 	}
 	
 	_imager->FinalizeImage(1.0/_totalWeight);
+	
+	if(ImageWidth()!=_actualInversionWidth || ImageHeight()!=_actualInversionHeight)
+	{
+		FFTResampler resampler(_actualInversionWidth, _actualInversionHeight, ImageWidth(), ImageHeight(), _cpuCount);
+		
+		if(IsComplex())
+		{
+			double *resizedReal = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
+			double *resizedImag = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
+			resampler.Start();
+			resampler.AddTask(_imager->RealImage(), resizedReal);
+			resampler.AddTask(_imager->ImaginaryImage(), resizedImag);
+			resampler.Finish();
+			_imager->ReplaceRealImageBuffer(resizedReal);
+			_imager->ReplaceImaginaryImageBuffer(resizedImag);
+		}
+		else {
+			double *resized = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
+			resampler.RunSingle(_imager->RealImage(), resized);
+			_imager->ReplaceRealImageBuffer(resized);
+		}
+	}
+	
 	delete[] msDataVector;
 }
 
-void WSInversion::Predict(const double* real, const double* imaginary)
+void WSInversion::Predict(double* real, double* imaginary)
 {
 	MSData* msDataVector = new MSData[MeasurementSetCount()];
 	_hasFrequencies = false;
@@ -551,7 +602,7 @@ void WSInversion::Predict(const double* real, const double* imaginary)
 		if(msDataVector[i].maxW > maxW) maxW = msDataVector[i].maxW;
 	}
 	
-	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(ImageWidth(), ImageHeight(), PixelSizeX(), PixelSizeY(), _cpuCount, _imageBufferAllocator, AntialiasingKernelSize(), OverSamplingFactor()));
+	_imager = std::unique_ptr<LayeredImager>(new LayeredImager(_actualInversionWidth, _actualInversionHeight, _actualPixelSizeX, _actualPixelSizeY, _cpuCount, _imageBufferAllocator, AntialiasingKernelSize(), OverSamplingFactor()));
 	_imager->SetGridMode(_gridMode);
 	if(_denormalPhaseCentre)
 		_imager->SetDenormalPhaseCentre(_phaseCentreDL, _phaseCentreDM);
@@ -561,6 +612,29 @@ void WSInversion::Predict(const double* real, const double* imaginary)
 	
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)
 		countSamplesPerLayer(msDataVector[i]);
+	
+	double *resizedReal = 0, *resizedImag = 0;
+	if(ImageWidth()!=_actualInversionWidth || ImageHeight()!=_actualInversionHeight)
+	{
+		FFTResampler resampler(ImageWidth(), ImageHeight(), _actualInversionWidth, _actualInversionHeight, _cpuCount);
+		
+		if(imaginary == 0)
+		{
+			double *resized = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
+			resampler.RunSingle(real, resized);
+			real = resized;
+		}
+		else {
+			resizedReal = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
+			resizedImag = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
+			resampler.Start();
+			resampler.AddTask(real, resizedReal);
+			resampler.AddTask(imaginary, resizedImag);
+			resampler.Finish();
+			real = resizedReal;
+			imaginary = resizedImag;
+		}
+	}
 	
 	for(size_t pass=0; pass!=_imager->NPasses(); ++pass)
 	{
@@ -577,6 +651,12 @@ void WSInversion::Predict(const double* real, const double* imaginary)
 		
 		for(size_t i=0; i!=MeasurementSetCount(); ++i)
 			predictMeasurementSet(msDataVector[i]);
+	}
+	
+	if(ImageWidth()!=_actualInversionWidth || ImageHeight()!=_actualInversionHeight)
+	{
+		_imageBufferAllocator->Free(resizedReal);
+		_imageBufferAllocator->Free(resizedImag);
 	}
 	
 	size_t totalRowsWritten = 0, totalMatchingRows = 0;

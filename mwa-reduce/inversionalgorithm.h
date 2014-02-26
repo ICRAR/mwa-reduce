@@ -13,8 +13,8 @@ class InversionAlgorithm
 {
 	public:
 		InversionAlgorithm() :
-			_imageWidth(1024),
-			_imageHeight(1024),
+			_imageWidth(0),
+			_imageHeight(0),
 			_pixelSizeX((1.0 / 60.0) * M_PI / 180.0),
 			_pixelSizeY((1.0 / 60.0) * M_PI / 180.0),
 			_wGridSize(0),
@@ -23,6 +23,7 @@ class InversionAlgorithm
 			_doImagePSF(false),
 			_doSubtractModel(false),
 			_addToModel(false),
+			_smallInversion(false),
 			_wLimit(0.0),
 			_precalculatedWeightInfo(0),
 			_polarization(Polarization::StokesI),
@@ -51,6 +52,7 @@ class InversionAlgorithm
 		bool DoImagePSF() const { return _doImagePSF; }
 		bool DoSubtractModel() const { return _doSubtractModel; }
 		bool AddToModel() const { return _addToModel; }
+		bool SmallInversion() const { return _smallInversion; }
 		PolarizationEnum Polarization() const { return _polarization; }
 		WeightMode Weighting() const { return _weighting; }
 		class ImageWeights* PrecalculatedWeightInfo() const { return _precalculatedWeightInfo; }
@@ -118,6 +120,10 @@ class InversionAlgorithm
 		{
 			_addToModel = addToModel;
 		}
+		void SetSmallInversion(bool smallInversion)
+		{ 
+			_smallInversion = smallInversion;
+		}
 		void SetPrecalculatedWeightInfo(class ImageWeights* precalculatedWeightInfo)
 		{ 
 			_precalculatedWeightInfo = precalculatedWeightInfo;
@@ -145,8 +151,8 @@ class InversionAlgorithm
 		
 		virtual void Invert() = 0;
 		
-		virtual void Predict(const double* image) = 0;
-		virtual void Predict(const double* real, const double* imaginary) = 0;
+		virtual void Predict(double* image) = 0;
+		virtual void Predict(double* real, double* imaginary) = 0;
 		
 		virtual double *ImageRealResult() const = 0;
 		virtual double *ImageImaginaryResult() const = 0;
@@ -164,13 +170,13 @@ class InversionAlgorithm
 		
 		virtual bool HasGriddingCorrectionImage() const = 0;
 		virtual void GetGriddingCorrectionImage(double *image) const = 0;
-	protected:
+	private:
 		size_t _imageWidth, _imageHeight;
 		double _pixelSizeX, _pixelSizeY;
 		size_t _wGridSize;
 		std::vector<MSProvider*> _measurementSets;
 		std::string _dataColumnName;
-		bool _doImagePSF, _doSubtractModel, _addToModel;
+		bool _doImagePSF, _doSubtractModel, _addToModel, _smallInversion;
 		double _wLimit;
 		class ImageWeights *_precalculatedWeightInfo;
 		PolarizationEnum _polarization;

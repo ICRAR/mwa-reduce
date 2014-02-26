@@ -34,6 +34,8 @@ int main(int argc, char *argv[])
 			"\t-mgain <gain>\n"
 			"\t   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major\n"
 			"\t   iteration (default = 1.0, to use major iterations, 0.9 is a good value). Default: 1.0\n"
+			"\t-smallinversion\n"
+			"\t   Experimental mode to speed up inversion.\n"
 			"\t-smallpsf\n"
 			"\t   Resize the psf to speed up minor clean iterations. Not the default.\n"
 			"\t-pol <xx, yy, xy, yx or stokesi>\n"
@@ -205,6 +207,10 @@ int main(int argc, char *argv[])
 				wsclean.SetGridMode(LayeredImager::NearestNeighbour);
 			else
 				throw std::runtime_error("Invalid gridding mode: should be either kb (Kaiser-Bessel) or nn (NearestNeighbour)");
+		}
+		else if(param == "smallinversion")
+		{
+			wsclean.SetSmallInversion(true);
 		}
 		else if(param == "smallpsf")
 		{

@@ -740,3 +740,16 @@ void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest
 		}
 	}
 }
+
+void LayeredImager::ReplaceRealImageBuffer(double* newBuffer)
+{
+	_imageBufferAllocator->Free(_imageData[0]);
+	_imageData[0] = newBuffer;
+}
+
+void LayeredImager::ReplaceImaginaryImageBuffer(double* newBuffer)
+{
+	_imageBufferAllocator->Free(_imageDataImaginary[0]);
+	_imageDataImaginary[0] = newBuffer;
+}
+

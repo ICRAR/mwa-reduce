@@ -51,6 +51,11 @@ class FitsWriter
 			_beamMinorAxisRad = minorAxisRad;
 			_beamPositionAngle = positionAngleRad;
 		}
+		void SetImageDimensions(size_t width, size_t height)
+		{
+			_width = width;
+			_height = height;
+		}
 		void SetImageDimensions(size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY)
 		{
 			_width = width;
