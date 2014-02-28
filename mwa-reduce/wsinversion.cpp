@@ -610,8 +610,11 @@ void WSInversion::Predict(double* real, double* imaginary)
 	//_imager->SetImageConjugatePart(Polarization() == Polarization::YX && IsComplex());
 	_imager->PrepareWLayers(WGridSize(), double(_memSize)*(7.0/10.0), minW, maxW);
 	
-	for(size_t i=0; i!=MeasurementSetCount(); ++i)
-		countSamplesPerLayer(msDataVector[i]);
+	if(Verbose())
+	{
+		for(size_t i=0; i!=MeasurementSetCount(); ++i)
+			countSamplesPerLayer(msDataVector[i]);
+	}
 	
 	double *resizedReal = 0, *resizedImag = 0;
 	if(ImageWidth()!=_actualInversionWidth || ImageHeight()!=_actualInversionHeight)
