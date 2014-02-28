@@ -5,7 +5,7 @@
 #include <sstream>
 #include <vector>
 
-#include <fitsio2.h>
+#include <fitsio.h>
 #include <cmath>
 #include <cstdio>
 #include <limits>
