@@ -9,8 +9,8 @@ FFTResampler::FFTResampler(size_t inWidth, size_t inHeight, size_t outWidth, siz
 	_fftWidth(std::max(inWidth, outWidth)), _fftHeight(std::max(inHeight, outHeight)),
 	_tasks(cpuCount)
 {
-	double* inputData = fftw_alloc_real(_fftWidth*_fftHeight);
-	fftw_complex* fftData = fftw_alloc_complex(_fftWidth*_fftHeight);
+	double* inputData = reinterpret_cast<double*>(fftw_malloc(_fftWidth*_fftHeight * sizeof(double)));
+	fftw_complex* fftData = reinterpret_cast<fftw_complex*>(fftw_malloc(_fftWidth*_fftHeight * sizeof(fftw_complex)));
 	_inToFPlan =
 		fftw_plan_dft_r2c_2d(_inputHeight, _inputWidth,
 			inputData, fftData, FFTW_ESTIMATE);
