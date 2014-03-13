@@ -5,6 +5,10 @@
 #include <sstream>
 #include <cmath>
 
+#include <fits/FITS/FITSDateUtil.h>
+#include <casa/Quanta/MVTime.h>
+#include <measures/Measures/MeasConvert.h>
+
 void FitsReader::checkStatus(int status, const std::string &operation) 
 {
 	if(status) {
@@ -59,6 +63,19 @@ bool FitsReader::readDoubleKeyIfExists(const char *key, double &dest)
 	if(status == 0)
 		dest = doubleValue;
 	return status == 0;
+}
+
+bool FitsReader::readDateKeyIfExists(const char *key, double &dest)
+{
+	int status = 0;
+	char keyStr[256];
+	fits_read_key(_fitsPtr, TSTRING, key, keyStr, 0, &status);
+	if(status == 0)
+	{
+		dest = parseFitsDateToMJD(keyStr);
+		return true;
+	}
+	else return false;
 }
 
 std::string FitsReader::readStringKey(const char *key)
@@ -138,7 +155,7 @@ void FitsReader::initialize()
 	double centrePixelY = readDoubleKey("CRPIX2");
 	_phaseCentreDM = ((_imgHeight / 2.0)+1.0 - centrePixelY) * _pixelSizeY;
 	
-	readDoubleKeyIfExists("DATE-OBS", _dateObs);
+	readDateKeyIfExists("DATE-OBS", _dateObs);
 	if(naxis >= 3)
 	{
 		if(readStringKey("CTYPE3") == "FREQ")
@@ -232,4 +249,15 @@ FitsReader::~FitsReader()
 	int status = 0;
 	fits_close_file(_fitsPtr, &status);
 	checkStatus(status);
+}
+
+double FitsReader::parseFitsDateToMJD(const char* valueStr)
+{
+	casa::MVTime time;
+	casa::MEpoch::Types systypes;
+	bool parseSuccess = casa::FITSDateUtil::fromFITS(time, systypes, valueStr, "UTC");
+	if(!parseSuccess)
+		throw std::runtime_error("Could not parse FITS date");
+	casa::MEpoch epoch(time.get(), systypes);
+	return epoch.getValue().get();
 }

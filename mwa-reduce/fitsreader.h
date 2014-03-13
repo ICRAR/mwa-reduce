@@ -55,6 +55,8 @@ class FitsReader
 		std::string readStringKey(const char* key);
 		bool readStringKeyIfExists(const char* key, std::string& value, std::string& comment);
 		void readHistory();
+		double parseFitsDateToMJD(const char* valueStr);
+		bool readDateKeyIfExists(const char *key, double &dest);
 		
 		std::string _filename;
 		fitsfile *_fitsPtr;
