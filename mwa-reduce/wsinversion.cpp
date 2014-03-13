@@ -623,9 +623,9 @@ void WSInversion::Predict(double* real, double* imaginary)
 		
 		if(imaginary == 0)
 		{
-			double *resized = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
-			resampler.RunSingle(real, resized);
-			real = resized;
+			resizedReal = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
+			resampler.RunSingle(real, resizedReal);
+			real = resizedReal;
 		}
 		else {
 			resizedReal = _imageBufferAllocator->Allocate(ImageWidth() * ImageHeight());
