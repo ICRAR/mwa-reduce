@@ -422,6 +422,12 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 				&dl = _solutionsDL[sourceIndex],
 				&dm = _solutionsDM[sourceIndex];
 			
+			/*if(channelIndex == 5)
+			{
+				std::cout << "Start of fit (" << sourceIndex << "): " <<
+					g << ',' << dl << ',' << dm << '\n';
+			}*/
+				
 			// Add back if it was subtracted
 			if(fitIteration != 0)
 			{
@@ -443,7 +449,7 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 									modelPtr[p].real() * sExp + modelPtr[p].imag() * cExp
 								);
 							std::complex<double> corModel = g * rotModel;
-							dataPtr[p] -= corModel;
+							dataPtr[p] += corModel;
 						}
 						modelPtr += 4;
 					}
@@ -492,6 +498,12 @@ void IonPeeler::positionFitter(size_t channelIndex, PeelingStats& stats)
 			dm = gsl_vector_get (solver->x, 2);
 			//std::cout << gsl_strerror(status) << "\n";
 			//std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
+			/*if(channelIndex == 5)
+			{
+				std::cout << "End of fit: (" << sourceIndex << ")" <<
+					g << ',' << dl << ',' << dm << '\n';
+			}*/
+				
 			
 			if(fitIteration+1 == _fitIterationCount)
 			{
