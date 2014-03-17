@@ -279,6 +279,11 @@ public:
 		double x[3], y[3];
 		void* userData[3];
 	};
+	struct ConvexVertex
+	{
+		double x, y;
+		void* userData;
+	};
 	
 	Delaunay() : _boundTop(0), _topNode(0)
 	{
@@ -290,6 +295,7 @@ public:
 	
 	void Clear()
 	{
+		delete _topNode;
 		for(std::vector<Vertex*>::iterator i=_vertices.begin(); i!=_vertices.end(); ++i)
 			delete *i;
 		_vertices.clear();
@@ -297,7 +303,6 @@ public:
 			delete *i;
 		_convexHull.clear();
 		_boundTop = 0;
-		delete _topNode;
 		_triangles.clear();
 	}
 	
@@ -328,12 +333,14 @@ public:
 	
 	size_t ConvexVerticesCount() const { return _convexHull.size(); }
 	
-	void GetConvexVertex(size_t vertexIndex, double& x, double& y, void*& userData) const
+	ConvexVertex GetConvexVertex(size_t vertexIndex) const
 	{
+		ConvexVertex cv;
 		Vertex* v = _convexHull[vertexIndex]->vertices[0];
-		x = v->x;
-		y = v->y;
-		userData = v->userData;
+		cv.x = v->x;
+		cv.y = v->y;
+		cv.userData = v->userData;
+		return cv;
 	}
 	
 	void Triangulate()
