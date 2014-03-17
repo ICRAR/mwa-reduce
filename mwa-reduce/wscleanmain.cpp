@@ -7,9 +7,8 @@
 int main(int argc, char *argv[])
 {
 	std::cout << "\n"
-		" ** This software package is not public. Please do not use it or distribute it **\n"
-		" ** without explicit permission from the author (offringa@gmail.com).          **\n"
-		" ** The intension is to make the code public at a later time.                  **\n\n";
+		" ** This software package is released under the GPL version 3. **\n"
+	  " ** Author: Andre Offringa (offringa@gmail.com).               **\n";
 	
 	if(argc < 2)
 	{
