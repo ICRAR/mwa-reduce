@@ -634,18 +634,18 @@ void WSClean::performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIte
 			if(_mGain == 1.0)
 			{
 				std::cout << "Writing residual image... " << std::flush;
-				_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-residual.fits", residualSet.Get(i));
+				_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-residual.fits", residualSet.GetImage(i));
 			}
 			else {
 				std::cout << "Writing first iteration image... " << std::flush;
-				_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-first-residual.fits", residualSet.Get(i));
+				_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-first-residual.fits", residualSet.GetImage(i));
 			}
 			std::cout << "DONE\n";
 		}
 		if(!reachedMajorThreshold)
 		{
 			std::cout << "Writing model image... " << std::flush;
-			_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-model.fits", modelSet.Get(i));
+			_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-model.fits", modelSet.GetImage(i));
 			std::cout << "DONE\n";
 		}
 	}

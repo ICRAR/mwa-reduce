@@ -15,6 +15,19 @@ namespace joined_pol_clean {
 		
 	class SingleImageSet {
 	public:
+		struct Value {
+			double xx, xyr, xyi, yy;
+			double GetValue(size_t i) { 
+				switch(i) {
+					default:
+					case 0: return xx;
+					case 1: return xyr;
+					case 2: return xyi;
+					case 3: return yy;
+				}
+			}
+		};
+		
 		double *xx, *xyr, *xyi, *yy;
 		
 		SingleImageSet(size_t size, ImageBufferAllocator<double>& allocator) :
@@ -50,15 +63,24 @@ namespace joined_pol_clean {
 			set.Store(yy, PolarizationEnum::YY, false);
 		}
 		
-		double* Get(size_t index)
+		Value Get(size_t index) const
 		{
-			double* vals[4] = { xx, xyr, xyi, yy };
-			return vals[index];
+			Value v;
+			v.xx = xx[index];
+			v.xyr = xyr[index];
+			v.xyi = xyi[index];
+			v.yy = yy[index];
+			return v;
 		}
 		
 		double JoinedValue(size_t index) const
 		{
 			return SquaredSum(index);
+		}
+		
+		double JoinedValueNormalized(size_t index) const
+		{
+			return sqrt(SquaredSum(index));
 		}
 		
 		double SquaredSum(size_t index) const
@@ -82,12 +104,29 @@ namespace joined_pol_clean {
 			yy[index] += source.yy[index] * factor;
 		}
 		
+		size_t ImageCount() const { return 4; }
+		
+		static size_t StaticImageCount() { return 4; }
+		
+		double* GetImage(size_t imageIndex)
+		{
+			double* vals[4] = { xx, xyr, xyi, yy };
+			return vals[imageIndex];
+		}
+		
 	private:
 		ImageBufferAllocator<double> *_allocator;
 	};
 	
 	class MultiImageSet {
 	public:
+		struct Value {
+			std::vector<SingleImageSet::Value> values;
+			double GetValue(size_t i)
+			{
+				return values[i/4].GetValue(i%4);
+			}
+		};
 		MultiImageSet(size_t imageSize, size_t count, ImageBufferAllocator<double>& allocator)
 		{
 			for(size_t i=0; i!=count; ++i)
@@ -119,9 +158,14 @@ namespace joined_pol_clean {
 			double val = 0.0;
 			for(std::vector<SingleImageSet*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
 			{
-				val += (*i)->SquaredSum(index);
+				val += (*i)->JoinedValueNormalized(index);
 			}
 			return val;
+		}
+		
+		double JoinedValueNormalized(size_t index) const
+		{
+			return JoinedValue(index) / _sets.size();
 		}
 		
 		bool IsComponentNegative(size_t index) const
@@ -141,6 +185,22 @@ namespace joined_pol_clean {
 			}
 		}
 		
+		Value Get(const size_t index)
+		{
+			Value v;
+			v.values.resize(_sets.size());
+			for(size_t i=0; i!=_sets.size(); ++i)
+				v.values[i] = _sets[i]->Get(index);
+			return v;
+		}
+		
+		size_t ImageCount() const { return SingleImageSet::StaticImageCount() * _sets.size(); }
+		
+		double* GetImage(size_t imageIndex)
+		{
+			return _sets[imageIndex/4]->GetImage(imageIndex%4);
+		}
+		
 	private:
 		std::vector<SingleImageSet*> _sets;
 	};	
@@ -158,14 +218,14 @@ private:
 	struct CleanTask
 	{
 		size_t cleanCompX, cleanCompY;
-		double peakXX, peakXYr, peakXYi, peakYY;
+		typename ImageSetType::Value peak;
 	};
 	struct CleanResult
 	{
-		CleanResult() : nextPeakX(0), nextPeakY(0), peakLevelSquared(0.0)
+		CleanResult() : nextPeakX(0), nextPeakY(0), peakLevelUnnormalized(0.0)
 		{ }
 		size_t nextPeakX, nextPeakY;
-		double peakLevelSquared;
+		double peakLevelUnnormalized;
 	};
 	struct CleanThreadData
 	{

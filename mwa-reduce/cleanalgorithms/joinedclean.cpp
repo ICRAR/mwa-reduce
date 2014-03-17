@@ -57,10 +57,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		CleanTask task;
 		task.cleanCompX = componentX;
 		task.cleanCompY = componentY;
-		task.peakXX = dataImage.xx[peakIndex];
-		task.peakXYr = dataImage.xyr[peakIndex];
-		task.peakXYi = dataImage.xyi[peakIndex];
-		task.peakYY = dataImage.yy[peakIndex];
+		task.peak = dataImage.Get(peakIndex);
 		for(size_t i=0; i!=cpuCount; ++i)
 			taskLanes[i]->write(task);
 		
@@ -71,9 +68,9 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		{
 			CleanResult result;
 			resultLanes[i]->read(result);
-			if(result.peakLevelSquared >= peakSquared)
+			if(result.peakLevelUnnormalized >= peakSquared)
 			{
-				peakSquared = result.peakLevelSquared;
+				peakSquared = result.peakLevelUnnormalized;
 				componentX = result.nextPeakX;
 				componentY = result.nextPeakY;
 			}
@@ -103,7 +100,7 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 	
 	for(size_t index=0; index!=lastIndex; ++index)
 	{
-		double value = image.SquaredSum(index);
+		double value = image.JoinedValue(index);
 		if(std::isfinite(value))
 		{
 			if(value > peakMax)
@@ -123,14 +120,14 @@ void JoinedClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane, a
 	CleanTask task;
 	while(taskLane->read(task))
 	{
-		subtractImage(cleanData.dataImage->xx, cleanData.psfImage, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakXX, cleanData.startY, cleanData.endY);
-		subtractImage(cleanData.dataImage->xyr, cleanData.psfImage, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakXYr, cleanData.startY, cleanData.endY);
-		subtractImage(cleanData.dataImage->xyi, cleanData.psfImage, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakXYi, cleanData.startY, cleanData.endY);
-		subtractImage(cleanData.dataImage->yy, cleanData.psfImage, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peakYY, cleanData.startY, cleanData.endY);
+		for(size_t i=0; i!=cleanData.dataImage->ImageCount(); ++i)
+		{
+			subtractImage(cleanData.dataImage->GetImage(i), cleanData.psfImage, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
+		}
 		
 		CleanResult result;
 		findPeak(*cleanData.dataImage, result.nextPeakX, result.nextPeakY, cleanData.startY, cleanData.endY);
-		result.peakLevelSquared = cleanData.dataImage->SquaredSum(result.nextPeakX + result.nextPeakY*_width);
+		result.peakLevelUnnormalized = cleanData.dataImage->JoinedValue(result.nextPeakX + result.nextPeakY*_width);
 		
 		resultLane->write(result);
 	}
@@ -141,10 +138,10 @@ std::string JoinedClean<ImageSetType>::peakDescription(const ImageSetType& image
 {
 	std::ostringstream str;
 	size_t index = x + y*_width;
-	double peak = sqrt(image.SquaredSum(index));
-	str << peak << " Jy at " << x << "," << y << " (XX=" << image.xx[index] << ", XY=" << image.xyr[index] << '+' << image.xyi[index] << "i, YY=" << image.yy[index] << ')';
+	double peak = image.JoinedValueNormalized(index);
+	str << peak << " Jy at " << x << "," << y;
 	return str.str();
 }
 
 template class JoinedClean<joined_pol_clean::SingleImageSet>;
-//template class JoinedClean<joined_pol_clean::MultiImageSet>;
+template class JoinedClean<joined_pol_clean::MultiImageSet>;
