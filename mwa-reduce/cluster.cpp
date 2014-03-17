@@ -174,6 +174,7 @@ int main(int argc, char* argv[])
 	if(argc < 4)
 	{
 		std::cout << "Syntax: cluster <model-input> <model-output> <clustercount>\n";
+		return -1;
 	}
 	const Model& model(argv[1]);
 	const size_t clusterCount = atoi(argv[3]);
