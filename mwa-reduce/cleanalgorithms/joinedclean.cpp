@@ -1,4 +1,4 @@
-#include "joinedpolclean.h"
+#include "joinedclean.h"
 
 #include "../lane.h"
 
@@ -7,7 +7,7 @@
 #include <immintrin.h>
 
 template<typename ImageSetType>
-void JoinedPolClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain)
+void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain)
 {
 	if(_stopOnNegativeComponent)
 		_allowNegativeComponents = true;
@@ -43,7 +43,7 @@ void JoinedPolClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage
 		cleanThreadData.psfImage = psfImage;
 		cleanThreadData.startY = (height*i)/cpuCount;
 		cleanThreadData.endY = height*(i+1)/cpuCount;
-		threadGroup.add_thread(new boost::thread(&JoinedPolClean::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
+		threadGroup.add_thread(new boost::thread(&JoinedClean::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
 	
 	while(sqrt(peakSquared) > firstThreshold && _iterationNumber < _maxIter && !(dataImage.IsComponentNegative(peakIndex) && _stopOnNegativeComponent))
@@ -95,7 +95,7 @@ void JoinedPolClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage
 }
 
 template<typename ImageSetType>
-void JoinedPolClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, size_t& y, size_t startY, size_t stopY) const
+void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, size_t& y, size_t startY, size_t stopY) const
 {
 	double peakMax = std::numeric_limits<double>::min();
 	size_t peakIndex = 0;
@@ -118,7 +118,7 @@ void JoinedPolClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x
 }
 
 template<typename ImageSetType>
-void JoinedPolClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane, ao::lane<CleanResult> *resultLane, CleanThreadData cleanData)
+void JoinedClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane, ao::lane<CleanResult> *resultLane, CleanThreadData cleanData)
 {
 	CleanTask task;
 	while(taskLane->read(task))
@@ -137,7 +137,7 @@ void JoinedPolClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane
 }
 
 template<typename ImageSetType>
-std::string JoinedPolClean<ImageSetType>::peakDescription(const ImageSetType& image, size_t& x, size_t& y)
+std::string JoinedClean<ImageSetType>::peakDescription(const ImageSetType& image, size_t& x, size_t& y)
 {
 	std::ostringstream str;
 	size_t index = x + y*_width;
@@ -146,5 +146,5 @@ std::string JoinedPolClean<ImageSetType>::peakDescription(const ImageSetType& im
 	return str.str();
 }
 
-template class JoinedPolClean<joined_pol_clean::SingleImageSet>;
-//template class JoinedPolClean<joined_pol_clean::MultiImageSet>;
+template class JoinedClean<joined_pol_clean::SingleImageSet>;
+//template class JoinedClean<joined_pol_clean::MultiImageSet>;

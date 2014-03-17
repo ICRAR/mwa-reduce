@@ -1,5 +1,5 @@
-#ifndef JOINED_POL_CLEAN_H
-#define JOINED_POL_CLEAN_H
+#ifndef JOINED_CLEAN_H
+#define JOINED_CLEAN_H
 
 #include "cleanalgorithm.h"
 #include "simpleclean.h"
@@ -147,7 +147,7 @@ namespace joined_pol_clean {
 }
 
 template<typename ImageSetType = joined_pol_clean::SingleImageSet>
-class JoinedPolClean : public CleanAlgorithm
+class JoinedClean : public CleanAlgorithm
 {
 public:
 	void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain);

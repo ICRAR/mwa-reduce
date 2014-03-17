@@ -11,7 +11,7 @@
 #include "wsinversion.h"
 
 #include "cleanalgorithms/cleanalgorithm.h"
-#include "cleanalgorithms/joinedpolclean.h"
+#include "cleanalgorithms/joinedclean.h"
 #include "cleanalgorithms/simpleclean.h"
 
 #include "msprovider/contiguousms.h"
@@ -259,7 +259,7 @@ void WSClean::initializeImageWeights(const MSSelection& partSelection)
 void WSClean::initializeCleanAlgorithm()
 {
 	if(_joinedPolarizationCleaning)
-		_cleanAlgorithm.reset(new JoinedPolClean<>());
+		_cleanAlgorithm.reset(new JoinedClean<>());
 	else
 		_cleanAlgorithm.reset(new SimpleClean());
 	_cleanAlgorithm->SetMaxNIter(_nIter);
@@ -604,7 +604,7 @@ void WSClean::performSimpleClean(bool& reachedMajorThreshold, size_t majorIterat
 
 void WSClean::performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIterationNr)
 {
-	JoinedPolClean<>::ImageSet
+	JoinedClean<>::ImageSet
 		modelSet(_imgWidth*_imgHeight, _imageAllocator),
 		residualSet(_imgWidth*_imgHeight, _imageAllocator);
 		
@@ -614,7 +614,7 @@ void WSClean::performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIte
 	residualSet.Load(_residualImages);
 
 	_cleaningWatch.Start();
-	static_cast<JoinedPolClean<>&>(*_cleanAlgorithm).ExecuteMajorIteration(residualSet, modelSet, psfImage, _imgWidth, _imgHeight, reachedMajorThreshold);
+	static_cast<JoinedClean<>&>(*_cleanAlgorithm).ExecuteMajorIteration(residualSet, modelSet, psfImage, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	_imageAllocator.Free(psfImage);
