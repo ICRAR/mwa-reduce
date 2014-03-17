@@ -100,12 +100,10 @@ public:
 		std::vector<size_t> indices(_triangulator.ConvexVerticesCount());
 		for(size_t i=0; i!=_triangulator.ConvexVerticesCount(); ++i)
 		{
-			size_t* sourceIndex;
-			double curra, curdec;
-			_triangulator.GetConvexVertex(i, curra, curdec, reinterpret_cast<void*&>(sourceIndex));
-			indices[i] = *sourceIndex;
+			Delaunay::ConvexVertex v = _triangulator.GetConvexVertex(i);
+			indices[i] = *reinterpret_cast<size_t*>(v.userData);
 			double l, m;
-			ImageCoordinates::RaDecToLM(curra, curdec, _phaseCentreRA, _phaseCentreDec, l, m);
+			ImageCoordinates::RaDecToLM(v.x, v.y, _phaseCentreRA, _phaseCentreDec, l, m);
 			ImageCoordinates::LMToXYfloat(l, m, _pixelSizeX, _pixelSizeY, _width, _height, xs[i], ys[i]);
 		}
 		for(size_t i=0; i!=_triangulator.ConvexVerticesCount(); ++i)
