@@ -11,7 +11,7 @@ template<typename NumType>
 class ImageBufferAllocator
 {
 public:
-	ImageBufferAllocator() : _buffers(), _nReal(0), _nComplex(0), _nRealMax(0), _nComplexMax(0)
+	ImageBufferAllocator() : _buffers(), _nReal(0), _nComplex(0), _nRealMax(0), _nComplexMax(0), _previousSize(0)
 	{ }
 	
 	~ImageBufferAllocator()
@@ -56,6 +56,13 @@ public:
 	NumType* Allocate(size_t size)
 	{
 		std::lock_guard<std::mutex> guard(_mutex);
+		
+		if(size != _previousSize)
+		{
+			freeUnused();
+			_previousSize = size;
+		}
+		
 		++_nReal;
 		if(_nReal > _nRealMax) _nRealMax = _nReal;
 		for(typename std::vector<Buffer>::iterator i=_buffers.begin(); i!=_buffers.end(); ++i)
@@ -170,8 +177,27 @@ private:
 		return buffer;
 	}
 	
+	void freeUnused()
+	{
+		size_t unusedCount = 0;
+		for(typename std::vector<Buffer>::iterator i=_buffers.begin(); i!=_buffers.end(); ++i)
+		{
+			if(!i->isFirstHalfUsed && !i->isSecondHalfUsed)
+			{
+				free(i->ptr);
+				_buffers.erase(i);
+				i = _buffers.begin();
+				++unusedCount;
+			}
+		}
+		if(unusedCount != 0)
+		{
+			std::cout << "Freed " << unusedCount << " image buffer(s).\n";
+		}
+	}
+	
 	std::vector<Buffer> _buffers;
-	size_t _nReal, _nComplex, _nRealMax, _nComplexMax;
+	size_t _nReal, _nComplex, _nRealMax, _nComplexMax, _previousSize;
 	mutable std::mutex _mutex;
 };
 
