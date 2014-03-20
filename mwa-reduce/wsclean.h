@@ -50,6 +50,7 @@ public:
 		_globalSelection.SetFieldId(fieldId);
 	}
 	void SetChannelsOut(size_t channelsOut) { _channelsOut = channelsOut; }
+	void SetJoinChannels(bool joinChannels) { _joinedFrequencyCleaning = joinChannels; }
 	void SetWeightMode(enum WeightMode::WeightingEnum weighting) {
 		_weightMode.SetMode(WeightMode(weighting));
 	}
@@ -85,6 +86,7 @@ private:
 	void initializeCurMSProviders(size_t outChannelIndex, PolarizationEnum polarization);
 	void clearCurMSProviders();
 	void storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum polarization, bool isImaginary, const double* image);
+	void selectChannels(MSSelection& selection, size_t outChannelIndex, size_t channelsOut);
 	
 	void imagePSF();
 	void imageGridding();
@@ -101,6 +103,20 @@ private:
 		else
 			return _prefixName + "-" + Polarization::TypeToShortString(polarization);
 	}
+	std::string frequencyPrefix(const std::string& rootPrefix, size_t channelIndex, size_t totalChannels) const 
+	{
+		if(totalChannels != 1)
+		{
+			std::ostringstream partPrefixNameStr;
+			partPrefixNameStr << rootPrefix << '-';
+			if(channelIndex < 1000) partPrefixNameStr << '0';
+			if(channelIndex < 100) partPrefixNameStr << '0';
+			if(channelIndex < 10) partPrefixNameStr << '0';
+			partPrefixNameStr << channelIndex;
+			return partPrefixNameStr.str();
+		}
+		else return rootPrefix;
+	}
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _manualBeamSize, _memFraction, _wLimit;
@@ -111,7 +127,7 @@ private:
 	WeightMode _weightMode;
 	std::string _prefixName;
 	bool _allowNegative, _smallPSF, _smallInversion, _addApparentModel, _stopOnNegative, _makePSF;
-	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning;
+	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;
 	std::string _commandLine;
