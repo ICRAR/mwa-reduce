@@ -28,6 +28,20 @@ public:
 			_sourceIndices[i] = i;
 	}
 	
+	IonInterpolator(const Model& model, double ra, double dec, double scaleX, double scaleY, size_t width, size_t height) :
+		_model(model),
+		_sourceIndices(_model.SourceCount()),
+		_phaseCentreRA(ra),
+		_phaseCentreDec(dec),
+		_pixelSizeX(scaleX),
+		_pixelSizeY(scaleY),
+		_width(width),
+		_height(height)
+	{
+		for(size_t i=0; i!=_model.SourceCount(); ++i)
+			_sourceIndices[i] = i;
+	}
+	
 	/**
 	 * Initialize the ioninterpolator to be able to interpolate solutions
 	 * for a given ionospheric interval, channel and polarization.
