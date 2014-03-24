@@ -7,6 +7,7 @@
 #include "ioninterpolator.h"
 #include "model.h"
 #include "modelrenderer.h"
+#include "banddata.h"
 
 int main(int argc, char* argv[])
 {
@@ -111,16 +112,79 @@ int main(int argc, char* argv[])
 			IonSolutionFile solutionFile;
 			solutionFile.OpenForReading(ionSolutionFilename);
 			
+			std::ofstream
+				plotPosFile(ionOutPrefix+"-posplot.plt"),
+				plotGainFile(ionOutPrefix+"-gainplot.plt"),
+				vectorPlot(ionOutPrefix+"-vectors.ann");
+			plotPosFile
+				<< "set terminal postscript enhanced color\n"
+				<< "#set logscale y\n"
+				<< "#set xrange [0.001:]\n"
+				<< "#set yrange [-8:2]\n"
+				<< "set output \"" << ionOutPrefix << "-posplot.ps\"\n"
+				<< "set key bottom left\n"
+				<< "set xlabel \"Freq (\\lambda^2)\"\n"
+				<< "set ylabel \"Pos offset (arcmin)\"\n"
+				<< "plot\\\n";
+			plotGainFile
+				<< "set terminal postscript enhanced color\n"
+				<< "#set logscale y\n"
+				<< "#set xrange [0.001:]\n"
+				<< "#set yrange [-8:2]\n"
+				<< "set output \"" << ionOutPrefix << "-gainplot.ps\"\n"
+				<< "set key bottom left\n"
+				<< "set xlabel \"Freq (\\lambda^2)\"\n"
+				<< "set ylabel \"Gain\"\n"
+				<< "plot\\\n";
+
 			for(size_t s=0; s!=solutionFile.DirectionCount(); ++s)
 			{
+				const ModelSource& source = model.Source(s);
 				std::ostringstream name;
-				name << "direc" << s << ".txt";
-				std::ofstream direcfile(name.str());
+				name << ionOutPrefix << "-direc" << s << "-";
+				if(s != 0) {
+					plotPosFile << ",\\\n";
+					plotGainFile << ",\\\n";
+				}
+				std::ofstream
+					direcfile(name.str() + "posoff.txt"),
+					gainfile(name.str() + "gain.txt");
+				plotPosFile << "\"" << name.str() << "posoff.txt\" using 2:3 with points title \"\"";
+				plotGainFile << "\"" << name.str() << "gain.txt\" using 2:3 with points title \"\"";
+				double totalDl = 0.0, totalDm = 0.0;
 				for(size_t cb=0; cb!=solutionFile.ChannelBlockCount(); ++cb)
 				{
-					
+					double freq = (solutionFile.EndFrequency() - solutionFile.StartFrequency()) *
+						double(cb) / solutionFile.ChannelBlockCount() + solutionFile.StartFrequency();
+					double lambda = BandData::FrequencyToLambda(freq);
+					double sumDl = 0.0, sumDm = 0.0, sumG = 0.0;
+					for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
+					{
+						double
+							dl = solutionFile.ReadSolution(IonSolutionFile::DlSolution, interval, cb, 0, s),
+							dm = solutionFile.ReadSolution(IonSolutionFile::DmSolution, interval, cb, 0, s),
+							g = solutionFile.ReadSolution(IonSolutionFile::GainSolution, interval, cb, 0, s);
+						sumDl += dl; sumDm += dm; sumG += g;
+					}
+					totalDl += sumDl;
+					totalDm += sumDm;
+					double
+						posOff = sqrt(sumDl*sumDl + sumDm*sumDm) / solutionFile.IntervalCount(),
+						gain = sumG / solutionFile.IntervalCount();
+					posOff *= 60.0*180.0/M_PI; // to arcmin
+					direcfile << freq << '\t' << lambda*lambda << '\t' << posOff << '\n';
+					gainfile << freq << '\t' << lambda*lambda << '\t' << gain << '\n';
 				}
+				totalDl *= 100.0/solutionFile.ChannelBlockCount();
+				totalDm *= 100.0/solutionFile.ChannelBlockCount();
+				vectorPlot
+					<< "LINE\t"
+					<< source.MeanRA()*(180.0/M_PI) << '\t' << source.MeanDec()*(180.0/M_PI) << '\t'
+					<< (source.MeanRA()-totalDl)*(180.0/M_PI) << '\t'
+					<< (source.MeanDec()-totalDm)*(180.0/M_PI) << '\n';
 			}
+			plotPosFile << '\n';
+			plotGainFile << '\n';
 			
 			ao::uvector<double> interpolatedImage(width * height);
 			for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)

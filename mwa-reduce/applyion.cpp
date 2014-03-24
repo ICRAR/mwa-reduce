@@ -33,14 +33,20 @@ int main(int argc, char* argv[])
 {
 	if(argc < 5)
 	{
-		std::cout << "Syntax:\n\tapplyion <input fits> <output fits> <model> <ion-solutions>\n";
+		std::cout << "Syntax:\n\tapplyion [-nogain] <input fits> <output fits> <model> <ion-solutions>\n";
 		return -1;
 	}
+	bool nogain = false;
+	size_t argi = 1;
+	if(std::string(argv[argi]) == "-nogain") {
+		nogain = true;
+		++argi;
+	}
 	const char
-		*inputFilename = argv[1],
-		*outputFilename = argv[2],
-		*modelFilename = argv[3],
-		*solutionsFilename = argv[4];
+		*inputFilename = argv[argi],
+		*outputFilename = argv[argi+1],
+		*modelFilename = argv[argi+2],
+		*solutionsFilename = argv[argi+3];
 		
 	FitsReader reader(inputFilename);
 	Model model(modelFilename);
@@ -59,7 +65,10 @@ int main(int argc, char* argv[])
 		dlImage(width * height),
 		dmImage(width * height),
 		outImage(width * height);
-	interpolator.Interpolate(gainImage.data(), solutions, IonSolutionFile::GainSolution);
+	if(nogain)
+		gainImage.assign(width*height, 1.0);
+	else
+		interpolator.Interpolate(gainImage.data(), solutions, IonSolutionFile::GainSolution);
 	interpolator.Interpolate(dlImage.data(), solutions, IonSolutionFile::DlSolution);
 	interpolator.Interpolate(dmImage.data(), solutions, IonSolutionFile::DmSolution);
 	
