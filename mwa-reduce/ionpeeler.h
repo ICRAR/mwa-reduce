@@ -36,6 +36,7 @@ public:
 		_weightGridSize = gridSize;
 		_weightPixelScale = pixelScale;
 	}
+	void SetChannelBlockSize(size_t newSize) { _channelBlockSize = newSize; }
 	
 	void Peel(const char* msName, const char* modelName, const char* solutionFilename);
 private:

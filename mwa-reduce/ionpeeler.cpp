@@ -111,7 +111,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	
 	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	_passCount = (_solutionInterval==0) ? 1 : (timestepCount + _solutionInterval - 1) / _solutionInterval;
-	_channelBlockCount = _bandData.ChannelCount() / _channelBlockSize,
+	_channelBlockCount = _bandData.ChannelCount() / _channelBlockSize;
+	std::cout << "Will process " << channelCount << " channels in " << _channelBlockCount << " channel groups\n";
 	
 	_solutionFile.reset(new IonSolutionFile());
 	_solutionFile->SetAntennaCount(1);
