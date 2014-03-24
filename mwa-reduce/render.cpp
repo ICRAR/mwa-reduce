@@ -110,6 +110,18 @@ int main(int argc, char* argv[])
 			IonInterpolator interpolator(model, ra, dec, pixelSizeX, pixelSizeY, width, height);
 			IonSolutionFile solutionFile;
 			solutionFile.OpenForReading(ionSolutionFilename);
+			
+			for(size_t s=0; s!=solutionFile.DirectionCount(); ++s)
+			{
+				std::ostringstream name;
+				name << "direc" << s << ".txt";
+				std::ofstream direcfile(name.str());
+				for(size_t cb=0; cb!=solutionFile.ChannelBlockCount(); ++cb)
+				{
+					
+				}
+			}
+			
 			ao::uvector<double> interpolatedImage(width * height);
 			for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 			{

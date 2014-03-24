@@ -120,6 +120,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	_solutionFile->SetPolarizationCount(1);
 	_solutionFile->SetIntervalCount(_passCount);
 	_solutionFile->SetDirectionCount(_predictionModels.size());
+	_solutionFile->SetStartFrequency(_bandData.LowestFrequency());
+	_solutionFile->SetEndFrequency(_bandData.HighestFrequency());
 	_solutionFile->OpenForWriting(solutionFilename);
 	
 	casa::Array<std::complex<float> > data(dataShape);
@@ -228,7 +230,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		// Write back
 		for(size_t rowIndex=_curStartRow; rowIndex!=_curEndRow; ++rowIndex)
 		{
-			RowData& rowData = _rowData[rowIndex-_curStartRow];
+			const RowData& rowData = _rowData[rowIndex-_curStartRow];
 			if(rowData.a1 != rowData.a2)
 			{
 				timeIndex = rowData.timeIndex;
@@ -238,9 +240,9 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 					size_t
 						channelIndexStart = cb * _bandData.ChannelCount() / _channelBlockCount,
 						channelIndexEnd = (cb+1) * _bandData.ChannelCount() / _channelBlockCount;
-					for(size_t channelIndex=channelIndexStart; channelIndex!=channelIndexEnd; ++channelIndex)
+					for(size_t ch=channelIndexStart; ch!=channelIndexEnd; ++ch)
 					{
-						size_t timeIndexOffset = (channelIndex-channelIndexStart)*(_endTimestep-_startTimestep);
+						size_t timeIndexOffset = (ch-channelIndexStart)*(_endTimestep-_startTimestep);
 						std::complex<double> *arrPtr = _dataArrays[cb]->ValuePtr(rowData.a1, rowData.a2, timeIndex - _startTimestep + timeIndexOffset);
 						dataPtr[0] = arrPtr[0]; dataPtr[1] = arrPtr[1];
 						dataPtr[2] = arrPtr[2]; dataPtr[3] = arrPtr[3];
