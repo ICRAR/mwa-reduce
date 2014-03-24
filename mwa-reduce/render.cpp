@@ -11,7 +11,7 @@
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] <model>\n";
+		std::cout << "syntax: render [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] [-centre <ra> <dec>] <model>\n";
 	else {
 		std::string templateFits;
 		std::string outputFitsName;
@@ -19,6 +19,8 @@ int main(int argc, char* argv[])
 		const char* ionSolutionFilename = 0;
 		bool restore = false, addToTemplate = false, ionospheric = false;
 		int argi = 1;
+		double ra = 0.0, dec = 0.0, dl = 0.0, dm = 0.0;
+		double pixelSizeX = 0.012*(M_PI/180.0), pixelSizeY = 0.012*(M_PI/180.0);
 		while(argi < argc && argv[argi][0] == '-')
 		{
 			std::string param(&argv[argi][1]);
@@ -44,17 +46,22 @@ int main(int argc, char* argv[])
 				++argi;
 				outputFitsName = argv[argi];
 			}
+			else if(param == "centre")
+			{
+				++argi;
+				ra = RaDecCoord::ParseRA(argv[argi]);
+				++argi;
+				dec = RaDecCoord::ParseDec(argv[argi]);
+			}
 			else throw std::runtime_error("Invalid param");
 			++argi;
 		}
 	
 		Model model(argv[argi]);
 	
-		size_t width = 1024, height = 1024;
-		double ra = 0.0, dec = 0.0, dl = 0.0, dm = 0.0;
-		double pixelSizeX = 0.01, pixelSizeY = 0.01;
+		size_t width = 4096, height = 4096;
 		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
-		double beamSize = 10.0*(M_PI/180.0/60.0);
+		double beamSize = 2.0*(M_PI/180.0/60.0);
 		
 		std::unique_ptr<FitsWriter> writer;
 		std::unique_ptr<FitsReader> reader;
@@ -81,6 +88,10 @@ int main(int argc, char* argv[])
 			
 			writer.reset(new FitsWriter(*reader));
 		}
+		else {
+			image.resize(width * height);
+			writer.reset(new FitsWriter());
+		}
 		
 		if(!outputFitsName.empty())
 		{
@@ -96,7 +107,7 @@ int main(int argc, char* argv[])
 		
 		if(ionospheric)
 		{
-			IonInterpolator interpolator(model, *reader);
+			IonInterpolator interpolator(model, ra, dec, pixelSizeX, pixelSizeY, width, height);
 			IonSolutionFile solutionFile;
 			solutionFile.OpenForReading(ionSolutionFilename);
 			ao::uvector<double> interpolatedImage(width * height);
