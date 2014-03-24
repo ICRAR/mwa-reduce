@@ -544,6 +544,11 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 				
 			} while (status == GSL_CONTINUE && iter < 100);
 			
+			if(iter == 100)
+			{
+				std::cout << "Warning: Solutions for " << _model.Source(sourceIndex).Name() << " failed to converge within 100 iterations.\n";
+			}
+			
 			g = gsl_vector_get (solver->x, 0);
 			dl = gsl_vector_get (solver->x, 1);
 			dm = gsl_vector_get (solver->x, 2);
