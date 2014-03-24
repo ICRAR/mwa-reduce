@@ -34,6 +34,8 @@ class IonSolutionFile
 		_header.parameterCount = 3;
 		_header.startTime = 0.0;
 		_header.endTime = 0.0;
+		_header.startFrequency = 0.0;
+		_header.endFrequency = 0.0;
   }
 
   ~IonSolutionFile() {
@@ -65,6 +67,12 @@ class IonSolutionFile
   void SetDirectionCount(size_t directionCount) {
 		_header.directionCount = directionCount;
 	}
+	
+	double StartFrequency() const { return _header.startFrequency; }
+	void SetStartFrequency(double startFrequency) { _header.startFrequency = startFrequency; }
+	
+	double EndFrequency() const { return _header.endFrequency; }
+	void SetEndFrequency(double endFrequency) { _header.endFrequency = endFrequency; }
 
   void OpenForWriting(const char *filename)
   {
@@ -129,6 +137,7 @@ class IonSolutionFile
     uint32_t intervalCount, antennaCount, channelBlockCount, polarizationCount;
 		uint32_t directionCount, parameterCount;
 		double startTime, endTime;
+		double startFrequency, endFrequency;
   } _header;
   std::ofstream *_outputStream;
   std::ifstream *_inputStream;
