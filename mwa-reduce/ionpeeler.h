@@ -36,6 +36,7 @@ public:
 		_weightGridSize = gridSize;
 		_weightPixelScale = pixelScale;
 	}
+	void SetChannelBlockSize(size_t newSize) { _channelBlockSize = newSize; }
 	
 	void Peel(const char* msName, const char* modelName, const char* solutionFilename);
 private:
@@ -48,7 +49,8 @@ private:
 	{
 		IonPeeler* ionPeeler;
 		ao::uvector<std::complex<double>>* modelData;
-		size_t channelIndex;
+		size_t channelBlockIndex;
+		double lambda;
 	};
 	struct PeelingStats
 	{
@@ -108,7 +110,7 @@ private:
 	size_t _curStartRow, _curEndRow;
 	size_t _startTimestep, _endTimestep;
 	BandData _bandData;
-	size_t _antennaCount;
+	size_t _antennaCount, _channelBlockSize, _channelBlockCount;
 	size_t _cpuCount;
 	struct PeelingStats _stats;
 	

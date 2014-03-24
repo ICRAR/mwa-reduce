@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
 	WeightMode weightMode(WeightMode::NaturalWeighted);
 	size_t weightGridSize = 0;
 	double weightPixelScale = 0.0;
+	size_t channelBlockSize = 1;
 	
 	while(argv[argi][0] == '-')
 	{
@@ -70,6 +71,11 @@ int main(int argc, char* argv[])
 			}
 			else throw std::runtime_error("Unknown weighting mode specified");
 		}
+		else if(param == "groupchannels")
+		{
+			++argi;
+			channelBlockSize = atoi(argv[argi]);
+		}
 		else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		++argi;
 	}
@@ -79,5 +85,6 @@ int main(int argc, char* argv[])
 	peeler.SetApplyBeam(applyBeam);
 	peeler.SetDataColumnName(dataColumnName);
 	peeler.SetWeighting(weightMode, weightGridSize, weightPixelScale);
+	peeler.SetChannelBlockSize(channelBlockSize);
 	peeler.Peel(argv[argi], argv[argi+1], argv[argi+2]);
 }

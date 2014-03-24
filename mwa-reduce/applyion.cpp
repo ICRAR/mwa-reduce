@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 	std::cout << "Solutions have " << solutions.DirectionCount() << " directions.\n";
 	if(model.SourceCount() != solutions.DirectionCount())
 		throw std::runtime_error("Nr of clusters in model does not match number of solution directions!");
-	interpolator.Initialize(solutions, 0, solutions.IntervalCount(), 0, solutions.ChannelCount(), 0);
+	interpolator.Initialize(solutions, 0, solutions.IntervalCount(), 0, solutions.ChannelBlockCount(), 0);
 	
 	const size_t width = reader.ImageWidth(), height = reader.ImageHeight();
 	ao::uvector<double>
