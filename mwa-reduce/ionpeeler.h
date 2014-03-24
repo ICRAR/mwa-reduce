@@ -112,6 +112,7 @@ private:
 	BandData _bandData;
 	size_t _antennaCount, _channelBlockSize, _channelBlockCount;
 	size_t _cpuCount;
+	ao::uvector<size_t> _failedConvergencesPerSource;
 	struct PeelingStats _stats;
 	
 	WeightMode _weightMode;
