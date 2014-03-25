@@ -41,6 +41,19 @@ void IonPeeler::initWeighting(casa::MeasurementSet& ms)
 void IonPeeler::Peel(const char* msName, const char* modelName, const char* solutionFilename)
 {
 	casa::MeasurementSet ms(msName, casa::MeasurementSet::Update);
+	
+	if(_dataColumnName.empty())
+	{
+		bool hasCorrected = ms.tableDesc().isColumn("CORRECTED_DATA");
+		if(hasCorrected) {
+			std::cout << "First measurement set has corrected data: tasks will be applied on the corrected data column.\n";
+			_dataColumnName = "CORRECTED_DATA";
+		} else {
+			std::cout << "No corrected data in first measurement set: tasks will be applied on the data column.\n";
+			_dataColumnName= "DATA";
+		}
+	}
+	
 	_model = Model(modelName);
 	
 	initWeighting(ms);

@@ -15,7 +15,19 @@
 int main(int argc, char* argv[])
 {
 	if(argc < 4) {
-		std::cout << "syntax: ionpeel [options] <ms> <model> <solutionfile>\n";
+		std::cout <<
+			"syntax: ionpeel [options] <ms> <model> <solutionfile>\n"
+			"Options are:\n"
+			" -noapplybeam\n"
+			"\tDon't apply the beam to the model\n"
+			" -datacolumn <column>\n"
+			"\tPeel from the specific column\n"
+			" -weight <gridsize> <pixelscale> <mode> [robustness]\n"
+			"\tApply image weights (syntax equal to wsclean)\n"
+			" -groupchannels <count>\n"
+			"\tGroup channels together during solving.\n"
+			" -climit <flux value>\n"
+			"\tRemove clusters with less than \"flux\" values.\n";
 		return -1;
 	}
 	
