@@ -583,6 +583,13 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 				if(status)
 					break;
 				
+				g = gsl_vector_get(solver->x, 0);
+				if(g < 0.1) {
+					g = 0.1;
+					gsl_vector_set(solver->x, 0, g);
+					std::cout << _model.Source(sourceIndex).Name() << " got gain solution<0.1: resetting.\n";
+				}
+			
 				status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
 				
 			} while (status == GSL_CONTINUE && iter < 100);
