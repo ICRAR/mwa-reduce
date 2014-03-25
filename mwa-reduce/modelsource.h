@@ -166,6 +166,9 @@ class ModelSource
 		const_iterator begin() const { return _components.begin(); }
 		const_iterator end() const { return _components.end(); }
 		
+		ModelComponent& front() { return _components.front(); }
+		const ModelComponent& front() const { return _components.front(); }
+		
 		const ModelComponent& Peak() const { return *begin(); }
 		ModelComponent& Peak() { return *begin(); }
 		
