@@ -27,17 +27,23 @@ WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
 WSInversion::MSData::~MSData()
 { }
 
-WSInversion::WSInversion(ImageBufferAllocator<double>* imageAllocator, double memFraction) : InversionAlgorithm(), _phaseCentreRA(0.0), _phaseCentreDec(0.0), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _freqHigh(0.0), _freqLow(0.0), _bandStart(0.0), _bandEnd(0.0), _beamSize(0.0), _totalWeight(0.0), _startTime(0.0), _gridMode(LayeredImager::NearestNeighbour), _cpuCount(sysconf(_SC_NPROCESSORS_ONLN)), _laneBufferSize(16), _imageBufferAllocator(imageAllocator)
+WSInversion::WSInversion(ImageBufferAllocator<double>* imageAllocator, double memFraction, double absMemLimit) : InversionAlgorithm(), _phaseCentreRA(0.0), _phaseCentreDec(0.0), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _freqHigh(0.0), _freqLow(0.0), _bandStart(0.0), _bandEnd(0.0), _beamSize(0.0), _totalWeight(0.0), _startTime(0.0), _gridMode(LayeredImager::NearestNeighbour), _cpuCount(sysconf(_SC_NPROCESSORS_ONLN)), _laneBufferSize(16), _imageBufferAllocator(imageAllocator)
 {
 	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
 	_memSize = (int64_t) pageCount * (int64_t) pageSize;
 	double memSizeInGB = (double) _memSize / (1024.0*1024.0*1024.0);
-	if(memFraction == 1.0) {
+	if(memFraction == 1.0 && absMemLimit == 0.0) {
 		std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory, usage not limited.\n";
 	}
 	else {
-		std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory, usage limited to " << round(memSizeInGB*memFraction*10.0)/10.0 << " GB (" << round(memFraction*1000.0)/10.0 << "%)\n";
+		double limitInGB = memSizeInGB*memFraction;
+		if(limitInGB > absMemLimit)
+			limitInGB = absMemLimit;
+		std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory, usage limited to " << round(limitInGB*10.0)/10.0 << " GB (frac=" << round(memFraction*1000.0)/10.0 << "%, limit=" << round(limitInGB) << "GB)\n";
+		
 		_memSize = int64_t((double) pageCount * (double) pageSize * memFraction);
+		if(double(_memSize) > double(1024.0*1024.0*1024.0) * absMemLimit)
+			_memSize = int64_t(double(absMemLimit) * double(1024.0*1024.0*1024.0));
 	}
 }
 		

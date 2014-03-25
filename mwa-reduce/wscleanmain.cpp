@@ -288,6 +288,11 @@ int main(int argc, char *argv[])
 			++argi;
 			wsclean.SetMemFraction(atof(argv[argi]) / 100.0);
 		}
+		else if(param == "absmem")
+		{
+			++argi;
+			wsclean.SetMemAbsLimit(atof(argv[argi]));
+		}
 		else if(param == "wlimit")
 		{
 			// This was to test the optimization suggested in Tasse et al., 2013, Appendix C.
