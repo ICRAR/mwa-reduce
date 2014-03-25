@@ -122,7 +122,7 @@ add_executable(uvdist uvdist.cpp nlplfitter.cpp)
 
 if(LIBXML2_FOUND)
 	add_executable(vo2model vo2model.cpp model.cpp)
-	target_include_directories(vo2model PUBLIC ${LIBXML2_INCLUDE_DIR})
+	include_directories(${LIBXML2_INCLUDE_DIR})
 	target_link_libraries(vo2model ${LIBXML2_LIBRARIES})
 	message("Libxml2 found: will build vo2model")
 else(LIBXML2_FOUND)

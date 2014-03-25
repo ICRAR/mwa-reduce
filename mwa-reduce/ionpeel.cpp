@@ -27,6 +27,7 @@ int main(int argc, char* argv[])
 	size_t weightGridSize = 0;
 	double weightPixelScale = 0.0;
 	size_t channelBlockSize = 1;
+	double clusterFluxLimit = 0.0;
 	
 	while(argv[argi][0] == '-')
 	{
@@ -76,6 +77,11 @@ int main(int argc, char* argv[])
 			++argi;
 			channelBlockSize = atoi(argv[argi]);
 		}
+		else if(param == "climit")
+		{
+			++argi;
+			clusterFluxLimit = atof(argv[argi]);
+		}
 		else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		++argi;
 	}
@@ -86,5 +92,7 @@ int main(int argc, char* argv[])
 	peeler.SetDataColumnName(dataColumnName);
 	peeler.SetWeighting(weightMode, weightGridSize, weightPixelScale);
 	peeler.SetChannelBlockSize(channelBlockSize);
+	if(clusterFluxLimit != 0.0)
+		peeler.SetClusterFluxLimit(clusterFluxLimit);
 	peeler.Peel(argv[argi], argv[argi+1], argv[argi+2]);
 }
