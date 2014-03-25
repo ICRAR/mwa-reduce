@@ -90,7 +90,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		
 		if(_clusterFluxLimit > 0.0 && _predicters[s]->TotalFlux(0) < _clusterFluxLimit)
 		{
-			std::cout << "Direction for " << _model.Source(s).Name() << " is below cluster flux limit: removing cluster.\n";
+			std::cout << "Direction for " << _model.Source(s).Name() << " is below cluster flux limit (" << _predicters[s]->TotalFlux(0) << " < " << _clusterFluxLimit << "): removing cluster.\n";
 			clustersToRemove.insert(s);
 		}
 	}
