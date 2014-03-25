@@ -77,7 +77,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	_predictionModels.resize(_model.SourceCount());
 	_predicters.resize(_model.SourceCount());
 	
-	std::set<size_t> clusterstoRemove
+	std::set<size_t> clustersToRemove;
 	for(size_t s=0; s!=_model.SourceCount(); ++s)
 	{
 		_predictionModels[s].AddSource(_model.Source(s));
@@ -88,7 +88,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		else
 			_predicters[s]->Initialize(_predictionModels[s]);
 		
-		if(_clusterFluxLimit > 0.0 && _predicters[s]->TotalFlux < _clusterFluxLimit)
+		if(_clusterFluxLimit > 0.0 && _predicters[s]->TotalFlux(0) < _clusterFluxLimit)
 		{
 			std::cout << "Direction for " << _model.Source(s).Name() << " is below cluster flux limit: removing cluster.\n";
 			
