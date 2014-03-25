@@ -27,13 +27,15 @@ int main(int argc, char* argv[])
 			" -groupchannels <count>\n"
 			"\tGroup channels together during solving.\n"
 			" -climit <flux value>\n"
-			"\tRemove clusters with less than \"flux\" values.\n";
+			"\tRemove clusters with less than \"flux\" values.\n"
+			" -savemodel <out-filename>\n"
+			"\tSave the model after heuristics have been applied.\n";
 		return -1;
 	}
 	
 	int argi = 1;
 	bool applyBeam = true;
-	std::string dataColumnName = "DATA";
+	std::string dataColumnName = "DATA", outModelFilename;
 	size_t solutionInterval = 1;
 	WeightMode weightMode(WeightMode::NaturalWeighted);
 	size_t weightGridSize = 0;
@@ -94,8 +96,18 @@ int main(int argc, char* argv[])
 			++argi;
 			clusterFluxLimit = atof(argv[argi]);
 		}
+		else if(param == "savemodel")
+		{
+			++argi;
+			outModelFilename = argv[argi];
+		}
 		else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		++argi;
+	}
+	
+	if(clusterFluxLimit != 0.0 && outModelFilename.empty())
+	{
+		throw std::runtime_error("You have not specified an output model filename (with -savemodel) but have specified a cluster flux limit (-climit): you will not be able to apply the solutions without the changed model!");
 	}
 
 	IonPeeler peeler;
@@ -107,4 +119,7 @@ int main(int argc, char* argv[])
 	if(clusterFluxLimit != 0.0)
 		peeler.SetClusterFluxLimit(clusterFluxLimit);
 	peeler.Peel(argv[argi], argv[argi+1], argv[argi+2]);
+	
+	if(!outModelFilename.empty())
+		peeler.GetUsedModel().Save(outModelFilename.c_str());
 }

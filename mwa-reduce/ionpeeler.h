@@ -40,6 +40,8 @@ public:
 	void SetClusterFluxLimit(double limit) { _clusterFluxLimit = limit; }
 	
 	void Peel(const char* msName, const char* modelName, const char* solutionFilename);
+	
+	const Model& GetUsedModel() const { return _model; }
 private:
 	struct RowData
 	{
