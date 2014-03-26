@@ -189,6 +189,7 @@ int main(int argc, char* argv[])
 			}
 			plotPosFile << '\n';
 			plotGainFile << '\n';
+			vectorPlot.close();
 			
 			ao::uvector<double> interpolatedImage(width * height);
 			for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
