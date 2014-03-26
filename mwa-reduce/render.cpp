@@ -111,6 +111,10 @@ int main(int argc, char* argv[])
 			IonInterpolator interpolator(model, ra, dec, pixelSizeX, pixelSizeY, width, height);
 			IonSolutionFile solutionFile;
 			solutionFile.OpenForReading(ionSolutionFilename);
+			std::cout << "Sources in model: " << model.SourceCount() << '\n';
+			std::cout << "Directions in solution file: " << solutionFile.DirectionCount() << '\n';
+			if(solutionFile.DirectionCount() != model.SourceCount())
+				throw std::runtime_error("Direction count in solutions and cluster count in model do not match!");
 			
 			std::ofstream
 				plotPosFile(ionOutPrefix+"-posplot.plt"),
