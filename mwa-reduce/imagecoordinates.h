@@ -1,7 +1,9 @@
 #ifndef IMAGE_COORDINATES_H
 #define IMAGE_COORDINATES_H
 
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 /**
  * This class collects all the LM coordinate transform as defined in
@@ -83,6 +85,45 @@ class ImageCoordinates
 			SinCos(dec1, &sinDec1, &cosDec1);
 			SinCos(dec2, &sinDec2, &cosDec2);
 			return std::acos(sinDec1*sinDec2 + cosDec1*cosDec2*std::cos(ra1 - ra2));
+		}
+		
+		template<typename T>
+		static T CentreRA(const std::vector<T>& raValues)
+		{
+			std::vector<T> sorted(raValues);
+			for(size_t i=0; i!=sorted.size(); ++i) {
+				while(sorted[i] >= 2*M_PI) sorted[i] -= 2.0*M_PI;
+				while(sorted[i] < 0.0) sorted[i] += 2.0*M_PI;
+			}
+			std::sort(sorted.begin(), sorted.end());
+			T gapSize = 0.0, gapCentre = 0.0;
+			for(size_t i=0; i!=sorted.size(); ++i)
+			{
+				double dist;
+				if(i == sorted.size()-1)
+					dist = 2.0*M_PI + sorted.front() - sorted.back();
+				else
+					dist = sorted[i+1] - sorted[i];
+				if(dist > gapSize)
+				{
+					gapSize = dist;
+					gapCentre = sorted[i] + gapSize*0.5;
+				}
+			}
+			if(gapCentre >= 2.0*M_PI) gapCentre-=2.0*M_PI;
+			T sum = 0.0;
+			for(size_t i=0; i!=sorted.size(); ++i)
+			{
+				if(sorted[i] < gapCentre)
+					sum += sorted[i];
+				else
+					sum += sorted[i] - 2.0*M_PI;
+			}
+			sum /= sorted.size();
+			if(sum < 0.0)
+				return sum + 2.0*M_PI;
+			else
+				return sum;
 		}
 	private:
 		static void SinCos(double angle, double* sinAngle, double* cosAngle)
