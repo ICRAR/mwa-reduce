@@ -38,6 +38,7 @@ public:
 	}
 	void SetChannelBlockSize(size_t newSize) { _channelBlockSize = newSize; }
 	void SetClusterFluxLimit(double limit) { _clusterFluxLimit = limit; }
+	void SetDistanceLimit(double limit) { _distanceLimit = limit; }
 	
 	void Peel(const char* msName, const char* modelName, const char* solutionFilename);
 	
@@ -120,7 +121,7 @@ private:
 	
 	WeightMode _weightMode;
 	size_t _weightGridSize;
-	double _weightPixelScale, _clusterFluxLimit;
+	double _weightPixelScale, _clusterFluxLimit, _distanceLimit;
 	std::unique_ptr<ImageWeights> _imageWeights;
 	std::unique_ptr<ProgressBar> _progressBar;
 	std::unique_ptr<IonSolutionFile> _solutionFile;

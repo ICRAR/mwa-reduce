@@ -8,6 +8,7 @@
 #include "progressbar.h"
 #include "serializable.h"
 #include "msselection.h"
+#include "imagecoordinates.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <tables/Tables/ArrayColumn.h>
@@ -22,7 +23,8 @@
 IonPeeler::IonPeeler() :
 	_solutionInterval(1), _fitIterationCount(3), _applyBeam(true),
 	_channelBlockSize(0), _channelBlockCount(1),
-	_weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
+	_weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0),
+	_clusterFluxLimit(0.0), _distanceLimit(0.0)
 { }
 
 IonPeeler::~IonPeeler()
@@ -93,7 +95,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	std::set<size_t> clustersToRemove;
 	for(size_t s=0; s!=_model.SourceCount(); ++s)
 	{
-		_predictionModels[s].AddSource(_model.Source(s));
+		const ModelSource& source(_model.Source(s));
+		_predictionModels[s].AddSource(source);
 		
 		_predicters[s] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
 		if(_applyBeam)
@@ -101,9 +104,18 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		else
 			_predicters[s]->Initialize(_predictionModels[s]);
 		
-		if(_clusterFluxLimit > 0.0 && _predicters[s]->TotalFlux(0) < _clusterFluxLimit)
+		double distance =
+			ImageCoordinates::AngularDistance<double>(phaseCentreRA, phaseCentreDec,
+				source.MeanRA(), source.MeanDec()) * (180.0/M_PI);
+			
+		if(_distanceLimit > 0.0 && distance > _distanceLimit)
 		{
-			std::cout << "Direction for " << _model.Source(s).Name() << " is below cluster flux limit (" << _predicters[s]->TotalFlux(0) << " < " << _clusterFluxLimit << "): removing cluster.\n";
+			std::cout << "Cluster " << source.Name() << " is " << distance << " deg away: removing cluster.\n";
+			clustersToRemove.insert(s);
+		}
+		else if(_clusterFluxLimit > 0.0 && _predicters[s]->TotalFlux(0) < _clusterFluxLimit)
+		{
+			std::cout << "Direction for " << source.Name() << " is below cluster flux limit (" << _predicters[s]->TotalFlux(0) << " < " << _clusterFluxLimit << "): removing cluster.\n";
 			clustersToRemove.insert(s);
 		}
 	}
@@ -580,9 +592,6 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 				iter++;
 				status = gsl_multifit_fdfsolver_iterate(solver);
 				
-				if(status)
-					break;
-				
 				g = gsl_vector_get(solver->x, 0);
 				if(g < 0.1) {
 					g = 0.1;
@@ -590,6 +599,9 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 					std::cout << _model.Source(sourceIndex).Name() << " got gain solution<0.1: resetting.\n";
 				}
 			
+				if(status)
+					break;
+				
 				status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
 				
 			} while (status == GSL_CONTINUE && iter < 100);

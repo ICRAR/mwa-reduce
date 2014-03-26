@@ -28,6 +28,8 @@ int main(int argc, char* argv[])
 			"\tGroup channels together during solving.\n"
 			" -climit <flux value>\n"
 			"\tRemove clusters with less than \"flux\" values.\n"
+			" -distlimit <radius in deg>\n"
+			"\tRemove clusters further away than given radius.\n"
 			" -savemodel <out-filename>\n"
 			"\tSave the model after heuristics have been applied.\n";
 		return -1;
@@ -41,7 +43,7 @@ int main(int argc, char* argv[])
 	size_t weightGridSize = 0;
 	double weightPixelScale = 0.0;
 	size_t channelBlockSize = 1;
-	double clusterFluxLimit = 0.0;
+	double clusterFluxLimit = 0.0, distLimit = 0.0;
 	
 	while(argv[argi][0] == '-')
 	{
@@ -96,6 +98,11 @@ int main(int argc, char* argv[])
 			++argi;
 			clusterFluxLimit = atof(argv[argi]);
 		}
+		else if(param == "distlimit")
+		{
+			++argi;
+			distLimit = atof(argv[argi]);
+		}
 		else if(param == "savemodel")
 		{
 			++argi;
@@ -118,6 +125,8 @@ int main(int argc, char* argv[])
 	peeler.SetChannelBlockSize(channelBlockSize);
 	if(clusterFluxLimit != 0.0)
 		peeler.SetClusterFluxLimit(clusterFluxLimit);
+	if(distLimit != 0.0)
+		peeler.SetDistanceLimit(distLimit);
 	peeler.Peel(argv[argi], argv[argi+1], argv[argi+2]);
 	
 	if(!outModelFilename.empty())
