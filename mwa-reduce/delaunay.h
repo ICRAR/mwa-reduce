@@ -655,7 +655,7 @@ public:
 				triangles[1]->vertices[i] != b)
 				d = triangles[1]->vertices[i];
 		}
-		if(isBound(a) && isBound(b))
+		if((isBound(a) && isBound(b)) || d==0)
 			return true;
 		/*if(a->outsideConvexHull || b->outsideConvexHull ||
 			c->outsideConvexHull || d->outsideConvexHull)
