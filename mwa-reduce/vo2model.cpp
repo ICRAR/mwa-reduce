@@ -16,7 +16,8 @@ struct FieldStruct
 struct ParserData {
 	xmlTextReaderPtr reader;
 	std::string fluxColumn;
-	double frequency;
+	bool useConstantSI;
+	double frequency, constantSI;
 	std::string siColumn;
 };
 
@@ -101,13 +102,12 @@ void parseTable(ParserData& data, Model& model)
 		else if(name == "TR")
 		{
 			if(xmlTextReaderNodeType(data.reader)==15 /*end*/) {
-				if(spectInd != 0.0)
-				{
-					source.front().SED() = SpectralEnergyDistribution(flux, data.frequency, spectInd);
-				}
-				else {
+				if(data.useConstantSI)
+					source.front().SED().AddMeasurement(flux, data.frequency, data.constantSI);
+				else if(spectInd != 0.0)
+					source.front().SED().AddMeasurement(flux, data.frequency, spectInd);
+				else
 					source.front().SED().AddMeasurement(flux, data.frequency);
-				}
 				model.AddSource(source);
 			} else {
 				source = ModelSource();
@@ -154,14 +154,8 @@ void processNode(ParserData& data, Model& model)
 		parseVOTable(data, model);
 }
 
-void readFile(const std::string& filename, Model& model, const std::string& fluxDensityColumn, double frequency, const std::string& siColumn)
+void readFile(const std::string& filename, Model& model, ParserData& data)
 {
-	ParserData data;
-
-	data.fluxColumn = fluxDensityColumn;
-	data.frequency = frequency;
-	data.siColumn = siColumn;
-	
 	data.reader = xmlReaderForFile(filename.c_str(), NULL, 0);
 	if(data.reader != NULL) {
 		processNode(data, model);
@@ -172,22 +166,46 @@ void readFile(const std::string& filename, Model& model, const std::string& flux
 
 int main(int argc, char* argv[])
 {
-	if (argc != 6) {
-		std::cerr << "Syntax: vo2model <flux col> <frequency in MHz> <SI col> <in.vot> <out.txt>\n";
+	if (argc < 5) {
+		std::cerr << "Syntax: vo2model [-si <val>] [-sicol <SI col>] <flux col> <frequency in MHz> <in.vot> <out.txt>\n";
 		return -1;
 	}
 
+	ParserData data;
+	data.useConstantSI = false;
+	
+	size_t argi = 1;
+	while(argv[argi][0]=='-')
+	{
+		std::string p(&argv[argi][1]);
+		if(p == "si")
+		{
+			++argi;
+			data.constantSI = atof(argv[argi]);
+			data.useConstantSI = true;
+		}
+		else if(p == "sicol")
+		{
+			++argi;
+			data.siColumn = argv[argi];
+		}
+		++argi;
+	}
+	std::string
+		fluxDensityColumn(argv[argi]),
+		inFile(argv[argi+2]),
+		outFile(argv[argi+3]);
+	double
+		frequency = atof(argv[argi+1])*1000000.0;
+	Model model;
+
 	LIBXML_TEST_VERSION
 
-	std::string
-		fluxDensityColumn(argv[1]),
-		siColumn(argv[3]),
-		inFile(argv[4]),
-		outFile(argv[5]);
-	double
-		frequency = atof(argv[2])*1000000.0;
-	Model model;
-	readFile(inFile, model, fluxDensityColumn, frequency, siColumn);
+	data.fluxColumn = fluxDensityColumn;
+	data.frequency = frequency;
+	
+	readFile(inFile, model, data);
+
 	xmlCleanupParser();
 	
 	model.Save(outFile.c_str());
