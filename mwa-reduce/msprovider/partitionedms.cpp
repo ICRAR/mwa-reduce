@@ -265,6 +265,20 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 		channelStart = 0;
 	}
 	
+	bool isWeightDefined = weightColumn.isDefined(0);
+	bool msHasWeights = false;
+	casa::Array<float> weightArray(shape);
+	if(isWeightDefined)
+	{
+		casa::IPosition modelShape = weightColumn.shape(0);
+		msHasWeights = (modelShape == shape);
+	}
+	if(!msHasWeights)
+	{
+		weightArray.set(1);
+		std::cout << "WARNING: This measurement set has no or an invalid WEIGHT_SPECTRUM column; all visibilities are assumed to have equal weight.\n";
+	}
+	
 	size_t startRow, endRow;
 	getRowRange(ms, selection, startRow, endRow);
 	
@@ -305,7 +319,6 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	std::vector<float> weightBuffer(polarizationCount * (1 + channelCount / channelParts));
 	
 	casa::Array<std::complex<float>> dataArray(shape);
-	casa::Array<float> weightArray(shape);
 	casa::Array<bool> flagArray(shape);
 	ProgressBar progress1("Reordering");
 	for(size_t row=0; row!=ms.nrow(); ++row)
@@ -335,7 +348,8 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 				throw std::runtime_error("Error writing to temporary file");
 				
 			dataColumn.get(row, dataArray);
-			weightColumn.get(row, weightArray);
+			if(msHasWeights)
+				weightColumn.get(row, weightArray);
 			flagColumn.get(row, flagArray);
 			
 			fileIndex = 0;
