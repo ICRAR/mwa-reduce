@@ -176,6 +176,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	for(_pass=0; _pass!=_passCount; ++_pass)
 	{
 		_failedConvergencesPerSource.assign(_model.SourceCount(), 0);
+		_failedConvergencesPerChannelGroup.assign(_channelBlockCount, 0);
 
 		_startTimestep = timestepCount * _pass / _passCount;
 		_endTimestep = timestepCount * (_pass+1) / _passCount;
@@ -302,6 +303,10 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		
 		for(size_t cb=0; cb!=_channelBlockCount; ++cb)
 		{
+			if(_failedConvergencesPerChannelGroup[cb] != 0)
+			{
+				std::cout << "Warning: Solutions for channel group " << cb << " failed to converge " << _failedConvergencesPerChannelGroup[cb] << "x within 100 iterations.\n";
+			}
 			delete _dataArrays[cb];
 			delete _weightArrays[cb];
 		}
@@ -610,6 +615,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 			if(iter == 100)
 			{
 				_failedConvergencesPerSource[sourceIndex]++;
+				_failedConvergencesPerChannelGroup[channelBlockIndex]++;
 			}
 			
 			g = gsl_vector_get (solver->x, 0);
