@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 {
 	std::cout << "\n"
 		" ** This software package is released under the GPL version 3. **\n"
-	  " ** Author: Andre Offringa (offringa@gmail.com).               **\n";
+	  " ** Author: Andre Offringa (offringa@gmail.com).               **\n\n";
 	
 	if(argc < 2)
 	{
