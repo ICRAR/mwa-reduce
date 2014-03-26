@@ -49,12 +49,11 @@ public:
 	{
 		if(!_sources.empty())
 		{
-			_meanRA = 0.0;
-			_meanDec = 0.0;
 			std::vector<double> ras;
 			for(std::vector<const ModelSource*>::const_iterator i=_sources.begin(); i!=_sources.end(); ++i)
 				ras.push_back((*i)->Peak().PosRA());
 			_meanRA = ImageCoordinates::CentreRA(ras);
+			_meanDec = 0.0;
 			for(std::vector<const ModelSource*>::const_iterator i=_sources.begin(); i!=_sources.end(); ++i)
 			{
 				const ModelSource& s = **i;
