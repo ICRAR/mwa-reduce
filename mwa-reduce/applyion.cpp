@@ -39,12 +39,13 @@ int main(int argc, char* argv[])
 	}
 	bool nogain = false, restore = false;
 	size_t argi = 1;
-	if(std::string(argv[argi]) == "r")
+	while(argv[argi][0] == '-')
 	{
-		restore = true;
-	}
-	else if(std::string(argv[argi]) == "-nogain") {
-		nogain = true;
+		std::string p(&argv[argi][1]);
+		if(p == "r")
+			restore = true;
+		else if(p == "nogain")
+			nogain = true;
 		++argi;
 	}
 	const char
