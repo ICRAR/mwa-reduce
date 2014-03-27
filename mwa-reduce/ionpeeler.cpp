@@ -153,7 +153,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
-	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	_cpuCount = 1;//(size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	_passCount = (_solutionInterval==0) ? 1 : (timestepCount + _solutionInterval - 1) / _solutionInterval;
 	_channelBlockCount = _bandData.ChannelCount() / _channelBlockSize;
 	std::cout << "Will process " << channelCount << " channels in " << _channelBlockCount << " channel groups\n";
@@ -488,7 +488,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 		modelData.resize((_curEndRow-_curStartRow)*4*curChannelBlockSize);
 	}
 		
-	fInfo.lambda += 0.0;
+	fInfo.lambda = 0.0;
 	for(size_t ch=channelIndexStart; ch!=channelIndexEnd; ++ch)
 	{
 		const double lambda = _bandData.ChannelWavelength(ch);
@@ -518,7 +518,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 	}
 	fInfo.lambda /= curChannelBlockSize;
 	
-	for(size_t fitIteration=0; fitIteration!=_fitIterationCount; ++fitIteration)
+	for(size_t fitIteration=0; fitIteration!=1/*_fitIterationCount*/; ++fitIteration)
 	{
 		for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 		{
@@ -621,6 +621,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 			g = gsl_vector_get (solver->x, 0);
 			dl = gsl_vector_get (solver->x, 1);
 			dm = gsl_vector_get (solver->x, 2);
+			std::cout << "Solution " << fitIteration << " for " << _model.Source(sourceIndex).Name() << ": " << g << ',' << dl << ',' << dm << '\n';
 			//std::cout << gsl_strerror(status) << "\n";
 			//std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
 			/*if(channelIndex == 5)
