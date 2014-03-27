@@ -119,7 +119,8 @@ int main(int argc, char* argv[])
 		{
 			ModelSource copy(model.Source(i));
 			double gain = solutions.ReadAverageSolution(IonSolutionFile::GainSolution, 0, i);
-			std::cout << "Restoring " << copy.Name() << " with gain " << gain << "...\n";
+			double flux = copy.TotalFlux(reader.Frequency()-reader.Bandwidth()*0.5, reader.Frequency()+reader.Bandwidth()*0.5, Polarization::StokesI);
+			std::cout << "Restoring " << copy.Name() << " with flux " << flux << " and gain " << gain << "...\n";
 			copy *= gain;
 			Model renderModel;
 			renderModel.AddSource(copy);
