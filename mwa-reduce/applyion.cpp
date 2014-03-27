@@ -119,6 +119,7 @@ int main(int argc, char* argv[])
 		{
 			ModelSource copy(model.Source(i));
 			double gain = solutions.ReadAverageSolution(IonSolutionFile::GainSolution, 0, i);
+			std::cout << "Restoring " << copy.Name() << " with gain " << gain << "...\n";
 			copy *= gain;
 			Model renderModel;
 			renderModel.AddSource(copy);
