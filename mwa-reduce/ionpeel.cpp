@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
 	
 	int argi = 1;
 	bool applyBeam = true;
-	std::string dataColumnName = "DATA", outModelFilename;
+	std::string dataColumnName, outModelFilename;
 	size_t solutionInterval = 1;
 	WeightMode weightMode(WeightMode::NaturalWeighted);
 	size_t weightGridSize = 0;

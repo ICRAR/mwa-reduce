@@ -48,10 +48,10 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	{
 		bool hasCorrected = ms.tableDesc().isColumn("CORRECTED_DATA");
 		if(hasCorrected) {
-			std::cout << "First measurement set has corrected data: tasks will be applied on the corrected data column.\n";
+			std::cout << "Measurement set has corrected data: tasks will be applied on the corrected data column.\n";
 			_dataColumnName = "CORRECTED_DATA";
 		} else {
-			std::cout << "No corrected data in first measurement set: tasks will be applied on the data column.\n";
+			std::cout << "No corrected data in measurement set: tasks will be applied on the data column.\n";
 			_dataColumnName= "DATA";
 		}
 	}
