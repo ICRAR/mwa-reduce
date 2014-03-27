@@ -103,6 +103,17 @@ class IonSolutionFile
 		}
 	}
 	
+	double ReadAverageSolution(IonSolutionType type, size_t polarization, size_t direction)
+	{
+		double sum = 0.0;
+		for(size_t i=0; i!=_header.intervalCount; ++i)
+		{
+			for(size_t c=0; c!=_header.channelBlockCount; ++c)
+				sum += ReadSolution(type, i, c, polarization, direction);
+		}
+		return sum / (_header.intervalCount * _header.channelBlockCount);
+	}
+	
   void ReadSolution(Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction) {
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;

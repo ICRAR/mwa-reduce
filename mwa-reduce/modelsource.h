@@ -68,6 +68,11 @@ class ModelComponent
 		{
 			return _sed < rhs._sed;
 		}
+		
+		void operator*=(double factor)
+		{
+			_sed *= factor;
+		}
 	private:
 		enum Type _type;
 		long double _posRA, _posDec;
@@ -137,9 +142,13 @@ class ModelSource
 		void operator+=(const ModelSource& rhs)
 		{
 			for(const_iterator i = rhs.begin(); i!=rhs.end(); ++i)
-			{
 				(*this) += *i;
-			}
+		}
+		
+		void operator*=(double factor)
+		{
+			for(iterator i=begin(); i!=end(); ++i)
+				(*i) *= factor;
 		}
 	
 		void CombineMeasurements(const ModelSource& source)

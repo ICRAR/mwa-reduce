@@ -193,7 +193,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 				_predicters[s]->UpdateBeam(_predictionModels[s]);
 		}
 		
-		std::cout << "Reading (T " << _startTimestep << "-" << _endTimestep << ", rows " << _curStartRow << '-' << _curEndRow << ")...\n";
+		std::cout << "Reading (T " << _startTimestep << "-" << _endTimestep << "/" << timestepCount << ", rows " << _curStartRow << '-' << _curEndRow << '/' << ms.nrow() << ")...\n";
 		for(size_t channelBlockIndex=0; channelBlockIndex!=_channelBlockCount; ++channelBlockIndex)
 		{
 			size_t

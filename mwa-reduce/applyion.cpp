@@ -6,6 +6,7 @@
 #include "ioninterpolator.h"
 #include "ionsolutionfile.h"
 #include "model.h"
+#include "modelrenderer.h"
 
 double sample(const double* image, size_t width, size_t height, double x, double y)
 {
@@ -33,12 +34,16 @@ int main(int argc, char* argv[])
 {
 	if(argc < 5)
 	{
-		std::cout << "Syntax:\n\tapplyion [-nogain] <input fits> <output fits> <model> <ion-solutions>\n";
+		std::cout << "Syntax:\n\tapplyion [-r] [-nogain] <input fits> <output fits> <model> <ion-solutions>\n";
 		return -1;
 	}
-	bool nogain = false;
+	bool nogain = false, restore = false;
 	size_t argi = 1;
-	if(std::string(argv[argi]) == "-nogain") {
+	if(std::string(argv[argi]) == "r")
+	{
+		restore = true;
+	}
+	else if(std::string(argv[argi]) == "-nogain") {
 		nogain = true;
 		++argi;
 	}
@@ -104,6 +109,20 @@ int main(int argc, char* argv[])
 			++dlPtr;
 			++dmPtr;
 			++outPtr;
+		}
+	}
+	
+	if(restore)
+	{
+		for(size_t i=0; i!=model.SourceCount(); ++i)
+		{
+			ModelSource copy(model.Source(i));
+			double gain = solutions.ReadAverageSolution(IonSolutionFile::GainSolution, 0, i);
+			copy *= gain;
+			Model renderModel;
+			renderModel.AddSource(copy);
+			ModelRenderer renderer(reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.PhaseCentreDL(), reader.PhaseCentreDM());
+			renderer.Restore(image.data(), width, height, renderModel, reader.BeamMajorAxisRad(), reader.Frequency()-reader.Bandwidth()*0.5, reader.Frequency()+reader.Bandwidth()*0.5, Polarization::StokesI);
 		}
 	}
 	
