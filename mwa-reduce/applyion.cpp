@@ -78,8 +78,8 @@ int main(int argc, char* argv[])
 	interpolator.Interpolate(dlImage.data(), solutions, IonSolutionFile::DlSolution);
 	interpolator.Interpolate(dmImage.data(), solutions, IonSolutionFile::DmSolution);
 	
-	ao::uvector<double> image(width * height);
-	reader.Read(image.data());
+	ao::uvector<double> inImage(width * height);
+	reader.Read(inImage.data());
 	
 	double
 		*gainPtr = gainImage.data(),
@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
 			double xf, yf;
 			ImageCoordinates::LMToXYfloat(l, m, reader.PixelSizeX(), reader.PixelSizeY(), width, height, xf, yf);
 			
-			double val = sample(image.data(), width, height, xf, yf);
+			double val = sample(inImage.data(), width, height, xf, yf);
 			*outPtr = val / gain;
 			
 			++gainPtr;
@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
 			Model renderModel;
 			renderModel.AddSource(copy);
 			ModelRenderer renderer(reader.PhaseCentreRA(), reader.PhaseCentreDec(), reader.PixelSizeX(), reader.PixelSizeY(), reader.PhaseCentreDL(), reader.PhaseCentreDM());
-			renderer.Restore(image.data(), width, height, renderModel, reader.BeamMajorAxisRad(), reader.Frequency()-reader.Bandwidth()*0.5, reader.Frequency()+reader.Bandwidth()*0.5, Polarization::StokesI);
+			renderer.Restore(outImage.data(), width, height, renderModel, reader.BeamMajorAxisRad(), reader.Frequency()-reader.Bandwidth()*0.5, reader.Frequency()+reader.Bandwidth()*0.5, Polarization::StokesI);
 		}
 	}
 	
