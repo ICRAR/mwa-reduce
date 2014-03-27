@@ -708,6 +708,10 @@ public:
 			std::cout << "Triangulation contains doubles!\n";
 			return false;
 		}
+		if(c==0 || d==0) {
+			std::cout << "Could not find c or d in flip()\n";
+			return false;
+		}
 #endif
 		for(size_t i=0; i!=3; ++i)
 		{
