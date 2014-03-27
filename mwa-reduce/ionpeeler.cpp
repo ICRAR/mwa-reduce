@@ -153,7 +153,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
-	_cpuCount = 1;//(size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	_passCount = (_solutionInterval==0) ? 1 : (timestepCount + _solutionInterval - 1) / _solutionInterval;
 	_channelBlockCount = _bandData.ChannelCount() / _channelBlockSize;
 	std::cout << "Will process " << channelCount << " channels in " << _channelBlockCount << " channel groups\n";
@@ -518,7 +518,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 	}
 	fInfo.lambda /= curChannelBlockSize;
 	
-	for(size_t fitIteration=0; fitIteration!=1/*_fitIterationCount*/; ++fitIteration)
+	for(size_t fitIteration=0; fitIteration!=_fitIterationCount; ++fitIteration)
 	{
 		for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 		{
