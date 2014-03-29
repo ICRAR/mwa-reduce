@@ -671,3 +671,53 @@ void WSClean::performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIte
 		}
 	}
 }
+
+/*void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majorIterationNr)
+{
+	JoinedClean<joined_pol_clean::MultiImageSet>::ImageSet
+		modelSet(_imgWidth*_imgHeight, _channelsOut, _imageAllocator),
+		residualSet(_imgWidth*_imgHeight, _channelsOut, _imageAllocator);
+		
+	// TODO
+	double* psfImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
+	_psfImages.Load(psfImage, *_polarizations.begin(), false);
+	modelSet.Load(_modelImages);
+	residualSet.Load(_residualImages);
+
+	_cleaningWatch.Start();
+	static_cast<JoinedClean<>&>(*_cleanAlgorithm).ExecuteMajorIteration(residualSet, modelSet, psfImage, _imgWidth, _imgHeight, reachedMajorThreshold);
+	_cleaningWatch.Pause();
+	
+	_imageAllocator.Free(psfImage);
+	modelSet.Store(_modelImages);
+	residualSet.Store(_residualImages);
+	
+	updateCleanParameters(_fitsWriter, _cleanAlgorithm->IterationNumber(), majorIterationNr);
+	
+	PolarizationEnum pols[4] = { Polarization::XX, Polarization::XY, Polarization::XY, Polarization::YY };
+	for(size_t i=0; i!=4; ++i)
+	{
+		PolarizationEnum polarization = pols[i];
+		bool isImaginary = (i==2);
+		
+		if(majorIterationNr == 1)
+		{
+			if(_mGain == 1.0)
+			{
+				std::cout << "Writing residual image... " << std::flush;
+				_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-residual.fits", residualSet.GetImage(i));
+			}
+			else {
+				std::cout << "Writing first iteration image... " << std::flush;
+				_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-first-residual.fits", residualSet.GetImage(i));
+			}
+			std::cout << "DONE\n";
+		}
+		if(!reachedMajorThreshold)
+		{
+			std::cout << "Writing model image... " << std::flush;
+			_fitsWriter.Write(polPrefix(polarization, isImaginary) + "-model.fits", modelSet.GetImage(i));
+			std::cout << "DONE\n";
+		}
+	}
+}*/

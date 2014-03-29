@@ -76,6 +76,7 @@ private:
 	void performClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void performSimpleClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIterationNr);
+	void performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void prepareInversionAlgorithm(PolarizationEnum polarization);
 	
 	void initFitsWriter(class FitsWriter& writer);
