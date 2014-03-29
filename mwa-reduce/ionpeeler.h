@@ -36,8 +36,13 @@ public:
 		_weightGridSize = gridSize;
 		_weightPixelScale = pixelScale;
 	}
+	void SetChannelBlockSize(size_t newSize) { _channelBlockSize = newSize; }
+	void SetClusterFluxLimit(double limit) { _clusterFluxLimit = limit; }
+	void SetDistanceLimit(double limit) { _distanceLimit = limit; }
 	
 	void Peel(const char* msName, const char* modelName, const char* solutionFilename);
+	
+	const Model& GetUsedModel() const { return _model; }
 private:
 	struct RowData
 	{
@@ -48,7 +53,8 @@ private:
 	{
 		IonPeeler* ionPeeler;
 		ao::uvector<std::complex<double>>* modelData;
-		size_t channelIndex;
+		size_t channelBlockIndex, startChannel, endChannel;
+		double lambda;
 	};
 	struct PeelingStats
 	{
@@ -108,13 +114,14 @@ private:
 	size_t _curStartRow, _curEndRow;
 	size_t _startTimestep, _endTimestep;
 	BandData _bandData;
-	size_t _antennaCount;
+	size_t _antennaCount, _channelBlockSize, _channelBlockCount;
 	size_t _cpuCount;
+	ao::uvector<size_t> _failedConvergencesPerSource, _failedConvergencesPerChannelGroup;
 	struct PeelingStats _stats;
 	
 	WeightMode _weightMode;
 	size_t _weightGridSize;
-	double _weightPixelScale;
+	double _weightPixelScale, _clusterFluxLimit, _distanceLimit;
 	std::unique_ptr<ImageWeights> _imageWeights;
 	std::unique_ptr<ProgressBar> _progressBar;
 	std::unique_ptr<IonSolutionFile> _solutionFile;

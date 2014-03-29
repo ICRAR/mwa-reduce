@@ -655,7 +655,7 @@ public:
 				triangles[1]->vertices[i] != b)
 				d = triangles[1]->vertices[i];
 		}
-		if(isBound(a) && isBound(b))
+		if((isBound(a) && isBound(b)) || d==0)
 			return true;
 		/*if(a->outsideConvexHull || b->outsideConvexHull ||
 			c->outsideConvexHull || d->outsideConvexHull)
@@ -706,6 +706,10 @@ public:
 #ifdef CHECK_DELAUNAY
 		if(c == d) {
 			std::cout << "Triangulation contains doubles!\n";
+			return false;
+		}
+		if(c==0 || d==0) {
+			std::cout << "Could not find c or d in flip()\n";
 			return false;
 		}
 #endif

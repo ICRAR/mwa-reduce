@@ -75,13 +75,13 @@ void Model::combineMeasurements(const ModelSource& source)
 	throw std::runtime_error("Combining measurements while not same sources were measured!");
 }
 
-void Model::Save(const char* filename)
+void Model::Save(const char* filename) const
 {
 	std::ofstream stream(filename);
 	Save(stream);
 }
 
-void Model::Save(std::ostream& stream)
+void Model::Save(std::ostream& stream) const
 {
 	stream << "skymodel fileformat 1.1\n";
 	for(const_iterator i=begin(); i!=end(); ++i)

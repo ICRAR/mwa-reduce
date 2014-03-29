@@ -28,12 +28,14 @@ class IonSolutionFile
     _header.structureType = 0; // ordered gain/dl/dm, polarization, channel, antenna, time
     _header.intervalCount = 1;
 		_header.antennaCount = 1;
-		_header.channelCount = 0;
+		_header.channelBlockCount = 0;
 		_header.polarizationCount = 1;
 		_header.directionCount = 0;
 		_header.parameterCount = 3;
 		_header.startTime = 0.0;
 		_header.endTime = 0.0;
+		_header.startFrequency = 0.0;
+		_header.endFrequency = 0.0;
   }
 
   ~IonSolutionFile() {
@@ -46,9 +48,9 @@ class IonSolutionFile
     _header.antennaCount = antennaCount;
   }
 
-  size_t ChannelCount() const { return _header.channelCount; }
-  void SetChannelCount(size_t channelCount) {
-    _header.channelCount = channelCount;
+  size_t ChannelBlockCount() const { return _header.channelBlockCount; }
+  void SetChannelBlockCount(size_t channelBlockCount) {
+    _header.channelBlockCount = channelBlockCount;
   }
 
   size_t PolarizationCount() const { return _header.polarizationCount; }
@@ -65,6 +67,12 @@ class IonSolutionFile
   void SetDirectionCount(size_t directionCount) {
 		_header.directionCount = directionCount;
 	}
+	
+	double StartFrequency() const { return _header.startFrequency; }
+	void SetStartFrequency(double startFrequency) { _header.startFrequency = startFrequency; }
+	
+	double EndFrequency() const { return _header.endFrequency; }
+	void SetEndFrequency(double endFrequency) { _header.endFrequency = endFrequency; }
 
   void OpenForWriting(const char *filename)
   {
@@ -82,10 +90,10 @@ class IonSolutionFile
 		_inputStream->read(reinterpret_cast<char*>(&_header), sizeof(_header));
 	}
 
-	double ReadSolution(IonSolutionType type, size_t interval, size_t channel, size_t polarization, size_t direction)
+	double ReadSolution(IonSolutionType type, size_t interval, size_t channelBlock, size_t polarization, size_t direction)
 	{
 		Solution solution;
-		ReadSolution(solution, interval, channel, polarization, direction);
+		ReadSolution(solution, interval, channelBlock, polarization, direction);
 		switch(type)
 		{
 			default:
@@ -95,9 +103,20 @@ class IonSolutionFile
 		}
 	}
 	
+	double ReadAverageSolution(IonSolutionType type, size_t polarization, size_t direction)
+	{
+		double sum = 0.0;
+		for(size_t i=0; i!=_header.intervalCount; ++i)
+		{
+			for(size_t c=0; c!=_header.channelBlockCount; ++c)
+				sum += ReadSolution(type, i, c, polarization, direction);
+		}
+		return sum / (_header.intervalCount * _header.channelBlockCount);
+	}
+	
   void ReadSolution(Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction) {
 		std::unique_lock<std::mutex> lock(_mutex);
-		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
+		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
 		size_t offset = sizeof(_header);
 		_inputStream->seekg(offset + sizeof(Solution) * index, std::ios::beg);
 		_inputStream->read(reinterpret_cast<char*>(&solution), sizeof(Solution));
@@ -106,7 +125,7 @@ class IonSolutionFile
   void WriteSolution(const Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction)
   {
 		std::unique_lock<std::mutex> lock(_mutex);
-		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
+		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
 		size_t offset = sizeof(_header);
 		_outputStream->seekp(offset + sizeof(Solution) * index, std::ios::beg);
 		_outputStream->write(reinterpret_cast<const char*>(&solution), sizeof(Solution));
@@ -115,7 +134,7 @@ class IonSolutionFile
   void WriteChannelBlock(const Solution* solutions, size_t interval, size_t channel, size_t polarization)
   {
 		std::unique_lock<std::mutex> lock(_mutex);
-		size_t index = ((interval * _header.channelCount + channel) * _header.polarizationCount + polarization) * _header.directionCount;
+		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount;
 		size_t offset = sizeof(_header);
 		_outputStream->seekp(offset + sizeof(Solution) * index, std::ios::beg);
 		_outputStream->write(reinterpret_cast<const char*>(solutions), sizeof(Solution) * _header.directionCount);
@@ -126,9 +145,10 @@ class IonSolutionFile
     char intro[8];
     uint32_t fileType;
     uint32_t structureType;
-    uint32_t intervalCount, antennaCount, channelCount, polarizationCount;
+    uint32_t intervalCount, antennaCount, channelBlockCount, polarizationCount;
 		uint32_t directionCount, parameterCount;
 		double startTime, endTime;
+		double startFrequency, endFrequency;
   } _header;
   std::ofstream *_outputStream;
   std::ifstream *_inputStream;

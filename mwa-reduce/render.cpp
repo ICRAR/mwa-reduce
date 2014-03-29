@@ -7,11 +7,12 @@
 #include "ioninterpolator.h"
 #include "model.h"
 #include "modelrenderer.h"
+#include "banddata.h"
 
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] <model>\n";
+		std::cout << "syntax: render [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] [-centre <ra> <dec>] <model>\n";
 	else {
 		std::string templateFits;
 		std::string outputFitsName;
@@ -19,6 +20,8 @@ int main(int argc, char* argv[])
 		const char* ionSolutionFilename = 0;
 		bool restore = false, addToTemplate = false, ionospheric = false;
 		int argi = 1;
+		double ra = 0.0, dec = 0.0, dl = 0.0, dm = 0.0;
+		double pixelSizeX = 0.012*(M_PI/180.0), pixelSizeY = 0.012*(M_PI/180.0);
 		while(argi < argc && argv[argi][0] == '-')
 		{
 			std::string param(&argv[argi][1]);
@@ -44,17 +47,22 @@ int main(int argc, char* argv[])
 				++argi;
 				outputFitsName = argv[argi];
 			}
+			else if(param == "centre")
+			{
+				++argi;
+				ra = RaDecCoord::ParseRA(argv[argi]);
+				++argi;
+				dec = RaDecCoord::ParseDec(argv[argi]);
+			}
 			else throw std::runtime_error("Invalid param");
 			++argi;
 		}
 	
 		Model model(argv[argi]);
 	
-		size_t width = 1024, height = 1024;
-		double ra = 0.0, dec = 0.0, dl = 0.0, dm = 0.0;
-		double pixelSizeX = 0.01, pixelSizeY = 0.01;
+		size_t width = 4096, height = 4096;
 		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
-		double beamSize = 10.0*(M_PI/180.0/60.0);
+		double beamSize = 2.0*(M_PI/180.0/60.0);
 		
 		std::unique_ptr<FitsWriter> writer;
 		std::unique_ptr<FitsReader> reader;
@@ -81,6 +89,10 @@ int main(int argc, char* argv[])
 			
 			writer.reset(new FitsWriter(*reader));
 		}
+		else {
+			image.resize(width * height);
+			writer.reset(new FitsWriter());
+		}
 		
 		if(!outputFitsName.empty())
 		{
@@ -96,14 +108,94 @@ int main(int argc, char* argv[])
 		
 		if(ionospheric)
 		{
-			IonInterpolator interpolator(model, *reader);
+			IonInterpolator interpolator(model, ra, dec, pixelSizeX, pixelSizeY, width, height);
 			IonSolutionFile solutionFile;
 			solutionFile.OpenForReading(ionSolutionFilename);
+			std::cout << "Sources in model: " << model.SourceCount() << '\n';
+			std::cout << "Directions in solution file: " << solutionFile.DirectionCount() << '\n';
+			if(solutionFile.DirectionCount() != model.SourceCount())
+				throw std::runtime_error("Direction count in solutions and cluster count in model do not match!");
+			
+			std::ofstream
+				plotPosFile(ionOutPrefix+"-posplot.plt"),
+				plotGainFile(ionOutPrefix+"-gainplot.plt"),
+				vectorPlot(ionOutPrefix+"-vectors.ann");
+			plotPosFile
+				<< "set terminal postscript enhanced color\n"
+				<< "#set logscale y\n"
+				<< "#set xrange [0.001:]\n"
+				<< "#set yrange [-8:2]\n"
+				<< "set output \"" << ionOutPrefix << "-posplot.ps\"\n"
+				<< "set key bottom left\n"
+				<< "set xlabel \"Freq (\\lambda^2)\"\n"
+				<< "set ylabel \"Pos offset (arcmin)\"\n"
+				<< "plot\\\n";
+			plotGainFile
+				<< "set terminal postscript enhanced color\n"
+				<< "#set logscale y\n"
+				<< "#set xrange [0.001:]\n"
+				<< "#set yrange [-8:2]\n"
+				<< "set output \"" << ionOutPrefix << "-gainplot.ps\"\n"
+				<< "set key bottom left\n"
+				<< "set xlabel \"Freq (\\lambda^2)\"\n"
+				<< "set ylabel \"Gain\"\n"
+				<< "plot\\\n";
+
+			for(size_t s=0; s!=solutionFile.DirectionCount(); ++s)
+			{
+				const ModelSource& source = model.Source(s);
+				std::ostringstream name;
+				name << ionOutPrefix << "-direc" << s << "-";
+				if(s != 0) {
+					plotPosFile << ",\\\n";
+					plotGainFile << ",\\\n";
+				}
+				std::ofstream
+					direcfile(name.str() + "posoff.txt"),
+					gainfile(name.str() + "gain.txt");
+				plotPosFile << "\"" << name.str() << "posoff.txt\" using 2:3 with points title \"\"";
+				plotGainFile << "\"" << name.str() << "gain.txt\" using 2:3 with points title \"\"";
+				double totalDl = 0.0, totalDm = 0.0;
+				for(size_t cb=0; cb!=solutionFile.ChannelBlockCount(); ++cb)
+				{
+					double freq = (solutionFile.EndFrequency() - solutionFile.StartFrequency()) *
+						double(cb) / solutionFile.ChannelBlockCount() + solutionFile.StartFrequency();
+					double lambda = BandData::FrequencyToLambda(freq);
+					double sumDl = 0.0, sumDm = 0.0, sumG = 0.0;
+					for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
+					{
+						double
+							dl = solutionFile.ReadSolution(IonSolutionFile::DlSolution, interval, cb, 0, s),
+							dm = solutionFile.ReadSolution(IonSolutionFile::DmSolution, interval, cb, 0, s),
+							g = solutionFile.ReadSolution(IonSolutionFile::GainSolution, interval, cb, 0, s);
+						sumDl += dl; sumDm += dm; sumG += g;
+					}
+					totalDl += sumDl;
+					totalDm += sumDm;
+					double
+						posOff = sqrt(sumDl*sumDl + sumDm*sumDm) / solutionFile.IntervalCount(),
+						gain = sumG / solutionFile.IntervalCount();
+					posOff *= 60.0*180.0/M_PI; // to arcmin
+					direcfile << freq << '\t' << lambda*lambda << '\t' << posOff << '\n';
+					gainfile << freq << '\t' << lambda*lambda << '\t' << gain << '\n';
+				}
+				totalDl *= 100.0/solutionFile.ChannelBlockCount();
+				totalDm *= 100.0/solutionFile.ChannelBlockCount();
+				vectorPlot
+					<< "LINE\t"
+					<< source.MeanRA()*(180.0/M_PI) << '\t' << source.MeanDec()*(180.0/M_PI) << '\t'
+					<< (source.MeanRA()-totalDl)*(180.0/M_PI) << '\t'
+					<< (source.MeanDec()-totalDm)*(180.0/M_PI) << '\n';
+			}
+			plotPosFile << '\n';
+			plotGainFile << '\n';
+			vectorPlot.close();
+			
 			ao::uvector<double> interpolatedImage(width * height);
 			for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 			{
 				std::cout << "Rendering interval " << interval << "...\n";
-				interpolator.Initialize(solutionFile, interval, interval+1, 0, solutionFile.ChannelCount(), 0);
+				interpolator.Initialize(solutionFile, interval, interval+1, 0, solutionFile.ChannelBlockCount(), 0);
 				
 				std::ostringstream extStr;
 				extStr << "-i";

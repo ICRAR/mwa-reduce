@@ -51,8 +51,8 @@ class Model
 		
 		void RemoveSource(size_t index) { _sources.erase(_sources.begin() + index); }
 		
-		void Save(const char* filename);
-		void Save(std::ostream& stream);
+		void Save(const char* filename) const;
+		void Save(std::ostream& stream) const;
 		
 		enum PolarizationType { FullXY };
 		

@@ -49,26 +49,16 @@ public:
 	{
 		if(!_sources.empty())
 		{
-			_meanRA = 0.0;
+			std::vector<double> ras;
+			for(std::vector<const ModelSource*>::const_iterator i=_sources.begin(); i!=_sources.end(); ++i)
+				ras.push_back((*i)->Peak().PosRA());
+			_meanRA = ImageCoordinates::CentreRA(ras);
 			_meanDec = 0.0;
-			long double firstRA = _sources.front()->Peak().PosRA();
-			bool doWrap =
-				(firstRA > - 0.25*M_PI && firstRA < 0.25*M_PI) ||
-				(firstRA > 1.75*M_PI && firstRA < 2.25*M_PI) ||
-				(firstRA > -2.25*M_PI && firstRA < -1.75*M_PI);
 			for(std::vector<const ModelSource*>::const_iterator i=_sources.begin(); i!=_sources.end(); ++i)
 			{
 				const ModelSource& s = **i;
-				long double ra = s.Peak().PosRA();
-				if(doWrap)
-				{
-					if(ra > M_PI) ra -= 2.0 * M_PI;
-					else if(ra < -M_PI) ra += 2.0 * M_PI;
-				}
-				_meanRA += ra;
 				_meanDec += s.Peak().PosDec();
 			}
-			_meanRA /= _sources.size();
 			_meanDec /= _sources.size();
 		}
 	}

@@ -88,3 +88,5 @@ add_executable(wsclean wscleanmain.cpp wsclean.cpp beamevaluator.cpp fftresample
 set_target_properties(wsclean PROPERTIES COMPILE_FLAGS "-std=c++0x")
 
 target_link_libraries(wsclean ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
+
+install(TARGETS wsclean DESTINATION bin)

@@ -92,6 +92,10 @@ class BandData
 		{
 			return (HighestFrequency() + LowestFrequency()) * 0.5;
 		}
+		static double FrequencyToLambda(double frequencyHz)
+		{
+			return 299792458.0L / frequencyHz;
+		}
 		double CentreWavelength() const
 		{
 			return 299792458.0L / ((HighestFrequency() + LowestFrequency()) * 0.5);
