@@ -44,6 +44,15 @@ public:
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 		casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 
+		casa::MSField fieldTable = ms.field();
+		casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
+		if(refDirColumn.nrow() != 1)
+			throw std::runtime_error("Field table nrow != 1");
+		casa::Array<double> refDir = refDirColumn(0);
+		casa::Array<double>::const_iterator refDirIter = refDir.begin();
+		long double phaseCentreRA = *refDirIter; ++refDirIter;
+		long double phaseCentreDec = *refDirIter;
+	
 		casa::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		if(polarizationCount != 4) throw std::runtime_error("Need 4 polarizations");
@@ -66,24 +75,24 @@ public:
 			for(ModelSource::const_iterator c=s->begin(); c!=s->end(); ++c)
 			{
 				const ModelComponent &component = *c;
-				_accumulatorPerSourceComponent[compIndex] = new FluxSpectrumAccumulator(component, &_bandData, ionSolutionFile.ChannelBlockCount());
+				_accumulatorPerSourceComponent[compIndex] = new FluxSpectrumAccumulator(component, &_bandData, ionSolutionFile.ChannelBlockCount(), phaseCentreRA, phaseCentreDec);
 				++compIndex;
 			}
 		}
 		
-		BeamEvaluator beamEvaluator(ms);
+		_beamEvaluator = new BeamEvaluator(ms);
 		
 		ao::lane<RowData> lane(256);
-		std::unique_ptr<boost::thread> processRowThread(new boost::thread(&IonSpectrumMaker::processRows, this, &lane));
 		casa::Array<casa::Complex> dataArray(dataShape);
 		casa::Array<float> weightArray(dataShape);
 		
-		ao::uvector<double>
-			gSolutions(ionSolutionFile.ChannelBlockCount()),
-			dlSolutions(ionSolutionFile.ChannelBlockCount()),
-			dmSolutions(ionSolutionFile.ChannelBlockCount());
+		_gSolutions.resize(ionSolutionFile.ChannelBlockCount()),
+		_dlSolutions.resize(ionSolutionFile.ChannelBlockCount()),
+		_dmSolutions.resize(ionSolutionFile.ChannelBlockCount());
 		
 		size_t timeIndex = 0, interval = 0;
+		updateBeam(timeColumn(0), ionSolutionFile, interval);
+		std::unique_ptr<boost::thread> processRowThread(new boost::thread(&IonSpectrumMaker::processRows, this, &lane));
 		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
 		{
 			size_t
@@ -98,32 +107,14 @@ public:
 				double v = *uvwI; ++uvwI;
 				double w = *uvwI;
 				
-				if(beamEvaluator.Time().getValue() != time.getValue())
+				if(_beamEvaluator->Time().getValue() != time.getValue())
 				{
 					// Stop all threads, then update beam values, then restart threads.
 					lane.write_end();
 					processRowThread->join();
-					std::cout << "Calculating beam gains...\n";
 					
 					lane.clear();
-					beamEvaluator.SetTime(time);
-					size_t compIndex=0;
-					for(size_t sIndex=0; sIndex!=_model.SourceCount(); ++sIndex)
-					{
-						for(size_t cb=0; cb!=ionSolutionFile.ChannelBlockCount(); ++cb)
-						{
-							IonSolutionFile::Solution solution;
-							ionSolutionFile.ReadSolution(solution, interval, 0, sIndex, cb);
-							gSolutions[cb] = solution.gain;
-							dlSolutions[cb] = solution.dl;
-							dmSolutions[cb] = solution.dm;
-						}
-						for(ModelSource::const_iterator c=_model.Source(sIndex).begin(); c!=_model.Source(sIndex).end(); ++c)
-						{
-							_accumulatorPerSourceComponent[compIndex]->UpdateBeam(beamEvaluator, gSolutions.data(), dlSolutions.data(), dmSolutions.data());
-							++compIndex;
-						}
-					}
+					updateBeam(time, ionSolutionFile, interval);
 					processRowThread.reset(new boost::thread(&IonSpectrumMaker::processRows, this, &lane));
 					
 					++timeIndex;
@@ -149,6 +140,8 @@ public:
 				lane.write(rowData);
 			}
 		}
+		
+		delete _beamEvaluator;
 	}
 private:
 	struct RowData
@@ -167,6 +160,29 @@ private:
 		double weight;
 	};
 
+	void updateBeam(const casa::MEpoch& time, IonSolutionFile& ionSolutionFile, size_t interval)
+	{
+		std::cout << "Calculating beam gains...\n";
+		_beamEvaluator->SetTime(time);
+		size_t compIndex=0;
+		for(size_t sIndex=0; sIndex!=_model.SourceCount(); ++sIndex)
+		{
+			for(size_t cb=0; cb!=ionSolutionFile.ChannelBlockCount(); ++cb)
+			{
+				IonSolutionFile::Solution solution;
+				ionSolutionFile.ReadSolution(solution, interval, 0, sIndex, cb);
+				_gSolutions[cb] = solution.gain;
+				_dlSolutions[cb] = solution.dl;
+				_dmSolutions[cb] = solution.dm;
+			}
+			for(ModelSource::const_iterator c=_model.Source(sIndex).begin(); c!=_model.Source(sIndex).end(); ++c)
+			{
+				_accumulatorPerSourceComponent[compIndex]->UpdateBeam(*_beamEvaluator, _gSolutions.data(), _dlSolutions.data(), _dmSolutions.data());
+				++compIndex;
+			}
+		}
+	}		
+	
 	void processRows(ao::lane<RowData>* lane)
 	{
 		size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
@@ -224,7 +240,9 @@ private:
 
 	Model _model;
 	BandData _bandData;
+	BeamEvaluator *_beamEvaluator;
 	std::vector<FluxSpectrumAccumulator*> _accumulatorPerSourceComponent;
+	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
 };
 
 #endif

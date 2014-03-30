@@ -31,7 +31,9 @@ int main(int argc, char* argv[])
 			" -distlimit <radius in deg>\n"
 			"\tRemove clusters further away than given radius.\n"
 			" -savemodel <out-filename>\n"
-			"\tSave the model after heuristics have been applied.\n";
+			"\tSave the model after heuristics have been applied.\n"
+			" -v\n"
+			"\tBe verbose.\n";
 		return -1;
 	}
 	
@@ -44,6 +46,7 @@ int main(int argc, char* argv[])
 	double weightPixelScale = 0.0;
 	size_t channelBlockSize = 1;
 	double clusterFluxLimit = 0.0, distLimit = 0.0;
+	bool verbose = false;
 	
 	while(argv[argi][0] == '-')
 	{
@@ -65,6 +68,10 @@ int main(int argc, char* argv[])
 		{
 			++argi;
 			solutionInterval = atoi(argv[argi]);
+		}
+		else if(param == "v")
+		{
+			verbose = true;
 		}
 		else if(param == "weight")
 		{
@@ -123,6 +130,7 @@ int main(int argc, char* argv[])
 	peeler.SetDataColumnName(dataColumnName);
 	peeler.SetWeighting(weightMode, weightGridSize, weightPixelScale);
 	peeler.SetChannelBlockSize(channelBlockSize);
+	peeler.SetVerbose(verbose);
 	if(clusterFluxLimit != 0.0)
 		peeler.SetClusterFluxLimit(clusterFluxLimit);
 	if(distLimit != 0.0)

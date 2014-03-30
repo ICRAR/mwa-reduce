@@ -3,17 +3,23 @@
 
 #include "fluxaccumulator.h"
 #include "banddata.h"
+#include "imagecoordinates.h"
 
 #include <vector>
 
 class FluxSpectrumAccumulator
 {
 public:
-	FluxSpectrumAccumulator(const ModelComponent& component, const BandData* bandData, size_t channelBlocks) :
+	FluxSpectrumAccumulator(const ModelComponent& component, const BandData* bandData, size_t channelBlocks, double phaseCentreRA, double phaseCentreDec) :
 		_accumulators(bandData->ChannelCount()),
 		_component(component),
+		_bandData(bandData),
 		_channelBlocks(channelBlocks)
 	{
+		long double l, m;
+		ImageCoordinates::RaDecToLM<long double>(component.PosRA(), component.PosDec(), phaseCentreRA, phaseCentreDec, l, m);
+		for(size_t ch=0; ch!=bandData->ChannelCount(); ++ch)
+			_accumulators[ch] = new FluxAccumulator(l, m, bandData->ChannelWavelength(ch));
 	}
 	
 	void UpdateBeam(BeamEvaluator& evaluator, double* ionG, double* ionDL, double* ionDM)
@@ -37,7 +43,7 @@ public:
 private:
 	std::vector<FluxAccumulator*> _accumulators;
 	ModelComponent _component;
-	BandData* _bandData;
+	const BandData* _bandData;
 	size_t _channelBlocks;
 };
 
