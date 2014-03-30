@@ -7,7 +7,7 @@ class Matrix2x2
 {
 public:
 	template<typename LHS_T, typename RHS_T>
-	static void Assign(std::complex<LHS_T>* dest, std::complex<RHS_T>* source)
+	static void Assign(std::complex<LHS_T>* dest, const std::complex<RHS_T>* source)
 	{
 		for(size_t p=0; p!=4; ++p)
 			dest[p] = source[p];
@@ -110,7 +110,8 @@ public:
 		dest[3] = std::conj(lhs[1]) * std::conj(rhs[2]) + std::conj(lhs[3]) * std::conj(rhs[3]);
 	}
 	
-	static void PlusHermATimesB(std::complex<double> *dest, const std::complex<double> *lhs, const std::complex<double> *rhs)
+	template<typename ComplType, typename LHS_T, typename RHS_T>
+	static void PlusHermATimesB(std::complex<ComplType> *dest, const LHS_T* lhs, const RHS_T* rhs)
 	{
 		dest[0] += std::conj(lhs[0]) * rhs[0] + std::conj(lhs[2]) * rhs[2];
 		dest[1] += std::conj(lhs[0]) * rhs[1] + std::conj(lhs[2]) * rhs[3];
