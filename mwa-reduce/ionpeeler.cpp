@@ -24,7 +24,7 @@ IonPeeler::IonPeeler() :
 	_solutionInterval(1), _fitIterationCount(3), _applyBeam(true),
 	_channelBlockSize(0), _channelBlockCount(1),
 	_weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0),
-	_clusterFluxLimit(0.0), _distanceLimit(0.0)
+	_clusterFluxLimit(0.0), _distanceLimit(0.0), _verbose(false)
 { }
 
 IonPeeler::~IonPeeler()

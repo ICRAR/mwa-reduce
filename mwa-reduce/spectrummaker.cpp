@@ -321,7 +321,6 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 				Matrix2x2::HermATimesB(temp, beamWeightPtr, visSample);
 				Matrix2x2::ScalarMultiply(temp, weightScalar * 0.5); // Divide factor of 2 because we add both normal and conjugate at once
 				Matrix2x2::PlusATimesB(measFluxIter, temp, beamWeightPtr);
-				//Matrix2x2::MultiplyAdd(measFluxIter, visSample, weightScalar);
 				
 				// Calculate Weight += w B* B
 				Matrix2x2::HermATimesB(temp, beamWeightPtr, beamWeightPtr);
