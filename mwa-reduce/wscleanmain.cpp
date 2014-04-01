@@ -91,7 +91,9 @@ int main(int argc, char *argv[])
 			"\t   Default: grid everything\n"
 			"\t-mem <percentage>\n"
 			"\t   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
-			"\t   Default: 100.\n";
+			"\t   Default: 100.\n"
+			"\t-absmem <memory limit>\n"
+			"\t   Like -mem, but this specifies a fixed amount of memory in gigabytes.\n";
 		return -1;
 	}
 	
