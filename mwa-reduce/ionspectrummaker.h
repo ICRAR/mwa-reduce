@@ -13,38 +13,24 @@
 #include "lane.h"
 #include "ionsolutionfile.h"
 #include "uvector.h"
+#include "buffered_lane.h"
+
+#define ION_SPECTRUM_ROW_LANE_SIZE 1024
+#define ION_SPECTRUM_ROW_BUFFER_SIZE 512
+#define ION_SPECTRUM_SAMPLE_LANE_SIZE 65536
+#define ION_SPECTRUM_SAMPLE_BUFFER_SIZE 32768
 
 class IonSpectrumMaker
 {
 public:
-	IonSpectrumMaker() { }
-	
-	void Accumulate(const char *msFilename, const char *ionFilename, const char *modelFilename)
+	IonSpectrumMaker(const char *msFilename, const char *ionFilename, const char *modelFilename) :
+		_ms(msFilename),
+		_model(modelFilename),
+		_bandData(_ms.spectralWindow())
 	{
-		casa::MeasurementSet ms(msFilename);
-		std::string dataColumnName("DATA");
-		IonSolutionFile ionSolutionFile;
-		ionSolutionFile.OpenForReading(ionFilename);
-		_model = Model(modelFilename);
+		_ionSolutionFile.OpenForReading(ionFilename);
 		
-		/**
-			* Read some meta data from the measurement set
-			*/
-		_bandData = BandData(ms.spectralWindow());
-		size_t channelCount = _bandData.ChannelCount();
-		
-		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
-		
-		casa::ROArrayColumn<casa::Complex> dataColumn(ms, dataColumnName);
-		casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-		casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-		casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-		casa::ROScalarColumn<double> timeAsDoubleColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-		casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
-
-		casa::MSField fieldTable = ms.field();
+		casa::MSField fieldTable = _ms.field();
 		casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
 		if(refDirColumn.nrow() != 1)
 			throw std::runtime_error("Field table nrow != 1");
@@ -52,21 +38,6 @@ public:
 		casa::Array<double>::const_iterator refDirIter = refDir.begin();
 		long double phaseCentreRA = *refDirIter; ++refDirIter;
 		long double phaseCentreDec = *refDirIter;
-	
-		casa::IPosition dataShape = dataColumn.shape(0);
-		unsigned polarizationCount = dataShape[0];
-		if(polarizationCount != 4) throw std::runtime_error("Need 4 polarizations");
-		
-		double time = -1.0;
-		size_t timestepCount = 0;
-		for(size_t rowIndex=0;rowIndex!=ms.nrow();++rowIndex)
-		{
-			if(timeAsDoubleColumn(rowIndex) != time)
-			{
-				++timestepCount;
-				time = timeAsDoubleColumn(rowIndex);
-			}
-		}
 		
 		_accumulatorPerSourceComponent.resize(_model.ComponentCount());
 		size_t compIndex=0;
@@ -75,25 +46,71 @@ public:
 			for(ModelSource::const_iterator c=s->begin(); c!=s->end(); ++c)
 			{
 				const ModelComponent &component = *c;
-				_accumulatorPerSourceComponent[compIndex] = new FluxSpectrumAccumulator(component, &_bandData, ionSolutionFile.ChannelBlockCount(), phaseCentreRA, phaseCentreDec);
+				_accumulatorPerSourceComponent[compIndex] = new FluxSpectrumAccumulator(component, &_bandData, _ionSolutionFile.ChannelBlockCount(), phaseCentreRA, phaseCentreDec);
 				++compIndex;
 			}
 		}
+	}
+	
+	~IonSpectrumMaker()
+	{
+		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSourceComponent.begin(); i!=_accumulatorPerSourceComponent.end(); ++i)
+			delete *i;
+	}
+	
+	void Accumulate()
+	{
+		std::string dataColumnName("DATA");
 		
-		_beamEvaluator = new BeamEvaluator(ms);
+		/**
+			* Read some meta data from the measurement set
+			*/
+		size_t channelCount = _bandData.ChannelCount();
 		
-		ao::lane<RowData> lane(256);
+		if(_ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
+		
+		casa::ROArrayColumn<casa::Complex> dataColumn(_ms, dataColumnName);
+		casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
+		casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
+		casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
+		casa::ROScalarColumn<double> timeAsDoubleColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
+		casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
+		casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
+		casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
+	
+		casa::IPosition dataShape = dataColumn.shape(0);
+		unsigned polarizationCount = dataShape[0];
+		if(polarizationCount != 4) throw std::runtime_error("Need 4 polarizations");
+		
+		double time = -1.0;
+		size_t timestepCount = 0;
+		for(size_t rowIndex=0;rowIndex!=_ms.nrow();++rowIndex)
+		{
+			if(timeAsDoubleColumn(rowIndex) != time)
+			{
+				++timestepCount;
+				time = timeAsDoubleColumn(rowIndex);
+			}
+		}
+		
+		_beamEvaluator.reset(new BeamEvaluator(_ms));
+		
+		ao::lane<RowData> internalLane(ION_SPECTRUM_ROW_LANE_SIZE);
+		lane_write_buffer<RowData> bufferedLane(&internalLane, ION_SPECTRUM_ROW_BUFFER_SIZE);
+		
 		casa::Array<casa::Complex> dataArray(dataShape);
 		casa::Array<float> weightArray(dataShape);
+		casa::Array<bool> flagArray(dataShape);
 		
-		_gSolutions.resize(ionSolutionFile.ChannelBlockCount()),
-		_dlSolutions.resize(ionSolutionFile.ChannelBlockCount()),
-		_dmSolutions.resize(ionSolutionFile.ChannelBlockCount());
+		_gSolutions.resize(_ionSolutionFile.ChannelBlockCount()),
+		_dlSolutions.resize(_ionSolutionFile.ChannelBlockCount()),
+		_dmSolutions.resize(_ionSolutionFile.ChannelBlockCount());
 		
 		size_t timeIndex = 0, interval = 0;
-		updateBeam(timeColumn(0), ionSolutionFile, interval);
-		std::unique_ptr<boost::thread> processRowThread(new boost::thread(&IonSpectrumMaker::processRows, this, &lane));
-		for(size_t rowIndex=0; rowIndex!=ms.nrow(); ++rowIndex)
+		updateBeam(timeColumn(0), _ionSolutionFile, interval);
+		std::cout << "Starting timestep " << timeIndex << '/' << timestepCount << " of interval " << interval << '/' << _ionSolutionFile.IntervalCount() << "...\n";
+		std::unique_ptr<boost::thread> processRowThread(new boost::thread(&IonSpectrumMaker::processRows, this, &internalLane));
+		for(size_t rowIndex=0; rowIndex!=_ms.nrow(); ++rowIndex)
 		{
 			size_t
 				a1 = ant1Column(rowIndex),
@@ -110,24 +127,25 @@ public:
 				if(_beamEvaluator->Time().getValue() != time.getValue())
 				{
 					// Stop all threads, then update beam values, then restart threads.
-					lane.write_end();
+					bufferedLane.write_end();
 					processRowThread->join();
 					
-					lane.clear();
-					updateBeam(time, ionSolutionFile, interval);
-					processRowThread.reset(new boost::thread(&IonSpectrumMaker::processRows, this, &lane));
+					bufferedLane.clear();
+					updateBeam(time, _ionSolutionFile, interval);
+					processRowThread.reset(new boost::thread(&IonSpectrumMaker::processRows, this, &internalLane));
 					
 					++timeIndex;
-					size_t nextIntervalStartTimestep = ((interval+1)*timestepCount) / ionSolutionFile.IntervalCount();
+					size_t nextIntervalStartTimestep = ((interval+1)*timestepCount) / _ionSolutionFile.IntervalCount();
 					if(timeIndex == nextIntervalStartTimestep)
 					{
 						++interval;
 					}
-					std::cout << "Starting timestep " << timeIndex << ',' << timestepCount << " of interval " << interval << '/' << ionSolutionFile.IntervalCount() << "...\n";
+					std::cout << "Starting timestep " << timeIndex << '/' << timestepCount << " of interval " << interval << '/' << _ionSolutionFile.IntervalCount() << "...\n";
 				}
 				
 				dataColumn.get(rowIndex, dataArray);
 				weightColumn.get(rowIndex, weightArray);
+				flagColumn.get(rowIndex, flagArray);
 				
 				RowData rowData;
 				rowData.uInM = u;
@@ -135,13 +153,55 @@ public:
 				rowData.wInM = w;
 				rowData.data = new std::complex<float>[channelCount*4];
 				rowData.weights = new float[channelCount*4];
+				rowData.flags = new bool[channelCount*4];
 				memcpy(rowData.data, dataArray.cbegin(), sizeof(std::complex<float>)*channelCount*4);
 				memcpy(rowData.weights, weightArray.cbegin(), sizeof(float)*channelCount*4);
-				lane.write(rowData);
+				memcpy(rowData.flags, flagArray.cbegin(), sizeof(bool)*channelCount*4);
+				bufferedLane.write(rowData);
 			}
 		}
 		
-		delete _beamEvaluator;
+		bufferedLane.write_end();
+		processRowThread->join();
+		
+		_beamEvaluator.reset();
+	}
+	
+	void Save(const char* filename)
+	{
+		std::ofstream stream(filename);
+		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSourceComponent.begin(); i!=_accumulatorPerSourceComponent.end(); ++i)
+		{
+			(*i)->Finish();
+			(*i)->Serialize(stream);
+		}
+	}
+	
+	void AccumulateFile(const char* filename)
+	{
+		std::ifstream stream(filename);
+		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSourceComponent.begin(); i!=_accumulatorPerSourceComponent.end(); ++i)
+			(*i)->AccumulateFromStream(stream);
+	}
+	
+	void GetModel(Model& model) const
+	{
+		size_t compIndex = 0;
+		for(size_t s=0; s!=_model.SourceCount(); ++s)
+		{
+			const ModelSource& source = _model.Source(s);
+			ModelSource newSource(source);
+			newSource.ClearComponents();
+			for(size_t c=0; c!=source.ComponentCount(); ++c)
+			{
+				ModelComponent newComponent;
+				_accumulatorPerSourceComponent[compIndex]->GetSpectrum(newComponent);
+				newSource.AddComponent(newComponent);
+				
+				++compIndex;
+			}
+			model.AddSource(newSource);
+		}
 	}
 private:
 	struct RowData
@@ -150,6 +210,7 @@ private:
 		double uInM, vInM, wInM;
 		std::complex<float> *data;
 		float *weights;
+		bool *flags;
 	};
 
 	struct SampleData
@@ -170,7 +231,7 @@ private:
 			for(size_t cb=0; cb!=ionSolutionFile.ChannelBlockCount(); ++cb)
 			{
 				IonSolutionFile::Solution solution;
-				ionSolutionFile.ReadSolution(solution, interval, 0, sIndex, cb);
+				ionSolutionFile.ReadSolution(solution, interval, cb, 0, sIndex);
 				_gSolutions[cb] = solution.gain;
 				_dlSolutions[cb] = solution.dl;
 				_dmSolutions[cb] = solution.dm;
@@ -185,20 +246,23 @@ private:
 	
 	void processRows(ao::lane<RowData>* lane)
 	{
+		lane_read_buffer<RowData> bufferedInputLane(lane, ION_SPECTRUM_ROW_BUFFER_SIZE);
 		size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-		std::vector<ao::lane<SampleData> > outLanes(cpuCount);
+		std::vector<ao::lane<SampleData> > outLanesInternal(cpuCount);
+		std::vector<lane_write_buffer<SampleData>> bufferedOutLanes(cpuCount);
 		boost::thread_group threadGroup;
 		for(size_t c=0; c!=cpuCount; ++c)
 		{
-			outLanes[c].resize(256);
-			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, &outLanes[c]));
+			outLanesInternal[c].resize(ION_SPECTRUM_SAMPLE_LANE_SIZE);
+			bufferedOutLanes[c].reset(&outLanesInternal[c], ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
+			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, &outLanesInternal[c]));
 		}
 		RowData rowData;
 		ao::uvector<double> wavelengths(_bandData.ChannelCount());
 		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			wavelengths[ch] = _bandData.ChannelWavelength(ch);
 		
-		while(lane->read(rowData))
+		while(bufferedInputLane.read(rowData))
 		{
 			size_t compIndex=0;
 			for(std::vector<FluxSpectrumAccumulator*>::const_iterator c=_accumulatorPerSourceComponent.begin(); c!=_accumulatorPerSourceComponent.end(); ++c)
@@ -208,39 +272,51 @@ private:
 				for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 				{
 					sample.weight = 0.0;
+					bool flagged = false;
 					for(size_t p=0; p!=4; ++p)
 					{
 						sample.data[p] = rowData.data[ch*4 + p];
 						sample.weight += rowData.weights[ch*4 + p];
+						flagged = flagged || rowData.flags[ch*4 + p];
 					}
-					const double lambda = wavelengths[ch];
-					sample.channelIndex = ch;
-					sample.u = rowData.uInM/lambda;
-					sample.v = rowData.vInM/lambda;
-					sample.w = rowData.wInM/lambda;
-					outLanes[ch%cpuCount].write(sample);
+					if(!flagged)
+					{
+						const double lambda = wavelengths[ch];
+						sample.channelIndex = ch;
+						sample.u = rowData.uInM/lambda;
+						sample.v = rowData.vInM/lambda;
+						sample.w = rowData.wInM/lambda;
+						bufferedOutLanes[ch%cpuCount].write(sample);
+					}
 				}
 				++compIndex;
 			}
 			delete[] rowData.data;
+			delete[] rowData.weights;
+			delete[] rowData.flags;
 		}
 		
 		for(size_t c=0; c!=cpuCount; ++c)
-			outLanes[c].write_end();
+			bufferedOutLanes[c].write_end();
+		threadGroup.join_all();
 	}
 	
 	void processSamples(ao::lane<SampleData>* lane)
 	{
+		lane_read_buffer<SampleData> bufferedLane(lane, ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
+		
 		SampleData sample;
-		while(lane->read(sample))
+		while(bufferedLane.read(sample))
 		{
 			_accumulatorPerSourceComponent[sample.componentIndex]->Accumulate(sample.data, sample.weight, sample.channelIndex, sample.u, sample.v, sample.w);
 		}
 	}
 
+	casa::MeasurementSet _ms;
+	IonSolutionFile _ionSolutionFile;
 	Model _model;
 	BandData _bandData;
-	BeamEvaluator *_beamEvaluator;
+	std::unique_ptr<BeamEvaluator> _beamEvaluator;
 	std::vector<FluxSpectrumAccumulator*> _accumulatorPerSourceComponent;
 	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
 };

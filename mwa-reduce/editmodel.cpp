@@ -626,25 +626,25 @@ int main(int argc, char *argv[])
 				std::ostringstream dataStreamName;
 				dataStreamName << "spectrum" << sourceIndex << ".txt";
 				std::ofstream dataStream(dataStreamName.str().c_str());
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 2.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with lines lw 2.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with lines lw 2.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with lines lw 2.0 title \"\"";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 2.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 2.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 2.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 2.0 title \"\"";
 				
-				plotIStream << "\"" << dataStreamName.str() << "\" using 1:((column(2)+column(5))*0.5) with lines lw 2.0 title \"\",\\\n";
+				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 2.0 title \"\",\\\n";
 				
 				const SpectralEnergyDistribution &sed = compPtr->SED();
-				long double e, f;
+				/*long double e, f;
 				sed.FitPowerlaw(f, e, Polarization::StokesI);
-				plotIStream << (f/2.0) << " * (x*1000000)**" << e << " with lines lw 1.0 title \"\"";
+				plotIStream << (f/2.0) << " * (x*1000000)**" << e << " with lines lw 1.0 title \"\"";*/
 				
 				if(sourceIndex != model.ComponentCount()-1)
 				{
 					plotStream << ",\\";
-					plotIStream << ",\\";
+					//plotIStream << ",\\";
 				}
 				plotStream << "\n";
-				plotIStream << "\n";
+				//plotIStream << "\n";
 				
 				std::vector<Measurement> measurements;
 				sed.GetMeasurements(measurements);
