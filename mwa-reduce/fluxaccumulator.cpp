@@ -1,12 +1,15 @@
 #include "fluxaccumulator.h"
 
-FluxAccumulator::FluxAccumulator(double l, double m, double lambda) :
+FluxAccumulator::FluxAccumulator(double l, double m, double lambda, const std::complex<double>* modelFlux) :
 	_accFluxesBeforeBeamChange({0.0, 0.0, 0.0, 0.0}),
 	_accFluxes({0.0, 0.0, 0.0, 0.0}),
 	_accWeights({0.0, 0.0, 0.0, 0.0}),
 	_beamGains({0.0, 0.0, 0.0, 0.0}),
-	_accVisWeightBeforeBeamChange(0.0)
+	_accVisWeightBeforeBeamChange(0.0),
+	_l(l), _m(m),
+	_ionG(0.0), _movedL(0.0), _movedM(0.0), _movedLMSqrt(0.0)
 {
+	memcpy(_modelFlux, modelFlux, sizeof(std::complex<double>)*4);
 }
 
 void FluxAccumulator::UpdateBeam(const std::complex<double>* beamGains, double ionG, double ionDL, double ionDM)
@@ -17,10 +20,10 @@ void FluxAccumulator::UpdateBeam(const std::complex<double>* beamGains, double i
 	_movedM = _m+ionDM;
 	_movedLMSqrt = sqrt(1.0 - _movedL*_movedL - _movedM*_movedM)-1.0;
 	_ionG = ionG;
+	
 	Matrix2x2::Assign(_beamGains, beamGains);
-	for(size_t p=0; p!=4; ++p)
-		_accFluxesBeforeBeamChange[p] = std::complex<double>(0.0, 0.0);
-	_accVisWeightBeforeBeamChange = 0.0;
+	//_beamGains[0] = 1.0; _beamGains[1] = 0.0;
+	//_beamGains[2] = 0.0; _beamGains[3] = 1.0;
 }
 
 void FluxAccumulator::Add(const std::complex<double>* vis, const double visWeight, double u, double v, double w)

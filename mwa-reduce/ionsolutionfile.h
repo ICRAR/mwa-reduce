@@ -114,9 +114,9 @@ class IonSolutionFile
 		return sum / (_header.intervalCount * _header.channelBlockCount);
 	}
 	
-  void ReadSolution(Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction) {
+  void ReadSolution(Solution& solution, size_t interval, size_t channelBlock, size_t polarization, size_t direction) {
 		std::unique_lock<std::mutex> lock(_mutex);
-		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
+		size_t index = ((interval * _header.channelBlockCount + channelBlock) * _header.polarizationCount + polarization) * _header.directionCount + direction;
 		size_t offset = sizeof(_header);
 		_inputStream->seekg(offset + sizeof(Solution) * index, std::ios::beg);
 		_inputStream->read(reinterpret_cast<char*>(&solution), sizeof(Solution));

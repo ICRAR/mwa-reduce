@@ -51,6 +51,7 @@ class Model
 		
 		void RemoveSource(size_t index) { _sources.erase(_sources.begin() + index); }
 		
+		void Save(const std::string& filename) const { Save(filename.c_str()); }
 		void Save(const char* filename) const;
 		void Save(std::ostream& stream) const;
 		
