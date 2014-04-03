@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	if(argc != 17)
 	{
 		std::cout << "Syntax:\n"
-			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yx.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outi.fits> <outq.fits> <outu.fits> <outv.fits>\n";
+			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yy.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outi.fits> <outq.fits> <outu.fits> <outv.fits>\n";
 		return -1;
 	}
 		
