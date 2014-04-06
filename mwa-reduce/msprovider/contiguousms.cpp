@@ -1,7 +1,5 @@
 #include "contiguousms.h"
 
-#include <tables/Tables/ArrColDesc.h>
-
 ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnName, MSSelection selection, PolarizationEnum polOut, bool includeModel) :
 	_timestep(0),
 	_time(0.0),
@@ -108,49 +106,8 @@ void ContiguousMS::ReadData(std::complex<float>* buffer)
 
 void ContiguousMS::prepareModelColumn()
 {
-	if(_ms.isColumn(casa::MSMainEnums::MODEL_DATA))
-	{
-		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-		casa::IPosition dataShape = _dataColumn.shape(0);
-		bool isDefined = _modelColumn->isDefined(0);
-		bool isSameShape = false;
-		if(isDefined)
-		{
-			casa::IPosition modelShape = _modelColumn->shape(0);
-			isSameShape = modelShape == dataShape;
-		}
-		if(!isDefined || !isSameShape)
-		{
-			std::cout << "WARNING: Your model column does not have the same shape as your data column: resetting MODEL column.\n";
-			casa::Array<casa::Complex> zeroArray(dataShape);
-			for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
-				*i = std::complex<float>(0.0, 0.0);
-			for(size_t row=0; row!=_ms.nrow(); ++row)
-				_modelColumn->put(row, zeroArray);
-		}
-	}
-	else { //if(!_ms.isColumn(casa::MSMainEnums::MODEL_DATA))
-		std::cout << "Adding model data column... " << std::flush;
-		casa::IPosition shape = _dataColumn.shape(0);
-		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(_ms.columnName(casa::MSMainEnums::MODEL_DATA), shape);
-		try {
-			_ms.addColumn(modelColumnDesc, "StandardStMan", true, true);
-		} catch(std::exception& e)
-		{
-			_ms.addColumn(modelColumnDesc, "StandardStMan", false, true);
-		}
-		
-		casa::Array<casa::Complex> zeroArray(shape);
-		for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
-			*i = std::complex<float>(0.0, 0.0);
-		
-		_modelColumn.reset(new casa::ArrayColumn<std::complex<float> >(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-		
-		for(size_t row=0; row!=_ms.nrow(); ++row)
-			_modelColumn->put(row, zeroArray);
-		
-		std::cout << "DONE\n";
-	}		
+	initializeModelColumn(_ms);
+	
 	const casa::IPosition shape(_modelColumn->shape(0));
 	_modelArray = casa::Array<std::complex<float>>(shape);
 	_isModelColumnPrepared = true;

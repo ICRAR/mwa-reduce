@@ -10,6 +10,7 @@
 
 #include "../polarizationenum.h"
 #include "../uvector.h"
+#include "../msselection.h"
 
 #include "msprovider.h"
 
@@ -49,33 +50,42 @@ public:
 	public:
 		friend class PartitionedMS;
 		
-		Handle(const Handle& handle) : _metaFile(handle._metaFile), _msPath(handle._msPath), _channelParts(handle._channelParts), _polarizations(handle._polarizations), _referenceCount(handle._referenceCount)
+		Handle(const Handle& handle) : _data(handle._data)
 		{
-			++(*_referenceCount);
+			++(_data->_referenceCount);
 		}
 		~Handle() { decrease(); }
 		void operator=(const Handle& handle)
 		{
-			if(handle._referenceCount != _referenceCount)
+			if(handle._data != _data)
 			{
 				decrease();
-				_metaFile = handle._metaFile;
-				_msPath = handle._msPath;
-				_channelParts = handle._channelParts;
-				_polarizations = handle._polarizations;
-				_referenceCount = handle._referenceCount;
-				++(*_referenceCount);
+				_data = handle._data;
+				++(_data->_referenceCount);
 			}
 		}
 	private:
+		struct HandleData
+		{
+			HandleData(const std::string& metaFile, const std::string& msPath, const string& dataColumnName, size_t channelParts, const std::set<PolarizationEnum>& polarizations, const MSSelection& selection) :
+			_metaFile(metaFile), _msPath(msPath), _dataColumnName(dataColumnName), _channelParts(channelParts), _polarizations(polarizations), _selection(selection), _referenceCount(1) { }
+			
+			std::string _metaFile, _msPath, _dataColumnName;
+			size_t _channelParts;
+			std::set<PolarizationEnum> _polarizations;
+			MSSelection _selection;
+			size_t _referenceCount;
+		} *_data;
+		
 		void decrease();
-		Handle(const std::string& metaFile, const std::string& msPath, size_t channelParts, const std::set<PolarizationEnum>& polarizations) : _metaFile(metaFile), _msPath(msPath), _channelParts(channelParts), _polarizations(polarizations), _referenceCount(new size_t(1)) { }
-		std::string _metaFile, _msPath;
-		size_t _channelParts;
-		std::set<PolarizationEnum> _polarizations;
-		size_t *_referenceCount;
+		Handle(const std::string& metaFile, const std::string& msPath, const string& dataColumnName, size_t channelParts, const std::set<PolarizationEnum>& polarizations, const MSSelection& selection) :
+			_data(new HandleData(metaFile, msPath, dataColumnName, channelParts, polarizations, selection))
+		{
+		}
 	}; 
 private:
+	static void unpartition(const Handle& handle);
+	
 	casa::MeasurementSet _ms;
 	std::ifstream _metaFile, _weightFile, _dataFile;
 	char *_modelFileMap;

@@ -1,7 +1,6 @@
 #include "partitionedms.h"
 
 #include "../multibanddata.h"
-#include "../msselection.h"
 #include "../progressbar.h"
 
 #include <sys/mman.h>
@@ -16,7 +15,7 @@
 // #define REDUNDANT_VALIDATION 1
 
 PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex, PolarizationEnum polarization) :
-	_metaFile(handle._metaFile),
+	_metaFile(handle._data->_metaFile),
 	_modelFileMap(0),
 	_currentRow(0),
 	_readPtrIsOk(true),
@@ -380,14 +379,16 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	}
 	progress1.SetProgress(ms.nrow(), ms.nrow());
 	
-	// Write header to parts
+	// Write header to parts and write model files
 	PartHeader header;
 	memset(&header, 0, sizeof(PartHeader));
 	header.hasModel = includeModel;
 	header.hasWeights = includeWeights;
 	fileIndex = 0;
 	memset(reinterpret_cast<char*>(dataBuffer.data()), 0, sizeof(std::complex<float>)*(1 + channelCount / channelParts));
-	ProgressBar progress2("Initializing model visibilities");
+	std::unique_ptr<ProgressBar> progress2;
+	if(includeModel)
+		progress2.reset(new ProgressBar("Initializing model visibilities"));
 	for(size_t part=0; part!=channelParts; ++part)
 	{
 		header.channelStart = channelStart + channelCount*part/channelParts,
@@ -412,38 +413,158 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 				for(size_t i=0; i!=selectedRowCount; ++i)
 				{
 					modelFile.write(reinterpret_cast<char*>(dataBuffer.data()), header.channelCount * sizeof(std::complex<float>));
-					progress2.SetProgress(part*selectedRowCount + i, channelParts*selectedRowCount);
+					progress2->SetProgress(part*selectedRowCount + i, channelParts*selectedRowCount);
 				}
 			}
 		}
 	}
-	progress2.SetProgress(1,1);
+	progress2.reset();
 	
-	return Handle(metaFilename, msPath, channelParts, polsOut);
+	return Handle(metaFilename, msPath, dataColumnName, channelParts, polsOut, selection);
+}
+
+void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
+{
+	const std::set<PolarizationEnum> pols = handle._data->_polarizations;
+	std::ifstream metaFile(handle._data->_metaFile);
+	MetaHeader metaHeader;
+	metaFile.read(reinterpret_cast<char*>(&metaHeader), sizeof(MetaHeader));
+	std::vector<char> msPath(metaHeader.filenameLength+1, char(0));
+	metaFile.read(msPath.data(), metaHeader.filenameLength);
+	
+	std::ifstream firstDataFile(getPartPrefix(msPath.data(), 0, *pols.begin())+".tmp", std::ios::in);
+	if(firstDataFile.bad())
+		throw std::runtime_error("Error opening temporary data file");
+	PartHeader firstPartHeader;
+	firstDataFile.read(reinterpret_cast<char*>(&firstPartHeader), sizeof(PartHeader));
+	
+	if(firstPartHeader.hasModel)
+	{
+		const size_t channelParts = handle._data->_channelParts;
+		std::vector<std::ifstream*> modelFiles(channelParts*pols.size()), weightFiles(channelParts*pols.size());
+		size_t fileIndex = 0;
+		for(size_t part=0; part!=channelParts; ++part)
+		{
+			for(std::set<PolarizationEnum>::const_iterator p=pols.begin(); p!=pols.end(); ++p)
+			{
+				std::string partPrefix = getPartPrefix(msPath.data(), part, *p);
+				modelFiles[fileIndex] = new std::ifstream(partPrefix + "-m.tmp");
+				if(firstPartHeader.hasWeights)
+					weightFiles[fileIndex] = new std::ifstream(partPrefix + "-w.tmp");
+				++fileIndex;
+			}
+		}
+		
+		casa::MeasurementSet ms(msPath.data(), casa::Table::Update);
+		initializeModelColumn(ms);
+		casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
+		casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
+		casa::ROScalarColumn<int> fieldIdColumn(ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID));
+		casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
+		casa::ROArrayColumn<casa::Complex> dataColumn(ms, handle._data->_dataColumnName);
+		casa::ArrayColumn<casa::Complex> modelColumn(ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA));
+		
+		const casa::IPosition shape(dataColumn.shape(0));
+		const size_t polarizationCount = shape[0];
+		size_t channelCount, channelStart;
+		if(handle._data->_selection.HasChannelRange())
+		{
+			channelCount = handle._data->_selection.ChannelRangeEnd() - handle._data->_selection.ChannelRangeStart();
+			channelStart = handle._data->_selection.ChannelRangeStart();
+		}
+		else {
+			channelCount = shape[1];
+			channelStart = 0;
+		}
+		
+		std::vector<std::complex<float>> modelDataBuffer(1 + channelCount / channelParts);
+		std::vector<float> weightBuffer(1 + channelCount / channelParts);
+		casa::Array<std::complex<float>> modelDataArray(shape);
+	
+		ProgressBar progress(std::string("Writing changed model back to ") + msPath.data());
+		size_t timestep = 0;
+		double time = timeColumn(0);
+		for(size_t row=0; row!=ms.nrow(); ++row)
+		{
+			progress.SetProgress(row, ms.nrow());
+			const int
+				a1 = antenna1Column(row), a2 = antenna2Column(row),
+				fieldId = fieldIdColumn(row);
+				
+			if(time != timeColumn(row))
+			{
+				++timestep;
+				time = timeColumn(row);
+			}
+			if(handle._data->_selection.IsSelected(fieldId, timestep, a1, a2))
+			{
+				modelColumn.get(row, modelDataArray);
+				size_t fileIndex = 0;
+				for(size_t part=0; part!=channelParts; ++part)
+				{
+					size_t
+						partStartCh = channelStart + channelCount*part/channelParts,
+						partEndCh = channelStart + channelCount*(part+1)/channelParts;
+					
+					for(std::set<PolarizationEnum>::const_iterator p=pols.begin(); p!=pols.end(); ++p)
+					{
+						modelFiles[fileIndex]->read(reinterpret_cast<char*>(modelDataBuffer.data()), (partEndCh - partStartCh) * sizeof(std::complex<float>));
+						if(firstPartHeader.hasWeights)
+						{
+							weightFiles[fileIndex]->read(reinterpret_cast<char*>(weightBuffer.data()), (partEndCh - partStartCh) * sizeof(float));
+							for(size_t i=0; i!=partEndCh - partStartCh; ++i)
+								modelDataBuffer[i] /= weightBuffer[i];
+						}
+						if(modelFiles[fileIndex]->bad())
+							throw std::runtime_error("Error writing to temporary data file");
+						reverseCopyData(modelDataArray, partStartCh, partEndCh, polarizationCount, modelDataBuffer.data(), *p);
+						
+						++fileIndex;
+					}
+				}
+				modelColumn.put(row, modelDataArray);
+			}
+		}
+		progress.SetProgress(ms.nrow(),ms.nrow());
+		
+		fileIndex = 0;
+		for(size_t part=0; part!=channelParts; ++part)
+		{
+			for(std::set<PolarizationEnum>::const_iterator p=pols.begin(); p!=pols.end(); ++p)
+			{
+				delete modelFiles[fileIndex];
+				if(firstPartHeader.hasWeights)
+					delete weightFiles[fileIndex];
+				++fileIndex;
+			}
+		}
+	}
 }
 
 void PartitionedMS::Handle::decrease()
 {
-	--(*_referenceCount);
-	if((*_referenceCount) == 0)
+	--(_data->_referenceCount);
+	if(_data->_referenceCount == 0)
 	{
+		PartitionedMS::unpartition(*this);
+		
 		std::cout << "Cleaning up temporary files...\n";
 		
 		//MetaHeader metaHeader;
 		//std::ifstream metaFile(_metaFile);
 		//metaFile.read(reinterpret_cast<char*>(&metaHeader), sizeof(MetaHeader));
 		
-		for(size_t part=0; part!=_channelParts; ++part)
+		for(size_t part=0; part!=_data->_channelParts; ++part)
 		{
-			for(std::set<PolarizationEnum>::const_iterator p=_polarizations.begin(); p!=_polarizations.end(); ++p)
+			for(std::set<PolarizationEnum>::const_iterator p=_data->_polarizations.begin(); p!=_data->_polarizations.end(); ++p)
 			{
-				std::string prefix = getPartPrefix(_msPath, part, *p);
+				std::string prefix = getPartPrefix(_data->_msPath, part, *p);
 				std::remove((prefix + ".tmp").c_str());
 				std::remove((prefix + "-w.tmp").c_str());
 				std::remove((prefix + "-m.tmp").c_str());
 			}
 		}
-		std::remove(_metaFile.c_str());
-		delete _referenceCount;
+		std::remove(_data->_metaFile.c_str());
+		delete _data;
 	}
 }

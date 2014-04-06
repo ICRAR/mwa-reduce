@@ -3,6 +3,7 @@
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <tables/Tables/ArrayColumn.h>
 #include <tables/Tables/ScalarColumn.h>
+#include <tables/Tables/ArrColDesc.h>
 
 #include "../msselection.h"
 
@@ -224,3 +225,50 @@ void MSProvider::getRowRange(casa::MeasurementSet& ms, const MSSelection& select
 	}
 }
 
+void MSProvider::initializeModelColumn(casa::MeasurementSet& ms)
+{
+	casa::ROArrayColumn<casa::Complex> dataColumn(ms, casa::MS::columnName(casa::MSMainEnums::DATA));
+	if(ms.isColumn(casa::MSMainEnums::MODEL_DATA))
+	{
+		casa::ArrayColumn<casa::Complex> modelColumn(ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA));
+		casa::IPosition dataShape = dataColumn.shape(0);
+		bool isDefined = modelColumn.isDefined(0);
+		bool isSameShape = false;
+		if(isDefined)
+		{
+			casa::IPosition modelShape = modelColumn.shape(0);
+			isSameShape = modelShape == dataShape;
+		}
+		if(!isDefined || !isSameShape)
+		{
+			std::cout << "WARNING: Your model column does not have the same shape as your data column: resetting MODEL column.\n";
+			casa::Array<casa::Complex> zeroArray(dataShape);
+			for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
+				*i = std::complex<float>(0.0, 0.0);
+			for(size_t row=0; row!=ms.nrow(); ++row)
+				modelColumn.put(row, zeroArray);
+		}
+	}
+	else { //if(!_ms.isColumn(casa::MSMainEnums::MODEL_DATA))
+		std::cout << "Adding model data column... " << std::flush;
+		casa::IPosition shape = dataColumn.shape(0);
+		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(ms.columnName(casa::MSMainEnums::MODEL_DATA), shape);
+		try {
+			ms.addColumn(modelColumnDesc, "StandardStMan", true, true);
+		} catch(std::exception& e)
+		{
+			ms.addColumn(modelColumnDesc, "StandardStMan", false, true);
+		}
+		
+		casa::Array<casa::Complex> zeroArray(shape);
+		for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
+			*i = std::complex<float>(0.0, 0.0);
+		
+		casa::ArrayColumn<casa::Complex> modelColumn(ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA));
+		
+		for(size_t row=0; row!=ms.nrow(); ++row)
+			modelColumn.put(row, zeroArray);
+		
+		std::cout << "DONE\n";
+	}
+}

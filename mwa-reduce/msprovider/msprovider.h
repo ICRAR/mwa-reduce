@@ -59,6 +59,8 @@ protected:
 		}
 	}
 	
+	static void initializeModelColumn(casa::MeasurementSet& ms);
+	
 	MSProvider() { }
 private:
 	MSProvider(const MSProvider&) { }
