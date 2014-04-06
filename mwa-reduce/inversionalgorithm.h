@@ -170,6 +170,9 @@ class InversionAlgorithm
 		
 		virtual bool HasGriddingCorrectionImage() const = 0;
 		virtual void GetGriddingCorrectionImage(double *image) const = 0;
+		
+		virtual size_t ActualInversionWidth() const { return _imageWidth; }
+		virtual size_t ActualInversionHeight() const { return _imageHeight; }
 	private:
 		size_t _imageWidth, _imageHeight;
 		double _pixelSizeX, _pixelSizeY;

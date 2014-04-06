@@ -35,11 +35,11 @@ PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex, Polarizatio
 	
 	if(_partHeader.hasModel)
 	{
-		int fd = open((getPartPrefix(msPath.data(), partIndex, polarization)+"-m.tmp").c_str(), O_RDWR);
-		if(fd == -1)
+		_fd = open((getPartPrefix(msPath.data(), partIndex, polarization)+"-m.tmp").c_str(), O_RDWR);
+		if(_fd == -1)
 			throw std::runtime_error("Error opening temporary data file");
 		size_t length = _partHeader.channelCount * _metaHeader.selectedRowCount * sizeof(std::complex<float>);
-		_modelFileMap = reinterpret_cast<char*>( mmap(NULL, length, PROT_WRITE | PROT_WRITE, MAP_SHARED, fd, 0) );
+		_modelFileMap = reinterpret_cast<char*>( mmap(NULL, length, PROT_WRITE | PROT_WRITE, MAP_SHARED, _fd, 0) );
 		if(_modelFileMap == MAP_FAILED)
 		{
 			_modelFileMap = 0;
@@ -61,6 +61,8 @@ PartitionedMS::~PartitionedMS()
 		size_t length = _partHeader.channelCount * _metaHeader.selectedRowCount * sizeof(std::complex<float>);
 		munmap(_modelFileMap, length);
 	}
+	if(_partHeader.hasModel)
+		close(_fd);
 }
 
 void PartitionedMS::Reset()

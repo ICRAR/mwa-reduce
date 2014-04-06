@@ -48,6 +48,9 @@ class WSInversion : public InversionAlgorithm
 		
 		virtual bool HasGriddingCorrectionImage() const { return _gridMode == LayeredImager::KaiserBessel; }
 		virtual void GetGriddingCorrectionImage(double *image) const { _imager->GetGriddingCorrectionImage(image); }
+		
+		size_t ActualInversionWidth() const { return _actualInversionWidth; }
+		size_t ActualInversionHeight() const { return _actualInversionHeight; }
 	private:
 		struct InversionWorkItem
 		{

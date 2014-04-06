@@ -93,6 +93,7 @@ private:
 	bool _readPtrIsOk, _metaPtrIsOk, _weightPtrIsOk;
 	ao::uvector<float> _weightBuffer;
 	ao::uvector<std::complex<float>> _modelBuffer;
+	int _fd;
 	
 	struct MetaHeader
 	{

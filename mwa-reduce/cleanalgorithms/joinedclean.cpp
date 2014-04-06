@@ -7,7 +7,7 @@
 #include <immintrin.h>
 
 template<typename ImageSetType>
-void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain)
+void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain)
 {
 	if(_stopOnNegativeComponent)
 		_allowNegativeComponents = true;
@@ -19,8 +19,8 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 	std::cout << "Initial peak: " << peakDescription(dataImage, componentX, componentY) << '\n';
 	
 	size_t peakIndex = componentX + componentY*_width;
-	double peakSquared = dataImage.JoinedValue(peakIndex);
-	double firstThreshold = _threshold, stopGainThreshold = sqrt(peakSquared)*(1.0-_stopGain);
+	double peakNormalized = dataImage.JoinedValueNormalized(peakIndex);
+	double firstThreshold = _threshold, stopGainThreshold = peakNormalized*(1.0-_stopGain);
 	if(stopGainThreshold > firstThreshold)
 	{
 		firstThreshold = stopGainThreshold;
@@ -40,13 +40,13 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		resultLanes[i] = new ao::lane<CleanResult>(1);
 		CleanThreadData cleanThreadData;
 		cleanThreadData.dataImage = &dataImage;
-		cleanThreadData.psfImage = psfImage;
+		cleanThreadData.psfImages = psfImages;
 		cleanThreadData.startY = (height*i)/cpuCount;
 		cleanThreadData.endY = height*(i+1)/cpuCount;
 		threadGroup.add_thread(new boost::thread(&JoinedClean::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
 	
-	while(sqrt(peakSquared) > firstThreshold && _iterationNumber < _maxIter && !(dataImage.IsComponentNegative(peakIndex) && _stopOnNegativeComponent))
+	while(peakNormalized > firstThreshold && _iterationNumber < _maxIter && !(dataImage.IsComponentNegative(peakIndex) && _stopOnNegativeComponent))
 	{
 		if(_iterationNumber <= 10 ||
 			(_iterationNumber <= 100 && _iterationNumber % 10 == 0) ||
@@ -63,19 +63,20 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		
 		modelImage.AddComponent(dataImage, peakIndex, _subtractionGain);
 		
-		peakSquared = 0.0;
+		double peakUnnormalized = 0.0;
 		for(size_t i=0; i!=cpuCount; ++i)
 		{
 			CleanResult result;
 			resultLanes[i]->read(result);
-			if(result.peakLevelUnnormalized >= peakSquared)
+			if(result.peakLevelUnnormalized >= peakUnnormalized)
 			{
-				peakSquared = result.peakLevelUnnormalized;
+				peakUnnormalized = result.peakLevelUnnormalized;
 				componentX = result.nextPeakX;
 				componentY = result.nextPeakY;
 			}
 		}
 		peakIndex = componentX + componentY*_width;
+		peakNormalized = dataImage.JoinedValueNormalized(peakIndex);
 		
 		++_iterationNumber;
 	}
@@ -87,8 +88,8 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		delete taskLanes[i];
 		delete resultLanes[i];
 	}
-	std::cout << "Stopped on peak " << sqrt(peakSquared) << '\n';
-	reachedStopGain = sqrt(peakSquared) < stopGainThreshold;
+	std::cout << "Stopped on peak " << peakNormalized << '\n';
+	reachedStopGain = peakNormalized < stopGainThreshold;
 }
 
 template<typename ImageSetType>
@@ -118,11 +119,13 @@ template<typename ImageSetType>
 void JoinedClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane, ao::lane<CleanResult> *resultLane, CleanThreadData cleanData)
 {
 	CleanTask task;
+	// This initialization is not really necessary, but gcc warns about possible uninitialized values otherwise
+	task.peak = ImageSetType::Value::Zero();
 	while(taskLane->read(task))
 	{
 		for(size_t i=0; i!=cleanData.dataImage->ImageCount(); ++i)
 		{
-			subtractImage(cleanData.dataImage->GetImage(i), cleanData.psfImage, task.cleanCompX, task.cleanCompY, _subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
+			subtractImage(cleanData.dataImage->GetImage(i), cleanData.psfImages[ImageSetType::PSFIndex(i)], task.cleanCompX, task.cleanCompY, _subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
 		}
 		
 		CleanResult result;

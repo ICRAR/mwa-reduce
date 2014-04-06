@@ -26,6 +26,12 @@ namespace joined_pol_clean {
 					case 3: return yy;
 				}
 			}
+			static Value Zero() {
+				Value zero;
+				zero.xx = 0.0; zero.xyr = 0.0;
+				zero.xyi = 0.0; zero.yy = 0.0;
+				return zero;
+			}
 		};
 		
 		double *xx, *xyr, *xyi, *yy;
@@ -47,20 +53,20 @@ namespace joined_pol_clean {
 			_allocator->Free(yy);
 		}
 		
-		void Load(CachedImageSet& set)
+		void Load(CachedImageSet& set, size_t freqIndex)
 		{
-			set.Load(xx, PolarizationEnum::XX, false);
-			set.Load(xyr, PolarizationEnum::XY, false);
-			set.Load(xyi, PolarizationEnum::XY, true);
-			set.Load(yy, PolarizationEnum::YY, false);
+			set.Load(xx, PolarizationEnum::XX, freqIndex, false);
+			set.Load(xyr, PolarizationEnum::XY, freqIndex, false);
+			set.Load(xyi, PolarizationEnum::XY, freqIndex, true);
+			set.Load(yy, PolarizationEnum::YY, freqIndex, false);
 		}
 		
-		void Store(CachedImageSet& set) const
+		void Store(CachedImageSet& set, size_t freqIndex) const
 		{
-			set.Store(xx, PolarizationEnum::XX, false);
-			set.Store(xyr, PolarizationEnum::XY, false);
-			set.Store(xyi, PolarizationEnum::XY, true);
-			set.Store(yy, PolarizationEnum::YY, false);
+			set.Store(xx, PolarizationEnum::XX, freqIndex, false);
+			set.Store(xyr, PolarizationEnum::XY, freqIndex, false);
+			set.Store(xyi, PolarizationEnum::XY, freqIndex, true);
+			set.Store(yy, PolarizationEnum::YY, freqIndex, false);
 		}
 		
 		Value Get(size_t index) const
@@ -113,7 +119,10 @@ namespace joined_pol_clean {
 			double* vals[4] = { xx, xyr, xyi, yy };
 			return vals[imageIndex];
 		}
-		
+		static size_t PSFIndex(size_t imageIndex)
+		{
+			return 0;
+		}
 	private:
 		ImageBufferAllocator<double> *_allocator;
 	};
@@ -126,6 +135,7 @@ namespace joined_pol_clean {
 			{
 				return values[i/4].GetValue(i%4);
 			}
+			static Value Zero() { return Value(); }
 		};
 		MultiImageSet(size_t imageSize, size_t count, ImageBufferAllocator<double>& allocator)
 		{
@@ -145,12 +155,12 @@ namespace joined_pol_clean {
 		
 		void Load(CachedImageSet& set, size_t i)
 		{
-			_sets[i]->Load(set);
+			_sets[i]->Load(set, i);
 		}
 		
 		void Store(CachedImageSet& set, size_t i) const
 		{
-			_sets[i]->Store(set);
+			_sets[i]->Store(set, i);
 		}
 		
 		double JoinedValue(size_t index) const
@@ -201,6 +211,15 @@ namespace joined_pol_clean {
 			return _sets[imageIndex/4]->GetImage(imageIndex%4);
 		}
 		
+		double* GetImage(size_t polIndex, size_t freqIndex)
+		{
+			return _sets[freqIndex]->GetImage(polIndex);
+		}
+		
+		static size_t PSFIndex(size_t imageIndex)
+		{
+			return imageIndex/4;
+		}
 	private:
 		std::vector<SingleImageSet*> _sets;
 	};	
@@ -210,7 +229,7 @@ template<typename ImageSetType = joined_pol_clean::SingleImageSet>
 class JoinedClean : public CleanAlgorithm
 {
 public:
-	void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain);
+	void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain);
 	typedef ImageSetType ImageSet;
 private:
 	size_t _width, _height;
@@ -231,7 +250,7 @@ private:
 	{
 		size_t startY, endY;
 		ImageSetType* dataImage;
-		const double* psfImage;
+		std::vector<double*> psfImages;
 	};
 
 	void findPeak(const ImageSetType& image, size_t& x, size_t& y) const

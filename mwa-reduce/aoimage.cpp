@@ -380,8 +380,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	{
 		if(ant1Column(row) != ant2Column(row))
 		{
-			std::complex<float> formattedData[channelCount];
-			bool formattedFlags[channelCount];
+			ao::uvector<std::complex<float>> formattedData(channelCount);
+			ao::uvector<bool> formattedFlags(channelCount);
 			casa::Array<double> uvwArray = uvwColumn(row);
 			casa::Array<double>::const_iterator iter = uvwArray.begin();
 			double u = *iter;
@@ -395,8 +395,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 			{
 				dataColumn.get(row, data);
 				flagColumn.get(row, flags);
-				readData(info.polarization, info.psf, channelCount, polarizationCount, formattedData, formattedFlags, data.begin(), flags.begin());
-				weights.Grid(formattedData, formattedFlags, u, v, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
+				readData(info.polarization, info.psf, channelCount, polarizationCount, formattedData.data(), formattedFlags.data(), data.begin(), flags.begin());
+				weights.Grid(formattedData.data(), formattedFlags.data(), u, v, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
 			}
 		}
 	}

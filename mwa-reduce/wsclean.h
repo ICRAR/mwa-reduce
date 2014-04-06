@@ -72,11 +72,11 @@ public:
 	
 	void Run();
 private:
-	void runChannel(size_t outChannelIndex);
-	void runPolarizationStart(size_t outChannelIndex, PolarizationEnum polarization);
-	void performClean(bool& reachedMajorThreshold, size_t majorIterationNr);
-	void performSimpleClean(bool& reachedMajorThreshold, size_t majorIterationNr);
-	void performJoinedPolClean(bool& reachedMajorThreshold, size_t majorIterationNr);
+	void runIndependentChannel(size_t outChannelIndex);
+	void runFirstInversion(size_t outChannelIndex, PolarizationEnum polarization, size_t joinedChannelIndex);
+	void performClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr);
+	void performSimpleClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr);
+	void performJoinedPolClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr);
 	void performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void prepareInversionAlgorithm(PolarizationEnum polarization);
 	
@@ -85,39 +85,36 @@ private:
 	void updateCleanParameters(class FitsWriter& writer, size_t minorIterationNr, size_t majorIterationNr);
 	void initializeImageWeights(const MSSelection& partSelection);
 	void initializeCleanAlgorithm();
-	void initializeCurMSProviders(size_t outChannelIndex, PolarizationEnum polarization);
+	void initializeCurMSProviders(size_t currentChannelIndex, PolarizationEnum polarization);
 	void clearCurMSProviders();
-	void storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum polarization, bool isImaginary, const double* image);
+	void storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum polarization, size_t joinedChannelIndex, bool isImaginary, const double* image);
 	void selectChannels(MSSelection& selection, size_t outChannelIndex, size_t channelsOut);
 	
-	void imagePSF();
+	void imagePSF(size_t joinedChannelIndex);
 	void imageGridding();
-	void imageMainFirst(PolarizationEnum polarization);
-	void imageMainNonFirst(PolarizationEnum polarization);
-	void predict(PolarizationEnum polarization);
+	void imageMainFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
+	void imageMainNonFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
+	void predict(PolarizationEnum polarization, size_t joinedChannelIndex);
 	
-	std::string polPrefix(PolarizationEnum polarization, bool isImaginary) const
+	std::string getPrefix(PolarizationEnum polarization, size_t channelIndex, bool isImaginary) const
 	{
-		if(_polarizations.size() == 1)
-			return _prefixName;
-		else if(isImaginary)
-			return _prefixName + "-" + Polarization::TypeToShortString(polarization) + "i";
-		else
-			return _prefixName + "-" + Polarization::TypeToShortString(polarization);
-	}
-	std::string frequencyPrefix(const std::string& rootPrefix, size_t channelIndex, size_t totalChannels) const 
-	{
-		if(totalChannels != 1)
+		std::ostringstream partPrefixNameStr;
+		partPrefixNameStr << _prefixName;
+		if(_channelsOut != 1)
 		{
-			std::ostringstream partPrefixNameStr;
-			partPrefixNameStr << rootPrefix << '-';
+			partPrefixNameStr << '-';
 			if(channelIndex < 1000) partPrefixNameStr << '0';
 			if(channelIndex < 100) partPrefixNameStr << '0';
 			if(channelIndex < 10) partPrefixNameStr << '0';
 			partPrefixNameStr << channelIndex;
-			return partPrefixNameStr.str();
 		}
-		else return rootPrefix;
+		if(_polarizations.size() != 1)
+		{
+			partPrefixNameStr << '-' << Polarization::TypeToShortString(polarization);
+			if(isImaginary)
+				partPrefixNameStr << 'i';
+		}
+		return partPrefixNameStr.str();
 	}
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;

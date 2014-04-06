@@ -89,6 +89,13 @@ public:
 	std::complex<NumType>* AllocateComplex(size_t size)
 	{
 		std::lock_guard<std::mutex> guard(_mutex);
+		
+		if(size != _previousSize)
+		{
+			freeUnused();
+			_previousSize = size;
+		}
+		
 		++_nComplex;
 		if(_nComplex > _nComplexMax) _nComplexMax = _nComplex;
 		for(typename std::vector<Buffer>::iterator i=_buffers.begin(); i!=_buffers.end(); ++i)
@@ -180,7 +187,8 @@ private:
 	void freeUnused()
 	{
 		size_t unusedCount = 0;
-		for(typename std::vector<Buffer>::iterator i=_buffers.begin(); i!=_buffers.end(); ++i)
+		typename std::vector<Buffer>::iterator i=_buffers.begin();
+		while(i!=_buffers.end())
 		{
 			if(!i->isFirstHalfUsed && !i->isSecondHalfUsed)
 			{
@@ -188,6 +196,8 @@ private:
 				_buffers.erase(i);
 				i = _buffers.begin();
 				++unusedCount;
+			} else {
+				++i;
 			}
 		}
 		if(unusedCount != 0)
