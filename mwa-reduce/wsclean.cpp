@@ -576,7 +576,7 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 					std::cout << "DONE\n";
 					
 					std::cout << "Writing restored image... " << std::flush;
-					writeFits("image.fits", restoredImage, *curPol, currentChannelIndex, false);
+					writeFits("image.fits", restoredImage, *curPol, currentChannelIndex, *isImaginary);
 					std::cout << "DONE\n";
 					_imageAllocator.Free(restoredImage);
 				}
@@ -635,7 +635,7 @@ void WSClean::runFirstInversion(size_t currentChannelIndex, PolarizationEnum pol
 	
 	imageMainFirst(polarization, joinedChannelIndex);
 	
-	_weightPerChannel[joinedChannelIndex] = _inversionAlgorithm->ImageWeight();
+	_weightPerChannel[currentChannelIndex] = _inversionAlgorithm->ImageWeight();
 	
 	if(firstBeforePSF && _inversionAlgorithm->HasGriddingCorrectionImage())
 		imageGridding();
