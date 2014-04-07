@@ -108,6 +108,7 @@ void ContiguousMS::prepareModelColumn()
 {
 	initializeModelColumn(_ms);
 	
+	_modelColumn.reset(new casa::ArrayColumn<casa::Complex>(_ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA)));
 	const casa::IPosition shape(_modelColumn->shape(0));
 	_modelArray = casa::Array<std::complex<float>>(shape);
 	_isModelColumnPrepared = true;

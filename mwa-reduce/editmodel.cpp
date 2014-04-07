@@ -617,6 +617,17 @@ int main(int argc, char *argv[])
 			"set xlabel \"Frequency (MHz)\"\n"
 			"set ylabel \"Flux (Jy)\"\n"
 			"plot \\\n";
+		std::ofstream plot10IStream("spectrum10-I.plt");
+		plot10IStream <<
+			"set terminal postscript enhanced color\n"
+			"set logscale y\n"
+			"#set xrange [0.001:]\n"
+			"#set yrange [-8:2]\n"
+			"set output \"spectrum10-I.ps\"\n"
+			"set key bottom left\n"
+			"set xlabel \"Frequency (MHz)\"\n"
+			"set ylabel \"Flux (Jy)\"\n"
+			"plot \\\n";
 
 		size_t sourceIndex = 0;
 		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
@@ -626,12 +637,14 @@ int main(int argc, char *argv[])
 				std::ostringstream dataStreamName;
 				dataStreamName << "spectrum" << sourceIndex << ".txt";
 				std::ofstream dataStream(dataStreamName.str().c_str());
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 2.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 2.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 2.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 2.0 title \"\"";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 1.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 1.0 title \"\",\\\n";
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 1.0 title \"\"";
 				
-				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 2.0 title \"\",\\\n";
+				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
+				if(sourceIndex < 10)
+					plot10IStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"\",\\\n";
 				
 				const SpectralEnergyDistribution &sed = compPtr->SED();
 				/*long double e, f;

@@ -42,6 +42,7 @@ class WSInversion : public InversionAlgorithm
 		virtual bool HasDenormalPhaseCentre() const { return _denormalPhaseCentre; }
 		virtual double PhaseCentreDL() const { return _phaseCentreDL; }
 		virtual double PhaseCentreDM() const { return _phaseCentreDM; }
+		virtual double ImageWeight() const { return _totalWeight; }
 		
 		enum LayeredImager::GridModeEnum GridMode() const { return _gridMode; }
 		void SetGridMode(LayeredImager::GridModeEnum gridMode) { _gridMode = gridMode; }

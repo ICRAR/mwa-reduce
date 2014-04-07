@@ -183,8 +183,8 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		if(minResY%4 != 0) minResY += 4 - (minResY%4);
 		if(minResX < _actualInversionWidth || minResY < _actualInversionHeight)
 		{
-			_actualInversionWidth = std::min(minResX, _actualInversionWidth);
-			_actualInversionHeight = std::min(minResY, _actualInversionHeight);
+			_actualInversionWidth = std::max(std::min(minResX, _actualInversionWidth), size_t(32));
+			_actualInversionHeight = std::max(std::min(minResY, _actualInversionHeight), size_t(32));
 			std::cout << "Setting small inversion image size of " << _actualInversionWidth << " x " << _actualInversionHeight << "\n";
 			_actualPixelSizeX = totalWidth / _actualInversionWidth;
 			_actualPixelSizeY = totalHeight / _actualInversionHeight;

@@ -51,6 +51,7 @@ public:
 	}
 	void SetChannelsOut(size_t channelsOut) { _channelsOut = channelsOut; }
 	void SetJoinChannels(bool joinChannels) { _joinedFrequencyCleaning = joinChannels; }
+	void SetMFSWeighting(bool mfsWeighting) { _mfsWeighting = mfsWeighting; }
 	void SetWeightMode(enum WeightMode::WeightingEnum weighting) {
 		_weightMode.SetMode(WeightMode(weighting));
 	}
@@ -71,6 +72,8 @@ public:
 	void AddInputMS(const std::string& msPath) { _filenames.push_back(msPath); }
 	
 	void Run();
+	
+	bool JoinedFrequencyCleaning() const { return _joinedFrequencyCleaning; }
 private:
 	void runIndependentChannel(size_t outChannelIndex);
 	void runFirstInversion(size_t outChannelIndex, PolarizationEnum polarization, size_t joinedChannelIndex);
@@ -84,6 +87,7 @@ private:
 	void setCleanParameters(class FitsWriter& writer, const class CleanAlgorithm& clean);
 	void updateCleanParameters(class FitsWriter& writer, size_t minorIterationNr, size_t majorIterationNr);
 	void initializeImageWeights(const MSSelection& partSelection);
+	void initializeMFSImageWeights();
 	void initializeCleanAlgorithm();
 	void initializeCurMSProviders(size_t currentChannelIndex, PolarizationEnum polarization);
 	void clearCurMSProviders();
@@ -95,6 +99,9 @@ private:
 	void imageMainFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
 	void imageMainNonFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
 	void predict(PolarizationEnum polarization, size_t joinedChannelIndex);
+	
+	void makeMFSImage(const string& suffix, PolarizationEnum pol, bool isImaginary);
+	void writeFits(const string& suffix, const double* image, PolarizationEnum pol, size_t channelIndex, bool isImaginary);
 	
 	std::string getPrefix(PolarizationEnum polarization, size_t channelIndex, bool isImaginary) const
 	{
@@ -117,6 +124,21 @@ private:
 		return partPrefixNameStr.str();
 	}
 	
+	std::string getMFSPrefix(PolarizationEnum polarization, bool isImaginary) const
+	{
+		std::ostringstream partPrefixNameStr;
+		partPrefixNameStr << _prefixName;
+		if(_channelsOut != 1)
+			partPrefixNameStr << "-MFS";
+		if(_polarizations.size() != 1)
+		{
+			partPrefixNameStr << '-' << Polarization::TypeToShortString(polarization);
+			if(isImaginary)
+				partPrefixNameStr << 'i';
+		}
+		return partPrefixNameStr.str();
+	}
+	
 	size_t _imgWidth, _imgHeight, _channelsOut;
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _manualBeamSize, _memFraction, _absMemLimit, _wLimit;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor;
@@ -126,10 +148,11 @@ private:
 	WeightMode _weightMode;
 	std::string _prefixName;
 	bool _allowNegative, _smallPSF, _smallInversion, _addApparentModel, _stopOnNegative, _makePSF;
-	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning;
+	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning, _mfsWeighting;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;
 	std::string _commandLine;
+	std::vector<size_t> _weightPerChannel;
 	
 	std::unique_ptr<class InversionAlgorithm> _inversionAlgorithm;
 	std::unique_ptr<class ImageWeights> _imageWeights;
@@ -138,6 +161,7 @@ private:
 	ImageBufferAllocator<double> _imageAllocator;
 	Stopwatch _inversionWatch, _predictingWatch, _cleaningWatch;
 	bool _isFirstInversion, _doReorder;
+	size_t _majorIterationNr;
 	CachedImageSet _psfImages, _modelImages, _residualImages;
 	std::vector<PartitionedMS::Handle> _partitionedMSHandles;
 	FitsWriter _fitsWriter;

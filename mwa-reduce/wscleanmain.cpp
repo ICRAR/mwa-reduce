@@ -83,6 +83,15 @@ int main(int argc, char *argv[])
 			"\t   be iterated several times, such as with many major iterations or in channel imaging mode.\n"
 			"\t   Default: only reorder when in channel imaging mode.\n"
 			"\t-joinchannels\n"
+			"\t   Perform cleaning by searching for peaks in the MFS image, but subtract components from individual channels.\n"
+			"\t   This will turn on mfsweighting by default. Default: off.\n"
+			"\t-mfsweighting\n"
+			"\t   In spectral mode, calculate the weights as if the image was made using MFS. This makes sure that the sum of\n"
+			"\t   channel images equals the MFS weights. Otherwise, the channel image will become a bit more naturally weighted.\n"
+			"\t   This is only relevant for weighting modes that require gridding (i.e., Uniform, Briggs').\n"
+			"\t   Default: off, unless -joinchannels is specified.\n"
+			"\t-nomfsweighting\n"
+			"\t   Opposite of -mfsweighting; can be used to turn off MFS weighting in -joinchannels mode.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n"
@@ -99,6 +108,7 @@ int main(int argc, char *argv[])
 	
 	WSClean wsclean;
 	int argi = 1;
+	bool mfsWeighting = false, noMFSWeighting = false;
 	while(argi < argc && argv[argi][0] == '-')
 	{
 		const std::string param = &argv[argi][1];
@@ -237,6 +247,18 @@ int main(int argc, char *argv[])
 		{
 			wsclean.SetJoinChannels(true);
 		}
+		else if(param == "mfsweighting")
+		{
+			mfsWeighting = true;
+		}
+		else if(param == "nomfsweighting")
+		{
+			noMFSWeighting = true;
+		}
+		else if(param == "joinchannels")
+		{
+			wsclean.SetJoinChannels(true);
+		}
 		else if(param == "field")
 		{
 			++argi;
@@ -314,6 +336,8 @@ int main(int argc, char *argv[])
 	
 	if(argi == argc)
 		throw std::runtime_error("No input measurement sets given.");
+	
+	wsclean.SetMFSWeighting((wsclean.JoinedFrequencyCleaning() && !noMFSWeighting) || mfsWeighting);
 	
 	for(int i=argi; i != argc; ++i)
 		wsclean.AddInputMS(argv[i]);

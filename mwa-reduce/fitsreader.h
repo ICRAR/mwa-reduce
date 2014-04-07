@@ -47,6 +47,8 @@ class FitsReader
 		const std::string& OriginComment() const { return _originComment; }
 		
 		const std::vector<std::string>& History() const { return _history; }
+		
+		bool ReadDoubleKeyIfExists(const char* key, double& dest) { return readDoubleKeyIfExists(key, dest); }
 	private:
 		float readFloatKey(const char* key);
 		double readDoubleKey(const char* key);
