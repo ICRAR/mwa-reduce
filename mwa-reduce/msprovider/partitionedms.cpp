@@ -11,7 +11,7 @@
 #include <cstdio>
 #include <fstream>
 #include <sstream>
-
+#include <memory>
 // #define REDUNDANT_VALIDATION 1
 
 PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex, PolarizationEnum polarization) :
