@@ -29,12 +29,29 @@ std::string sourceList(const std::vector<ModelSource*>& sources)
 int main(int argc, char* argv[])
 {
 	if(argc < 2) {
-		std::cout << "Syntax: autoprocess [options] <catalogue> <ms>\n";
+		std::cout << "Syntax:\n\t autoprocess [options] <catalogue> <ms>\n\n"
+			"Options:\n"
+			"-go\n"
+			"  Execute: without it, nothing will be done, only suggestions will be given.\n"
+			"-noselfcal\n"
+			"  Disable self cal.\n"
+			"-nosubtract\n"
+			"  Disable direct subtraction of sources.\n"
+			"-nopeel\n"
+			"   Disable peeling of sources.\n"
+			"-peel-with-runnerups\n"
+			"   Enable peeling even when runner ups are strong.\n"
+			"-niter <iterations>\n"
+			"   Number of selfcal/peeling iterations.\n"
+			"-save-solution-files\n"
+			"   Save the solution files, such as 'peel-sol-ant25.txt', etc.\n"
+			"-a <min accuracy> <stop accuracy>\n"
+			"   Set accuracy at which to accept or immediately accept a solution.\n";
 		return 1;
 	}
 	int argi = 1;
 	bool doExecute = false, doSelfCal = false, doPeel = true, doSubtract = false, verboseOnPolarizations = false,
-		noPeelingRunnerupCheck = false;
+		noPeelingRunnerupCheck = false, saveSolutionFiles = false;
 	double
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
@@ -66,6 +83,10 @@ int main(int argc, char* argv[])
 		{
 			++argi;
 			nIter = atoi(argv[argi]);
+		}
+		else if(param == "save-solution-files")
+		{
+			saveSolutionFiles = true;
 		}
 		else if(param == "vp")
 		{
@@ -279,6 +300,7 @@ int main(int argc, char* argv[])
 				peeler.SetSolutionInterval(4);
 				peeler.SetAccuracy(minAccuracy, stopAccuracy);
 				peeler.SetNIter(nIter);
+				peeler.SetSaveSolutionFiles(saveSolutionFiles);
 				
 				peeler.Perform();
 			}
