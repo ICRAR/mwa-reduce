@@ -46,6 +46,10 @@ ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnNa
 void ContiguousMS::Reset()
 {
 	_row = _startRow - 1;
+	if(_selection.HasInterval())
+		_timestep = _selection.IntervalStart();
+	else
+		_timestep = 0;
 	NextRow();
 }
 
