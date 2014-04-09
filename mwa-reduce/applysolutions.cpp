@@ -19,28 +19,39 @@ int main(int argc, char **argv)
 {
   if(argc < 3)
     {
-      std::cout << "Usage: applysolutions [s xx xy yx yy] <ms> <gains-bin-file>\n"
+      std::cout << "Usage: applysolutions [-copy] [-s xx xy yx yy] <ms> <gains-bin-file>\n"
 				"Will apply the found solution matrices.\n";
     } else {
 		size_t argi = 1;
 		double xx=0.0, xy=0.0, yx=0.0, yy=0.0;
-		bool preset = false;
-		if(strcmp(argv[argi], "-s") == 0)
+		bool preset = false, copyData = false;
+		while(argv[argi][0] == '-')
 		{
-			xx = atof(argv[argi+1]);
-			xy = atof(argv[argi+2]);
-			yx = atof(argv[argi+3]);
-			yy = atof(argv[argi+4]);
-			argi += 5;
-			preset = true;
+			std::string p(&argv[argi][1]);
+			if(p == "s")
+			{
+				xx = atof(argv[argi+1]);
+				xy = atof(argv[argi+2]);
+				yx = atof(argv[argi+3]);
+				yy = atof(argv[argi+4]);
+				argi += 4;
+				preset = true;
+			}
+			else if(p == "copy")
+			{
+				copyData = true;
+			}
+			++argi;
 		}
 		MeasurementSet ms(argv[argi], Table::Update);
 		SolutionFile solutionFile;
-		solutionFile.OpenForReading(argv[2]);
+		solutionFile.OpenForReading(argv[argi+1]);
 		
 		SolutionApplier applier;
 		if(preset)
 			applier.SetPresets(xx, xy, yx, yy);
+		if(copyData)
+			applier.SetOutputColumn(casa::MeasurementSet::columnName(casa::MSMainEnums::CORRECTED_DATA));
 		applier.Apply(ms, solutionFile);
 	}
 }

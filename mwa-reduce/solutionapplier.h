@@ -3,9 +3,11 @@
 
 #include <complex>
 #include <iostream>
+#include <memory>
 
 #include <ms/MeasurementSets/MSAntenna.h>
 #include <ms/MeasurementSets/MeasurementSet.h>
+#include <tables/Tables/ArrColDesc.h>
 
 #include "banddata.h"
 #include "solutionfile.h"
@@ -14,7 +16,7 @@
 class SolutionApplier
 {
 public:
-	SolutionApplier() : _preset(false)
+	SolutionApplier() : _preset(false), _outputColumnName(casa::MeasurementSet::columnName(casa::MSMainEnums::DATA))
 	{
 	}
 	
@@ -25,6 +27,11 @@ public:
 		_presetValues[1] = xy;
 		_presetValues[2] = yx;
 		_presetValues[3] = yy;
+	}
+	
+	void SetOutputColumn(const std::string& dataColumn)
+	{
+		_outputColumnName = dataColumn;
 	}
 	
 	void Apply(casa::MeasurementSet& ms, SolutionFile& solutionFile)
@@ -49,13 +56,38 @@ public:
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 		casa::ArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
 		casa::ArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
+		std::cout << "DONE\n";
+		
+		std::unique_ptr<casa::ArrayColumn<complex_t>> copyColumn;
+		casa::ArrayColumn<complex_t> *outputColumn;
+		if(_outputColumnName == std::string(ms.columnName(casa::MSMainEnums::DATA)))
+		{
+			outputColumn = &dataColumn;
+		}
+		else {
+			if(!ms.tableDesc().isColumn(_outputColumnName)) {
+				std::cout << "Adding column '" << _outputColumnName << "'... " << std::flush;
+				casa::IPosition shape = dataColumn.shape(0);
+				casa::ArrayColumnDesc<casa::Complex> columnDesc(_outputColumnName, shape);
+				try {
+					ms.addColumn(columnDesc, "StandardStMan", true, true);
+				} catch(std::exception& e)
+				{
+					ms.addColumn(columnDesc, "StandardStMan", false, true);
+				}
+				
+				std::cout << "DONE\n";
+			}
+			copyColumn.reset(new casa::ArrayColumn<complex_t>(ms, _outputColumnName));
+			outputColumn = &*copyColumn;
+		}
 		
 		casa::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		if(polarizationCount != 4)
 		  throw std::runtime_error("Should have 4 pols");
 		
-		std::cout << "DONE\nCounting timesteps... " << std::flush;
+		std::cout << "Counting timesteps... " << std::flush;
 		double time = -1.0;
 		std::vector<size_t> timestepRows;
 		for(size_t rowIndex=0;rowIndex!=ms.nrow();++rowIndex)
@@ -90,7 +122,12 @@ public:
 		}
 		else {
 			std::cout << "Checking solutions file..." << std::flush;
-			if(solutionFile.AntennaCount() != antennaCount) throw std::runtime_error("Antenna counts do not match");
+			if(solutionFile.AntennaCount() != antennaCount)
+			{
+				std::ostringstream s;
+				s << "Antenna counts do not match: " << solutionFile.AntennaCount() << " in solution file, " << antennaCount << " in MS.";
+				throw std::runtime_error(s.str());
+			}
 			if(solutionFile.PolarizationCount() != polarizationCount) throw std::runtime_error("Polarization counts do not match");
 			if(channelCount%solutionFile.ChannelCount()!=0) throw std::runtime_error("Channel counts do not match");
 			std::cout << " DONE\n";
@@ -146,7 +183,7 @@ public:
 						dataPtr += 4;
 					}
 				}
-				dataColumn.put(rowIndex, data);
+				outputColumn->put(rowIndex, data);
 			}
 		}
 		
@@ -168,6 +205,7 @@ private:
 
 	bool _preset;
 	std::complex<double> _presetValues[4];
+	std::string _outputColumnName;
 };
 
 #endif
