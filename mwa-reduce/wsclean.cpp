@@ -393,13 +393,19 @@ void WSClean::Run()
 			if(!(*pol == Polarization::YX && _polarizations.count(Polarization::XY)!=0))
 			{
 				makeMFSImage("image.fits", *pol, false);
-				makeMFSImage("residual.fits", *pol, false);
-				makeMFSImage("model.fits", *pol, false);
+				if(_nIter > 0)
+				{
+					makeMFSImage("residual.fits", *pol, false);
+					makeMFSImage("model.fits", *pol, false);
+				}
 				if(Polarization::IsComplex(*pol))
 				{
 					makeMFSImage("image.fits", *pol, true);
-					makeMFSImage("residual.fits", *pol, true);
-					makeMFSImage("model.fits", *pol, true);
+					if(_nIter > 0)
+					{
+					  makeMFSImage("residual.fits", *pol, true);
+					  makeMFSImage("model.fits", *pol, true);
+					}
 				}
 			}
 		}
@@ -838,7 +844,7 @@ void WSClean::makeMFSImage(const string& suffix, PolarizationEnum pol, bool isIm
 {
 	double lowestFreq = 0.0, highestFreq = 0.0;
 	const size_t size = _imgWidth * _imgHeight;
-	ao::uvector<double> mfsImage(size, 0.0), tmp(size);
+	ao::uvector<double> mfsImage(size, 0.0), addedImage(size), weightImage(size, 0.0);
 	double weightSum = 0.0;
 	FitsWriter writer;
 	for(size_t ch=0; ch!=_channelsOut; ++ch)
@@ -859,12 +865,17 @@ void WSClean::makeMFSImage(const string& suffix, PolarizationEnum pol, bool isIm
 		if(!reader.ReadDoubleKeyIfExists("WSCIMGWG", weight))
 			weight = 0.0;
 		weightSum += weight;
-		reader.Read(tmp.data());
+		reader.Read(addedImage.data());
 		for(size_t i=0; i!=size; ++i)
-			mfsImage[i] += tmp[i] * weight;
+		{
+			if(std::isfinite(addedImage[i])) {
+				mfsImage[i] += addedImage[i] * weight;
+				weightImage[i] += weight;
+			}
+		}
 	}
 	for(size_t i=0; i!=size; ++i)
-		mfsImage[i] /= weightSum;
+		mfsImage[i] /= weightImage[i];
 	writer.SetFrequency((lowestFreq+highestFreq)*0.5, highestFreq-lowestFreq);
 	writer.SetExtraKeyword("WSCIMGWG", weightSum);
 	writer.Write(getMFSPrefix(pol, isImaginary) + '-' + suffix, mfsImage.data());
