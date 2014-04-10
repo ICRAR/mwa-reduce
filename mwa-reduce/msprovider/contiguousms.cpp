@@ -48,9 +48,9 @@ void ContiguousMS::Reset()
 	_row = _startRow - 1;
 	_time = 0.0;
 	if(_selection.HasInterval())
-		_timestep = _selection.IntervalStart();
+		_timestep = _selection.IntervalStart()-1;
 	else
-		_timestep = 0;
+		_timestep = -1;
 	NextRow();
 }
 
