@@ -57,6 +57,7 @@ void ContiguousMS::Reset()
 bool ContiguousMS::NextRow()
 {
 	int fieldId, a1, a2;
+	casa::Vector<double> uvw;
 	do {
 		++_row;
 		if(_row >= _endRow)
@@ -65,12 +66,13 @@ bool ContiguousMS::NextRow()
 		fieldId = _fieldIdColumn(_row);
 		a1 = _antenna1Column(_row);
 		a2 = _antenna2Column(_row);
+		uvw = _uvwColumn(_row);
 		if(_time != _timeColumn(_row))
 		{
 			++_timestep;
 			_time = _timeColumn(_row);
 		}
-	} while(!_selection.IsSelected(fieldId, _timestep, a1, a2));
+	} while(!_selection.IsSelected(fieldId, _timestep, a1, a2, uvw));
 	
 	_isMetaRead = false;
 	_isDataRead = false;

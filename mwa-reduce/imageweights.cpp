@@ -82,12 +82,12 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, WeightMode weightMode, const M
 			++timestep;
 			time = timeColumn(row);
 		}
-		if(selection.IsSelected(fieldId, timestep, a1, a2))
+		const casa::Vector<double> uvw = uvwColumn(row);
+		if(selection.IsSelected(fieldId, timestep, a1, a2, uvw))
 		{
 			flagColumn.get(row, flagArr);
 			if(hasWeights)
 				weightColumn.get(row, weightArr);
-			const casa::Vector<double> uvw = uvwColumn(row);
 			const BandData& curBand = bandData[dataDescIdColumn(row)];
 			
 			bool* flagIter = flagArr.cbegin();

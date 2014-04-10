@@ -290,13 +290,15 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
 		const int
-			a1 = antenna1Column(row), a2 = antenna2Column(row), fieldId = fieldIdColumn(row);
+			a1 = antenna1Column(row), a2 = antenna2Column(row),
+			fieldId = fieldIdColumn(row);
+		casa::Vector<double> uvw = uvwColumn(row);
 		if(time != timeColumn(row))
 		{
 			++timestep;
 			time = timeColumn(row);
 		}
-		if(selection.IsSelected(fieldId, timestep, a1, a2))
+		if(selection.IsSelected(fieldId, timestep, a1, a2, uvw))
 			++selectedRowCount;
 	}
 	std::cout << "Reordering " << selectedRowCount << " selected rows into " << channelParts << " parts.\n";
@@ -334,10 +336,10 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 			++timestep;
 			time = timeColumn(row);
 		}
-		if(selection.IsSelected(fieldId, timestep, a1, a2))
+		casa::Vector<double> uvwArray = uvwColumn(row);
+		if(selection.IsSelected(fieldId, timestep, a1, a2, uvwArray))
 		{
 			size_t dataDescId = dataDescIdColumn(row);
-			casa::Vector<double> uvwArray = uvwColumn(row);
 			MetaRecord meta;
 			memset(&meta, 0, sizeof(MetaRecord));
 			meta.u = uvwArray(0);
@@ -465,6 +467,7 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 		casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
 		casa::ROArrayColumn<casa::Complex> dataColumn(ms, handle._data->_dataColumnName);
 		casa::ArrayColumn<casa::Complex> modelColumn(ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA));
+		casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
 		
 		const casa::IPosition shape(dataColumn.shape(0));
 		const size_t polarizationCount = shape[0];
@@ -492,13 +495,14 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 			const int
 				a1 = antenna1Column(row), a2 = antenna2Column(row),
 				fieldId = fieldIdColumn(row);
+			casa::Vector<double> uvw = uvwColumn(row);
 				
 			if(time != timeColumn(row))
 			{
 				++timestep;
 				time = timeColumn(row);
 			}
-			if(handle._data->_selection.IsSelected(fieldId, timestep, a1, a2))
+			if(handle._data->_selection.IsSelected(fieldId, timestep, a1, a2, uvw))
 			{
 				modelColumn.get(row, modelDataArray);
 				size_t fileIndex = 0;

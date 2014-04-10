@@ -66,6 +66,8 @@ public:
 	void SetForceNoReorder(bool forceNoReorder) { _forceNoReorder = forceNoReorder; }
 	void SetMemFraction(double memFraction) { _memFraction = memFraction; }
 	void SetMemAbsLimit(double absMemLimit) { _absMemLimit = absMemLimit; }
+	void SetMinUVW(double minUVW) { _globalSelection.SetMinUVW(minUVW); }
+	void SetMaxUVW(double maxUVW) { _globalSelection.SetMaxUVW(maxUVW); }
 	void SetWLimit(double wLimit) { _wLimit = wLimit; }
 	void SetCommandLine(const std::string& cmdLine) { _commandLine = cmdLine; }
 	

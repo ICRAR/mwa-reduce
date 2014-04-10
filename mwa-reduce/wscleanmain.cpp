@@ -95,8 +95,11 @@ int main(int argc, char *argv[])
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n"
-			"\t-wlimit <percentage>\n"
-			"\t   Do not grid visibilities with a w-value higher than the given percentage of the max w, to save speed\n"
+			"\t-maxuvw <meters>\n"
+			"\t-minuvw <meters>\n"
+			"\t   Set the min/max baseline distance in meters.\n"
+			"\t-maxw <percentage>\n"
+			"\t   Do not grid visibilities with a w-value higher than the given percentage of the max w, to save speed.\n"
 			"\t   Default: grid everything\n"
 			"\t-mem <percentage>\n"
 			"\t   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
@@ -321,7 +324,17 @@ int main(int argc, char *argv[])
 			++argi;
 			wsclean.SetMemAbsLimit(atof(argv[argi]));
 		}
-		else if(param == "wlimit")
+		else if(param == "minuvw")
+		{
+			++argi;
+			wsclean.SetMinUVW(atof(argv[argi]));
+		}
+		else if(param == "maxuvw")
+		{
+			++argi;
+			wsclean.SetMaxUVW(atof(argv[argi]));
+		}
+		else if(param == "maxw")
 		{
 			// This was to test the optimization suggested in Tasse et al., 2013, Appendix C.
 			++argi;
