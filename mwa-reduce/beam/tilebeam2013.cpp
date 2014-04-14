@@ -5,22 +5,12 @@
 
 #define SPEED_OF_LIGHT 299792458.0        // speed of light in m/s
 
-#include <measures/Measures/MDirection.h>
-#include <measures/Measures/MEpoch.h>
-#include <measures/Measures/MPosition.h>
-#include <measures/Measures/MCPosition.h>
-#include <measures/Measures/MeasConvert.h>
-
-const double TileBeam::MWA_LATTITUDE = -26.703319; // Array latitude. degrees North
-const double TileBeam::MWA_LONGITUDE = 116.67081;  // Array longitude. degrees East
-const double TileBeam::MWA_HEIGHT = 377.0;         // Array altitude. meters above sea level
-
 // Based on code from Daniel Mitchel
 // 2012-02-13
 // taken from the RTS codebase
 // Optimized 2012-11-17 by Offringa.
 
-TileBeam::TileBeam(const double *delays) :
+TileBeam2013::TileBeam2013(const double *delays) :
 	_dipoleSize(0.278), /* Seems to be 0.3 in the RTS, 0.278 in beam script */
 	_dipoleSeparations(1.100),
 	_delayStep(435.0e-12),
@@ -40,6 +30,7 @@ TileBeam::TileBeam(const double *delays) :
 	}
 }
 
+/*
 void TileBeam::AnalyticGain(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y)
 {
 	casa::MeasFrame frame(arrayPos, time);
@@ -131,88 +122,9 @@ void TileBeam::AnalyticGain(double zenithAngle, double azimuth, double frequency
 	// this is effectively the XX voltage gain
 	x = dipole_ew * arrPower; // gain_ew
 	
-}
+}*/
 
-void TileBeam::AnalyticJones(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain)
-{
-	casa::MeasFrame frame(arrayPos, time);
-	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
-	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
-	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
-	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
-	double arrLatitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
-	
-	casa::MDirection::Convert
-		j2000ToHaDec(j2000Ref, hadecRef),
-		j2000ToAzelGeo(j2000Ref, azelgeoRef);
-		
-	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
-	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
-	double zenithHa = zenithHaDec.getAngle().getValue()[0];
-	double zenithDec = zenithHaDec.getAngle().getValue()[1];
-	
-	AnalyticJones(raRad, decRad, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, arrLatitude, zenithHa, zenithDec, frequencyHz, gain);
-}
-
-void TileBeam::AnalyticJones(double raRad, double decRad, const casa::MDirection::Ref &j2000Ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haAntennaZenith, double decAntennaZenith, double frequencyHz, std::complex<double>* gain)
-{
-	static const casa::Unit radUnit("rad");
-	casa::MDirection imageDir(casa::MVDirection(
-		casa::Quantity(raRad, radUnit),     // RA
-		casa::Quantity(decRad,radUnit)),  // DEC
-		j2000Ref);
-	
-	// convert ra, dec to ha
-	casa::MDirection hadec = j2000ToHaDec(imageDir);
-	double ha = hadec.getValue().get()[0];
-	double sinLat, cosLat;
-	sincos(arrLatitude, &sinLat, &cosLat);
-	double sinDec, cosDec;
-	sincos(decRad, &sinDec, &cosDec);
-	double cosHA = cos(ha);
-	double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
-	casa::MDirection azel = j2000ToAzelGeo(imageDir);
-	double azimuth = azel.getValue().get()[0];
-	//std::cout << "ha=" << ha*180.0/M_PI << '-' << haAntennaZenith*180.0/M_PI << ", za=" << zenithDistance*180.0/M_PI << ", az=" << azimuth*180.0/M_PI << '\n';
-	
-	AnalyticJones(zenithDistance, azimuth, frequencyHz, ha, decRad, haAntennaZenith, decAntennaZenith, gain);
-}
-
-void TileBeam::PrecalculatePositionInfo(TileBeam::PrecalcPosInfo& posInfo, casa::MEpoch& time, casa::MPosition& arrayPos, double raRad, double decRad)
-{
-	casa::MeasFrame frame(arrayPos, time);
-	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
-	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
-	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
-	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
-	double arrLatitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
-	
-	casa::MDirection::Convert
-		j2000ToHaDec(j2000Ref, hadecRef),
-		j2000ToAzelGeo(j2000Ref, azelgeoRef);
-		
-	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
-	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
-	posInfo.haAntennaZenith = zenithHaDec.getAngle().getValue()[0];
-	posInfo.decAntennaZenith = zenithHaDec.getAngle().getValue()[1];
-	
-	casa::MDirection imageDir(casa::MVDirection(raRad, decRad), j2000Ref);
-	
-	// convert ra, dec to ha
-	casa::MDirection hadec = j2000ToHaDec(imageDir);
-	posInfo.ha = hadec.getValue().get()[0];
-	posInfo.dec = decRad;
-	double sinLat, cosLat;
-	sincos(arrLatitude, &sinLat, &cosLat);
-	double sinDec, cosDec;
-	sincos(decRad, &sinDec, &cosDec);
-	double cosHA = cos(posInfo.ha);
-	posInfo.zenithAngle = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
-	casa::MDirection azel = j2000ToAzelGeo(imageDir);
-	posInfo.azimuth = azel.getValue().get()[0];
-}
-
-void TileBeam::AnalyticJones(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
+void TileBeam2013::ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
 {
 	// direction cosines (relative to zenith) for direction az,za
 	double sinZenith, cosZenith, sinAzimuth, cosAzimuth;

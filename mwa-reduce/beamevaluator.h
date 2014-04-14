@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include "tilebeam.h"
+#include "beam/tilebeam.h"
+
 #include "matrix2x2.h"
 #include "modelsource.h"
 #include "model.h"
@@ -120,7 +121,7 @@ class BeamEvaluator
 		
 		void EvaluateAbsToApparentGain(const PrecalcPosInfo& posInfo, double frequency, std::complex<double> *gains)
 		{
-			_tileBeam->AnalyticJones(posInfo, frequency, gains);
+			_tileBeam->ArrayResponse(posInfo, frequency, gains);
 		}
 	
 		/*void AbsToApparent(ModelSource& source, double frequency)

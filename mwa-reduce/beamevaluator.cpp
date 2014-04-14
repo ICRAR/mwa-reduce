@@ -51,5 +51,5 @@ BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms, bool reportDelays)
 
 void BeamEvaluator::EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double>* gains)
 {
-	_tileBeam->AnalyticJones(_time, _ant1Pos, ra, dec, frequency, gains);
+	_tileBeam->ArrayResponse(_time, _ant1Pos, ra, dec, frequency, gains);
 }

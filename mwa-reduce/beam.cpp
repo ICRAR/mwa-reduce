@@ -1,4 +1,5 @@
-#include "tilebeam.h"
+#include "beam/tilebeam.h"
+
 #include "fitsreader.h"
 #include "imagecoordinates.h"
 #include "fitswriter.h"
@@ -193,7 +194,7 @@ int main(int argc, char *argv[])
 			ImageCoordinates::LMToRaDec(l, m, refRA, refDec, ra, dec);
 			
 			std::complex<double> gain[4];
-			tilebeam.AnalyticJones(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, centralFrequency, gain);
+			tilebeam.ArrayResponse(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, centralFrequency, gain);
 			if(doSquare) {
 				std::complex<double> gainSq[4];
 				Matrix2x2::ATimesHermB(gainSq, gain, gain);

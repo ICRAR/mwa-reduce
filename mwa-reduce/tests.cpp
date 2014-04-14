@@ -6,7 +6,7 @@
 #include "radeccoord.h"
 #include "nlplfitter.h"
 #include "matrix2x2.h"
-#include "tilebeam.h"
+#include "beam/tilebeam.h"
 #include "imagecoordinates.h"
 
 void testSourceSDFWithSamples()
@@ -236,7 +236,7 @@ void showBeam(const double *delays, double ra, double dec)
 	std::cout << "time=" << time << '\n';
 	casa::MPosition arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
 	std::cout << "Pos=" << arrayPos << '\n';
-	beam.AnalyticJones(time, arrayPos, ra, dec, frequency, gains);
+	beam.ArrayResponse(time, arrayPos, ra, dec, frequency, gains);
 	std::cout << "Gains: " << matrixToStr(gains) << '\n';
 }
 
