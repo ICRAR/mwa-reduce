@@ -9,7 +9,7 @@
 #include <complex>
 #include <limits>
 
-void read(const FitsReader& templateReader, const char* filename, std::vector<double>& data)
+void read(const FitsReader& templateReader, const std::string& filename, std::vector<double>& data)
 {
 	FitsReader inpReader(filename);
 	size_t
@@ -24,19 +24,31 @@ void read(const FitsReader& templateReader, const char* filename, std::vector<do
 
 int main(int argc, char *argv[])
 {
-	if(argc != 17)
+	if(argc != 5)
 	{
 		std::cout << "Syntax:\n"
-			"pbcorrect <xx.fits> <xy.fits> <xyi.fits> <yy.fits> <beamxx.fits> <beamxxi.fits> <beamxy.fits> <beamxyi.fits> <beamyx.fits> <beamyxi.fits> <beamyy.fits> <beamyyi.fits> <outi.fits> <outq.fits> <outu.fits> <outv.fits>\n";
+			"pbcorrect <image-prefix> <image-postfix> <beam-prefix> <out-prefix>\nFor example:\n\tpbcorrect wsclean image.fits beam stokes\n"
+			"will use images like wsclean-XX-image.fits, beam-xxr.fits and save to stokes-i.fits, ...";
 		return -1;
 	}
-		
-	const char
-		*inpFilename[4] = { argv[1], argv[2], argv[3], argv[4] },
-		*beamFilename[8] = { argv[5], argv[6], argv[7], argv[8], argv[9], argv[10], argv[11], argv[12] },
-		*outFilename[4] = { argv[13], argv[14], argv[15], argv[16] };
 	
-	FitsReader firstImage(argv[1]);
+	const std::string imagePrefix = argv[1], imagePostfix = argv[2], beamPrefix = argv[3], outPrefix = argv[4];
+	
+	std::string
+		inpFilename[4] =
+			{ 
+				imagePrefix + "-XX-" + imagePostfix, imagePrefix + "-XY-" + imagePostfix,
+				imagePrefix + "-XYi-" + imagePostfix, imagePrefix + "-YY-" + imagePostfix
+			},
+		beamFilename[8] =
+			{
+				beamPrefix+"-xxr.fits", beamPrefix+"-xxi.fits", beamPrefix+"-xyr.fits", beamPrefix+"-xyi.fits",
+				beamPrefix+"-yxr.fits", beamPrefix+"-yxi.fits", beamPrefix+"-yyr.fits", beamPrefix+"-yyi.fits"
+			},
+		outFilename[4] =
+			{ outPrefix+"-I.fits", outPrefix+"-Q.fits", outPrefix+"-U.fits", outPrefix+"-V.fits" };
+	
+	FitsReader firstImage(inpFilename[0]);
 	std::vector<double> inputData[4], beamData[8];
 	for(size_t i=0; i!=4; ++i)
 		read(firstImage, inpFilename[i], inputData[i]);

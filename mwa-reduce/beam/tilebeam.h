@@ -7,6 +7,6 @@
 #ifndef TILE_BEAM_H
 
 // Define the default implementation
-typedef TileBeamBase<TileBeam2014> TileBeam;
+typedef TileBeamBase<TileBeam2013> TileBeam;
 
 #endif

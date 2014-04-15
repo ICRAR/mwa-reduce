@@ -22,11 +22,52 @@
 
 #include <stdexcept>
 
+template<typename TileImplementation, bool DoSquare>
+void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, double pixelSizeY, double refRA, double refDec, double arrLatitude, double zenithHa, double zenithDec, double centralFrequency, const double* delays, const casa::MeasFrame& frame)
+{
+	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
+	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
+	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
+	casa::MDirection::Convert
+		j2000ToHaDecRef(j2000Ref, hadecRef),
+		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
+
+	TileBeamBase<TileImplementation> tilebeam(delays);
+	ProgressBar progressBar("Constructing beam");
+	for(size_t y=0;y!=height;++y)
+	{
+		for(size_t x=0;x!=width;++x)
+		{
+			double l, m, ra, dec;
+			ImageCoordinates::XYToLM(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
+			ImageCoordinates::LMToRaDec(l, m, refRA, refDec, ra, dec);
+			
+			std::complex<double> gain[4];
+			tilebeam.ArrayResponse(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, centralFrequency, gain);
+			if(DoSquare) {
+				std::complex<double> gainSq[4];
+				Matrix2x2::ATimesHermB(gainSq, gain, gain);
+				Matrix2x2::Assign(gain, gainSq);
+			}
+			
+			for(size_t i=0; i!=4; ++i)
+			{
+				*imgPtr[i*2] = gain[i].real();
+				*imgPtr[i*2 + 1] = gain[i].imag();
+				++imgPtr[i*2];
+				++imgPtr[i*2 + 1];
+			}
+		}
+		progressBar.SetProgress(y, height);
+	}
+	progressBar.SetProgress(height, height);
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc < 2)
 	{
-		std::cout << "Syntax: beam [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] [-delays <0,0,..>]\n";
+		std::cout << "Syntax: beam [-2013 | -2014] [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] [-delays <0,0,..>]\n";
 		return 0;
 	}
 	
@@ -36,6 +77,7 @@ int main(int argc, char *argv[])
 	string prefixName = "beam"; 
 	double delays[16];
 	bool doSquare = false;
+	bool use2013 = true;
 	for(size_t i=0; i!=16; ++i)
 		delays[i] = 0.0;
 	while(argi<argc && argv[argi][0] == '-')
@@ -56,6 +98,10 @@ int main(int argc, char *argv[])
 			++argi;
 			prefixName = argv[argi];
 		}
+		else if(param == "2013")
+			use2013 = true;
+		else if(param == "2014")
+			use2013 = false;
 		else if(param == "allsky")
 		{
 		}
@@ -171,7 +217,6 @@ int main(int argc, char *argv[])
 		<< refRA*180.0/M_PI << " RA, "
 		<< refDec*180.0/M_PI << " dec.\n";
 	
-	TileBeam tilebeam(delays);
 	
 	std::vector<double> outImage[8];
 	double *imgPtr[8];
@@ -180,38 +225,20 @@ int main(int argc, char *argv[])
 		outImage[i].resize(width*height);
 		imgPtr[i] = &outImage[i][0];
 	}
-	casa::MDirection::Convert
-		j2000ToHaDecRef(j2000Ref, hadecRef),
-		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
 
-	ProgressBar progressBar("Constructing beam");
-	for(size_t y=0;y!=height;++y)
+	if(doSquare)
 	{
-		for(size_t x=0;x!=width;++x)
-		{
-			double l, m, ra, dec;
-			ImageCoordinates::XYToLM(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
-			ImageCoordinates::LMToRaDec(l, m, refRA, refDec, ra, dec);
-			
-			std::complex<double> gain[4];
-			tilebeam.ArrayResponse(ra, dec, j2000Ref, j2000ToHaDecRef, j2000ToAzelGeoRef, arrLatitude, zenithHa, zenithDec, centralFrequency, gain);
-			if(doSquare) {
-				std::complex<double> gainSq[4];
-				Matrix2x2::ATimesHermB(gainSq, gain, gain);
-				Matrix2x2::Assign(gain, gainSq);
-			}
-			
-			for(size_t i=0; i!=4; ++i)
-			{
-				*imgPtr[i*2] = gain[i].real();
-				*imgPtr[i*2 + 1] = gain[i].imag();
-				++imgPtr[i*2];
-				++imgPtr[i*2 + 1];
-			}
-		}
-		progressBar.SetProgress(y, height);
+		if(use2013)
+			MakeBeam<TileBeam2013,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
+		else
+			MakeBeam<TileBeam2014,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
 	}
-	progressBar.SetProgress(height, height);
+	else {
+		if(use2013)
+			MakeBeam<TileBeam2013,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
+		else
+			MakeBeam<TileBeam2014,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
+	}
 	
 	std::cout << "\nWriting...\n";
 	

@@ -21,6 +21,11 @@ public:
 		getResponse(azimuth, zenithAngle, frequencyHz, gain);
 	}
 	
+	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, std::complex<double> *gain)
+	{
+		getResponse(azimuth, zenithAngle, frequencyHz, gain);
+	}
+	
 private:
 	double _dipoleEast[16];
 	double _dipoleNorth[16];
@@ -44,10 +49,12 @@ private:
 		// apply the groundscreen factor, which is independent of az
 		double gs = groundScreen(za, freq);
 		gs /= groundScreen(0.0, freq);
-		result[0] = cos(za)*sin(az)*gs;
-		result[1] = -cos(az)*gs;
-		result[2] = cos(za)*cos(az)*gs;
-		result[3] = -sin(az)*gs;
+		const double
+			cosZa = cos(za), sinAz = sin(az), cosAz = cos(az);
+		result[0] = cosZa*sinAz*gs;
+		result[1] = -cosAz*gs;
+		result[2] = cosZa*cosAz*gs;
+		result[3] = -sinAz*gs;
 	}
 	
 	/**
@@ -60,14 +67,14 @@ private:
 	}
 	
 	/**
-	 * Return the port currents on a tile given the freq (Hz) and delays (integer)
+	 * Return the port currents on a tile given the freq (Hz) and delays
 	 */
- 	void getPortCurrents(double freq, std::complex<double>* current)
+ 	static void getPortCurrents(double freq, std::complex<double>* current, const double* delays)
 	{
 		double lambda = SPEED_OF_LIGHT / freq;
 		std::complex<double> ph_rot[32];
 		for(size_t i=0; i!=16; ++i) {
-			double phase = -2.0 * M_PI * _delays[i] / lambda;
+			double phase = -2.0 * M_PI * delays[i] / lambda;
 			double s, c;
 			sincos(phase, &s, &c);
 			ph_rot[i] = std::complex<double>(c, s);
@@ -90,6 +97,20 @@ private:
 				++invertedZPtr;
 			}
 		}
+		std::cout << "MWA " << freq << "Hz X dipole current amplitude\n";
+    for(size_t y=0; y!=4; ++y) {
+      for(size_t x=0; x!=4; ++x) {
+				std::cout << std::abs(current[16+y*4 + x])*1000.0 << ' ';
+      }
+			std::cout << '\n';
+    }
+		std::cout << "MWA " << freq << "MHz X dipole current phase\n";
+    for(size_t y=0; y!=4; ++y) {
+      for(size_t x=0; x!=4; ++x) {
+				std::cout << std::arg(current[16+y*4 + x])*180.0/M_PI << ' ';
+      }
+			std::cout << '\n';
+    }
 	}
 	
 	/**
@@ -102,11 +123,11 @@ private:
 	 * 
 	 * Result are in same coords as the az/za input arrays
 	 */
-  void getArrayFactor(double az, double za, double freq, std::complex<double>& ax, std::complex<double>& ay)
+  void getArrayFactor(double az, double za, double freq, std::complex<double>& ax, std::complex<double>& ay, const double* delays)
 	{
 		double lambda = SPEED_OF_LIGHT / freq;
 		std::complex<double> portCurrent[32];
-		getPortCurrents(freq, portCurrent);
+		getPortCurrents(freq, portCurrent, delays);
 		
 		// now calculate the array factor using these port currents
 		double sz = sin(za);
@@ -132,19 +153,15 @@ private:
 	/**
 	 * Get the scalar array factor response of the array for a given
 	 * freq (Hz) and delay settings.
-	 * az and za (radian) are numpy arrays of equal length defining a set
-	 * of points to calculate the response for.
-	 * delays is a 2D array of integer delay steps for the Y and X pol
-	 * respectively.
-	 * 
-	 * Result are in same coords as the az/za input arrays
 	 */
   void getArrayFactor(double az, double za, const FrequencyCacheInfo& cacheInfo, std::complex<double>& ax, std::complex<double>& ay)
 	{
 		// now calculate the array factor using these port currents
 		double sz = sin(za);
-		double kx = (2.0*M_PI/cacheInfo.lambda)*sin(az)*sz;
-		double ky = (2.0*M_PI/cacheInfo.lambda)*cos(az)*sz;
+		double sinAz, cosAz;
+		sincos(az, &sinAz, &cosAz);
+		double kx = (2.0*M_PI/cacheInfo.lambda) * sinAz * sz;
+		double ky = (2.0*M_PI/cacheInfo.lambda) * cosAz * sz;
 		
 		ax = 0.0; ay = 0.0;
 		
@@ -165,8 +182,7 @@ private:
 	/**
 	 * Get the full Jones matrix response of the tile including the dipole
 	 * reponse and array factor incorporating any mutual coupling effects
-	 * from the impedance matrix. freq in Hz, delays in unit steps of
-	 * beamformer delays.
+	 * from the impedance matrix. freq in Hz.
 	 */
 	void getResponse(double az, double za, double freq, std::complex<double>* result)
 	{
@@ -175,9 +191,11 @@ private:
 		{
 			// Frequency is not in cache: fill cache
 			FrequencyCacheInfo newCacheInfo;
-			getArrayFactor(0.0, 0.0, freq, newCacheInfo.zax, newCacheInfo.zay);			
-			getPortCurrents(freq, newCacheInfo.current);
+			getPortCurrents(freq, newCacheInfo.current, _delays);
 			newCacheInfo.lambda = SPEED_OF_LIGHT / freq;
+			double zenithDelays[16];
+			for(size_t i=0; i!=16; ++i) zenithDelays[i] = 0.0;
+			getArrayFactor(0.0, 0.0, freq, newCacheInfo.zax, newCacheInfo.zay, zenithDelays);
 			
 			_frequencyCache.insert(std::make_pair(freq, newCacheInfo));
 			cacheInfo = &newCacheInfo;
@@ -201,7 +219,7 @@ private:
 		result[3] = ay * dipoleJones[3];
 	}
         
-	void invert32x32(const std::complex<double>* input, std::complex<double>* output);
+	static void invert32x32(const std::complex<double>* input, std::complex<double>* output);
 	
 	std::map<double, FrequencyCacheInfo> _frequencyCache;
 };
