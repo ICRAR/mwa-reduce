@@ -53,7 +53,7 @@ private:
 		double gs = groundScreen(cosZa, lambda);
 		gs /= groundScreenZenith(lambda);
 		result[0] = cosZa*sinAz*gs;
-		result[1] = -cosAz*gs;
+		result[1] = cosAz*gs;
 		result[2] = cosZa*cosAz*gs;
 		result[3] = -sinAz*gs;
 	}
