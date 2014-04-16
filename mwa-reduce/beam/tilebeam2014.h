@@ -47,10 +47,11 @@ private:
 	void getJonesShortDipole(double az, double za, double freq, double* result)
 	{
 		// apply the groundscreen factor, which is independent of az
-		double gs = groundScreen(za, freq);
-		gs /= groundScreen(0.0, freq);
-		const double
-			cosZa = cos(za), sinAz = sin(az), cosAz = cos(az);
+		double lambda = SPEED_OF_LIGHT / freq;
+		double cosZa = cos(za), sinAz, cosAz;
+		sincos(az, &sinAz, &cosAz);
+		double gs = groundScreen(cosZa, lambda);
+		gs /= groundScreenZenith(lambda);
 		result[0] = cosZa*sinAz*gs;
 		result[1] = -cosAz*gs;
 		result[2] = cosZa*cosAz*gs;
@@ -61,9 +62,18 @@ private:
 	 * Calculate the groundscreen effect for an ideal infinite groundscreen
 	 * given the dipole's height above the screen and the frequency (Hz)
 	 */
-	double groundScreen(double za, double lambda) const
+	double groundScreen(double cosZA, double lambda) const
 	{
-		return sin(M_PI * (2.0*_dipoleHeight/lambda) * cos(za))*2.0;
+		return sin(M_PI * (2.0*_dipoleHeight/lambda) * cosZA)*2.0;
+	}
+	
+	/**
+	 * Calculate the groundscreen effect for an ideal infinite groundscreen
+	 * given the dipole's height above the screen and the frequency (Hz)
+	 */
+	double groundScreenZenith(double lambda) const
+	{
+		return sin(M_PI * (2.0*_dipoleHeight/lambda))*2.0;
 	}
 	
 	/**
