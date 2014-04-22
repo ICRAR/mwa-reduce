@@ -128,6 +128,23 @@ public:
 		return polarization==XY || polarization==YX;
 	}
 	
+	static PolarizationEnum ParseString(const std::string& str)
+	{
+		if(str == "XX") return XX;
+		else if(str == "XY") return XY;
+		else if(str == "YX") return YX;
+		else if(str == "YY") return YY;
+		else if(str == "I") return StokesI;
+		else if(str == "Q") return StokesQ;
+		else if(str == "U") return StokesU;
+		else if(str == "V") return StokesV;
+		else if(str == "RR") return RR;
+		else if(str == "RL") return RL;
+		else if(str == "LR") return LR;
+		else if(str == "LL") return LL;
+		else throw std::runtime_error(std::string("Could not parse polarization string: ") + str);
+	}
+	
 	static std::set<PolarizationEnum> ParseList(const std::string& listStr)
 	{
 		std::set<PolarizationEnum> list;
