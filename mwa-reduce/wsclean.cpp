@@ -356,7 +356,7 @@ void WSClean::Run()
 		}
 	}
 
-	_joinedPolarizationCleaning = Polarization::Has4Polarizations(_polarizations);
+	_joinedPolarizationCleaning = Polarization::HasFullPolarization(_polarizations);
 	
 	_doReorder = ((_channelsOut != 1) || _forceReorder) && !_forceNoReorder;
 	

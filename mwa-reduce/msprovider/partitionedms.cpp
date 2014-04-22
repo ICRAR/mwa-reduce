@@ -242,6 +242,8 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 			++fileIndex;
 		}
 	}
+	std::vector<PolarizationEnum> msPolarizations = GetMSPolarizations(ms);
+	
 	MultiBandData band(ms.spectralWindow(), ms.dataDescription());
 	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
@@ -364,14 +366,14 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 				
 				for(std::set<PolarizationEnum>::const_iterator p=polsOut.begin(); p!=polsOut.end(); ++p)
 				{
-					copyWeightedData(dataBuffer.data(), partStartCh, partEndCh, polarizationCount, dataArray, weightArray, flagArray, *p);
+					copyWeightedData(dataBuffer.data(), partStartCh, partEndCh, msPolarizations, dataArray, weightArray, flagArray, *p);
 					dataFiles[fileIndex]->write(reinterpret_cast<char*>(dataBuffer.data()), (partEndCh - partStartCh) * sizeof(std::complex<float>));
 					if(dataFiles[fileIndex]->bad())
 						throw std::runtime_error("Error writing to temporary data file");
 					
 					if(includeWeights)
 					{
-						copyWeights(weightBuffer.data(), partStartCh, partEndCh, polarizationCount, dataArray, weightArray, flagArray, *p);
+						copyWeights(weightBuffer.data(), partStartCh, partEndCh, msPolarizations, dataArray, weightArray, flagArray, *p);
 						weightFiles[fileIndex]->write(reinterpret_cast<char*>(weightBuffer.data()), (partEndCh - partStartCh) * sizeof(float));
 						if(weightFiles[fileIndex]->bad())
 							throw std::runtime_error("Error writing to temporary weights file");
@@ -460,6 +462,7 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 		}
 		
 		casa::MeasurementSet ms(msPath.data(), casa::Table::Update);
+		const std::vector<PolarizationEnum> msPolarizations = GetMSPolarizations(ms);
 		initializeModelColumn(ms);
 		casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
 		casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
@@ -470,7 +473,6 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 		casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
 		
 		const casa::IPosition shape(dataColumn.shape(0));
-		const size_t polarizationCount = shape[0];
 		size_t channelCount, channelStart;
 		if(handle._data->_selection.HasChannelRange())
 		{
@@ -523,7 +525,7 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 						}
 						if(modelFiles[fileIndex]->bad())
 							throw std::runtime_error("Error writing to temporary data file");
-						reverseCopyData(modelDataArray, partStartCh, partEndCh, polarizationCount, modelDataBuffer.data(), *p);
+						reverseCopyData(modelDataArray, partStartCh, partEndCh, msPolarizations, modelDataBuffer.data(), *p);
 						
 						++fileIndex;
 					}
