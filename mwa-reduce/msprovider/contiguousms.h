@@ -48,7 +48,8 @@ private:
 	int _dataDescId;
 	bool _isMetaRead, _isDataRead, _isModelRead, _isWeightRead;
 	bool _isModelColumnPrepared;
-	size_t _startRow, _endRow, _polarizationCount;
+	size_t _startRow, _endRow;
+	std::vector<PolarizationEnum> _inputPolarizations;
 	MSSelection _selection;
 	PolarizationEnum _polOut;
 	casa::MeasurementSet _ms;

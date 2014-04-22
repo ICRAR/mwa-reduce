@@ -19,8 +19,10 @@ ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnNa
 	_flagColumn(_ms, casa::MS::columnName(casa::MSMainEnums::FLAG))
 {
 	std::cout << "Opening " << msPath << " with contiguous MS reader.\n";
+	
+	_inputPolarizations = GetMSPolarizations(_ms);
+ 
 	const casa::IPosition shape(_dataColumn.shape(0));
-	_polarizationCount = shape[0];
 	_dataArray = casa::Array<std::complex<float>>(shape);
 	_weightArray = casa::Array<float>(shape);
 	_flagArray = casa::Array<bool>(shape);
@@ -108,7 +110,7 @@ void ContiguousMS::ReadData(std::complex<float>* buffer)
 		startChannel = 0;
 		endChannel = _bandData[_dataDescId].ChannelCount();
 	}
-	copyWeightedData(buffer,  startChannel, endChannel, _polarizationCount, _dataArray, _weightArray, _flagArray, _polOut);
+	copyWeightedData(buffer,  startChannel, endChannel, _inputPolarizations, _dataArray, _weightArray, _flagArray, _polOut);
 }
 
 void ContiguousMS::prepareModelColumn()
@@ -139,7 +141,7 @@ void ContiguousMS::ReadModel(std::complex<float>* buffer)
 		startChannel = 0;
 		endChannel = _bandData[_dataDescId].ChannelCount();
 	}
-	copyWeightedData(buffer,  startChannel, endChannel, _polarizationCount, _modelArray, _weightArray, _flagArray, _polOut);
+	copyWeightedData(buffer,  startChannel, endChannel, _inputPolarizations, _modelArray, _weightArray, _flagArray, _polOut);
 }
 
 void ContiguousMS::WriteModel(size_t rowId, std::complex<float>* buffer)
@@ -160,7 +162,7 @@ void ContiguousMS::WriteModel(size_t rowId, std::complex<float>* buffer)
 	}
 	
 	_modelColumn->get(rowId, _modelArray);
-	reverseCopyData(_modelArray, startChannel, endChannel, _polarizationCount, buffer, _polOut);
+	reverseCopyData(_modelArray, startChannel, endChannel, _inputPolarizations, buffer, _polOut);
 	_modelColumn->put(rowId, _modelArray);
 }
 
@@ -178,7 +180,7 @@ void ContiguousMS::ReadWeights(std::complex<float>* buffer)
 		startChannel = 0;
 		endChannel = _bandData[_dataDescId].ChannelCount();
 	}
-	copyWeights(buffer,  startChannel, endChannel, _polarizationCount, _dataArray, _weightArray, _flagArray, _polOut);
+	copyWeights(buffer,  startChannel, endChannel, _inputPolarizations, _dataArray, _weightArray, _flagArray, _polOut);
 }
 
 void ContiguousMS::ReadWeights(float* buffer)
@@ -195,6 +197,6 @@ void ContiguousMS::ReadWeights(float* buffer)
 		startChannel = 0;
 		endChannel = _bandData[_dataDescId].ChannelCount();
 	}
-	copyWeights(buffer,  startChannel, endChannel, _polarizationCount, _dataArray, _weightArray, _flagArray, _polOut);
+	copyWeights(buffer,  startChannel, endChannel, _inputPolarizations, _dataArray, _weightArray, _flagArray, _polOut);
 }
 

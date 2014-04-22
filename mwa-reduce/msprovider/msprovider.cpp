@@ -7,68 +7,16 @@
 
 #include "../msselection.h"
 
-void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
+void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
 {
+	const size_t polCount = polsIn.size();
 	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
 	casa::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
 	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
 	const size_t selectedChannelCount = endChannel - startChannel;
 		
-	if(polOut == Polarization::StokesI)
-	{
-		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
-		{
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-			{
-				dest[ch] = *inPtr * (*weightPtr);
-			} else {
-				dest[ch] = 0;
-			}
-			weightPtr += polCount-1;
-			inPtr += polCount-1;
-			flagPtr += polCount-1;
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-			{
-				dest[ch] += *inPtr * (*weightPtr);
-			}
-			++weightPtr;
-			++inPtr;
-			++flagPtr;
-		}
-	} /*else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
-	{
-		// Step to XY:
-		++weightPtr;
-		++inPtr;
-		++flagPtr;
-		const bool flipSign = Polarization() == Polarization::YX;
-		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
-		{
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-			{
-				dest[ch] = *inPtr * (*weightPtr) * rowWeight;
-				_totalWeight += (*weightPtr) * rowWeight;
-			} else {
-				dest[ch] = 0;
-			}
-			// Step to YX:
-			++weightPtr;
-			++inPtr;
-			++flagPtr;
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-			{
-				//dest[ch] += *inPtr * (*weightPtr) * rowWeight;
-				//_totalWeight += (*weightPtr) * rowWeight;
-			}
-			weightPtr += 3;
-			inPtr += 3;
-			flagPtr += 3;
-			//if(flipSign)
-			//	dest[ch].imag(dest[ch].imag() * -1.0);
-		}
-	}*/ else {
-		int polIndex = Polarization::TypeToIndex(polOut, polCount);
-		
+	size_t polIndex;
+	if(Polarization::TypeToIndex(polOut, polsIn, polIndex)) {
 		inPtr += polIndex;
 		weightPtr += polIndex;
 		flagPtr += polIndex;
@@ -84,67 +32,260 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 			weightPtr += polCount;
 			inPtr += polCount;
 			flagPtr += polCount;
+		}
+	}
+	else {
+		switch(polOut)
+		{
+		case Polarization::StokesI: {
+			size_t polIndexA=0, polIndexB=0;
+			bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsIn, polIndexA);
+			bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsIn, polIndexB);
+			if(!hasXX || !hasYY)
+			{
+				bool hasRR = Polarization::TypeToIndex(Polarization::RR, polsIn, polIndexA);
+				bool hasLL = Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexB);
+				if(!hasRR || !hasLL)
+					throw std::runtime_error("Can not form requested polarization (Stokes I) from available polarizations");
+			}
+			
+			for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+			{
+				weightPtr += polIndexA;
+				inPtr += polIndexA;
+				flagPtr += polIndexA;
+				
+				bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+				casa::Complex valA = *inPtr * (*weightPtr);
+				
+				weightPtr += polIndexB - polIndexA;
+				inPtr += polIndexB - polIndexA;
+				flagPtr += polIndexB - polIndexA;
+				
+				bool flagB = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+				if(flagA || flagB)
+					dest[ch] = 0.0;
+				else
+					dest[ch] = (*inPtr * (*weightPtr)) + valA;
+				
+				weightPtr += polCount - polIndexB;
+				inPtr += polCount - polIndexB;
+				flagPtr += polCount - polIndexB;
+			}
+		} break;
+		case Polarization::StokesQ: {
+			size_t polIndexA=0, polIndexB=0;
+			bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsIn, polIndexA);
+			bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsIn, polIndexB);
+			if(hasXX && hasYY)
+			{
+				// Convert to StokesQ from XX and YY
+				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+				{
+					weightPtr += polIndexA;
+					inPtr += polIndexA;
+					flagPtr += polIndexA;
+					
+					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					casa::Complex valA = *inPtr * (*weightPtr);
+					
+					weightPtr += polIndexB - polIndexA;
+					inPtr += polIndexB - polIndexA;
+					flagPtr += polIndexB - polIndexA;
+					
+					bool flagB = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					if(flagA || flagB)
+						dest[ch] = 0.0;
+					else
+						dest[ch] = (*inPtr * (*weightPtr)) - valA;
+					
+					weightPtr += polCount - polIndexB;
+					inPtr += polCount - polIndexB;
+					flagPtr += polCount - polIndexB;
+				}
+			}
+			else {
+				// Convert to StokesQ from RR and LL
+				bool hasRL = Polarization::TypeToIndex(Polarization::RL, polsIn, polIndexA);
+				bool hasLR = Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexB);
+				if(!hasRL || !hasLR)
+					throw std::runtime_error("Can not form requested polarization (Stokes Q) from available polarizations");
+				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+				{
+					weightPtr += polIndexA;
+					inPtr += polIndexA;
+					flagPtr += polIndexA;
+					
+					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					casa::Complex valA = *inPtr * (*weightPtr);
+					
+					weightPtr += polIndexB - polIndexA;
+					inPtr += polIndexB - polIndexA;
+					flagPtr += polIndexB - polIndexA;
+					
+					bool flagB = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					if(flagA || flagB)
+						dest[ch] = 0.0;
+					else {
+						// Q = RL LR
+						dest[ch] = valA *  *inPtr * (*weightPtr);
+					}
+					
+					weightPtr += polCount - polIndexB;
+					inPtr += polCount - polIndexB;
+					flagPtr += polCount - polIndexB;
+				}
+			}
+		} break;
+		case Polarization::StokesU: {
+			size_t polIndexA=0, polIndexB=0;
+			bool hasXY = Polarization::TypeToIndex(Polarization::XY, polsIn, polIndexA);
+			bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsIn, polIndexB);
+			if(hasXY && hasYX)
+			{
+				// Convert to StokesU from XX and YY
+				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+				{
+					weightPtr += polIndexA;
+					inPtr += polIndexA;
+					flagPtr += polIndexA;
+					
+					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					casa::Complex valA = *inPtr * (*weightPtr);
+					
+					weightPtr += polIndexB - polIndexA;
+					inPtr += polIndexB - polIndexA;
+					flagPtr += polIndexB - polIndexA;
+					
+					bool flagB = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					if(flagA || flagB)
+						dest[ch] = 0.0;
+					else
+						dest[ch] = valA + (*inPtr * (*weightPtr));
+					
+					weightPtr += polCount - polIndexB;
+					inPtr += polCount - polIndexB;
+					flagPtr += polCount - polIndexB;
+				}
+			}
+			else {
+				// Convert to StokesU from RR and LL
+				bool hasRL = Polarization::TypeToIndex(Polarization::RL, polsIn, polIndexA);
+				bool hasLR = Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexB);
+				if(!hasRL || !hasLR)
+					throw std::runtime_error("Can not form requested polarization (Stokes U) from available polarizations");
+				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+				{
+					weightPtr += polIndexA;
+					inPtr += polIndexA;
+					flagPtr += polIndexA;
+					
+					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					casa::Complex valA = *inPtr * (*weightPtr);
+					
+					weightPtr += polIndexB - polIndexA;
+					inPtr += polIndexB - polIndexA;
+					flagPtr += polIndexB - polIndexA;
+					
+					bool flagB = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					if(flagA || flagB)
+						dest[ch] = 0.0;
+					else {
+						casa::Complex diff = (valA - *inPtr * (*weightPtr));
+						// U = -i (RL - LR)
+						dest[ch] = casa::Complex(diff.imag(), -diff.real());
+					}
+					
+					weightPtr += polCount - polIndexB;
+					inPtr += polCount - polIndexB;
+					flagPtr += polCount - polIndexB;
+				}
+			}
+		} break;
+		case Polarization::StokesV: {
+			size_t polIndexA=0, polIndexB=0;
+			bool hasXY = Polarization::TypeToIndex(Polarization::XY, polsIn, polIndexA);
+			bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsIn, polIndexB);
+			if(hasXY && hasYX)
+			{
+				// Convert to StokesV from XX and YY
+				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+				{
+					weightPtr += polIndexA;
+					inPtr += polIndexA;
+					flagPtr += polIndexA;
+					
+					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					casa::Complex valA = *inPtr * (*weightPtr);
+					
+					weightPtr += polIndexB - polIndexA;
+					inPtr += polIndexB - polIndexA;
+					flagPtr += polIndexB - polIndexA;
+					
+					bool flagB = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					if(flagA || flagB)
+						dest[ch] = 0.0;
+					else {
+						casa::Complex diff = (valA - *inPtr * (*weightPtr));
+						// V = -i (YX - XY)
+						dest[ch] = casa::Complex(diff.imag(), -diff.real());
+					}
+					
+					weightPtr += polCount - polIndexB;
+					inPtr += polCount - polIndexB;
+					flagPtr += polCount - polIndexB;
+				}
+			}
+			else {
+				// Convert to StokesV from RR and LL
+				bool hasRL = Polarization::TypeToIndex(Polarization::RR, polsIn, polIndexA);
+				bool hasLR = Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexB);
+				if(!hasRL || !hasLR)
+					throw std::runtime_error("Can not form requested polarization (Stokes V) from available polarizations");
+				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+				{
+					weightPtr += polIndexA;
+					inPtr += polIndexA;
+					flagPtr += polIndexA;
+					
+					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					casa::Complex valA = *inPtr * (*weightPtr);
+					
+					weightPtr += polIndexB - polIndexA;
+					inPtr += polIndexB - polIndexA;
+					flagPtr += polIndexB - polIndexA;
+					
+					bool flagB = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
+					if(flagA || flagB)
+						dest[ch] = 0.0;
+					else {
+						// U = RR - LL
+						dest[ch] = valA - *inPtr * (*weightPtr);
+					}
+					
+					weightPtr += polCount - polIndexB;
+					inPtr += polCount - polIndexB;
+					flagPtr += polCount - polIndexB;
+				}
+			}
+		} break;
+		default:
+			throw std::runtime_error("Could not convert ms polarizations to requested polarization");
 		}
 	}
 }
 
 template<typename NumType>
-void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
+void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
 {
+	const size_t polCount = polsIn.size();
 	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
 	casa::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
 	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
 	const size_t selectedChannelCount = endChannel - startChannel;
 		
-	if(polOut == Polarization::StokesI)
-	{
-		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
-		{
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-				dest[ch] = *weightPtr;
-			else
-				dest[ch] = 0;
-			inPtr += polCount-1;
-			weightPtr += polCount-1;
-			flagPtr += polCount-1;
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-				dest[ch] += *weightPtr;
-			++inPtr;
-			++weightPtr;
-			++flagPtr;
-		}
-	} /*else if(Polarization() == Polarization::XY || Polarization() == Polarization::YX)
-	{
-		// Step to XY:
-		inPtr++;
-		weightPtr++;
-		flagPtr++;
-		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
-		{
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-			{
-				dest[ch] = (*weightPtr) * rowWeight;
-				_totalWeight += (*weightPtr) * rowWeight;
-			}
-			else {
-				dest[ch] = 0;
-			}
-			// Step to YX:
-			inPtr++;
-			weightPtr++;
-			flagPtr++;
-			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
-			{
-				//dest[ch] += (*weightPtr) * rowWeight;
-				//_totalWeight += (*weightPtr) * rowWeight;
-			}
-			inPtr += 3;
-			weightPtr += 3;
-			flagPtr += 3;
-		}
-	} */ else {
-		int polIndex = Polarization::TypeToIndex(polOut, polCount);
-		
+	size_t polIndex;
+	if(Polarization::TypeToIndex(polOut, polsIn, polIndex)) {
 		inPtr += polIndex;
 		weightPtr += polIndex;
 		flagPtr += polIndex;
@@ -159,32 +300,85 @@ void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChann
 			flagPtr += polCount;
 		}
 	}
+	else {
+		size_t polIndexA=0, polIndexB=0;
+		switch(polOut) {
+			case Polarization::StokesI: {
+				bool hasXY = Polarization::TypeToIndex(Polarization::XX, polsIn, polIndexA);
+				bool hasYX = Polarization::TypeToIndex(Polarization::YY, polsIn, polIndexB);
+				if(!hasXY || !hasYX) {
+					Polarization::TypeToIndex(Polarization::RR, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexA);
+				}
+			}
+			break;
+			case Polarization::StokesQ: {
+				bool hasXY = Polarization::TypeToIndex(Polarization::XX, polsIn, polIndexA);
+				bool hasYX = Polarization::TypeToIndex(Polarization::YY, polsIn, polIndexB);
+				if(!hasXY || !hasYX) {
+					Polarization::TypeToIndex(Polarization::RL, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexA);
+				}
+			}
+			break;
+			case Polarization::StokesU: {
+				bool hasXY = Polarization::TypeToIndex(Polarization::XY, polsIn, polIndexA);
+				bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsIn, polIndexB);
+				if(!hasXY || !hasYX) {
+					Polarization::TypeToIndex(Polarization::RL, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexA);
+				}
+			}
+			break;
+			case Polarization::StokesV: {
+				bool hasXY = Polarization::TypeToIndex(Polarization::XY, polsIn, polIndexA);
+				bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsIn, polIndexB);
+				if(!hasXY || !hasYX) {
+					Polarization::TypeToIndex(Polarization::RR, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexA);
+				}
+			}
+			break;
+			default:
+				throw std::runtime_error("Could not convert ms polarizations to requested polarization");
+			break;
+		}
+		
+		weightPtr += polIndexA;
+		inPtr += polIndexA;
+		flagPtr += polIndexA;
+		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+		{
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+				dest[ch] = *weightPtr;
+			else
+				dest[ch] = 0;
+			inPtr += polIndexB-polIndexA;
+			weightPtr += polIndexB-polIndexA;
+			flagPtr += polIndexB-polIndexA;
+			if(!*flagPtr && std::isfinite(inPtr->real()) && std::isfinite(inPtr->imag()))
+				dest[ch] += *weightPtr;
+			weightPtr += polCount - polIndexB + polIndexA;
+			inPtr += polCount - polIndexB + polIndexA;
+			flagPtr += polCount - polIndexB + polIndexA;
+		}
+	}
 }
 
 template
-void MSProvider::copyWeights<float>(float* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
+void MSProvider::copyWeights<float>(float* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
 
 template
-void MSProvider::copyWeights<std::complex<float>>(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
+void MSProvider::copyWeights<std::complex<float>>(std::complex<float>* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
 
-void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, size_t polCount, const std::complex<float>* source, PolarizationEnum polSource)
+void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum> &polsDest, const std::complex<float>* source, PolarizationEnum polSource)
 {
+	size_t polCount = polsDest.size();
 	const size_t selectedChannelCount = endChannel - startChannel;
 	casa::Array<std::complex<float>>::contiter dataIter = dest.cbegin() + startChannel * polCount;
 	
-	if(polSource == Polarization::StokesI)
-	{
-		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
-		{
-			if(std::isfinite(source[ch].real()))
-			{
-				*dataIter = source[ch];
-				*(dataIter + (polCount-1)) = source[ch];
-			}
-			dataIter += polCount;
-		}
-	} else {
-		int polIndex = Polarization::TypeToIndex(polSource, polCount);
+	size_t polIndex;
+	if(Polarization::TypeToIndex(polSource, polsDest, polIndex)) {
 		for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 		{
 			if(std::isfinite(source[ch].real()))
@@ -193,6 +387,54 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 			}
 			dataIter += polCount;
 		}
+	}
+	else {
+		if(polSource == Polarization::StokesI)
+		{
+			size_t polIndexA=0, polIndexB=0;
+			bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsDest, polIndexA);
+			bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsDest, polIndexB);
+			if(!hasXX || !hasYY) {
+				Polarization::TypeToIndex(Polarization::RR, polsDest, polIndexA);
+				Polarization::TypeToIndex(Polarization::LL, polsDest, polIndexA);
+			}
+			for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+			{
+				if(std::isfinite(source[ch].real()))
+				{
+					*(dataIter + polIndexA) = source[ch];
+					*(dataIter + polIndexB) = source[ch];
+				}
+				dataIter += polCount;
+			}
+		}
+		else if(polSource == Polarization::StokesQ)
+		{
+			size_t polIndexA=0, polIndexB=0;
+			bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsDest, polIndexA);
+			bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsDest, polIndexB);
+			if(hasXX && hasYY) {
+				// StokesQ to linear
+				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+				{
+					if(std::isfinite(source[ch].real()))
+					{
+						casa::Complex stokesI = casa::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
+						*(dataIter + polIndexA) = stokesI - source[ch]; // xx = I - U
+						*(dataIter + polIndexB) = stokesI + source[ch]; // yy = I + U
+					}
+					dataIter += polCount;
+				}
+			}
+			else {
+				// StokesQ to circular
+				Polarization::TypeToIndex(Polarization::RR, polsDest, polIndexA);
+				Polarization::TypeToIndex(Polarization::LL, polsDest, polIndexA);
+				// TODO
+				throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
+			}
+		}
+		else throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
 	}
 }
 
@@ -271,4 +513,15 @@ void MSProvider::initializeModelColumn(casa::MeasurementSet& ms)
 		
 		std::cout << "DONE\n";
 	}
+}
+
+vector<PolarizationEnum> MSProvider::GetMSPolarizations(casa::MeasurementSet& ms)
+{
+	std::vector<PolarizationEnum> pols;
+	casa::MSPolarization polTable(ms.polarization());
+	casa::ROArrayColumn<int> corrTypeColumn(polTable, casa::MSPolarization::columnName(casa::MSPolarizationEnums::CORR_TYPE));
+	casa::Array<int> corrTypeVec(corrTypeColumn(0));
+	for(casa::Array<int>::const_contiter p=corrTypeVec.cbegin(); p!=corrTypeVec.cend(); ++p)
+		pols.push_back(Polarization::AipsIndexToEnum(*p));
+	return pols;
 }

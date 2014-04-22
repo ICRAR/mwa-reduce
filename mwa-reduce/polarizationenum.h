@@ -4,6 +4,7 @@
 #include <complex>
 #include <stdexcept>
 #include <set>
+#include <vector>
 
 class Polarization
 {
@@ -51,6 +52,39 @@ public:
 			}
 			default: throw std::runtime_error("TypeTo4PolIndex(): can't convert given polarization to index");
 		}
+	}
+	
+	static enum PolarizationEnum AipsIndexToEnum(int index)
+	{
+		switch(index)
+		{
+			case 1: return StokesI;
+			case 2: return StokesQ;
+			case 3: return StokesU;
+			case 4: return StokesV;
+			case 5: return RR;
+			case 6: return RL;
+			case 7: return LR;
+			case 8: return LL;
+			case 9: return XX;
+			case 10: return XY;
+			case 11: return YX;
+			case 12: return YY;
+			default: throw std::runtime_error("AipsIndexToEnum(): unknown aips polarization index");
+		}
+	}
+	
+	static bool TypeToIndex(enum PolarizationEnum polarization, const std::vector<PolarizationEnum>& polList, size_t& index)
+	{
+		for(size_t i=0; i!=polList.size(); ++i)
+		{
+			if(polList[i] == polarization)
+			{
+				index = i;
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	static size_t StokesToIndex(enum PolarizationEnum polarization)
@@ -110,7 +144,7 @@ public:
 		}
 	}
 	
-	static bool Has4Polarizations(const std::set<PolarizationEnum>& polarizations)
+	static bool HasFullPolarization(const std::set<PolarizationEnum>& polarizations)
 	{
 		return
 			(polarizations.count(XX)>0 && polarizations.count(XY)>0 &&
