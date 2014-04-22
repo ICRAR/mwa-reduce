@@ -5,7 +5,25 @@
 #include <stdexcept>
 #include <set>
 #include <vector>
-
+/**
+ * Class for various simple polarization related values.
+ * 
+ * The visibility relations for converting polarizations are:
+ * 
+ *   RR = I + V  ;   I = (RR + LL)/2
+ *   RL = Q + iU ;   Q = (RL + LR)/2
+ *   LR = Q - iU ;   U = -i (RL - LR)/2
+ *   LL = I - V  ;   V = (RR - LL)/2
+ *
+ *   XX = I - Q  ;   I = (YY + XX)/2
+ *   XY = U - iV ;   Q = (YY - XX)/2
+ *   YX = U + iV ;   U = (YX + XY)/2
+ *   YY = I + Q  ;   V = -i(YX - XY)/2
+ * 
+ * These definitions assumes that 'X' and 'Y' are labelled as they are in
+ * CASA measurement sets and uvfits files, which is NOT the same as what
+ * the IEEE definitions tell (X and Y are swapped).
+ */
 class Polarization
 {
 public:
@@ -155,6 +173,20 @@ public:
 			||
 			(polarizations.count(RR)>0 && polarizations.count(RL)>0 &&
 			 polarizations.count(LR)>0 && polarizations.count(LL)>0);
+	}
+	
+	static bool HasFullLinearPolarization(const std::set<PolarizationEnum>& polarizations)
+	{
+		return
+			(polarizations.count(XX)>0 && polarizations.count(XY)>0 &&
+			 polarizations.count(YX)>0 && polarizations.count(YY)>0);
+	}
+	
+	static bool HasFullStokesPolarization(const std::set<PolarizationEnum>& polarizations)
+	{
+		return
+			(polarizations.count(StokesI)>0 && polarizations.count(StokesQ)>0 &&
+			 polarizations.count(StokesU)>0 && polarizations.count(StokesV)>0);
 	}
 	
 	static bool IsComplex(PolarizationEnum polarization)

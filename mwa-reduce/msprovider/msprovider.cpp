@@ -308,7 +308,7 @@ void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChann
 				bool hasYX = Polarization::TypeToIndex(Polarization::YY, polsIn, polIndexB);
 				if(!hasXY || !hasYX) {
 					Polarization::TypeToIndex(Polarization::RR, polsIn, polIndexA);
-					Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexB);
 				}
 			}
 			break;
@@ -317,7 +317,7 @@ void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChann
 				bool hasYX = Polarization::TypeToIndex(Polarization::YY, polsIn, polIndexB);
 				if(!hasXY || !hasYX) {
 					Polarization::TypeToIndex(Polarization::RL, polsIn, polIndexA);
-					Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexB);
 				}
 			}
 			break;
@@ -326,7 +326,7 @@ void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChann
 				bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsIn, polIndexB);
 				if(!hasXY || !hasYX) {
 					Polarization::TypeToIndex(Polarization::RL, polsIn, polIndexA);
-					Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LR, polsIn, polIndexB);
 				}
 			}
 			break;
@@ -335,7 +335,7 @@ void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChann
 				bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsIn, polIndexB);
 				if(!hasXY || !hasYX) {
 					Polarization::TypeToIndex(Polarization::RR, polsIn, polIndexA);
-					Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexA);
+					Polarization::TypeToIndex(Polarization::LL, polsIn, polIndexB);
 				}
 			}
 			break;
@@ -389,52 +389,137 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 		}
 	}
 	else {
-		if(polSource == Polarization::StokesI)
-		{
-			size_t polIndexA=0, polIndexB=0;
-			bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsDest, polIndexA);
-			bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsDest, polIndexB);
-			if(!hasXX || !hasYY) {
-				Polarization::TypeToIndex(Polarization::RR, polsDest, polIndexA);
-				Polarization::TypeToIndex(Polarization::LL, polsDest, polIndexA);
-			}
-			for(size_t ch=0; ch!=selectedChannelCount; ++ch)
-			{
-				if(std::isfinite(source[ch].real()))
-				{
-					*(dataIter + polIndexA) = source[ch];
-					*(dataIter + polIndexB) = source[ch];
+		switch(polSource) {
+			case Polarization::StokesI: {
+				size_t polIndexA=0, polIndexB=0;
+				bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsDest, polIndexA);
+				bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsDest, polIndexB);
+				if(!hasXX || !hasYY) {
+					Polarization::TypeToIndex(Polarization::RR, polsDest, polIndexA);
+					Polarization::TypeToIndex(Polarization::LL, polsDest, polIndexB);
 				}
-				dataIter += polCount;
-			}
-		}
-		else if(polSource == Polarization::StokesQ)
-		{
-			size_t polIndexA=0, polIndexB=0;
-			bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsDest, polIndexA);
-			bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsDest, polIndexB);
-			if(hasXX && hasYY) {
-				// StokesQ to linear
 				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 				{
 					if(std::isfinite(source[ch].real()))
 					{
-						casa::Complex stokesI = casa::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
-						*(dataIter + polIndexA) = stokesI - source[ch]; // xx = I - U
-						*(dataIter + polIndexB) = stokesI + source[ch]; // yy = I + U
+						*(dataIter + polIndexA) = source[ch];
+						*(dataIter + polIndexB) = source[ch];
 					}
 					dataIter += polCount;
 				}
 			}
-			else {
-				// StokesQ to circular
-				Polarization::TypeToIndex(Polarization::RR, polsDest, polIndexA);
-				Polarization::TypeToIndex(Polarization::LL, polsDest, polIndexA);
-				// TODO
-				throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
+			break;
+			case Polarization::StokesQ: {
+				size_t polIndexA=0, polIndexB=0;
+				bool hasXX = Polarization::TypeToIndex(Polarization::XX, polsDest, polIndexA);
+				bool hasYY = Polarization::TypeToIndex(Polarization::YY, polsDest, polIndexB);
+				if(hasXX && hasYY) {
+					// StokesQ to linear
+					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+					{
+						if(std::isfinite(source[ch].real()))
+						{
+							casa::Complex stokesI = casa::Complex::value_type(0.5) * (*(dataIter + polIndexB) + *(dataIter + polIndexA));
+							*(dataIter + polIndexA) = stokesI - source[ch]; // XX = I - Q
+							*(dataIter + polIndexB) = stokesI + source[ch]; // YY = I + Q
+						}
+						dataIter += polCount;
+					}
+				}
+				else {
+					// StokesQ to circular
+					Polarization::TypeToIndex(Polarization::RL, polsDest, polIndexA);
+					Polarization::TypeToIndex(Polarization::LR, polsDest, polIndexB);
+					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+					{
+						if(std::isfinite(source[ch].real()))
+						{
+							*(dataIter + polIndexA) = source[ch]; // rl = Q + iU (with U still zero)
+							*(dataIter + polIndexB) = source[ch]; // lr = Q - iU (with U still zero)
+						}
+						dataIter += polCount;
+					}
+					throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
+				}
 			}
+			break;
+			case Polarization::StokesU: {
+				size_t polIndexA=0, polIndexB=0;
+				bool hasXX = Polarization::TypeToIndex(Polarization::XY, polsDest, polIndexA);
+				bool hasYY = Polarization::TypeToIndex(Polarization::YX, polsDest, polIndexB);
+				if(hasXX && hasYY) {
+					// StokesU to linear
+					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+					{
+						if(std::isfinite(source[ch].real()))
+						{
+							*(dataIter + polIndexA) = source[ch]; // XY = (U - iV), V still zero
+							*(dataIter + polIndexB) = source[ch]; // YX = (U + iV), V still zero
+						}
+						dataIter += polCount;
+					}
+				}
+				else {
+					// StokesU to circular
+					Polarization::TypeToIndex(Polarization::RL, polsDest, polIndexA);
+					Polarization::TypeToIndex(Polarization::LR, polsDest, polIndexB);
+					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+					{
+						if(std::isfinite(source[ch].real()))
+						{
+							// Q = (RL + LR) / 2
+							casa::Complex stokesQ = casa::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
+							casa::Complex iTimesStokesU = casa::Complex(-source[ch].imag(), source[ch].real());
+							*(dataIter + polIndexA) = stokesQ + iTimesStokesU; // rl = Q + iU
+							*(dataIter + polIndexB) = stokesQ - iTimesStokesU; // lr = Q - iU
+						}
+						dataIter += polCount;
+					}
+					throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
+				}
+			}
+			break;
+			case Polarization::StokesV: {
+				size_t polIndexA=0, polIndexB=0;
+				bool hasXX = Polarization::TypeToIndex(Polarization::XY, polsDest, polIndexA);
+				bool hasYY = Polarization::TypeToIndex(Polarization::YX, polsDest, polIndexB);
+				if(hasXX && hasYY) {
+					// StokesV to linear
+					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+					{
+						if(std::isfinite(source[ch].real()))
+						{
+							// U = (YX + XY)/2
+							casa::Complex stokesU = casa::Complex::value_type(0.5) * (*(dataIter + polIndexB) + *(dataIter + polIndexA));
+							casa::Complex iTimesStokesV = casa::Complex(-source[ch].imag(), source[ch].real());
+							*(dataIter + polIndexA) = stokesU - iTimesStokesV; // XY = (U - iV)
+							*(dataIter + polIndexB) = stokesU + iTimesStokesV; // YX = (U + iV)
+						}
+						dataIter += polCount;
+					}
+				}
+				else {
+					// StokesV to circular
+					Polarization::TypeToIndex(Polarization::RL, polsDest, polIndexA);
+					Polarization::TypeToIndex(Polarization::LR, polsDest, polIndexB);
+					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
+					{
+						if(std::isfinite(source[ch].real()))
+						{
+							// I = (RR + LL)/2
+							casa::Complex stokesI = casa::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
+							*(dataIter + polIndexA) = stokesI + source[ch]; // RR = I + V
+							*(dataIter + polIndexB) = stokesI - source[ch]; // LL = I - V
+						}
+						dataIter += polCount;
+					}
+					throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
+				}
+			}
+			break;
+			default:
+				throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
 		}
-		else throw std::runtime_error("Can't store polarization in set (not implemented or conversion not possible)");
 	}
 }
 

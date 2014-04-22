@@ -738,24 +738,42 @@ void WSClean::performJoinedPolClean(size_t currentChannelIndex, bool& reachedMaj
 	_psfImages.Load(psfImage, *_polarizations.begin(), 0, false);
 	psfImages.push_back(psfImage);
 	
-	modelSet.Load(_modelImages, 0);
-	residualSet.Load(_residualImages, 0);
+	bool hasStokesPols = Polarization::HasFullStokesPolarization(_polarizations);
+	if(hasStokesPols)
+	{
+		modelSet.LoadStokes(_modelImages, 0);
+		residualSet.LoadStokes(_residualImages, 0);
+	}
+	else {
+		modelSet.LoadLinear(_modelImages, 0);
+		residualSet.LoadLinear(_residualImages, 0);
+	}
 
 	_cleaningWatch.Start();
 	static_cast<JoinedClean<>&>(*_cleanAlgorithm).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	_imageAllocator.Free(psfImage);
-	modelSet.Store(_modelImages, 0);
-	residualSet.Store(_residualImages, 0);
+	if(hasStokesPols)
+	{
+		modelSet.StoreStokes(_modelImages, 0);
+		residualSet.StoreStokes(_residualImages, 0);
+	}
+	else {
+		modelSet.StoreLinear(_modelImages, 0);
+		residualSet.StoreLinear(_residualImages, 0);
+	}
 	
 	updateCleanParameters(_fitsWriter, _cleanAlgorithm->IterationNumber(), majorIterationNr);
 	
-	PolarizationEnum pols[4] = { Polarization::XX, Polarization::XY, Polarization::XY, Polarization::YY };
+	const PolarizationEnum
+		linPols[4] = { Polarization::XX, Polarization::XY, Polarization::XY, Polarization::YY },
+		stokesPols[4] = { Polarization::StokesI, Polarization::StokesQ, Polarization::StokesU, Polarization::StokesV },
+		*pols = hasStokesPols ? stokesPols : linPols;
 	for(size_t i=0; i!=4; ++i)
 	{
 		PolarizationEnum polarization = pols[i];
-		bool isImaginary = (i==2);
+		bool isImaginary = (i==2) && !hasStokesPols;
 		
 		if(majorIterationNr == 1)
 		{
@@ -785,6 +803,8 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 		modelSet(_imgWidth*_imgHeight, _channelsOut, _imageAllocator),
 		residualSet(_imgWidth*_imgHeight, _channelsOut, _imageAllocator);
 	
+	bool hasStokesPols = Polarization::HasFullStokesPolarization(_polarizations);
+	
 	std::vector<double*> psfImages;
 	for(size_t ch=0; ch!=_channelsOut; ++ch)
 	{
@@ -792,8 +812,15 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 		_psfImages.Load(psfImage, *_polarizations.begin(), ch, false);
 		psfImages.push_back(psfImage);
 		
-		modelSet.Load(_modelImages, ch);
-		residualSet.Load(_residualImages, ch);
+		if(hasStokesPols)
+		{
+			modelSet.LoadStokes(_modelImages, ch);
+			residualSet.LoadStokes(_residualImages, ch);
+		}
+		else {
+			modelSet.LoadLinear(_modelImages, ch);
+			residualSet.LoadLinear(_residualImages, ch);
+		}
 	}
 
 	_cleaningWatch.Start();
@@ -803,19 +830,29 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 	for(size_t ch=0; ch!=_channelsOut; ++ch)
 	{
 		_imageAllocator.Free(psfImages[ch]);
-		modelSet.Store(_modelImages, ch);
-		residualSet.Store(_residualImages, ch);
+		if(hasStokesPols)
+		{
+			modelSet.StoreStokes(_modelImages, ch);
+			residualSet.StoreStokes(_residualImages, ch);
+		}
+		else {
+			modelSet.StoreLinear(_modelImages, ch);
+			residualSet.StoreLinear(_residualImages, ch);
+		}
 	}
 	
 	updateCleanParameters(_fitsWriter, _cleanAlgorithm->IterationNumber(), majorIterationNr);
 	
-	const PolarizationEnum pols[4] = { Polarization::XX, Polarization::XY, Polarization::XY, Polarization::YY };
+	const PolarizationEnum
+		linPols[4] = { Polarization::XX, Polarization::XY, Polarization::XY, Polarization::YY },
+		stokesPols[4] = { Polarization::StokesI, Polarization::StokesQ, Polarization::StokesU, Polarization::StokesV },
+		*pols = hasStokesPols ? stokesPols : linPols;
 	for(size_t ch=0; ch!=_channelsOut; ++ch)
 	{
 		for(size_t i=0; i!=4; ++i)
 		{
 			PolarizationEnum polarization = pols[i];
-			bool isImaginary = (i==2);
+			bool isImaginary = (i==2) && !hasStokesPols;
 			
 			if(majorIterationNr == 1)
 			{

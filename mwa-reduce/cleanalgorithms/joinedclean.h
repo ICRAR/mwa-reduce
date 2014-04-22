@@ -53,7 +53,7 @@ namespace joined_pol_clean {
 			_allocator->Free(yy);
 		}
 		
-		void Load(CachedImageSet& set, size_t freqIndex)
+		void LoadLinear(CachedImageSet& set, size_t freqIndex)
 		{
 			set.Load(xx, PolarizationEnum::XX, freqIndex, false);
 			set.Load(xyr, PolarizationEnum::XY, freqIndex, false);
@@ -61,12 +61,28 @@ namespace joined_pol_clean {
 			set.Load(yy, PolarizationEnum::YY, freqIndex, false);
 		}
 		
-		void Store(CachedImageSet& set, size_t freqIndex) const
+		void LoadStokes(CachedImageSet& set, size_t freqIndex)
+		{
+			set.Load(xx, PolarizationEnum::StokesI, freqIndex, false);
+			set.Load(xyr, PolarizationEnum::StokesQ, freqIndex, false);
+			set.Load(xyi, PolarizationEnum::StokesU, freqIndex, false);
+			set.Load(yy, PolarizationEnum::StokesV, freqIndex, false);
+		}
+		
+		void StoreLinear(CachedImageSet& set, size_t freqIndex) const
 		{
 			set.Store(xx, PolarizationEnum::XX, freqIndex, false);
 			set.Store(xyr, PolarizationEnum::XY, freqIndex, false);
 			set.Store(xyi, PolarizationEnum::XY, freqIndex, true);
 			set.Store(yy, PolarizationEnum::YY, freqIndex, false);
+		}
+		
+		void StoreStokes(CachedImageSet& set, size_t freqIndex) const
+		{
+			set.Store(xx, PolarizationEnum::StokesI, freqIndex, false);
+			set.Store(xyr, PolarizationEnum::StokesQ, freqIndex, false);
+			set.Store(xyi, PolarizationEnum::StokesU, freqIndex, false);
+			set.Store(yy, PolarizationEnum::StokesV, freqIndex, false);
 		}
 		
 		Value Get(size_t index) const
@@ -153,14 +169,24 @@ namespace joined_pol_clean {
 			}
 		}
 		
-		void Load(CachedImageSet& set, size_t i)
+		void LoadLinear(CachedImageSet& set, size_t i)
 		{
-			_sets[i]->Load(set, i);
+			_sets[i]->LoadLinear(set, i);
 		}
 		
-		void Store(CachedImageSet& set, size_t i) const
+		void StoreLinear(CachedImageSet& set, size_t i) const
 		{
-			_sets[i]->Store(set, i);
+			_sets[i]->StoreLinear(set, i);
+		}
+		
+		void LoadStokes(CachedImageSet& set, size_t i)
+		{
+			_sets[i]->LoadStokes(set, i);
+		}
+		
+		void StoreStokes(CachedImageSet& set, size_t i) const
+		{
+			_sets[i]->StoreStokes(set, i);
 		}
 		
 		double JoinedValue(size_t index) const
