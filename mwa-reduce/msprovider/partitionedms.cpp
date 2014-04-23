@@ -303,7 +303,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 		if(selection.IsSelected(fieldId, timestep, a1, a2, uvw))
 			++selectedRowCount;
 	}
-	std::cout << "Reordering " << selectedRowCount << " selected rows into " << channelParts << " parts.\n";
+	std::cout << "Reordering " << selectedRowCount << " selected rows into " << channelParts << " x " << polsOut.size() << " parts.\n";
 
 	// Write header of meta file
 	std::string metaFilename = getMetaFilename(msPath);

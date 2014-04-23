@@ -381,7 +381,7 @@ void WSClean::Run()
 	if(_joinedPolarizationCleaning && !Polarization::HasFullPolarization(_polarizations))
 		throw std::runtime_error("Joined polarization cleaning requested, but not all 4 polarizations are imaged");
 	
-	_doReorder = ((_channelsOut != 1) || _forceReorder) && !_forceNoReorder;
+	_doReorder = ((_channelsOut != 1) || (_polarizations.size()>=4) || _forceReorder) && !_forceNoReorder;
 	
 	if(_doReorder)
 	{

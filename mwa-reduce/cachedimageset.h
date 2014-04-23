@@ -20,6 +20,11 @@ public:
 	{
 		if(_allocator != 0)
 			_allocator->Free(_image);
+		
+		for(std::set<std::string>::const_iterator filenamePtr=_storedNames.begin(); filenamePtr!=_storedNames.end(); ++filenamePtr)
+		{
+			std::remove(filenamePtr->c_str());
+		}
 	}
 	
 	void Initialize(const FitsWriter& writer, size_t polCount, size_t freqCount, const std::string& prefix, ImageBufferAllocator<value_t>& allocator)

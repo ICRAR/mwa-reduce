@@ -214,3 +214,5 @@ else(LANE11_COMPILES)
 endif(LANE11_COMPILES)
 
 target_link_libraries(aoimage ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB})
+
+install(TARGETS wsclean DESTINATION bin)
