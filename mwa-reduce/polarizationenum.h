@@ -105,6 +105,21 @@ public:
 		return false;
 	}
 	
+	template<typename Range>
+	static bool TypeToIndex(enum PolarizationEnum polarization, const Range& polList, size_t& index)
+	{
+		size_t curIndex = 0;
+		for(typename Range::const_iterator i=polList.begin(); i!=polList.end(); ++i, ++curIndex)
+		{
+			if(*i == polarization)
+			{
+				index = curIndex;
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	static size_t StokesToIndex(enum PolarizationEnum polarization)
 	{
 		switch(polarization)
@@ -297,16 +312,16 @@ public:
 		stokes[0] = 0.5 * (linear[3].real() + linear[0].real());
 		stokes[1] = 0.5 * (linear[3].real() - linear[0].real());
 		stokes[2] = 0.5 * (linear[2].real() + linear[1].real());
-		stokes[3] = 0.5 * (-linear[2].imag() + linear[1].imag());
+		stokes[3] = 0.5 * (linear[2].imag() - linear[1].imag());
 	}
 	
 	template<typename NumType>
 	static void StokesToLinear(const NumType* stokes, std::complex<NumType> *linear)
 	{
-		linear[3] = stokes[0] + stokes[1];
-		linear[2] = std::complex<NumType>(stokes[2], -stokes[3]);
-		linear[1] = std::complex<NumType>(stokes[2], stokes[3]);
 		linear[0] = stokes[0] - stokes[1];
+		linear[1] = std::complex<NumType>(stokes[2], -stokes[3]);
+		linear[2] = std::complex<NumType>(stokes[2], stokes[3]);
+		linear[3] = stokes[0] + stokes[1];
 	}
 };
 

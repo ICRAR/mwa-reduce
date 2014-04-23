@@ -38,12 +38,12 @@ int main(int argc, char *argv[])
 			"\t-smallpsf\n"
 			"\t   Resize the psf to speed up minor clean iterations. Not the default.\n"
 			"\t-pol <list>\n"
-			"\t   Default: \'I\'. Possible values: xx, yy, xy, yx, I, Q, U, or V, rr, rl, lr, ll (case insensitive)."
-			"\t   Multiple values can be separated with commas, e.g.: 'xx,xy,yx,yy'. When all four linear or all four Stokes\n"
-			"\t   polarizations are specified, the polarizations will be joinedly cleaned. I, Q, U and V polarizations\n"
-			"\t   will be directly calculated from the visibilities, which is not appropriate for telescopes with\n"
-			"\t   non-orthogonal feeds, such as MWA and LOFAR. The 'xy' polarization will output both a real and an\n"
-			"\t   imaginary image, which allows calculating true Stokes polarizations for those telescopes.\n"
+			"\t   Default: \'I\'. Possible values: XX, XY, YX, YY, I, Q, U, V, RR, RL, LR or LL (case insensitive).\n"
+			"\t   Multiple values can be separated with commas, e.g.: 'xx,xy,yx,yy'. Four polarizations can be joinedly\n"
+			"\t   clean (see '-joinpolarizations'), but this is not the default. I, Q, U and V polarizations will be\n"
+			"\t   directly calculated from the visibilities, which is not appropriate for telescopes with non-orthogonal\n"
+			"\t   feeds, such as MWA and LOFAR. The 'xy' polarization will output both a real and an imaginary image,\n"
+			"\t   which allows calculating true Stokes polarizations for those telescopes.\n"
 			"\t-gridmode <nn or kb>\n"
 			"\t   Kernel and mode used for gridding: kb = Kaiser-Bessel (default with 7 pixels), nn = nearest\n"
 			"\t   neighbour (no kernel). Default: kb.\n"
@@ -87,6 +87,10 @@ int main(int argc, char *argv[])
 			"\t   Force or disable reordering of Measurement Set. This can be faster when the measurement set needs to\n"
 			"\t   be iterated several times, such as with many major iterations or in channel imaging mode.\n"
 			"\t   Default: only reorder when in channel imaging mode.\n"
+			"\t-joinpolarizations\n"
+			"\t   Perform cleaning by searching for peaks in the sum of squares of the polarizations (either I^2+Q^2+U^2+V^2\n"
+			"\t   or XX^2+real(XY)^2+imag(XY)^2+YY^2), but subtract components from individual channels. Only possible when\n"
+			"\t   imaging all Stokes or all linear parameters. Default: off.\n"
 			"\t-joinchannels\n"
 			"\t   Perform cleaning by searching for peaks in the MFS image, but subtract components from individual channels.\n"
 			"\t   This will turn on mfsweighting by default. Default: off.\n"
@@ -250,6 +254,10 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			wsclean.SetChannelsOut(atoi(argv[argi]));
+		}
+		else if(param == "joinpolarizations")
+		{
+			wsclean.SetJoinPolarizations(true);
 		}
 		else if(param == "joinchannels")
 		{

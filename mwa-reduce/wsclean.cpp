@@ -48,7 +48,9 @@ WSClean::WSClean() :
 }
 
 WSClean::~WSClean()
-{ }
+{
+	freeCleanAlgorithms();
+}
 
 void WSClean::initFitsWriter(FitsWriter& writer)
 {
@@ -295,27 +297,47 @@ void WSClean::initializeMFSImageWeights()
 	}
 }
 
+void WSClean::freeCleanAlgorithms()
+{
+	for(std::vector<CleanAlgorithm*>::iterator caPtr=_cleanAlgorithms.begin(); caPtr!=_cleanAlgorithms.end(); ++caPtr)
+		delete *caPtr;
+	_cleanAlgorithms.clear();
+}
+
 void WSClean::initializeCleanAlgorithm()
 {
+	freeCleanAlgorithms();
+	size_t count = 0;
 	if(_joinedPolarizationCleaning)
-		_cleanAlgorithm.reset(new JoinedClean<>());
-	else
-		_cleanAlgorithm.reset(new SimpleClean());
-	_cleanAlgorithm->SetMaxNIter(_nIter);
-	_cleanAlgorithm->SetThreshold(_threshold);
-	_cleanAlgorithm->SetSubtractionGain(_gain);
-	_cleanAlgorithm->SetStopGain(_mGain);
-	_cleanAlgorithm->SetAllowNegativeComponents(_allowNegative);
-	_cleanAlgorithm->SetStopOnNegativeComponents(_stopOnNegative);
-	_cleanAlgorithm->SetResizePSF(_smallPSF);
-	if(!_cleanAreasFilename.empty())
 	{
-		_cleanAreas.reset(new AreaSet());
-		AreaParser parser;
-		std::ifstream caFile(_cleanAreasFilename.c_str());
-		parser.Parse(*_cleanAreas, caFile);
-		_cleanAreas->SetImageProperties(_pixelScaleX, _pixelScaleY, _inversionAlgorithm->PhaseCentreRA(), _inversionAlgorithm->PhaseCentreDec(), _imgWidth, _imgHeight);
-		_cleanAlgorithm->SetCleanAreas(*_cleanAreas);
+		_cleanAlgorithms.resize(1);
+		_cleanAlgorithms[0] = new JoinedClean<>();
+		count = 1;
+	}
+	else {
+		_cleanAlgorithms.resize(_polarizations.size());
+		for(size_t p=0; p!=_polarizations.size(); ++p)
+			_cleanAlgorithms[p] = new SimpleClean();
+		count = _polarizations.size();
+	}
+	for(size_t p=0; p!=count; ++p)
+	{
+		_cleanAlgorithms[p]->SetMaxNIter(_nIter);
+		_cleanAlgorithms[p]->SetThreshold(_threshold);
+		_cleanAlgorithms[p]->SetSubtractionGain(_gain);
+		_cleanAlgorithms[p]->SetStopGain(_mGain);
+		_cleanAlgorithms[p]->SetAllowNegativeComponents(_allowNegative);
+		_cleanAlgorithms[p]->SetStopOnNegativeComponents(_stopOnNegative);
+		_cleanAlgorithms[p]->SetResizePSF(_smallPSF);
+		if(!_cleanAreasFilename.empty())
+		{
+			_cleanAreas.reset(new AreaSet());
+			AreaParser parser;
+			std::ifstream caFile(_cleanAreasFilename.c_str());
+			parser.Parse(*_cleanAreas, caFile);
+			_cleanAreas->SetImageProperties(_pixelScaleX, _pixelScaleY, _inversionAlgorithm->PhaseCentreRA(), _inversionAlgorithm->PhaseCentreDec(), _imgWidth, _imgHeight);
+			_cleanAlgorithms[p]->SetCleanAreas(*_cleanAreas);
+		}
 	}
 }
 
@@ -356,7 +378,8 @@ void WSClean::Run()
 		}
 	}
 
-	_joinedPolarizationCleaning = Polarization::HasFullPolarization(_polarizations);
+	if(_joinedPolarizationCleaning && !Polarization::HasFullPolarization(_polarizations))
+		throw std::runtime_error("Joined polarization cleaning requested, but not all 4 polarizations are imaged");
 	
 	_doReorder = ((_channelsOut != 1) || _forceReorder) && !_forceNoReorder;
 	
@@ -472,7 +495,7 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 	initializeCleanAlgorithm();
 
 	initFitsWriter(_fitsWriter);
-	setCleanParameters(_fitsWriter, *_cleanAlgorithm);
+	setCleanParameters(_fitsWriter, *_cleanAlgorithms[0]);
 	updateCleanParameters(_fitsWriter, 0, 0);
 		
 	if(_nIter > 0)
@@ -679,13 +702,18 @@ void WSClean::performClean(size_t currentChannelIndex, bool& reachedMajorThresho
 	}
 	else if(_joinedPolarizationCleaning)
 		performJoinedPolClean(currentChannelIndex, reachedMajorThreshold, majorIterationNr);
-	else 
-		performSimpleClean(currentChannelIndex, reachedMajorThreshold, majorIterationNr);
+	else {
+		std::set<PolarizationEnum>::const_iterator pol = _polarizations.begin();
+		for(size_t pIndex=0; pIndex!=_polarizations.size(); ++pIndex)
+		{
+			performSimpleClean(*_cleanAlgorithms[pIndex], currentChannelIndex, reachedMajorThreshold, majorIterationNr, *pol);
+			++pol;
+		}
+	}
 }
 
-void WSClean::performSimpleClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr)
+void WSClean::performSimpleClean(CleanAlgorithm& cleanAlgorithm, size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr, PolarizationEnum polarization)
 {
-	PolarizationEnum polarization = *_polarizations.begin();
 	double
 		*residualImage = _imageAllocator.Allocate(_imgWidth*_imgHeight),
 		*modelImage = _imageAllocator.Allocate(_imgWidth*_imgHeight),
@@ -695,12 +723,12 @@ void WSClean::performSimpleClean(size_t currentChannelIndex, bool& reachedMajorT
 	_psfImages.Load(psfImage, polarization, 0, false);
 	
 	_cleaningWatch.Start();
-	static_cast<SimpleClean&>(*_cleanAlgorithm).ExecuteMajorIteration(residualImage, modelImage, psfImage, _imgWidth, _imgHeight, reachedMajorThreshold);
+	static_cast<SimpleClean&>(cleanAlgorithm).ExecuteMajorIteration(residualImage, modelImage, psfImage, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	_modelImages.Store(modelImage, polarization, 0, false);
 	
-	updateCleanParameters(_fitsWriter, _cleanAlgorithm->IterationNumber(), majorIterationNr);
+	updateCleanParameters(_fitsWriter, cleanAlgorithm.IterationNumber(), majorIterationNr);
 	
 	if(majorIterationNr == 1)
 	{
@@ -750,7 +778,7 @@ void WSClean::performJoinedPolClean(size_t currentChannelIndex, bool& reachedMaj
 	}
 
 	_cleaningWatch.Start();
-	static_cast<JoinedClean<>&>(*_cleanAlgorithm).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
+	static_cast<JoinedClean<>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	_imageAllocator.Free(psfImage);
@@ -764,7 +792,7 @@ void WSClean::performJoinedPolClean(size_t currentChannelIndex, bool& reachedMaj
 		residualSet.StoreLinear(_residualImages, 0);
 	}
 	
-	updateCleanParameters(_fitsWriter, _cleanAlgorithm->IterationNumber(), majorIterationNr);
+	updateCleanParameters(_fitsWriter, _cleanAlgorithms[0]->IterationNumber(), majorIterationNr);
 	
 	const PolarizationEnum
 		linPols[4] = { Polarization::XX, Polarization::XY, Polarization::XY, Polarization::YY },
@@ -824,7 +852,7 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 	}
 
 	_cleaningWatch.Start();
-	static_cast<JoinedClean<joined_pol_clean::MultiImageSet>&>(*_cleanAlgorithm).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
+	static_cast<JoinedClean<joined_pol_clean::MultiImageSet>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	for(size_t ch=0; ch!=_channelsOut; ++ch)
@@ -841,7 +869,7 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 		}
 	}
 	
-	updateCleanParameters(_fitsWriter, _cleanAlgorithm->IterationNumber(), majorIterationNr);
+	updateCleanParameters(_fitsWriter, _cleanAlgorithms[0]->IterationNumber(), majorIterationNr);
 	
 	const PolarizationEnum
 		linPols[4] = { Polarization::XX, Polarization::XY, Polarization::XY, Polarization::YY },
@@ -928,10 +956,15 @@ void WSClean::writeFits(const string& suffix, const double* image, PolarizationE
 	_fitsWriter.SetPolarization(pol);
 	_fitsWriter.SetFrequency(band.CentreFrequency(), band.Bandwidth());
 	_fitsWriter.SetExtraKeyword("WSCIMGWG", _weightPerChannel[channelIndex]);
-	if(_cleanAlgorithm != 0)
+	size_t polIndex;
+	if(_joinedPolarizationCleaning)
+		polIndex = 0;
+	else
+		Polarization::TypeToIndex(pol, _polarizations, polIndex);
+	if(_cleanAlgorithms.size()>polIndex && _cleanAlgorithms[polIndex] != 0)
 	{
-		setCleanParameters(_fitsWriter, *_cleanAlgorithm);
-		updateCleanParameters(_fitsWriter, _cleanAlgorithm->IterationNumber(), _majorIterationNr);
+		setCleanParameters(_fitsWriter, *_cleanAlgorithms[polIndex]);
+		updateCleanParameters(_fitsWriter, _cleanAlgorithms[polIndex]->IterationNumber(), _majorIterationNr);
 	}
 	_fitsWriter.Write(name, image);
 }

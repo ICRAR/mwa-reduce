@@ -143,7 +143,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 			bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsIn, polIndexB);
 			if(hasXY && hasYX)
 			{
-				// Convert to StokesU from XX and YY
+				// Convert to StokesU from XY and YX
 				for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 				{
 					weightPtr += polIndexA;
@@ -161,7 +161,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					if(flagA || flagB)
 						dest[ch] = 0.0;
 					else
-						dest[ch] = valA + (*inPtr * (*weightPtr));
+						dest[ch] = valA + (*inPtr * (*weightPtr)); // U = (YX + XY)/2
 					
 					weightPtr += polCount - polIndexB;
 					inPtr += polCount - polIndexB;
@@ -226,8 +226,8 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					if(flagA || flagB)
 						dest[ch] = 0.0;
 					else {
-						casa::Complex diff = (valA - *inPtr * (*weightPtr));
-						// V = -i (YX - XY)
+						casa::Complex diff = (*inPtr * (*weightPtr) - valA);
+						// V = -i(YX - XY)/2
 						dest[ch] = casa::Complex(diff.imag(), -diff.real());
 					}
 					
@@ -445,9 +445,9 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 			break;
 			case Polarization::StokesU: {
 				size_t polIndexA=0, polIndexB=0;
-				bool hasXX = Polarization::TypeToIndex(Polarization::XY, polsDest, polIndexA);
-				bool hasYY = Polarization::TypeToIndex(Polarization::YX, polsDest, polIndexB);
-				if(hasXX && hasYY) {
+				bool hasXY = Polarization::TypeToIndex(Polarization::XY, polsDest, polIndexA);
+				bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsDest, polIndexB);
+				if(hasXY && hasYX) {
 					// StokesU to linear
 					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 					{
@@ -481,9 +481,9 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 			break;
 			case Polarization::StokesV: {
 				size_t polIndexA=0, polIndexB=0;
-				bool hasXX = Polarization::TypeToIndex(Polarization::XY, polsDest, polIndexA);
-				bool hasYY = Polarization::TypeToIndex(Polarization::YX, polsDest, polIndexB);
-				if(hasXX && hasYY) {
+				bool hasXY = Polarization::TypeToIndex(Polarization::XY, polsDest, polIndexA);
+				bool hasYX = Polarization::TypeToIndex(Polarization::YX, polsDest, polIndexB);
+				if(hasXY && hasYX) {
 					// StokesV to linear
 					for(size_t ch=0; ch!=selectedChannelCount; ++ch)
 					{

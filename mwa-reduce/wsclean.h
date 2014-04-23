@@ -50,6 +50,7 @@ public:
 		_globalSelection.SetFieldId(fieldId);
 	}
 	void SetChannelsOut(size_t channelsOut) { _channelsOut = channelsOut; }
+	void SetJoinPolarizations(bool joinPolarizations) { _joinedPolarizationCleaning = joinPolarizations; }
 	void SetJoinChannels(bool joinChannels) { _joinedFrequencyCleaning = joinChannels; }
 	void SetMFSWeighting(bool mfsWeighting) { _mfsWeighting = mfsWeighting; }
 	void SetWeightMode(enum WeightMode::WeightingEnum weighting) {
@@ -80,7 +81,7 @@ private:
 	void runIndependentChannel(size_t outChannelIndex);
 	void runFirstInversion(size_t outChannelIndex, PolarizationEnum polarization, size_t joinedChannelIndex);
 	void performClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr);
-	void performSimpleClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr);
+	void performSimpleClean(class CleanAlgorithm& cleanAlgorithm, size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr, PolarizationEnum polarization);
 	void performJoinedPolClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr);
 	void performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void prepareInversionAlgorithm(PolarizationEnum polarization);
@@ -91,6 +92,7 @@ private:
 	void initializeImageWeights(const MSSelection& partSelection);
 	void initializeMFSImageWeights();
 	void initializeCleanAlgorithm();
+	void freeCleanAlgorithms();
 	void initializeCurMSProviders(size_t currentChannelIndex, PolarizationEnum polarization);
 	void clearCurMSProviders();
 	void storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum polarization, size_t joinedChannelIndex, bool isImaginary, const double* image);
@@ -158,7 +160,7 @@ private:
 	
 	std::unique_ptr<class InversionAlgorithm> _inversionAlgorithm;
 	std::unique_ptr<class ImageWeights> _imageWeights;
-	std::unique_ptr<class CleanAlgorithm> _cleanAlgorithm;
+	std::vector<class CleanAlgorithm*> _cleanAlgorithms;
 	std::unique_ptr<class AreaSet> _cleanAreas;
 	ImageBufferAllocator<double> _imageAllocator;
 	Stopwatch _inversionWatch, _predictingWatch, _cleaningWatch;
