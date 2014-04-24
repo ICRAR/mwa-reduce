@@ -146,5 +146,5 @@ std::string JoinedClean<ImageSetType>::peakDescription(const ImageSetType& image
 	return str.str();
 }
 
-template class JoinedClean<joined_pol_clean::SingleImageSet>;
-template class JoinedClean<joined_pol_clean::MultiImageSet>;
+template class JoinedClean<clean_algorithms::PolarizedImageSet>;
+template class JoinedClean<clean_algorithms::MultiImageSet>;

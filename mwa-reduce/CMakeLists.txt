@@ -121,6 +121,7 @@ add_executable(subtrmodel beamevaluator.cpp subtrmodel.cpp model.cpp predicter.c
 add_executable(subtrspectrum subtrspectrum.cpp spectrumsubtractor.cpp beamevaluator.cpp model.cpp predicter.cpp ${BEAMFILES})
 add_executable(spectrum beamevaluator.cpp spectrum.cpp spectrummaker.cpp imageweights.cpp model.cpp predicter.cpp mspredicter.cpp progressbar.cpp ${BEAMFILES})
 add_executable(tests tests.cpp nlplfitter.cpp ${BEAMFILES})
+add_executable(testms testms.cpp fftresampler.cpp fitsreader.cpp fitswriter.cpp cleanalgorithms/multiscaleclean.cpp)
 add_executable(testbugcasams testbugcasams.cpp)
 add_executable(uvdist uvdist.cpp nlplfitter.cpp)
 
@@ -181,6 +182,7 @@ target_link_libraries(subtrmodel ${CASA_LIBS} ${Boost_THREAD_LIBRARY} ${Boost_SY
 target_link_libraries(subtrspectrum ${CASA_LIBS} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${CBLAS_LIB})
 target_link_libraries(spectrum ${CASA_LIBS} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${CBLAS_LIB})
 target_link_libraries(tests ${CASA_LIBS})
+target_link_libraries(testms ${CASA_LIBS} ${FFTW3_LIB} ${FITSIO_LIB})
 target_link_libraries(testbugcasams ${CASA_LIBS})
 target_link_libraries(uvdist ${CASA_LIBS})
 target_link_libraries(wsclean ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB} ${GSL_LIB} ${CBLAS_LIB})

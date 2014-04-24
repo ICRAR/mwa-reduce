@@ -827,7 +827,7 @@ void WSClean::performJoinedPolClean(size_t currentChannelIndex, bool& reachedMaj
 
 void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majorIterationNr)
 {
-	JoinedClean<joined_pol_clean::MultiImageSet>::ImageSet
+	JoinedClean<clean_algorithms::MultiImageSet>::ImageSet
 		modelSet(_imgWidth*_imgHeight, _channelsOut, _imageAllocator),
 		residualSet(_imgWidth*_imgHeight, _channelsOut, _imageAllocator);
 	
@@ -852,7 +852,7 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 	}
 
 	_cleaningWatch.Start();
-	static_cast<JoinedClean<joined_pol_clean::MultiImageSet>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
+	static_cast<JoinedClean<clean_algorithms::MultiImageSet>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	for(size_t ch=0; ch!=_channelsOut; ++ch)
