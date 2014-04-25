@@ -15,6 +15,7 @@ class JoinedClean : public CleanAlgorithm
 public:
 	void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain);
 	typedef ImageSetType ImageSet;
+	
 private:
 	size_t _width, _height;
 	

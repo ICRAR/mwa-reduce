@@ -3,8 +3,10 @@
 #include "fitswriter.h"
 #include "fftresampler.h"
 
-int main(int argc, char* argv[])
+void testSomeSpecifics(const std::string& imageName, const std::string& psfName)
 {
+	double scaleA = 100.0;
+	
 	ao::uvector<double> shape;
 	size_t n;
 	MultiScaleClean<>::MakeShapeFunction(200.0, shape, n);
@@ -28,7 +30,6 @@ int main(int argc, char* argv[])
 	MultiScaleClean<>::ConvolveSameSize(image.data(), kernel.data(), width, height);
 	fitsWriter.Write("testms-convolved2x.fits", image.data());
 	
-	const std::string& imageName(argv[1]), psfName(argv[2]);
 	FitsReader imgReader(imageName), psfReader(psfName);
 	width = imgReader.ImageWidth();
 	height = imgReader.ImageHeight();
@@ -38,24 +39,71 @@ int main(int argc, char* argv[])
 	psfReader.Read(psf.data());
 	
 	size_t rescaledWidth = width/4, rescaledHeight = height/4;
-	ao::uvector<double> rescaledImage(rescaledWidth * rescaledHeight), rescaledPsf(rescaledWidth * rescaledHeight);
+	ao::uvector<double> rescaledImageA(rescaledWidth * rescaledHeight), rescaledPsf(rescaledWidth * rescaledHeight);
 	FFTResampler resampler(width, height, rescaledWidth, rescaledHeight, 2);
-	resampler.AddTask(image.data(), rescaledImage.data());
+	resampler.AddTask(image.data(), rescaledImageA.data());
 	resampler.AddTask(psf.data(), rescaledPsf.data());
 	resampler.Start();
 	resampler.Finish();
+	ao::uvector<double> rescaledImageB(rescaledImageA);
 	
 	width = rescaledWidth; height = rescaledHeight;
 	kernel.resize(width*height);
+	
+	MultiScaleClean<>::MakeShapeFunction(scaleA, shape, n);
 	MultiScaleClean<>::PrepareKernel(kernel.data(), width, height, shape.data(), n);
 	
 	fitsWriter.SetImageDimensions(width, height);
-	fitsWriter.Write("testms-input.fits", rescaledImage.data());
-	MultiScaleClean<>::ConvolveSameSize(rescaledImage.data(), kernel.data(), width, height);
-	fitsWriter.Write("testms-input-convolved.fits", rescaledImage.data());
+	fitsWriter.Write("testms-input.fits", rescaledImageA.data());
 	fitsWriter.Write("testms-psf.fits", rescaledPsf.data());
+	
+	MultiScaleClean<>::ConvolveSameSize(rescaledImageA.data(), kernel.data(), width, height);
+	fitsWriter.Write("testms-input-convolvedA.fits", rescaledImageA.data());
 	MultiScaleClean<>::ConvolveSameSize(rescaledPsf.data(), kernel.data(), width, height);
-	fitsWriter.Write("testms-psf-convolved.fits", rescaledPsf.data());
+	fitsWriter.Write("testms-psf-convolvedA.fits", rescaledPsf.data());
 	MultiScaleClean<>::ConvolveSameSize(rescaledPsf.data(), kernel.data(), width, height);
-	fitsWriter.Write("testms-psf-convolved2x.fits", rescaledPsf.data());
+	fitsWriter.Write("testms-psf-convolvedA2x.fits", rescaledPsf.data());
+	
+	MultiScaleClean<>::MakeShapeFunction(scaleA*0.5, shape, n);
+	MultiScaleClean<>::PrepareKernel(kernel.data(), width, height, shape.data(), n);
+	
+	MultiScaleClean<>::ConvolveSameSize(rescaledImageB.data(), kernel.data(), width, height);
+	fitsWriter.Write("testms-input-convolvedB.fits", rescaledImageB.data());
+}
+
+int main(int argc, char* argv[])
+{
+	const std::string& imageName(argv[1]), psfName(argv[2]);
+	
+	//testSomeSpecifics(imageName, psfName);
+	
+	FitsReader imgReader(imageName), psfReader(psfName);
+	
+	/**
+	 * The real cleaning
+	 */
+	size_t width = imgReader.ImageWidth();
+	size_t height = imgReader.ImageHeight();
+	ao::uvector<double> psf(width*height);
+	psfReader.Read(psf.data());
+	
+	ImageBufferAllocator<double> allocator;
+	MultiScaleClean<clean_algorithms::SingleImageSet> msClean(imgReader.BeamMinorAxisRad(), imgReader.PixelSizeX(), imgReader.PixelSizeY());
+	clean_algorithms::SingleImageSet
+		imageSet(width*height, allocator),
+		modelSet(width*height, allocator);
+	imgReader.Read(imageSet.GetImage(0));
+	memset(modelSet.GetImage(0), 0, sizeof(double)*width*height);
+	std::vector<double*> psfs(1, psf.data());
+	
+	bool reachedStopGain = false;
+	msClean.SetSubtractionGain(0.1);
+	msClean.SetThreshold(0.8);
+	msClean.SetMaxNIter(10000);
+	msClean.ExecuteMajorIteration(imageSet, modelSet, psfs, width, height, reachedStopGain);
+	
+	FitsWriter writer;
+	writer.SetImageDimensions(width, height);
+	writer.Write("multiscale-model.fits", modelSet.GetImage(0));
+	writer.Write("multiscale-residual.fits", imageSet.GetImage(0));
 }

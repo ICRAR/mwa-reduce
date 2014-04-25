@@ -8,6 +8,94 @@
 
 namespace clean_algorithms {
 		
+	class SingleImageSet {
+	public:
+		struct Value {
+			double value;
+			Value() { }
+			Value(double _value) : value(_value) { }
+			double GetValue(size_t i) { 
+				return value;
+			}
+			static Value Zero() { return Value(0.0); }
+		};
+		
+		double *image;
+		
+		SingleImageSet(size_t size, SingleImageSet& prototype) :
+			image(prototype._allocator->Allocate(size)),
+			_allocator(prototype._allocator)
+		{
+		}
+		
+		SingleImageSet(size_t size, ImageBufferAllocator<double>& allocator) :
+			image(allocator.Allocate(size)),
+			_allocator(&allocator)
+		{
+		}
+		
+		~SingleImageSet()
+		{
+			_allocator->Free(image);
+		}
+		
+		void Load(CachedImageSet& set, PolarizationEnum pol, size_t freqIndex)
+		{
+			set.Load(image, pol, freqIndex, false);
+		}
+		
+		void Store(CachedImageSet& set, PolarizationEnum pol, size_t freqIndex) const
+		{
+			set.Store(image, pol, freqIndex, false);
+		}
+		
+		Value Get(size_t pixelIndex) const
+		{
+			return Value(image[pixelIndex]);
+		}
+		
+		double JoinedValue(size_t pixelIndex) const
+		{
+			return image[pixelIndex];
+		}
+		
+		double JoinedValueNormalized(size_t pixelIndex) const
+		{
+			return image[pixelIndex];
+		}
+		
+		double AbsJoinedValue(size_t pixelIndex) const
+		{
+			return fabs(image[pixelIndex]);
+		}
+		
+		bool IsComponentNegative(size_t pixelIndex) const
+		{
+			return image[pixelIndex]<0.0;
+		}
+		
+		void AddComponent(const SingleImageSet& source, size_t pixelIndex, double factor)
+		{
+			image[pixelIndex] += source.image[pixelIndex] * factor;
+		}
+		
+		size_t ImageCount() const { return 1; }
+		
+		static size_t StaticImageCount() { return 1; }
+		
+		double* GetImage(size_t imageIndex)
+		{
+			return image;
+		}
+		static size_t PSFIndex(size_t imageIndex)
+		{
+			return 0;
+		}
+		ImageBufferAllocator<double>* Allocator() { return _allocator; }
+	private:
+		ImageBufferAllocator<double> *_allocator;
+	};
+	
 	class PolarizedImageSet {
 	public:
 		struct Value {
@@ -30,6 +118,15 @@ namespace clean_algorithms {
 		};
 		
 		double *xx, *xyr, *xyi, *yy;
+		
+		PolarizedImageSet(size_t size, PolarizedImageSet& prototype) :
+			xx(prototype._allocator->Allocate(size)),
+			xyr(prototype._allocator->Allocate(size)),
+			xyi(prototype._allocator->Allocate(size)),
+			yy(prototype._allocator->Allocate(size)),
+			_allocator(prototype._allocator)
+		{
+		}
 		
 		PolarizedImageSet(size_t size, ImageBufferAllocator<double>& allocator) :
 			xx(allocator.Allocate(size)),
@@ -100,6 +197,11 @@ namespace clean_algorithms {
 			return sqrt(SquaredSum(index));
 		}
 		
+		double AbsJoinedValue(size_t index) const
+		{
+			return SquaredSum(index);
+		}
+		
 		double SquaredSum(size_t index) const
 		{
 			return
@@ -134,6 +236,7 @@ namespace clean_algorithms {
 		{
 			return 0;
 		}
+		ImageBufferAllocator<double>* Allocator() { return _allocator; }
 	private:
 		ImageBufferAllocator<double> *_allocator;
 	};
@@ -148,6 +251,15 @@ namespace clean_algorithms {
 			}
 			static Value Zero() { return Value(); }
 		};
+		
+		MultiImageSet(size_t imageSize, MultiImageSet& prototype)
+		{
+			for(size_t i=0; i!=_sets.size(); ++i)
+			{
+				_sets.push_back(new PolarizedImageSet(imageSize, *prototype.Allocator()));
+			}
+		}
+		
 		MultiImageSet(size_t imageSize, size_t count, ImageBufferAllocator<double>& allocator)
 		{
 			for(size_t i=0; i!=count; ++i)
@@ -199,6 +311,11 @@ namespace clean_algorithms {
 			return JoinedValue(index) / _sets.size();
 		}
 		
+		double AbsJoinedValue(size_t index) const
+		{
+			return JoinedValue(index);
+		}
+		
 		bool IsComponentNegative(size_t index) const
 		{
 			for(std::vector<PolarizedImageSet*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
@@ -240,6 +357,10 @@ namespace clean_algorithms {
 		static size_t PSFIndex(size_t imageIndex)
 		{
 			return imageIndex/4;
+		}
+		ImageBufferAllocator<double>* Allocator()
+		{ 
+			return _sets.front()->Allocator();
 		}
 	private:
 		std::vector<PolarizedImageSet*> _sets;

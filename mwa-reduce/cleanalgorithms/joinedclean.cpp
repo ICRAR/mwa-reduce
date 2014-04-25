@@ -3,8 +3,6 @@
 #include "../lane.h"
 
 #include <boost/thread/thread.hpp>
-#include <emmintrin.h>
-#include <immintrin.h>
 
 template<typename ImageSetType>
 void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain)
@@ -46,7 +44,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		threadGroup.add_thread(new boost::thread(&JoinedClean::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
 	
-	while(peakNormalized > firstThreshold && _iterationNumber < _maxIter && !(dataImage.IsComponentNegative(peakIndex) && _stopOnNegativeComponent))
+	while(fabs(peakNormalized) > firstThreshold && _iterationNumber < _maxIter && !(dataImage.IsComponentNegative(peakIndex) && _stopOnNegativeComponent))
 	{
 		if(_iterationNumber <= 10 ||
 			(_iterationNumber <= 100 && _iterationNumber % 10 == 0) ||
@@ -101,7 +99,7 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 	
 	for(size_t index=0; index!=lastIndex; ++index)
 	{
-		double value = image.JoinedValue(index);
+		double value = image.AbsJoinedValue(index);
 		if(std::isfinite(value))
 		{
 			if(value > peakMax)
@@ -130,7 +128,7 @@ void JoinedClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane, a
 		
 		CleanResult result;
 		findPeak(*cleanData.dataImage, result.nextPeakX, result.nextPeakY, cleanData.startY, cleanData.endY);
-		result.peakLevelUnnormalized = cleanData.dataImage->JoinedValue(result.nextPeakX + result.nextPeakY*_width);
+		result.peakLevelUnnormalized = cleanData.dataImage->AbsJoinedValue(result.nextPeakX + result.nextPeakY*_width);
 		
 		resultLane->write(result);
 	}
@@ -148,3 +146,4 @@ std::string JoinedClean<ImageSetType>::peakDescription(const ImageSetType& image
 
 template class JoinedClean<clean_algorithms::PolarizedImageSet>;
 template class JoinedClean<clean_algorithms::MultiImageSet>;
+template class JoinedClean<clean_algorithms::SingleImageSet>;
