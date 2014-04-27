@@ -13,6 +13,7 @@
 #include "cleanalgorithms/cleanalgorithm.h"
 #include "cleanalgorithms/joinedclean.h"
 #include "cleanalgorithms/simpleclean.h"
+#include "cleanalgorithms/multiscaleclean.h"
 
 #include "msprovider/contiguousms.h"
 
@@ -37,6 +38,7 @@ WSClean::WSClean() :
 	_prefixName("wsclean"),
 	_allowNegative(true), _smallPSF(false), _smallInversion(false), _stopOnNegative(false), _makePSF(false),
 	_forceReorder(false), _forceNoReorder(false), _joinedPolarizationCleaning(false), _joinedFrequencyCleaning(false),
+	_mfsWeighting(false), _multiscale(false),
 	_gridMode(LayeredImager::KaiserBessel),
 	_filenames(),
 	_commandLine(),
@@ -308,16 +310,34 @@ void WSClean::initializeCleanAlgorithm()
 {
 	freeCleanAlgorithms();
 	size_t count = 0;
+	double beamSize = _inversionAlgorithm->BeamSize();
 	if(_joinedPolarizationCleaning)
 	{
 		_cleanAlgorithms.resize(1);
-		_cleanAlgorithms[0] = new JoinedClean<>();
+		if(_joinedFrequencyCleaning)
+		{
+			if(_multiscale)
+				_cleanAlgorithms[0] = new MultiScaleClean<clean_algorithms::MultiImageSet>(beamSize, _pixelScaleX, _pixelScaleY);
+			else
+				_cleanAlgorithms[0] = new JoinedClean<clean_algorithms::MultiImageSet>();
+		}
+		else {
+			if(_multiscale)
+				_cleanAlgorithms[0] = new MultiScaleClean<clean_algorithms::PolarizedImageSet>(beamSize, _pixelScaleX, _pixelScaleY);
+			else
+				_cleanAlgorithms[0] = new JoinedClean<clean_algorithms::PolarizedImageSet>();
+		}
 		count = 1;
 	}
 	else {
 		_cleanAlgorithms.resize(_polarizations.size());
 		for(size_t p=0; p!=_polarizations.size(); ++p)
-			_cleanAlgorithms[p] = new SimpleClean();
+		{
+			if(_multiscale)
+				_cleanAlgorithms[p] = new MultiScaleClean<clean_algorithms::SingleImageSet>(beamSize, _pixelScaleX, _pixelScaleY);
+			else
+				_cleanAlgorithms[p] = new SimpleClean();
+		}
 		count = _polarizations.size();
 	}
 	for(size_t p=0; p!=count; ++p)
@@ -578,36 +598,43 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 				
 				for(std::vector<bool>::const_iterator isImaginary=imaginaryStates.begin(); isImaginary!=imaginaryStates.end(); ++isImaginary)
 				{
-					Model model;
-					if(!_addModelFilename.empty())
-					{
-						std::cout << "Reading model from " << _addModelFilename << "... " << std::flush;
-						model = Model(_addModelFilename.c_str());
-					}
 					double* modelImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
 					_modelImages.Load(modelImage, *curPol, currentChannelIndex, *isImaginary);
-					// A model cannot hold instrumental pols (xx/xy/yx/yy), hence always use Stokes I here
-					CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, 0.0, _fitsWriter.Frequency(), Polarization::StokesI);
-					_imageAllocator.Free(modelImage);
-					
-					if(!_saveModelFilename.empty())
-					{
-						std::cout << "Saving model to " << _saveModelFilename << "... " << std::flush;
-						model.Save(_saveModelFilename.c_str());
-					}
-				
-					ModelRenderer renderer(_fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY);
-					double freqLow = curBand.LowestFrequency(), freqHigh = curBand.HighestFrequency();
 					double* restoredImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
 					_residualImages.Load(restoredImage, *curPol, currentChannelIndex, *isImaginary);
-					std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
-					renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, Polarization::StokesI);
-					std::cout << "DONE\n";
+					ModelRenderer renderer(_fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY);
+					if(_multiscale)
+					{
+						std::cout << "Rendering sources to restored image... " << std::flush;
+						renderer.Restore(restoredImage, modelImage, _imgWidth, _imgHeight, _fitsWriter.BeamSizeMajorAxis(), Polarization::StokesI);
+						std::cout << "DONE\n";
+					}
+					else {
+						Model model;
+						if(!_addModelFilename.empty())
+						{
+							std::cout << "Reading model from " << _addModelFilename << "... " << std::flush;
+							model = Model(_addModelFilename.c_str());
+						}
+						// A model cannot hold instrumental pols (xx/xy/yx/yy), hence always use Stokes I here
+						CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, 0.0, _fitsWriter.Frequency(), Polarization::StokesI);
+						
+						if(!_saveModelFilename.empty())
+						{
+							std::cout << "Saving model to " << _saveModelFilename << "... " << std::flush;
+							model.Save(_saveModelFilename.c_str());
+						}
 					
+						double freqLow = curBand.LowestFrequency(), freqHigh = curBand.HighestFrequency();
+						std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
+						renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, Polarization::StokesI);
+						std::cout << "DONE\n";
+					}
 					std::cout << "Writing restored image... " << std::flush;
 					writeFits("image.fits", restoredImage, *curPol, currentChannelIndex, *isImaginary);
 					std::cout << "DONE\n";
 					_imageAllocator.Free(restoredImage);
+					_imageAllocator.Free(modelImage);
 				}
 			}
 		}
@@ -714,19 +741,24 @@ void WSClean::performClean(size_t currentChannelIndex, bool& reachedMajorThresho
 
 void WSClean::performSimpleClean(CleanAlgorithm& cleanAlgorithm, size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr, PolarizationEnum polarization)
 {
+	clean_algorithms::SingleImageSet
+		residualImage(_imgWidth*_imgHeight, _imageAllocator),
+		modelImage(_imgWidth*_imgHeight, _imageAllocator);
 	double
-		*residualImage = _imageAllocator.Allocate(_imgWidth*_imgHeight),
-		*modelImage = _imageAllocator.Allocate(_imgWidth*_imgHeight),
 		*psfImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
-	_residualImages.Load(residualImage, polarization, 0, false);
-	_modelImages.Load(modelImage, polarization, 0, false);
+	_residualImages.Load(residualImage.Data(), polarization, 0, false);
+	_modelImages.Load(modelImage.Data(), polarization, 0, false);
 	_psfImages.Load(psfImage, polarization, 0, false);
 	
 	_cleaningWatch.Start();
-	static_cast<SimpleClean&>(cleanAlgorithm).ExecuteMajorIteration(residualImage, modelImage, psfImage, _imgWidth, _imgHeight, reachedMajorThreshold);
+
+	std::vector<double*> psfs(1, psfImage);
+	TypedCleanAlgorithm<clean_algorithms::SingleImageSet>& tAlgorithm =
+		static_cast<TypedCleanAlgorithm<clean_algorithms::SingleImageSet>&>(cleanAlgorithm);
+	tAlgorithm.ExecuteMajorIteration(residualImage, modelImage, psfs, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
-	_modelImages.Store(modelImage, polarization, 0, false);
+	_modelImages.Store(modelImage.Data(), polarization, 0, false);
 	
 	updateCleanParameters(_fitsWriter, cleanAlgorithm.IterationNumber(), majorIterationNr);
 	
@@ -735,29 +767,27 @@ void WSClean::performSimpleClean(CleanAlgorithm& cleanAlgorithm, size_t currentC
 		if(_mGain == 1.0)
 		{
 			std::cout << "Writing residual image... " << std::flush;
-			writeFits("residual.fits", residualImage, polarization, currentChannelIndex, false);
+			writeFits("residual.fits", residualImage.Data(), polarization, currentChannelIndex, false);
 		}
 		else {
 			std::cout << "Writing first iteration image... " << std::flush;
-			writeFits("first-residual.fits", residualImage, polarization, currentChannelIndex, false);
+			writeFits("first-residual.fits", residualImage.Data(), polarization, currentChannelIndex, false);
 		}
 		std::cout << "DONE\n";
 	}
 	if(!reachedMajorThreshold)
 	{
 		std::cout << "Writing model image... " << std::flush;
-		writeFits("model.fits", modelImage, polarization, currentChannelIndex, false);
+		writeFits("model.fits", modelImage.Data(), polarization, currentChannelIndex, false);
 		std::cout << "DONE\n";
 	}
 	
-	_imageAllocator.Free(residualImage);
-	_imageAllocator.Free(modelImage);
 	_imageAllocator.Free(psfImage);
 }
 
 void WSClean::performJoinedPolClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr)
 {
-	JoinedClean<>::ImageSet
+	JoinedClean<clean_algorithms::PolarizedImageSet>::ImageSet
 		modelSet(_imgWidth*_imgHeight, _imageAllocator),
 		residualSet(_imgWidth*_imgHeight, _imageAllocator);
 	
@@ -778,7 +808,7 @@ void WSClean::performJoinedPolClean(size_t currentChannelIndex, bool& reachedMaj
 	}
 
 	_cleaningWatch.Start();
-	static_cast<JoinedClean<>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
+	static_cast<TypedCleanAlgorithm<clean_algorithms::PolarizedImageSet>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	_imageAllocator.Free(psfImage);
@@ -852,7 +882,7 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 	}
 
 	_cleaningWatch.Start();
-	static_cast<JoinedClean<clean_algorithms::MultiImageSet>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
+	static_cast<TypedCleanAlgorithm<clean_algorithms::MultiImageSet>&>(*_cleanAlgorithms[0]).ExecuteMajorIteration(residualSet, modelSet, psfImages, _imgWidth, _imgHeight, reachedMajorThreshold);
 	_cleaningWatch.Pause();
 	
 	for(size_t ch=0; ch!=_channelsOut; ++ch)

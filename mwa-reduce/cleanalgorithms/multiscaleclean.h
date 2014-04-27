@@ -8,7 +8,7 @@
 #include "../uvector.h"
 
 template<typename ImageSetType = clean_algorithms::PolarizedImageSet>
-class MultiScaleClean : public CleanAlgorithm
+class MultiScaleClean : public TypedCleanAlgorithm<ImageSetType>
 {
 public:
 	MultiScaleClean(double beamSize, double pixelSizeX, double pixelSizeY) :
@@ -19,7 +19,7 @@ public:
 		_pixelSizeY(pixelSizeY)
 	{ }
 	
-	void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain);
+	virtual void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain);
 	
 	static void MakeShapeFunction(double scaleSizeInPixels, ao::uvector<double>& output, size_t& n)
 	{
@@ -28,11 +28,6 @@ public:
 		shapeFunction(n, output, scaleSizeInPixels);
 	}
 	
-	static void Convolve(double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize);
-	static void PrepareKernel(double* dest, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize);
-	static void PrepareForConvolution(double* dest, const double* source, size_t imgWidth, size_t imgHeight);
-	static void ConvolveSameSize(double* image, const double* kernel, size_t imgWidth, size_t imgHeight);
-	
 private:
 	size_t _originalWidth, _originalHeight;
 	size_t _rescaledWidth, _rescaledHeight;
@@ -40,7 +35,7 @@ private:
 	ImageSetType *_dataImageLargeScale, *_dataImageNextScale, *_dataImageOriginal, *_modelImage;
 	std::vector<double*> *_originalPsfs, *_scaledPsfs;
 	
-	void executeMajorIterationForScale(double currentScale, double nextScale, bool& reachedStopGain);
+	void executeMajorIterationForScale(double currentScale, double nextScale, bool& reachedStopGain, bool& canCleanFurther);
 	
 	static double scaleBiasFunction(double smallerScale, double largerScale)
 	{

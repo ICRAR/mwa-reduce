@@ -379,7 +379,7 @@ void SimpleClean::ExecuteMajorIteration(double* dataImage, double* modelImage, c
 		delete resultLanes[i];
 	}
 	std::cout << "Stopped on peak " << peak << '\n';
-	reachedStopGain = fabs(peak) < stopGainThreshold;
+	reachedStopGain = fabs(peak) <= stopGainThreshold;
 }
 
 void SimpleClean::cleanThreadFunc(ao::lane<CleanTask> *taskLane, ao::lane<CleanResult> *resultLane, CleanThreadData cleanData)

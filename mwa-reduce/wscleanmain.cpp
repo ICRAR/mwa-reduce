@@ -101,6 +101,8 @@ int main(int argc, char *argv[])
 			"\t   Default: off, unless -joinchannels is specified.\n"
 			"\t-nomfsweighting\n"
 			"\t   Opposite of -mfsweighting; can be used to turn off MFS weighting in -joinchannels mode.\n"
+			"\t-multiscale\n"
+			"\t   Clean on different scales. This is a new experimental algorithm. Default: off.\n"
 			"\t-addmodel <modelfile>\n"
 			"\t-addmodelapp <modelfile>\n"
 			"\t-savemodel <modelfile>\n"
@@ -266,6 +268,10 @@ int main(int argc, char *argv[])
 		else if(param == "mfsweighting")
 		{
 			mfsWeighting = true;
+		}
+		else if(param == "multiscale")
+		{
+			wsclean.SetMultiscale(true);
 		}
 		else if(param == "nomfsweighting")
 		{

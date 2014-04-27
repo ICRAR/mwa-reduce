@@ -52,6 +52,7 @@ public:
 	void SetChannelsOut(size_t channelsOut) { _channelsOut = channelsOut; }
 	void SetJoinPolarizations(bool joinPolarizations) { _joinedPolarizationCleaning = joinPolarizations; }
 	void SetJoinChannels(bool joinChannels) { _joinedFrequencyCleaning = joinChannels; }
+	void SetMultiscale(bool multiscale) { _multiscale = multiscale; }
 	void SetMFSWeighting(bool mfsWeighting) { _mfsWeighting = mfsWeighting; }
 	void SetWeightMode(enum WeightMode::WeightingEnum weighting) {
 		_weightMode.SetMode(WeightMode(weighting));
@@ -152,7 +153,7 @@ private:
 	WeightMode _weightMode;
 	std::string _prefixName;
 	bool _allowNegative, _smallPSF, _smallInversion, _addApparentModel, _stopOnNegative, _makePSF;
-	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning, _mfsWeighting;
+	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning, _mfsWeighting, _multiscale;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;
 	std::string _commandLine;

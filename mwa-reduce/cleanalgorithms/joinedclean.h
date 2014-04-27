@@ -9,12 +9,11 @@ namespace ao {
 	template<typename T> class lane;
 }
 
-template<typename ImageSetType = clean_algorithms::PolarizedImageSet>
-class JoinedClean : public CleanAlgorithm
+template<typename ImageSetType>
+class JoinedClean : public TypedCleanAlgorithm<ImageSetType>
 {
 public:
-	void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain);
-	typedef ImageSetType ImageSet;
+	virtual void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain);
 	
 private:
 	size_t _width, _height;

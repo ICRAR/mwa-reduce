@@ -54,6 +54,7 @@ public:
 		AddTask(input, output);
 		_tasks.write_end();
 		runThread();
+		_tasks.clear();
 	}
 	
 private:

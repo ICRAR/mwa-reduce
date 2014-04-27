@@ -20,8 +20,6 @@ namespace clean_algorithms {
 			static Value Zero() { return Value(0.0); }
 		};
 		
-		double *image;
-		
 		SingleImageSet(size_t size, SingleImageSet& prototype) :
 			image(prototype._allocator->Allocate(size)),
 			_allocator(prototype._allocator)
@@ -92,7 +90,11 @@ namespace clean_algorithms {
 			return 0;
 		}
 		ImageBufferAllocator<double>* Allocator() { return _allocator; }
+		
+		double* Data() { return image; }
 	private:
+		double *image;
+		
 		ImageBufferAllocator<double> *_allocator;
 	};
 	
@@ -116,8 +118,6 @@ namespace clean_algorithms {
 				return zero;
 			}
 		};
-		
-		double *xx, *xyr, *xyi, *yy;
 		
 		PolarizedImageSet(size_t size, PolarizedImageSet& prototype) :
 			xx(prototype._allocator->Allocate(size)),
@@ -238,6 +238,8 @@ namespace clean_algorithms {
 		}
 		ImageBufferAllocator<double>* Allocator() { return _allocator; }
 	private:
+		double *xx, *xyr, *xyi, *yy;
+		
 		ImageBufferAllocator<double> *_allocator;
 	};
 	
@@ -254,7 +256,7 @@ namespace clean_algorithms {
 		
 		MultiImageSet(size_t imageSize, MultiImageSet& prototype)
 		{
-			for(size_t i=0; i!=_sets.size(); ++i)
+			for(size_t i=0; i!=prototype._sets.size(); ++i)
 			{
 				_sets.push_back(new PolarizedImageSet(imageSize, *prototype.Allocator()));
 			}

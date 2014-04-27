@@ -7,6 +7,10 @@
 #include <stdexcept>
 #include <mutex>
 
+//#define USE_DIRECT_ALLOCATOR
+
+#ifndef USE_DIRECT_ALLOCATOR
+
 template<typename NumType>
 class ImageBufferAllocator
 {
@@ -210,5 +214,38 @@ private:
 	size_t _nReal, _nComplex, _nRealMax, _nComplexMax, _previousSize;
 	mutable std::mutex _mutex;
 };
+
+#else // USE_DIRECT_ALLOCATOR
+
+template<typename NumType>
+class ImageBufferAllocator
+{
+public:
+	void ReportStatistics() const
+	{
+	}
+	
+	NumType* Allocate(size_t size)
+	{
+		return new NumType[size];
+	}
+	
+	std::complex<NumType>* AllocateComplex(size_t size)
+	{
+		return new std::complex<NumType>[size];
+	}
+	
+	void Free(NumType* buffer)
+	{
+		delete[] buffer;
+	}
+	
+	void Free(std::complex<NumType>* buffer)
+	{
+		delete[] buffer;
+	}
+};
+
+#endif // USE_DIRECT_ALLOCATOR
 
 #endif
