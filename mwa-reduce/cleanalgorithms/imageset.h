@@ -20,8 +20,6 @@ namespace clean_algorithms {
 			static Value Zero() { return Value(0.0); }
 		};
 		
-		double *image;
-		
 		SingleImageSet(size_t size, SingleImageSet& prototype) :
 			image(prototype._allocator->Allocate(size)),
 			_allocator(prototype._allocator)
@@ -92,98 +90,115 @@ namespace clean_algorithms {
 			return 0;
 		}
 		ImageBufferAllocator<double>* Allocator() { return _allocator; }
+		
+		double* Data() { return image; }
 	private:
+		double *image;
+		
 		ImageBufferAllocator<double> *_allocator;
 	};
 	
+	template<size_t PolCount>
 	class PolarizedImageSet {
 	public:
 		struct Value {
-			double xx, xyr, xyi, yy;
+			double data[PolCount];
 			double GetValue(size_t i) { 
-				switch(i) {
-					default:
-					case 0: return xx;
-					case 1: return xyr;
-					case 2: return xyi;
-					case 3: return yy;
-				}
+				return data[i];
 			}
 			static Value Zero() {
 				Value zero;
-				zero.xx = 0.0; zero.xyr = 0.0;
-				zero.xyi = 0.0; zero.yy = 0.0;
+				for(size_t i=0; i!=PolCount; ++i)
+					zero.data[i] = 0.0;
 				return zero;
 			}
 		};
 		
-		double *xx, *xyr, *xyi, *yy;
-		
-		PolarizedImageSet(size_t size, PolarizedImageSet& prototype) :
-			xx(prototype._allocator->Allocate(size)),
-			xyr(prototype._allocator->Allocate(size)),
-			xyi(prototype._allocator->Allocate(size)),
-			yy(prototype._allocator->Allocate(size)),
+		PolarizedImageSet(size_t size, PolarizedImageSet<PolCount>& prototype) :
 			_allocator(prototype._allocator)
 		{
+			for(size_t i=0; i!=PolCount; ++i)
+				images[i] = _allocator->Allocate(size);
 		}
 		
 		PolarizedImageSet(size_t size, ImageBufferAllocator<double>& allocator) :
-			xx(allocator.Allocate(size)),
-			xyr(allocator.Allocate(size)),
-			xyi(allocator.Allocate(size)),
-			yy(allocator.Allocate(size)),
 			_allocator(&allocator)
 		{
+			for(size_t i=0; i!=PolCount; ++i)
+				images[i] = _allocator->Allocate(size);
 		}
 		
 		~PolarizedImageSet()
 		{
-			_allocator->Free(xx);
-			_allocator->Free(xyr);
-			_allocator->Free(xyi);
-			_allocator->Free(yy);
+			for(size_t i=0; i!=PolCount; ++i)
+				_allocator->Free(images[i]);
 		}
 		
 		void LoadLinear(CachedImageSet& set, size_t freqIndex)
 		{
-			set.Load(xx, PolarizationEnum::XX, freqIndex, false);
-			set.Load(xyr, PolarizationEnum::XY, freqIndex, false);
-			set.Load(xyi, PolarizationEnum::XY, freqIndex, true);
-			set.Load(yy, PolarizationEnum::YY, freqIndex, false);
+			if(PolCount == 2)
+			{
+				set.Load(images[0], PolarizationEnum::XX, freqIndex, false);
+				set.Load(images[1], PolarizationEnum::YY, freqIndex, false);
+			}
+			else if(PolCount == 4)
+			{
+				set.Load(images[0], PolarizationEnum::XX, freqIndex, false);
+				set.Load(images[1], PolarizationEnum::XY, freqIndex, false);
+				set.Load(images[2], PolarizationEnum::XY, freqIndex, true);
+				set.Load(images[3], PolarizationEnum::YY, freqIndex, false);
+			}
 		}
 		
 		void LoadStokes(CachedImageSet& set, size_t freqIndex)
 		{
-			set.Load(xx, PolarizationEnum::StokesI, freqIndex, false);
-			set.Load(xyr, PolarizationEnum::StokesQ, freqIndex, false);
-			set.Load(xyi, PolarizationEnum::StokesU, freqIndex, false);
-			set.Load(yy, PolarizationEnum::StokesV, freqIndex, false);
+			if(PolCount == 4)
+			{
+				set.Load(images[0], PolarizationEnum::StokesI, freqIndex, false);
+				set.Load(images[1], PolarizationEnum::StokesQ, freqIndex, false);
+				set.Load(images[2], PolarizationEnum::StokesU, freqIndex, false);
+				set.Load(images[3], PolarizationEnum::StokesV, freqIndex, false);
+			}
+			else {
+				throw std::runtime_error("Can only joinedly clean 4 stokes images at once");
+			}
 		}
 		
 		void StoreLinear(CachedImageSet& set, size_t freqIndex) const
 		{
-			set.Store(xx, PolarizationEnum::XX, freqIndex, false);
-			set.Store(xyr, PolarizationEnum::XY, freqIndex, false);
-			set.Store(xyi, PolarizationEnum::XY, freqIndex, true);
-			set.Store(yy, PolarizationEnum::YY, freqIndex, false);
+			if(PolCount == 2)
+			{
+				set.Store(images[0], PolarizationEnum::XX, freqIndex, false);
+				set.Store(images[1], PolarizationEnum::YY, freqIndex, false);
+			}
+			else if(PolCount == 4)
+			{
+				set.Store(images[0], PolarizationEnum::XX, freqIndex, false);
+				set.Store(images[1], PolarizationEnum::XY, freqIndex, false);
+				set.Store(images[2], PolarizationEnum::XY, freqIndex, true);
+				set.Store(images[3], PolarizationEnum::YY, freqIndex, false);
+			}
 		}
 		
 		void StoreStokes(CachedImageSet& set, size_t freqIndex) const
 		{
-			set.Store(xx, PolarizationEnum::StokesI, freqIndex, false);
-			set.Store(xyr, PolarizationEnum::StokesQ, freqIndex, false);
-			set.Store(xyi, PolarizationEnum::StokesU, freqIndex, false);
-			set.Store(yy, PolarizationEnum::StokesV, freqIndex, false);
+			if(PolCount == 4)
+			{
+				set.Store(images[0], PolarizationEnum::StokesI, freqIndex, false);
+				set.Store(images[1], PolarizationEnum::StokesQ, freqIndex, false);
+				set.Store(images[2], PolarizationEnum::StokesU, freqIndex, false);
+				set.Store(images[3], PolarizationEnum::StokesV, freqIndex, false);
+			}
+			else {
+				throw std::runtime_error("Can only joinedly clean 4 stokes images at once");
+			}
 		}
 		
 		Value Get(size_t index) const
 		{
 			Value v;
-			v.xx = xx[index];
-			v.xyr = xyr[index];
-			v.xyi = xyi[index];
-			v.yy = yy[index];
+			for(size_t i=0; i!=PolCount; ++i)
+				v.data[i] = images[i][index];
 			return v;
 		}
 		
@@ -204,33 +219,46 @@ namespace clean_algorithms {
 		
 		double SquaredSum(size_t index) const
 		{
-			return
-				xx[index]*xx[index] +
-				xyr[index]*xyr[index] + xyi[index]*xyi[index] +
-				yy[index]*yy[index];
+			if(PolCount == 4)
+			{
+				return
+					images[0][index]*images[0][index] +
+					images[1][index]*images[1][index] + images[2][index]*images[2][index] +
+					images[3][index]*images[3][index];
+			}
+			else {
+				double sum = 0.0;
+				for(size_t i=0; i!=PolCount; ++i)
+					sum += images[i][index]*images[i][index];
+				return sum;
+			}
 		}
 		
 		bool IsComponentNegative(size_t index) const
 		{
-			return xx[index]<0.0 || yy[index]<0.0;
+			if(PolCount == 4)
+				return images[0][index]<0.0 || images[3][index]<0.0;
+			else if(PolCount == 2)
+				return images[0][index]<0.0 || images[1][index]<0.0;
+			else if(PolCount == 1)
+				return images[0][index]<0.0;
+			else
+				return false;
 		}
 		
 		void AddComponent(const PolarizedImageSet& source, size_t index, double factor)
 		{
-			xx[index] += source.xx[index] * factor;
-			xyr[index] += source.xyr[index] * factor;
-			xyi[index] += source.xyi[index] * factor;
-			yy[index] += source.yy[index] * factor;
+			for(size_t i=0; i!=PolCount; ++i)
+				images[i][index] += source.images[i][index] * factor;
 		}
 		
-		size_t ImageCount() const { return 4; }
+		size_t ImageCount() const { return PolCount; }
 		
-		static size_t StaticImageCount() { return 4; }
+		static size_t StaticImageCount() { return PolCount; }
 		
 		double* GetImage(size_t imageIndex)
 		{
-			double* vals[4] = { xx, xyr, xyi, yy };
-			return vals[imageIndex];
+			return images[imageIndex];
 		}
 		static size_t PSFIndex(size_t imageIndex)
 		{
@@ -238,25 +266,28 @@ namespace clean_algorithms {
 		}
 		ImageBufferAllocator<double>* Allocator() { return _allocator; }
 	private:
+		double *images[PolCount];
+		
 		ImageBufferAllocator<double> *_allocator;
 	};
 	
+	template<typename SingleImageSetType>
 	class MultiImageSet {
 	public:
 		struct Value {
-			std::vector<PolarizedImageSet::Value> values;
+			std::vector<typename SingleImageSetType::Value> values;
 			double GetValue(size_t i)
 			{
-				return values[i/4].GetValue(i%4);
+				return values[i/SingleImageSetType::StaticImageCount()].GetValue(i%SingleImageSetType::StaticImageCount());
 			}
 			static Value Zero() { return Value(); }
 		};
 		
 		MultiImageSet(size_t imageSize, MultiImageSet& prototype)
 		{
-			for(size_t i=0; i!=_sets.size(); ++i)
+			for(size_t i=0; i!=prototype._sets.size(); ++i)
 			{
-				_sets.push_back(new PolarizedImageSet(imageSize, *prototype.Allocator()));
+				_sets.push_back(new SingleImageSetType(imageSize, *prototype.Allocator()));
 			}
 		}
 		
@@ -264,13 +295,13 @@ namespace clean_algorithms {
 		{
 			for(size_t i=0; i!=count; ++i)
 			{
-				_sets.push_back(new PolarizedImageSet(imageSize, allocator));
+				_sets.push_back(new SingleImageSetType(imageSize, allocator));
 			}
 		}
 		
 		~MultiImageSet()
 		{
-			for(std::vector<PolarizedImageSet*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
+			for(typename std::vector<SingleImageSetType*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
 			{
 				delete *i;
 			}
@@ -299,7 +330,7 @@ namespace clean_algorithms {
 		double JoinedValue(size_t index) const
 		{
 			double val = 0.0;
-			for(std::vector<PolarizedImageSet*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
+			for(typename std::vector<SingleImageSetType*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
 			{
 				val += (*i)->JoinedValueNormalized(index);
 			}
@@ -318,7 +349,7 @@ namespace clean_algorithms {
 		
 		bool IsComponentNegative(size_t index) const
 		{
-			for(std::vector<PolarizedImageSet*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
+			for(typename std::vector<SingleImageSetType*>::const_iterator i=_sets.begin(); i!=_sets.end(); ++i)
 			{
 				if((*i)->IsComponentNegative(index)) return true;
 			}
@@ -342,11 +373,11 @@ namespace clean_algorithms {
 			return v;
 		}
 		
-		size_t ImageCount() const { return PolarizedImageSet::StaticImageCount() * _sets.size(); }
+		size_t ImageCount() const { return SingleImageSetType::StaticImageCount() * _sets.size(); }
 		
 		double* GetImage(size_t imageIndex)
 		{
-			return _sets[imageIndex/4]->GetImage(imageIndex%4);
+			return _sets[imageIndex/SingleImageSetType::StaticImageCount()]->GetImage(imageIndex%SingleImageSetType::StaticImageCount());
 		}
 		
 		double* GetImage(size_t polIndex, size_t freqIndex)
@@ -356,14 +387,14 @@ namespace clean_algorithms {
 		
 		static size_t PSFIndex(size_t imageIndex)
 		{
-			return imageIndex/4;
+			return imageIndex/SingleImageSetType::StaticImageCount();
 		}
 		ImageBufferAllocator<double>* Allocator()
 		{ 
 			return _sets.front()->Allocator();
 		}
 	private:
-		std::vector<PolarizedImageSet*> _sets;
+		std::vector<SingleImageSetType*> _sets;
 	};	
 }
 

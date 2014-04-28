@@ -5,12 +5,13 @@
 #include <cmath>
 
 #include "cleanalgorithm.h"
+#include "imageset.h"
 
 namespace ao {
 	template<typename T> class lane;
 }
 
-class SimpleClean : public CleanAlgorithm
+class SimpleClean : public TypedCleanAlgorithm<clean_algorithms::SingleImageSet>
 {
 	public:
 #ifdef __AVX__
@@ -100,6 +101,11 @@ class SimpleClean : public CleanAlgorithm
 		 * Single threaded implementation -- just for reference.
 		 */
 		void ExecuteMajorIterationST(double *dataImage, double *modelImage, const double *psfImage, size_t width, size_t height);
+		
+    virtual void ExecuteMajorIteration(ImageSet& dataImage, ImageSet& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain)
+		{
+			ExecuteMajorIteration(dataImage.GetImage(0), modelImage.GetImage(0), psfImages[0], width, height, reachedStopGain);
+		}
 		
 		void ExecuteMajorIteration(double* dataImage, double* modelImage, const double* psfImage, size_t width, size_t height, bool& reachedStopGain);
 	private:

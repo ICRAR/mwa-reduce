@@ -3,148 +3,17 @@
 
 #include "../lane.h"
 #include "../fftresampler.h"
+#include "../fftconvolver.h"
 
 #include <boost/thread/thread.hpp>
-
-#include <fftw3.h>
 
 #include <iostream>
 
 template<typename ImageSetType>
-void MultiScaleClean<ImageSetType>::Convolve(double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
-{
-	ao::uvector<double> scaledKernel(imgWidth * imgHeight, 0.0);
-	PrepareKernel(scaledKernel.data(), imgWidth, imgHeight, kernel, kernelSize);
-	ConvolveSameSize(image, scaledKernel.data(), imgWidth, imgHeight);
-}
-
-template<typename ImageSetType>
-void MultiScaleClean<ImageSetType>::PrepareKernel(double* dest, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
-{
-	if(kernelSize > imgWidth || kernelSize > imgHeight)
-		throw std::runtime_error("Kernel size > image dimension");
-	const double* kernelIter = kernel;
-	for(size_t y=0; y!=kernelSize/2; ++y)
-	{
-		size_t destY = imgHeight - kernelSize/2 + y;
-		size_t firstX = imgWidth - kernelSize/2;
-		double *destIter = &dest[destY * imgWidth + firstX];
-		for(size_t x=0; x!=kernelSize/2; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-		destIter = &dest[destY * imgWidth];
-		for(size_t x=kernelSize/2; x!=kernelSize; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-	}
-	for(size_t y=kernelSize/2; y!=kernelSize; ++y)
-	{
-		size_t firstX = imgWidth - kernelSize/2;
-		double *destIter = &dest[firstX + (y-kernelSize/2)*imgWidth];
-		for(size_t x=0; x!=kernelSize/2; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-		destIter = &dest[(y-kernelSize/2)*imgWidth];
-		for(size_t x=kernelSize/2; x!=kernelSize; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-	}
-}
-
-template<typename ImageSetType>
-void MultiScaleClean<ImageSetType>::PrepareForConvolution(double* dest, const double* source, size_t imgWidth, size_t imgHeight)
-{
-	const double* sourceIter = source;
-	for(size_t y=0; y!=imgHeight/2; ++y)
-	{
-		size_t destY = imgHeight - imgHeight/2 + y;
-		size_t firstX = imgWidth - imgWidth/2;
-		double *destIter = &dest[destY * imgWidth + firstX];
-		for(size_t x=0; x!=imgWidth/2; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-		destIter = &dest[destY * imgWidth];
-		for(size_t x=imgWidth/2; x!=imgWidth; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-	}
-	for(size_t y=imgHeight/2; y!=imgHeight; ++y)
-	{
-		size_t firstX = imgWidth - imgWidth/2;
-		double *destIter = &dest[firstX + (y-imgHeight/2)*imgWidth];
-		for(size_t x=0; x!=imgWidth/2; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-		destIter = &dest[(y-imgHeight/2)*imgWidth];
-		for(size_t x=imgWidth/2; x!=imgWidth; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-	}
-}
-
-template<typename ImageSetType>
-void MultiScaleClean<ImageSetType>::ConvolveSameSize(double* image, const double* kernel, size_t imgWidth, size_t imgHeight)
-{
-	const size_t imgSize = imgWidth * imgHeight;
-	double* tempData = reinterpret_cast<double*>(fftw_malloc(imgSize * sizeof(double)));
-	fftw_complex* fftImageData = reinterpret_cast<fftw_complex*>(fftw_malloc(imgSize * sizeof(fftw_complex)));
-	fftw_complex* fftKernelData = reinterpret_cast<fftw_complex*>(fftw_malloc(imgSize * sizeof(fftw_complex)));
-	fftw_plan inToFPlan = fftw_plan_dft_r2c_2d(imgHeight, imgWidth, tempData, fftImageData, FFTW_ESTIMATE);
-	fftw_plan fToOutPlan = fftw_plan_dft_c2r_2d(imgHeight, imgWidth, fftImageData, tempData, FFTW_ESTIMATE);
-	
-	std::cout << "FFT " << imgWidth << " x " << imgHeight << " real -> complex...\n";
-	memcpy(tempData, image, imgSize * sizeof(double));
-	fftw_execute_dft_r2c(inToFPlan, tempData, reinterpret_cast<fftw_complex*>(fftImageData));
-	
-	std::cout << "FFT " << imgWidth << " x " << imgHeight << " real -> complex...\n";
-	memcpy(tempData, kernel, imgSize * sizeof(double));
-	fftw_execute_dft_r2c(inToFPlan, tempData, reinterpret_cast<fftw_complex*>(fftKernelData));
-	
-	double fact = 1.0/imgSize;
-	for(size_t i=0; i!=imgSize; ++i)
-		reinterpret_cast<std::complex<double>*>(fftImageData)[i] *= fact * reinterpret_cast<std::complex<double>*>(fftKernelData)[i];
-		
-	std::cout << "FFT " << imgWidth << " x " << imgHeight << " complex -> real...\n";
-	fftw_execute_dft_c2r(fToOutPlan, reinterpret_cast<fftw_complex*>(fftImageData), tempData);
-	memcpy(image, tempData, imgSize * sizeof(double));
-		
-	fftw_free(fftImageData);
-	fftw_free(fftKernelData);
-	fftw_free(tempData);
-	
-	fftw_destroy_plan(inToFPlan);
-	fftw_destroy_plan(fToOutPlan);
-}
-
-template<typename ImageSetType>
 void MultiScaleClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain)
 {
-	if(_stopOnNegativeComponent)
-		_allowNegativeComponents = true;
+	if(this->_stopOnNegativeComponent)
+		this->_allowNegativeComponents = true;
 	_originalWidth = width;
 	_originalHeight = height;
 	
@@ -154,30 +23,44 @@ void MultiScaleClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImag
 	
 	_minScale = 4.0 * _beamSize / _pixelSizeX;
 	double currentScale = _startScale;
+	reachedStopGain = true;
+	size_t iterationsAtStart = this->_iterationNumber;
 	do {
 		double nextScale = currentScale*0.5;
-		std::cout << "Current scale: " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << currentScale << " pixels).\n";
-		executeMajorIterationForScale(currentScale, nextScale, reachedStopGain);
-		std::cout << "Finished scale " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << currentScale << " pixels), progressing to next scale.\n";
+		std::cout << "Current scale: " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << round(currentScale) << " pixels).\n";
+		bool reachedStopGainOnCurrentScale, canCleanFurther;
+		size_t iterationsAtStartOfThisScale = this->_iterationNumber;
+		executeMajorIterationForScale(currentScale, nextScale, reachedStopGainOnCurrentScale, canCleanFurther);
+		std::cout << "Finished scale " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << round(currentScale) << " pixels), " << (this->_iterationNumber-iterationsAtStartOfThisScale) << " iterations performed, progressing to next scale.\n";
+		if(canCleanFurther)
+			reachedStopGain = reachedStopGain && reachedStopGainOnCurrentScale;
 		currentScale = nextScale;
-	} while(_iterationNumber < _maxIter && currentScale >= _minScale);
+	} while(this->_iterationNumber < this->_maxIter && currentScale >= _minScale);
 	
-	if(_iterationNumber < _maxIter)
+	if(this->_iterationNumber < this->_maxIter)
 	{
 		std::cout << "Minimum scale reached, finishing cleaning with delta functions.\n";
 		// Finish off with normal clean
 		JoinedClean<ImageSetType> joinedClean;
-		joinedClean.SetMaxNIter(_maxIter - _iterationNumber);
-		joinedClean.SetThreshold(Threshold());
-		joinedClean.SetAllowNegativeComponents(AllowNegativeComponents());
-		joinedClean.SetStopGain(StopGain());
-		joinedClean.SetSubtractionGain(SubtractionGain());
-		joinedClean.ExecuteMajorIteration(dataImage, modelImage, psfImages, width, height, reachedStopGain);
+		joinedClean.SetMaxNIter(this->_maxIter);
+		joinedClean.SetThreshold(this->Threshold());
+		joinedClean.SetAllowNegativeComponents(this->AllowNegativeComponents());
+		joinedClean.SetStopGain(this->StopGain());
+		joinedClean.SetSubtractionGain(this->SubtractionGain());
+		joinedClean.SetIterationNumber(this->_iterationNumber);
+		bool reachedStopGainOnCurrentScale;
+		joinedClean.ExecuteMajorIteration(dataImage, modelImage, psfImages, width, height, reachedStopGainOnCurrentScale);
+		reachedStopGain = reachedStopGainOnCurrentScale;
+		this->_iterationNumber = joinedClean.IterationNumber();
 	}
+	if(reachedStopGain)
+		std::cout << "Multiscale clean finished this major iteration after " << this->_iterationNumber-iterationsAtStart << " iterations; continuing after prediction/inversion round.\n";
+	else
+		std::cout << "Multiscale clean performed " << this->_iterationNumber-iterationsAtStart << " in this iteration. Absolute stopping criteria reached.\n";
 }
 
 template<typename ImageSetType>
-void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double currentScale, double nextScale, bool& reachedStopGain)
+void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double currentScale, double nextScale, bool& reachedStopGain, bool& canCleanFurther)
 {
 	ImageBufferAllocator<double>& allocator = *_dataImageOriginal->Allocator();
 	// Scale down the image so that the "scale size" is 10 pixels
@@ -201,15 +84,16 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	_dataImageNextScale = &nextScaleImage;
 	_scaledPsfs = &scaledPsfs;
 	
+	canCleanFurther = true;
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	
 	double thresholdBias = pow(0.5/*scaleBiasFunction(nextScale, currentScale)*/, log2(currentScale/_minScale));
 	std::cout << "Threshold bias: " << thresholdBias << '\n';
-	double oldSubtractionGain = _subtractionGain;
-	_subtractionGain *= thresholdBias;
+	double oldSubtractionGain = this->_subtractionGain;
+	this->_subtractionGain *= sqrt(thresholdBias);
 	
 	// Fill the large and next scale images with the rescaled images
-	FFTResampler imageResampler(_originalWidth, _originalHeight, _rescaledWidth, _rescaledHeight, cpuCount);
+	FFTResampler imageResampler(_originalWidth, _originalHeight, _rescaledWidth, _rescaledHeight, cpuCount, false);
 	imageResampler.Start();
 	for(size_t i=0; i!=_dataImageOriginal->ImageCount(); ++i)
 		imageResampler.AddTask(_dataImageOriginal->GetImage(i), largeScaleImage.GetImage(i));
@@ -230,31 +114,29 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	ao::uvector<double> shape;
 	size_t kernelSize;
 	MakeShapeFunction(currentScale * rescaleFactor, shape, kernelSize);
-	std::cout << "Kernel size = " << kernelSize << '\n';
 	memset(kernelImage, 0, sizeof(double) * _rescaledWidth * _rescaledHeight);
-	PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
+	FFTConvolver::PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
 	for(size_t i=0; i!=largeScaleImage.ImageCount(); ++i)
-		ConvolveSameSize(largeScaleImage.GetImage(i), kernelImage, _rescaledWidth, _rescaledHeight);
+		FFTConvolver::ConvolveSameSize(largeScaleImage.GetImage(i), kernelImage, _rescaledWidth, _rescaledHeight);
 	for(size_t i=0; i!=scaledPsfs.size(); ++i) {
-		ConvolveSameSize(scaledPsfs[i], kernelImage, _rescaledWidth, _rescaledHeight);
-		ConvolveSameSize(scaledPsfs[i], kernelImage, _rescaledWidth, _rescaledHeight);
+		FFTConvolver::ConvolveSameSize(scaledPsfs[i], kernelImage, _rescaledWidth, _rescaledHeight);
+		FFTConvolver::ConvolveSameSize(scaledPsfs[i], kernelImage, _rescaledWidth, _rescaledHeight);
 	}
 	
 	MakeShapeFunction(nextScale * rescaleFactor, shape, kernelSize);
-	std::cout << "Kernel size = " << kernelSize << '\n';
 	memset(kernelImage, 0, sizeof(double) * _rescaledWidth * _rescaledHeight);
-	PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
+	FFTConvolver::PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
 	for(size_t i=0; i!=nextScaleImage.ImageCount(); ++i)
-		ConvolveSameSize(nextScaleImage.GetImage(i), kernelImage, _rescaledWidth, _rescaledHeight);
+		FFTConvolver::ConvolveSameSize(nextScaleImage.GetImage(i), kernelImage, _rescaledWidth, _rescaledHeight);
 	
-	FitsWriter writer;
-	writer.SetImageDimensions(_rescaledWidth, _rescaledHeight);
-	writer.Write("multiscale-kernel.fits", kernelImage);
-	writer.Write("multiscale-current-scale.fits", largeScaleImage.GetImage(0));
-	writer.Write("multiscale-next-scale.fits", nextScaleImage.GetImage(0));
-	writer.Write("multiscale-psf.fits", scaledPsfs[0]);
-	writer.SetImageDimensions(kernelSize, kernelSize);
-	writer.Write("multiscale-shape.fits", shape.data());
+	//FitsWriter writer;
+	//writer.SetImageDimensions(_rescaledWidth, _rescaledHeight);
+	//writer.Write("multiscale-kernel.fits", kernelImage);
+	//writer.Write("multiscale-current-scale.fits", largeScaleImage.GetImage(0));
+	//writer.Write("multiscale-next-scale.fits", nextScaleImage.GetImage(0));
+	//writer.Write("multiscale-psf.fits", scaledPsfs[0]);
+	//writer.SetImageDimensions(kernelSize, kernelSize);
+	//writer.Write("multiscale-shape.fits", shape.data());
 		
 	size_t componentX=0, componentY=0;
 	findPeak(componentX, componentY);
@@ -262,14 +144,15 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	
 	size_t peakIndex = componentX + componentY*_rescaledWidth;
 	double peakNormalized = _dataImageLargeScale->JoinedValueNormalized(peakIndex) * rescaleFactor * rescaleFactor;
-	double firstThreshold = _threshold, stopGainThreshold = peakNormalized*(1.0-_stopGain);
+	double firstThreshold = this->_threshold, stopGainThreshold = peakNormalized*(1.0-this->_stopGain)/thresholdBias;
+	std::cout << "Scale-adjusted threshold: " << firstThreshold*thresholdBias << ", major iteration stops at " << stopGainThreshold*thresholdBias << '\n';
 	if(stopGainThreshold > firstThreshold)
 	{
 		firstThreshold = stopGainThreshold;
-		std::cout << "Next major iteration at: " << stopGainThreshold << '\n';
+		std::cout << "Next major iteration for this scale at: " << stopGainThreshold << '\n';
 	}
-	else if(_stopGain != 1.0) {
-		std::cout << "Major iteration threshold reached global threshold of " << _threshold << ": final major iteration.\n";
+	else if(this->_stopGain != 1.0) {
+		std::cout << "Major iteration threshold reached global threshold of " << this->_threshold << " for this scale.\n";
 	}
 
 	std::vector<ao::lane<CleanTask>*> taskLanes(cpuCount);
@@ -286,13 +169,13 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 		threadGroup.add_thread(new boost::thread(&MultiScaleClean<ImageSetType>::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
 	
-	while(fabs(peakNormalized) > firstThreshold*thresholdBias && _iterationNumber < _maxIter && !(largeScaleImage.IsComponentNegative(peakIndex) && _stopOnNegativeComponent))
+	while(fabs(peakNormalized) > firstThreshold*thresholdBias && this->_iterationNumber < this->_maxIter && !(largeScaleImage.IsComponentNegative(peakIndex) && this->_stopOnNegativeComponent))
 	{
-		if(_iterationNumber <= 10 ||
-			(_iterationNumber <= 100 && _iterationNumber % 10 == 0) ||
-			(_iterationNumber <= 1000 && _iterationNumber % 100 == 0) ||
-			_iterationNumber % 1000 == 0)
-			std::cout << "Iteration " << _iterationNumber << ": " << peakDescription(largeScaleImage, componentX, componentY, rescaleFactor) << '\n';
+		if(this->_iterationNumber <= 10 ||
+			(this->_iterationNumber <= 100 && this->_iterationNumber % 10 == 0) ||
+			(this->_iterationNumber <= 1000 && this->_iterationNumber % 100 == 0) ||
+			this->_iterationNumber % 1000 == 0)
+			std::cout << "Iteration " << this->_iterationNumber << ": " << peakDescription(largeScaleImage, componentX, componentY, rescaleFactor) << '\n';
 		
 		CleanTask task;
 		task.cleanCompX = componentX;
@@ -301,7 +184,7 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 		for(size_t i=0; i!=cpuCount; ++i)
 			taskLanes[i]->write(task);
 		
-		currentScaleModel.AddComponent(largeScaleImage, peakIndex, _subtractionGain * rescaleFactor * rescaleFactor);
+		currentScaleModel.AddComponent(largeScaleImage, peakIndex, this->_subtractionGain * rescaleFactor * rescaleFactor);
 		
 		double peakUnnormalized = 0.0;
 		for(size_t i=0; i!=cpuCount; ++i)
@@ -318,12 +201,13 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 		if(peakUnnormalized == 0.0)
 		{
 			std::cout << "No more components found at current scale: continuing to next scale.\n";
+			canCleanFurther = false;
 			break;
 		}
 		peakIndex = componentX + componentY*_rescaledWidth;
 		peakNormalized = largeScaleImage.JoinedValueNormalized(peakIndex) * rescaleFactor * rescaleFactor;
 		
-		++_iterationNumber;
+		++this->_iterationNumber;
 	}
 	for(size_t i=0; i!=cpuCount; ++i)
 		taskLanes[i]->write_end();
@@ -334,24 +218,23 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 		delete resultLanes[i];
 	}
 	std::cout << "Stopped on peak " << peakNormalized << '\n';
-	reachedStopGain = peakNormalized < stopGainThreshold;
+	reachedStopGain = fabs(peakNormalized) <= stopGainThreshold*thresholdBias;
 	
 	for(size_t i=0; i!=scaledPsfs.size(); ++i)
 		allocator.Free(scaledPsfs[i]);
 	
 	MakeShapeFunction(currentScale * rescaleFactor, shape, kernelSize);
-	std::cout << "Kernel size = " << kernelSize << '\n';
 	memset(kernelImage, 0, sizeof(double) * _rescaledWidth * _rescaledHeight);
-	PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
+	FFTConvolver::PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
 	
 	double* convolvedModel = allocator.Allocate(_originalWidth * _originalHeight);
 	double* preparedPsf = allocator.Allocate(_originalWidth * _originalHeight);
-	FFTResampler modelResampler(_rescaledWidth, _rescaledHeight, _originalWidth, _originalHeight, cpuCount);
+	FFTResampler modelResampler(_rescaledWidth, _rescaledHeight, _originalWidth, _originalHeight, cpuCount, false);
 	for(size_t i=0; i!=currentScaleModel.ImageCount(); ++i)
 	{
-		ConvolveSameSize(currentScaleModel.GetImage(i), kernelImage, _rescaledWidth, _rescaledHeight);
-		writer.SetImageDimensions(_rescaledWidth, _rescaledHeight);
-		writer.Write("multiscale-model-small.fits", currentScaleModel.GetImage(i));
+		FFTConvolver::ConvolveSameSize(currentScaleModel.GetImage(i), kernelImage, _rescaledWidth, _rescaledHeight);
+		//writer.SetImageDimensions(_rescaledWidth, _rescaledHeight);
+		//writer.Write("multiscale-model-small.fits", currentScaleModel.GetImage(i));
 		modelResampler.RunSingle(currentScaleModel.GetImage(i), convolvedModel);
 		double *modelPtr = convolvedModel;
 		double *dest = _modelImage->GetImage(i), *destEnd = dest + _originalWidth*_originalHeight;
@@ -360,10 +243,8 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 			++modelPtr;
 			++dest;
 		}
-		PrepareForConvolution(preparedPsf, (*_originalPsfs)[_modelImage->PSFIndex(i)], _originalWidth, _originalHeight);
-		ConvolveSameSize(convolvedModel, preparedPsf, _originalWidth, _originalHeight);
-		writer.SetImageDimensions(_originalWidth, _originalHeight);
-		writer.Write("multiscale-model-dirty.fits", convolvedModel);
+		FFTConvolver::PrepareForConvolution(preparedPsf, (*_originalPsfs)[_modelImage->PSFIndex(i)], _originalWidth, _originalHeight);
+		FFTConvolver::ConvolveSameSize(convolvedModel, preparedPsf, _originalWidth, _originalHeight);
 		dest = _dataImageOriginal->GetImage(i);
 		destEnd = dest + _originalWidth*_originalHeight;
 		modelPtr = convolvedModel;
@@ -377,11 +258,7 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	allocator.Free(convolvedModel);
 	allocator.Free(kernelImage);
 	
-	writer.SetImageDimensions(_rescaledWidth, _rescaledHeight);
-	writer.Write("multiscale-cscale-cleaned.fits", largeScaleImage.GetImage(0));
-	writer.Write("multiscale-nscale-cleaned.fits", nextScaleImage.GetImage(0));
-
-	_subtractionGain = oldSubtractionGain;
+	this->_subtractionGain = oldSubtractionGain;
 }
 
 template<typename ImageSetType>
@@ -392,28 +269,34 @@ void MultiScaleClean<ImageSetType>::findPeak(size_t& x, size_t& y, size_t startY
 	size_t peakIndex = lastIndex;
 	
 	const double scaleBias = scaleBiasFunction(1.0, 2.0);
-	
-	for(size_t index=0; index!=lastIndex; ++index)
+	const size_t horBorderSize = _rescaledWidth*5/100, verBorderSize = _rescaledHeight*5/100;
+	const size_t xiStart = horBorderSize, xiEnd = _rescaledWidth - horBorderSize;
+	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _rescaledHeight - verBorderSize);
+	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
-		double value = _dataImageLargeScale->JoinedValue(index);
-		if(std::isfinite(value) && fabs(value) > peakMax)
+		size_t index=yi*_rescaledWidth + xiStart;
+		for(size_t xi=xiStart; xi!=xiEnd; ++xi)
 		{
-			double valueNextScale = _dataImageNextScale->JoinedValue(index);
-			if(value < 0.0)
+			double value = _dataImageLargeScale->JoinedValue(index);
+			if(std::isfinite(value) && fabs(value) > peakMax)
 			{
-				value = -value;
-				valueNextScale = -valueNextScale;
+				double valueNextScale = _dataImageNextScale->JoinedValue(index);
+				if(value < 0.0)
+				{
+					value = -value;
+					valueNextScale = -valueNextScale;
+				}
+				if(std::isfinite(valueNextScale) && value > valueNextScale * scaleBias)
+				{
+					peakIndex = index;
+					peakMax = value;
+				}
 			}
-			if(std::isfinite(valueNextScale) && value > valueNextScale * scaleBias)
-			{
-				peakIndex = index;
-				peakMax = value;
-			}
+			++index;
 		}
 	}
 	if(peakIndex == lastIndex)
 	{
-		std::cout << "not found.\n";
 		x = _rescaledWidth;
 		y = _rescaledHeight;
 	}
@@ -436,11 +319,11 @@ void MultiScaleClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLan
 	{
 		for(size_t i=0; i!=imageSet.ImageCount(); ++i)
 		{
-			subtractImage(imageSet.GetImage(i), psfs[ImageSetType::PSFIndex(i)], task.cleanCompX, task.cleanCompY, _subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
+			subtractImage(imageSet.GetImage(i), psfs[ImageSetType::PSFIndex(i)], task.cleanCompX, task.cleanCompY, this->_subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
 		}
 		for(size_t i=0; i!=nextScaleSet.ImageCount(); ++i)
 		{
-			subtractImage(nextScaleSet.GetImage(i), psfs[ImageSetType::PSFIndex(i)], task.cleanCompX, task.cleanCompY, _subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
+			subtractImage(nextScaleSet.GetImage(i), psfs[ImageSetType::PSFIndex(i)], task.cleanCompX, task.cleanCompY, this->_subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
 		}
 		
 		CleanResult result;
@@ -464,7 +347,8 @@ std::string MultiScaleClean<ImageSetType>::peakDescription(const ImageSetType& i
 	return str.str();
 }
 
-
-template class MultiScaleClean<clean_algorithms::PolarizedImageSet>;
-template class MultiScaleClean<clean_algorithms::MultiImageSet>;
+template class MultiScaleClean<clean_algorithms::PolarizedImageSet<2>>;
+template class MultiScaleClean<clean_algorithms::PolarizedImageSet<4>>;
+template class MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>;
+template class MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<4>>>;
 template class MultiScaleClean<clean_algorithms::SingleImageSet>;

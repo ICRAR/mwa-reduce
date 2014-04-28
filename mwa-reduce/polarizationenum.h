@@ -180,11 +180,7 @@ public:
 	static bool HasFullPolarization(const std::set<PolarizationEnum>& polarizations)
 	{
 		return
-			(polarizations.count(XX)>0 && polarizations.count(XY)>0 &&
-			 polarizations.count(YX)>0 && polarizations.count(YY)>0)
-			||
-			(polarizations.count(StokesI)>0 && polarizations.count(StokesQ)>0 &&
-			 polarizations.count(StokesU)>0 && polarizations.count(StokesV)>0)
+			HasFullLinearPolarization(polarizations) || HasFullStokesPolarization(polarizations)
 			||
 			(polarizations.count(RR)>0 && polarizations.count(RL)>0 &&
 			 polarizations.count(LR)>0 && polarizations.count(LL)>0);
@@ -202,6 +198,17 @@ public:
 		return
 			(polarizations.count(StokesI)>0 && polarizations.count(StokesQ)>0 &&
 			 polarizations.count(StokesU)>0 && polarizations.count(StokesV)>0);
+	}
+	
+	static bool HasDualPolarization(const std::set<PolarizationEnum>& polarizations)
+	{
+		return HasDualLinearPolarization(polarizations) ||
+			(polarizations.count(RR)>0 && polarizations.count(LL)>0);
+	}
+	
+	static bool HasDualLinearPolarization(const std::set<PolarizationEnum>& polarizations)
+	{
+		return (polarizations.count(XX)>0 && polarizations.count(YY)>0);
 	}
 	
 	static bool IsComplex(PolarizationEnum polarization)

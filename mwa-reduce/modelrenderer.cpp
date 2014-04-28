@@ -4,6 +4,8 @@
 #include "modelrenderer.h"
 #include "model.h"
 #include "imagecoordinates.h"
+#include "uvector.h"
+#include "fftconvolver.h"
 
 template<typename T>
 T ModelRenderer::gaus(T x, T sigma) const
@@ -70,6 +72,39 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 			}
 		}
 	}
+}
+
+template void ModelRenderer::Restore(double* imageData, double* modelData, size_t imageWidth, size_t imageHeight, long double beamSize, PolarizationEnum polarization);
+
+template<typename NumType>
+void ModelRenderer::Restore(NumType* imageData, NumType* modelData, size_t imageWidth, size_t imageHeight, long double beamSize, PolarizationEnum polarization)
+{
+	// Using the FWHM formula for a Gaussian:
+	long double sigma = beamSize / (2.0L * sqrtl(2.0L * logl(2.0L)));
+	
+	size_t minDimension = std::min(imageWidth, imageHeight);
+	size_t boundingBoxSize = std::min<size_t>(ceil(sigma * 40.0 / std::min(_pixelScaleL, _pixelScaleM)), minDimension);
+	if(boundingBoxSize%2==0) ++boundingBoxSize;
+	ao::uvector<NumType> kernel(boundingBoxSize*boundingBoxSize);
+	typename ao::uvector<NumType>::iterator i=kernel.begin();
+	for(size_t y=0; y!=boundingBoxSize; ++y)
+	{
+		for(size_t x=0; x!=boundingBoxSize; ++x)
+		{
+			long double l, m;
+			ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, boundingBoxSize, boundingBoxSize, l, m);
+			long double dist = sqrt(l*l + m*m);
+			*i = gaus(dist, sigma);
+			++i;
+		}
+	}
+	
+	ao::uvector<NumType> convolvedModel(imageWidth*imageHeight);
+	memcpy(convolvedModel.data(), modelData, sizeof(NumType)*imageWidth*imageHeight);
+	
+	FFTConvolver::Convolve(convolvedModel.data(), imageWidth, imageHeight, kernel.data(), boundingBoxSize);
+	for(size_t j=0; j!=imageWidth*imageHeight; ++j)
+		imageData[j] += convolvedModel[j];
 }
 
 template void ModelRenderer::RenderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization);

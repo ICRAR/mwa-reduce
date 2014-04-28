@@ -7,8 +7,8 @@
 template<typename ImageSetType>
 void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain)
 {
-	if(_stopOnNegativeComponent)
-		_allowNegativeComponents = true;
+	if(this->_stopOnNegativeComponent)
+		this->_allowNegativeComponents = true;
 	_width = width;
 	_height = height;
 	
@@ -18,14 +18,14 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 	
 	size_t peakIndex = componentX + componentY*_width;
 	double peakNormalized = dataImage.JoinedValueNormalized(peakIndex);
-	double firstThreshold = _threshold, stopGainThreshold = peakNormalized*(1.0-_stopGain);
+	double firstThreshold = this->_threshold, stopGainThreshold = peakNormalized*(1.0-this->_stopGain);
 	if(stopGainThreshold > firstThreshold)
 	{
 		firstThreshold = stopGainThreshold;
 		std::cout << "Next major iteration at: " << stopGainThreshold << '\n';
 	}
-	else if(_stopGain != 1.0) {
-		std::cout << "Major iteration threshold reached global threshold of " << _threshold << ": final major iteration.\n";
+	else if(this->_stopGain != 1.0) {
+		std::cout << "Major iteration threshold reached global threshold of " << this->_threshold << ": final major iteration.\n";
 	}
 
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
@@ -44,13 +44,13 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		threadGroup.add_thread(new boost::thread(&JoinedClean::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
 	
-	while(fabs(peakNormalized) > firstThreshold && _iterationNumber < _maxIter && !(dataImage.IsComponentNegative(peakIndex) && _stopOnNegativeComponent))
+	while(fabs(peakNormalized) > firstThreshold && this->_iterationNumber < this->_maxIter && !(dataImage.IsComponentNegative(peakIndex) && this->_stopOnNegativeComponent))
 	{
-		if(_iterationNumber <= 10 ||
-			(_iterationNumber <= 100 && _iterationNumber % 10 == 0) ||
-			(_iterationNumber <= 1000 && _iterationNumber % 100 == 0) ||
-			_iterationNumber % 1000 == 0)
-			std::cout << "Iteration " << _iterationNumber << ": " << peakDescription(dataImage, componentX, componentY) << '\n';
+		if(this->_iterationNumber <= 10 ||
+			(this->_iterationNumber <= 100 && this->_iterationNumber % 10 == 0) ||
+			(this->_iterationNumber <= 1000 && this->_iterationNumber % 100 == 0) ||
+			this->_iterationNumber % 1000 == 0)
+			std::cout << "Iteration " << this->_iterationNumber << ": " << peakDescription(dataImage, componentX, componentY) << '\n';
 		
 		CleanTask task;
 		task.cleanCompX = componentX;
@@ -59,7 +59,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		for(size_t i=0; i!=cpuCount; ++i)
 			taskLanes[i]->write(task);
 		
-		modelImage.AddComponent(dataImage, peakIndex, _subtractionGain);
+		modelImage.AddComponent(dataImage, peakIndex, this->_subtractionGain);
 		
 		double peakUnnormalized = 0.0;
 		for(size_t i=0; i!=cpuCount; ++i)
@@ -76,7 +76,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		peakIndex = componentX + componentY*_width;
 		peakNormalized = dataImage.JoinedValueNormalized(peakIndex);
 		
-		++_iterationNumber;
+		++this->_iterationNumber;
 	}
 	for(size_t i=0; i!=cpuCount; ++i)
 		taskLanes[i]->write_end();
@@ -87,7 +87,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		delete resultLanes[i];
 	}
 	std::cout << "Stopped on peak " << peakNormalized << '\n';
-	reachedStopGain = peakNormalized < stopGainThreshold;
+	reachedStopGain = peakNormalized <= stopGainThreshold;
 }
 
 template<typename ImageSetType>
@@ -95,18 +95,24 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 {
 	double peakMax = std::numeric_limits<double>::min();
 	size_t peakIndex = 0;
-	const size_t lastIndex = _width*_height;
 	
-	for(size_t index=0; index!=lastIndex; ++index)
+	const size_t xiStart = 0, xiEnd = _width;
+	const size_t yiStart = startY, yiEnd = stopY;
+	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
-		double value = image.AbsJoinedValue(index);
-		if(std::isfinite(value))
+		size_t index=yi*_width + yiStart;
+		for(size_t xi=xiStart; xi!=xiEnd; ++xi)
 		{
-			if(value > peakMax)
+			double value = image.AbsJoinedValue(index);
+			if(std::isfinite(value))
 			{
-				peakIndex = index;
-				peakMax = value;
+				if(value > peakMax)
+				{
+					peakIndex = index;
+					peakMax = value;
+				}
 			}
+			++index;
 		}
 	}
 	x = peakIndex % _width;
@@ -123,7 +129,7 @@ void JoinedClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane, a
 	{
 		for(size_t i=0; i!=cleanData.dataImage->ImageCount(); ++i)
 		{
-			subtractImage(cleanData.dataImage->GetImage(i), cleanData.psfImages[ImageSetType::PSFIndex(i)], task.cleanCompX, task.cleanCompY, _subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
+			subtractImage(cleanData.dataImage->GetImage(i), cleanData.psfImages[ImageSetType::PSFIndex(i)], task.cleanCompX, task.cleanCompY, this->_subtractionGain * task.peak.GetValue(i), cleanData.startY, cleanData.endY);
 		}
 		
 		CleanResult result;
@@ -144,6 +150,8 @@ std::string JoinedClean<ImageSetType>::peakDescription(const ImageSetType& image
 	return str.str();
 }
 
-template class JoinedClean<clean_algorithms::PolarizedImageSet>;
-template class JoinedClean<clean_algorithms::MultiImageSet>;
+template class JoinedClean<clean_algorithms::PolarizedImageSet<2>>;
+template class JoinedClean<clean_algorithms::PolarizedImageSet<4>>;
+template class JoinedClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>;
+template class JoinedClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<4>>>;
 template class JoinedClean<clean_algorithms::SingleImageSet>;
