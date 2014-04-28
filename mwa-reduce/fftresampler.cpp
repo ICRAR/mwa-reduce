@@ -3,11 +3,12 @@
 #include <complex>
 #include <iostream>
 
-FFTResampler::FFTResampler(size_t inWidth, size_t inHeight, size_t outWidth, size_t outHeight, size_t cpuCount) :
+FFTResampler::FFTResampler(size_t inWidth, size_t inHeight, size_t outWidth, size_t outHeight, size_t cpuCount, bool verbose) :
 	_inputWidth(inWidth), _inputHeight(inHeight),
 	_outputWidth(outWidth), _outputHeight(outHeight),
 	_fftWidth(std::max(inWidth, outWidth)), _fftHeight(std::max(inHeight, outHeight)),
-	_tasks(cpuCount)
+	_tasks(cpuCount),
+	_verbose(verbose)
 {
 	double* inputData = reinterpret_cast<double*>(fftw_malloc(_fftWidth*_fftHeight * sizeof(double)));
 	fftw_complex* fftData = reinterpret_cast<fftw_complex*>(fftw_malloc(_fftWidth*_fftHeight * sizeof(fftw_complex)));
@@ -36,7 +37,8 @@ void FFTResampler::runThread()
 		size_t fftInWidth = _inputWidth/2+1;
 		std::complex<double>
 			*fftData = reinterpret_cast<std::complex<double>*>(fftw_malloc(fftInWidth*_inputHeight*sizeof(std::complex<double>)));
-		std::cout << "FFT " << _inputWidth << " x " << _inputHeight << " real -> complex...\n";
+		if(_verbose)
+			std::cout << "FFT " << _inputWidth << " x " << _inputHeight << " real -> complex...\n";
 		fftw_execute_dft_r2c(_inToFPlan, task.input, reinterpret_cast<fftw_complex*>(fftData));
 		
 		size_t fftOutWidth = _outputWidth/2+1;
@@ -86,7 +88,8 @@ void FFTResampler::runThread()
 		
 		fftw_free(fftData);
 		
-		std::cout << "FFT " << _outputWidth << " x " << _outputHeight << " complex -> real...\n";
+		if(_verbose)
+			std::cout << "FFT " << _outputWidth << " x " << _outputHeight << " complex -> real...\n";
 		fftw_execute_dft_c2r(_fToOutPlan, reinterpret_cast<fftw_complex*>(newfftData), task.output);
 		
 		fftw_free(newfftData);

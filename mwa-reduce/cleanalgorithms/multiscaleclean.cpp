@@ -92,7 +92,7 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	this->_subtractionGain *= sqrt(thresholdBias);
 	
 	// Fill the large and next scale images with the rescaled images
-	FFTResampler imageResampler(_originalWidth, _originalHeight, _rescaledWidth, _rescaledHeight, cpuCount);
+	FFTResampler imageResampler(_originalWidth, _originalHeight, _rescaledWidth, _rescaledHeight, cpuCount, false);
 	imageResampler.Start();
 	for(size_t i=0; i!=_dataImageOriginal->ImageCount(); ++i)
 		imageResampler.AddTask(_dataImageOriginal->GetImage(i), largeScaleImage.GetImage(i));
@@ -113,7 +113,6 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	ao::uvector<double> shape;
 	size_t kernelSize;
 	MakeShapeFunction(currentScale * rescaleFactor, shape, kernelSize);
-	std::cout << "Kernel size = " << kernelSize << '\n';
 	memset(kernelImage, 0, sizeof(double) * _rescaledWidth * _rescaledHeight);
 	FFTConvolver::PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
 	for(size_t i=0; i!=largeScaleImage.ImageCount(); ++i)
@@ -124,7 +123,6 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	}
 	
 	MakeShapeFunction(nextScale * rescaleFactor, shape, kernelSize);
-	std::cout << "Kernel size = " << kernelSize << '\n';
 	memset(kernelImage, 0, sizeof(double) * _rescaledWidth * _rescaledHeight);
 	FFTConvolver::PrepareKernel(kernelImage, _rescaledWidth, _rescaledHeight, shape.data(), kernelSize);
 	for(size_t i=0; i!=nextScaleImage.ImageCount(); ++i)
@@ -146,7 +144,7 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	size_t peakIndex = componentX + componentY*_rescaledWidth;
 	double peakNormalized = _dataImageLargeScale->JoinedValueNormalized(peakIndex) * rescaleFactor * rescaleFactor;
 	double firstThreshold = this->_threshold, stopGainThreshold = peakNormalized*(1.0-this->_stopGain)/thresholdBias;
-	std::cout << "Absolute threshold: " << firstThreshold << ", Major iteration stops at " << stopGainThreshold << '\n';
+	std::cout << "Scale-adjusted threshold: " << firstThreshold*thresholdBias << ", major iteration stops at " << stopGainThreshold*thresholdBias << '\n';
 	if(stopGainThreshold > firstThreshold)
 	{
 		firstThreshold = stopGainThreshold;
@@ -230,7 +228,7 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	
 	double* convolvedModel = allocator.Allocate(_originalWidth * _originalHeight);
 	double* preparedPsf = allocator.Allocate(_originalWidth * _originalHeight);
-	FFTResampler modelResampler(_rescaledWidth, _rescaledHeight, _originalWidth, _originalHeight, cpuCount);
+	FFTResampler modelResampler(_rescaledWidth, _rescaledHeight, _originalWidth, _originalHeight, cpuCount, false);
 	for(size_t i=0; i!=currentScaleModel.ImageCount(); ++i)
 	{
 		FFTConvolver::ConvolveSameSize(currentScaleModel.GetImage(i), kernelImage, _rescaledWidth, _rescaledHeight);
@@ -342,7 +340,8 @@ std::string MultiScaleClean<ImageSetType>::peakDescription(const ImageSetType& i
 	return str.str();
 }
 
-
-template class MultiScaleClean<clean_algorithms::PolarizedImageSet>;
-template class MultiScaleClean<clean_algorithms::MultiImageSet>;
+template class MultiScaleClean<clean_algorithms::PolarizedImageSet<2>>;
+template class MultiScaleClean<clean_algorithms::PolarizedImageSet<4>>;
+template class MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>;
+template class MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<4>>>;
 template class MultiScaleClean<clean_algorithms::SingleImageSet>;

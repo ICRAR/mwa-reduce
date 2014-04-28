@@ -10,7 +10,7 @@ void testSomeSpecifics(const std::string& imageName, const std::string& psfName)
 	
 	ao::uvector<double> shape;
 	size_t n;
-	MultiScaleClean<>::MakeShapeFunction(200.0, shape, n);
+	MultiScaleClean<clean_algorithms::SingleImageSet>::MakeShapeFunction(200.0, shape, n);
 	FitsWriter fitsWriter;
 	fitsWriter.SetImageDimensions(n, n);
 	fitsWriter.Write("testms-shape.fits", shape.data());
@@ -51,7 +51,7 @@ void testSomeSpecifics(const std::string& imageName, const std::string& psfName)
 	width = rescaledWidth; height = rescaledHeight;
 	kernel.resize(width*height);
 	
-	MultiScaleClean<>::MakeShapeFunction(scaleA, shape, n);
+	MultiScaleClean<clean_algorithms::SingleImageSet>::MakeShapeFunction(scaleA, shape, n);
 	FFTConvolver::PrepareKernel(kernel.data(), width, height, shape.data(), n);
 	
 	fitsWriter.SetImageDimensions(width, height);
@@ -65,7 +65,7 @@ void testSomeSpecifics(const std::string& imageName, const std::string& psfName)
 	FFTConvolver::ConvolveSameSize(rescaledPsf.data(), kernel.data(), width, height);
 	fitsWriter.Write("testms-psf-convolvedA2x.fits", rescaledPsf.data());
 	
-	MultiScaleClean<>::MakeShapeFunction(scaleA*0.5, shape, n);
+	MultiScaleClean<clean_algorithms::SingleImageSet>::MakeShapeFunction(scaleA*0.5, shape, n);
 	FFTConvolver::PrepareKernel(kernel.data(), width, height, shape.data(), n);
 	
 	FFTConvolver::ConvolveSameSize(rescaledImageB.data(), kernel.data(), width, height);
@@ -105,6 +105,7 @@ void testClean(const std::string& imageName, const std::string& psfName)
 	writer.Write("multiscale-residual.fits", imageSet.GetImage(0));
 }
 
+template<size_t PolCount>
 void testMultiClean(const std::string& imageName, const std::string& psfName)
 {
 	FitsReader imgReader(imageName), psfReader(psfName);
@@ -118,11 +119,11 @@ void testMultiClean(const std::string& imageName, const std::string& psfName)
 	psfReader.Read(psf.data());
 	
 	ImageBufferAllocator<double> allocator;
-	MultiScaleClean<clean_algorithms::MultiImageSet> msClean(imgReader.BeamMinorAxisRad(), imgReader.PixelSizeX(), imgReader.PixelSizeY());
-	clean_algorithms::MultiImageSet
+	MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<PolCount>>> msClean(imgReader.BeamMinorAxisRad(), imgReader.PixelSizeX(), imgReader.PixelSizeY());
+	clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<PolCount>>
 		imageSet(width*height, 2, allocator),
 		modelSet(width*height, 2, allocator);
-	for(size_t i=0; i!=8; ++i)
+	for(size_t i=0; i!=imageSet.ImageCount(); ++i)
 	{
 		imgReader.Read(imageSet.GetImage(i));
 		memset(modelSet.GetImage(i), 0, sizeof(double)*width*height);
@@ -147,6 +148,6 @@ int main(int argc, char* argv[])
 	
 	//testSomeSpecifics(imageName, psfName);
 	//testClean(imageName, psfName);
-	testMultiClean(imageName, psfName);
+	testMultiClean<2>(imageName, psfName);
 	
 }

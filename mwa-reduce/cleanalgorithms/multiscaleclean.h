@@ -7,7 +7,7 @@
 
 #include "../uvector.h"
 
-template<typename ImageSetType = clean_algorithms::PolarizedImageSet>
+template<typename ImageSetType>
 class MultiScaleClean : public TypedCleanAlgorithm<ImageSetType>
 {
 public:

@@ -17,7 +17,7 @@ private:
 	};
 	
 public:
-	FFTResampler(size_t inWidth, size_t inHeight, size_t outWidth, size_t outHeight, size_t cpuCount);
+	FFTResampler(size_t inWidth, size_t inHeight, size_t outWidth, size_t outHeight, size_t cpuCount, bool verbose=true);
 	
 	~FFTResampler()
 	{
@@ -68,6 +68,7 @@ private:
 	
 	ao::lane<Task> _tasks;
 	std::vector<std::thread> _threads;
+	bool _verbose;
 };
 
 #endif
