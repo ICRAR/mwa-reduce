@@ -27,10 +27,11 @@ void MultiScaleClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImag
 	size_t iterationsAtStart = this->_iterationNumber;
 	do {
 		double nextScale = currentScale*0.5;
-		std::cout << "Current scale: " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << currentScale << " pixels).\n";
+		std::cout << "Current scale: " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << round(currentScale) << " pixels).\n";
 		bool reachedStopGainOnCurrentScale, canCleanFurther;
+		size_t iterationsAtStartOfThisScale = this->_iterationNumber;
 		executeMajorIterationForScale(currentScale, nextScale, reachedStopGainOnCurrentScale, canCleanFurther);
-		std::cout << "Finished scale " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << currentScale << " pixels), progressing to next scale.\n";
+		std::cout << "Finished scale " << (currentScale*_pixelSizeX*180.0*60.0/M_PI) << " arcmin (" << round(currentScale) << " pixels), " << (this->_iterationNumber-iterationsAtStartOfThisScale) << " iterations performed, progressing to next scale.\n";
 		if(canCleanFurther)
 			reachedStopGain = reachedStopGain && reachedStopGainOnCurrentScale;
 		currentScale = nextScale;
