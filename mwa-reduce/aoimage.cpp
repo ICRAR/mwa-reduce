@@ -430,7 +430,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 		ThreadParameters parameters;
 		parameters.worklane = &worklane;
 		parameters.imager = &imager;
-		boost::thread *threads[cpuCount];
+		std::vector<boost::thread*> threads(cpuCount);
 		for(size_t i=0;i!=cpuCount;++i)
 		{
 			parameters.threadIndex = i;
@@ -442,7 +442,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 		* Push all work
 		*/
 		double zenithDistance = 0.0, pAngle = 0.0;
-		bool formattedFlags[channelCount];
+		ao::uvector<bool> formattedFlags(channelCount);
 		std::cout << "Making image";
 		for(size_t row=0;row!=ms.nrow();++row)
 		{
@@ -518,7 +518,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					casa::Array<std::complex<float> >::const_iterator inPtr = data.begin();
 					casa::Array<bool>::const_iterator flagPtr = flags.begin();
 					
-					readData(info.polarization, info.psf, channelCount, polarizationCount, outPtr, formattedFlags, inPtr, flagPtr);
+					readData(info.polarization, info.psf, channelCount, polarizationCount, outPtr, formattedFlags.data(), inPtr, flagPtr);
 					
 					if(avgFactor != 1)
 					{
@@ -536,7 +536,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 							++outPtr;
 						}
 					}
-					double weight = weights.ApplyWeights(work.data, formattedFlags, work.uTimesLambda, work.vTimesLambda, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
+					double weight = weights.ApplyWeights(work.data, formattedFlags.data(), work.uTimesLambda, work.vTimesLambda, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
 					work.weight = weight * avgFactor;
 					worklane.write(work);
 				}
