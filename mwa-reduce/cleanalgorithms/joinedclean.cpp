@@ -95,18 +95,24 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 {
 	double peakMax = std::numeric_limits<double>::min();
 	size_t peakIndex = 0;
-	const size_t lastIndex = _width*_height;
 	
-	for(size_t index=0; index!=lastIndex; ++index)
+	const size_t xiStart = 0, xiEnd = _width;
+	const size_t yiStart = startY, yiEnd = stopY;
+	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
-		double value = image.AbsJoinedValue(index);
-		if(std::isfinite(value))
+		size_t index=yi*_width + yiStart;
+		for(size_t xi=xiStart; xi!=xiEnd; ++xi)
 		{
-			if(value > peakMax)
+			double value = image.AbsJoinedValue(index);
+			if(std::isfinite(value))
 			{
-				peakIndex = index;
-				peakMax = value;
+				if(value > peakMax)
+				{
+					peakIndex = index;
+					peakMax = value;
+				}
 			}
+			++index;
 		}
 	}
 	x = peakIndex % _width;

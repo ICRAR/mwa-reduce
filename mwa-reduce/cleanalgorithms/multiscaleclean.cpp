@@ -268,28 +268,34 @@ void MultiScaleClean<ImageSetType>::findPeak(size_t& x, size_t& y, size_t startY
 	size_t peakIndex = lastIndex;
 	
 	const double scaleBias = scaleBiasFunction(1.0, 2.0);
-	
-	for(size_t index=0; index!=lastIndex; ++index)
+	const size_t horBorderSize = _rescaledWidth*5/100, verBorderSize = _rescaledHeight*5/100;
+	const size_t xiStart = horBorderSize, xiEnd = _rescaledWidth - horBorderSize;
+	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _rescaledHeight - verBorderSize);
+	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
-		double value = _dataImageLargeScale->JoinedValue(index);
-		if(std::isfinite(value) && fabs(value) > peakMax)
+		size_t index=yi*_rescaledWidth + xiStart;
+		for(size_t xi=xiStart; xi!=xiEnd; ++xi)
 		{
-			double valueNextScale = _dataImageNextScale->JoinedValue(index);
-			if(value < 0.0)
+			double value = _dataImageLargeScale->JoinedValue(index);
+			if(std::isfinite(value) && fabs(value) > peakMax)
 			{
-				value = -value;
-				valueNextScale = -valueNextScale;
+				double valueNextScale = _dataImageNextScale->JoinedValue(index);
+				if(value < 0.0)
+				{
+					value = -value;
+					valueNextScale = -valueNextScale;
+				}
+				if(std::isfinite(valueNextScale) && value > valueNextScale * scaleBias)
+				{
+					peakIndex = index;
+					peakMax = value;
+				}
 			}
-			if(std::isfinite(valueNextScale) && value > valueNextScale * scaleBias)
-			{
-				peakIndex = index;
-				peakMax = value;
-			}
+			++index;
 		}
 	}
 	if(peakIndex == lastIndex)
 	{
-		std::cout << "not found.\n";
 		x = _rescaledWidth;
 		y = _rescaledHeight;
 	}
