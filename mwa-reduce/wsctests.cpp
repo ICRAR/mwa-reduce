@@ -32,9 +32,12 @@ int main(int argc, char* argv[])
 	img[7] = 4;
 	SimpleClean::PartialFindPeakAVX(img.data(), 4, 2, x, y, true, 0, 2, 0.0);
 	test(x == 3 && y == 1, "x,y == 3,1");
-	img[15] = 5;
-	SimpleClean::PartialFindPeakAVX(img.data(), 4, 2, x, y, true, 0, 4, 0.0);
+	img[15] = 6;
+	SimpleClean::PartialFindPeakAVX(img.data(), 4, 4, x, y, true, 0, 4, 0.0);
 	test(x == 3 && y == 3, "x,y == 3,3");
+	img[14] = 5;
+	SimpleClean::PartialFindPeakAVX(img.data(), 3, 5, x, y, true, 0, 5, 0.0);
+	test(x == 2 && y == 4, "x,y == 2,4");
 	std::cout << '\n';
 #endif
 

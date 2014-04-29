@@ -31,7 +31,7 @@ class SimpleClean : public TypedCleanAlgorithm<clean_algorithms::SingleImageSet>
 	
 			for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 			{
-				size_t index = yi*width + xiStart;;
+				size_t index = yi*width + xiStart;
 				for(size_t xi=xiStart; xi!=xiEnd; ++xi)
 				{
 					double value = image[index];

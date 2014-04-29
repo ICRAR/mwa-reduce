@@ -47,47 +47,54 @@ template<bool AllowNegativeComponent>
 double SimpleClean::FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, double borderRatio)
 {
 	double peakMax = std::numeric_limits<double>::min();
-	const double* imgIter = image;
-	const double* const endPtr = image + width * height - 4;
 	size_t peakIndex = 0;
-	size_t index = 0;
 	
 	__m256d mPeakMax = _mm256_set1_pd(peakMax);
-	const double *i=imgIter;
-	for(; i<endPtr; i+=4)
+	
+	const size_t horBorderSize = round(width*borderRatio), verBorderSize = round(height*borderRatio);
+	const size_t xiStart = horBorderSize, xiEnd = width - horBorderSize;
+	const size_t yiStart = verBorderSize, yiEnd = height - verBorderSize;
+	
+	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
-		__m256d val = _mm256_loadu_pd(i);
-		if(AllowNegativeComponent) {
-			__m256d negVal = _mm256_sub_pd(_mm256_set1_pd(0.0), val);
-			val = _mm256_max_pd(val, negVal);
-		}
-		int mask = _mm256_movemask_pd(_mm256_cmp_pd(val, mPeakMax, _CMP_GT_OQ));
-		if(mask != 0)
+		size_t index = yi*width + xiStart;
+		const double* const endPtr = image + yi*width + xiEnd - 4;
+		const double *i=image + index;
+		for(; i<endPtr; i+=4)
 		{
-			for(size_t di=0; di!=4; ++di)
+			__m256d val = _mm256_loadu_pd(i);
+			if(AllowNegativeComponent) {
+				__m256d negVal = _mm256_sub_pd(_mm256_set1_pd(0.0), val);
+				val = _mm256_max_pd(val, negVal);
+			}
+			int mask = _mm256_movemask_pd(_mm256_cmp_pd(val, mPeakMax, _CMP_GT_OQ));
+			if(mask != 0)
 			{
-				double value = i[di];
-				if(AllowNegativeComponent) value = std::fabs(value);
-				if(value > peakMax)
+				for(size_t di=0; di!=4; ++di)
 				{
-					peakIndex = index+di;
-					peakMax = std::fabs(i[di]);
-					mPeakMax = _mm256_set1_pd(peakMax);
+					double value = i[di];
+					if(AllowNegativeComponent) value = std::fabs(value);
+					if(value > peakMax)
+					{
+						peakIndex = index+di;
+						peakMax = std::fabs(i[di]);
+						mPeakMax = _mm256_set1_pd(peakMax);
+					}
 				}
 			}
+			index+=4;
 		}
-		index+=4;
-	}
-	for(; i!=endPtr+4; ++i)
-	{
-		double value = *i;
-		if(AllowNegativeComponent) value = std::fabs(value);
-		if(value > peakMax)
+		for(; i!=endPtr+4; ++i)
 		{
-			peakIndex = index;
-			peakMax = std::fabs(*i);
+			double value = *i;
+			if(AllowNegativeComponent) value = std::fabs(value);
+			if(value > peakMax)
+			{
+				peakIndex = index;
+				peakMax = std::fabs(*i);
+			}
+			++index;
 		}
-		++index;
 	}
 	x = peakIndex % width;
 	y = peakIndex / width;
