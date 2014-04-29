@@ -103,7 +103,7 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _height - verBorderSize);
 	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
-		size_t index=yi*_width + yiStart;
+		size_t index=yi*_width + xiStart;
 		for(size_t xi=xiStart; xi!=xiEnd; ++xi)
 		{
 			double value = image.AbsJoinedValue(index);
