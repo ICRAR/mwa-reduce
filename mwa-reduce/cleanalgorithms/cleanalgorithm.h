@@ -29,10 +29,13 @@ public:
 	
 	void SetResizePSF(bool resizePSF) { _resizePSF = resizePSF; }
 	
+	void SetCleanBorderRatio(double borderRatio) { _cleanBorderRatio = borderRatio; }
+	
 	size_t MaxNIter() const { return _maxIter; }
 	double Threshold() const { return _threshold; }
 	double SubtractionGain() const { return _subtractionGain; }
 	double StopGain() const { return _stopGain; }
+	double CleanBorderRatio() const { return _cleanBorderRatio; }
 	bool AllowNegativeComponents() const { return _allowNegativeComponents; }
 	bool StopOnNegativeComponents() const { return _allowNegativeComponents; }
 	bool ResizePSF() const { return _resizePSF; }
@@ -54,7 +57,7 @@ public:
 protected:
 	CleanAlgorithm();
 	
-	double _threshold, _subtractionGain, _stopGain;
+	double _threshold, _subtractionGain, _stopGain, _cleanBorderRatio;
 	size_t _maxIter, _iterationNumber;
 	bool _allowNegativeComponents, _stopOnNegativeComponent, _resizePSF;
 	const class AreaSet *_cleanAreas;

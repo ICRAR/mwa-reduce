@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	inpReader.Read<double>(&image[0]);
 	
 	size_t componentX, componentY;
-	double peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
+	double peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents, 0.05);
 	if(onlyFindPeak)
 	{
 		double l, m, ra, dec;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 			model[componentX + componentY*width] += subtractionFactor * peak;
 			
 			lastPeak = peak;
-			peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents);
+			peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents, 0.05);
 			++iterationNumber;
 		}
 		std::cout << "Stopped on peak " << peak << '\n';
