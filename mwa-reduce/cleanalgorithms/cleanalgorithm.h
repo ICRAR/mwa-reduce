@@ -54,6 +54,19 @@ public:
 	static void RemoveNaNsInPSF(double* psf, size_t width, size_t height);
 	
 	static void CalculateFastCleanPSFSize(size_t& psfWidth, size_t& psfHeight, size_t imageWidth, size_t imageHeight);
+	
+	void CopyConfigFrom(const CleanAlgorithm& source)
+	{
+		_threshold = source._threshold;
+		_subtractionGain = source._subtractionGain;
+		_stopGain = source._stopGain;
+		_cleanBorderRatio = source._cleanBorderRatio;
+		_maxIter = source._maxIter;
+		// skip _iterationNumber
+		_allowNegativeComponents = source._allowNegativeComponents;
+		_stopOnNegativeComponent = source._stopOnNegativeComponent;
+		_resizePSF = source._resizePSF;
+	}
 protected:
 	CleanAlgorithm();
 	

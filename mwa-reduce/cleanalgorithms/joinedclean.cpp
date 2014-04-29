@@ -96,8 +96,11 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 	double peakMax = std::numeric_limits<double>::min();
 	size_t peakIndex = 0;
 	
-	const size_t xiStart = 0, xiEnd = _width;
-	const size_t yiStart = startY, yiEnd = stopY;
+	const size_t
+		horBorderSize = round(_width*this->CleanBorderRatio()),
+		verBorderSize = round(_height*this->CleanBorderRatio());
+	const size_t xiStart = horBorderSize, xiEnd = _width - horBorderSize;
+	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _height - verBorderSize);
 	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
 		size_t index=yi*_width + yiStart;
