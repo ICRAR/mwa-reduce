@@ -87,7 +87,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		delete resultLanes[i];
 	}
 	std::cout << "Stopped on peak " << peakNormalized << '\n';
-	reachedStopGain = peakNormalized <= stopGainThreshold;
+	reachedStopGain = peakNormalized <= stopGainThreshold && (peakNormalized != 0.0);
 }
 
 template<typename ImageSetType>

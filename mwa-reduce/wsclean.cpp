@@ -278,7 +278,7 @@ void WSClean::initializeMFSImageWeights()
 	{
 		std::cout << "Precalculating MFS weights for " << _weightMode.ToString() << " weighting...\n";
 		_imageWeights.reset(new ImageWeights(_imgWidth, _imgHeight, _pixelScaleX, _pixelScaleY, _weightMode.SuperWeight()));
-		for(size_t i=0; i!=_partitionedMSHandles.size(); ++i)
+		for(size_t i=0; i!=_filenames.size(); ++i)
 		{
 			if(_doReorder)
 			{
