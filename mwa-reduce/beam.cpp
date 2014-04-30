@@ -23,7 +23,7 @@
 #include <stdexcept>
 
 template<typename TileImplementation, bool DoSquare>
-void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, double pixelSizeY, double refRA, double refDec, double arrLatitude, double zenithHa, double zenithDec, double centralFrequency, const double* delays, const casa::MeasFrame& frame)
+void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, double pixelSizeY, double refRA, double refDec, double arrLatitude, double zenithHa, double zenithDec, double centralFrequency, const double* delays, const casa::MeasFrame& frame, double dl, double dm)
 {
 	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
 	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
@@ -40,6 +40,7 @@ void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, d
 		{
 			double l, m, ra, dec;
 			ImageCoordinates::XYToLM(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
+			l += dl; m += dm;
 			ImageCoordinates::LMToRaDec(l, m, refRA, refDec, ra, dec);
 			
 			std::complex<double> gain[4];
@@ -132,7 +133,7 @@ int main(int argc, char *argv[])
 	if(msName == 0)
 	{
 		arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
-		time =casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
+		time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
 		centralFrequency = 150000000.0;
 	}
 	else {
@@ -147,7 +148,12 @@ int main(int argc, char *argv[])
 		casa::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casa::MSAntennaEnums::POSITION));
 		arrayPos = antPosColumn(0);
 		casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-		time = timeColumn(0);
+		// Find the mid time step
+		casa::MEpoch firstTime = timeColumn(0);
+		casa::MEpoch lastTime = timeColumn(ms.nrow()-1);
+		std::cout << "Start time = " << firstTime << ", mid time = " << lastTime << '\n';
+		time = casa::MEpoch(casa::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
+		std::cout << "Using mid time = " << time << '\n';
 		
 		casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
 		casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
@@ -185,8 +191,7 @@ int main(int argc, char *argv[])
 		<< zenithHa*180.0/M_PI << " HA.\n";
 		
 	size_t width, height;
-	double pixelSizeX, pixelSizeY;
-	double refRA, refDec;
+	double pixelSizeX, pixelSizeY, refRA, refDec, phaseCentreDL, phaseCentreDM;
 	FitsWriter writer;
 	if(inpFitsname == 0)
 	{
@@ -197,6 +202,8 @@ int main(int argc, char *argv[])
 		pixelSizeY = 2.0 / (double) height;
 		refRA = (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0];
 		refDec = zenithDec;
+		phaseCentreDL = 0.0;
+		phaseCentreDM = 0.0;
 		double bandWidth = 1000000.0;
 		
 		writer.SetImageDimensions(width, height, refRA, refDec, pixelSizeX, pixelSizeY);
@@ -212,6 +219,8 @@ int main(int argc, char *argv[])
 		pixelSizeY = reader.PixelSizeY();
 		refRA = reader.PhaseCentreRA();
 		refDec = reader.PhaseCentreDec();
+		phaseCentreDL = reader.PhaseCentreDL();
+		phaseCentreDM = reader.PhaseCentreDM();
 	}
 	std::cout << "Reference dir: "
 		<< refRA*180.0/M_PI << " RA, "
@@ -229,15 +238,15 @@ int main(int argc, char *argv[])
 	if(doSquare)
 	{
 		if(use2013)
-			MakeBeam<TileBeam2013,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
+			MakeBeam<TileBeam2013,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
 		else
-			MakeBeam<TileBeam2014,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
+			MakeBeam<TileBeam2014,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
 	}
 	else {
 		if(use2013)
-			MakeBeam<TileBeam2013,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
+			MakeBeam<TileBeam2013,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
 		else
-			MakeBeam<TileBeam2014,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame);
+			MakeBeam<TileBeam2014,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
 	}
 	
 	std::cout << "\nWriting...\n";
