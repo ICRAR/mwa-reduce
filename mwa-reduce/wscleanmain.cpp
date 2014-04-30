@@ -56,6 +56,8 @@ int main(int argc, char *argv[])
 			"   Force or disable reordering of Measurement Set. This can be faster when the measurement set needs to\n"
 			"   be iterated several times, such as with many major iterations or in channel imaging mode.\n"
 			"   Default: only reorder when in channel imaging mode.\n"
+			"-makepsf\n"
+			"   Always make the psf, even when no cleaning is performed.\n"
 			"-mem <percentage>\n"
 			"   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
 			"   Default: 100.\n"
@@ -99,16 +101,6 @@ int main(int argc, char *argv[])
 			"-mgain <gain>\n"
 			"   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major\n"
 			"   iteration (default = 1.0, to use major iterations, 0.9 is a good value). Default: 1.0\n"
-			"-smallpsf\n"
-			"   Resize the psf to speed up minor clean iterations. Not the default.\n"
-			"-nonegative\n"
-			"   Do not allow negative components during cleaning. Not the default.\n"
-			"-negative\n"
-			"   Default on: opposite of -nonegative.\n"
-			"-stopnegative\n"
-			"   Stop on negative components. Not the default.\n"
-			"-makepsf\n"
-			"   Always make the psf, even when no cleaning is performed.\n"
 			"-joinpolarizations\n"
 			"   Perform cleaning by searching for peaks in the sum of squares of the polarizations (either I^2+Q^2+U^2+V^2\n"
 			"   or XX^2+real(XY)^2+imag(XY)^2+YY^2), but subtract components from individual channels. Only possible when\n"
@@ -118,6 +110,17 @@ int main(int argc, char *argv[])
 			"   This will turn on mfsweighting by default. Default: off.\n"
 			"-multiscale\n"
 			"   Clean on different scales. This is a new experimental algorithm. Default: off.\n"
+			"-cleanborder <percentage>\n"
+			"   Set the border size in which no cleaning is performed, in percentage of the width/height of the image.\n"
+			"   With an image size of 1000 and clean border of 1%, each border is 10 pixels. Default: 5 (%).\n"
+			"-smallpsf\n"
+			"   Resize the psf to speed up minor clean iterations. Not the default.\n"
+			"-nonegative\n"
+			"   Do not allow negative components during cleaning. Not the default.\n"
+			"-negative\n"
+			"   Default on: opposite of -nonegative.\n"
+			"-stopnegative\n"
+			"   Stop on negative components. Not the default.\n"
 			"\n"
 			"  ** RESTORATION OPTIONS **\n"
 			"-beamsize <arcmin>\n"
@@ -281,6 +284,11 @@ int main(int argc, char *argv[])
 		else if(param == "multiscale")
 		{
 			wsclean.SetMultiscale(true);
+		}
+		else if(param == "cleanborder")
+		{
+			++argi;
+			wsclean.SetCleanBorderRatio(atof(argv[argi])*0.01);
 		}
 		else if(param == "nomfsweighting")
 		{

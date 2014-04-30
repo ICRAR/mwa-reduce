@@ -15,19 +15,14 @@ namespace ao {
 class SimpleClean : public TypedCleanAlgorithm<clean_algorithms::SingleImageSet>
 {
 	public:
-#ifdef __AVX__
-		template<bool AllowNegativeComponent>
-		static double FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, double borderRatio);
-#endif
-		
-		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, double borderRatio)
+		static double FindPeakSimple(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
 		{
 			double peakMax = std::numeric_limits<double>::min();
 			size_t peakIndex = width * height;
 			
 			const size_t horBorderSize = round(width*borderRatio), verBorderSize = round(height*borderRatio);
 			const size_t xiStart = horBorderSize, xiEnd = width - horBorderSize;
-			const size_t yiStart = verBorderSize, yiEnd = height - verBorderSize;
+			const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(endY, height - verBorderSize);
 	
 			for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 			{
@@ -62,35 +57,28 @@ class SimpleClean : public TypedCleanAlgorithm<clean_algorithms::SingleImageSet>
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, const class AreaSet &cleanAreas);
 
 #ifdef __AVX__
-		static double PartialFindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
+		template<bool AllowNegativeComponent>
+		static double FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, size_t startY, size_t endY, double borderRatio);
+		
+		static double FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
 		{
-			double peakLevel;
 			if(allowNegativeComponents)
-				peakLevel = FindPeakAVX<true>(image + (width * startY), width, endY-startY, x, y, borderRatio);
+				return FindPeakAVX<true>(image, width, height, x, y, startY, endY, borderRatio);
 			else
-				peakLevel = FindPeakAVX<false>(image + (width * startY), width, endY-startY, x, y, borderRatio);
-			y += startY;
-			return peakLevel;
+				return FindPeakAVX<false>(image, width, height, x, y, startY, endY, borderRatio);
 		}
-		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
+		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
 		{
-			return PartialFindPeakAVX(image, width, height, x, y, allowNegativeComponents, startY, endY, borderRatio);
+			return FindPeakAVX(image, width, height, x, y, allowNegativeComponents, startY, endY, borderRatio);
 		}
 #else
-		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
+		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
 		{
-			return PartialFindPeakSimple(image, width, height, x, y, allowNegativeComponents, startY, endY, borderRatio);
+			return FindPeakSimple(image, width, height, x, y, allowNegativeComponents, startY, endY, borderRatio);
 		}
 #endif
 
-		static double PartialFindPeakSimple(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, double borderRatio)
-		{
-			double peakLevel = FindPeak(image + (width * startY), width, endY-startY, x, y, allowNegativeComponents, borderRatio);
-			y += startY;
-			return peakLevel;
-		}
-		
-		static double PartialFindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas);
+		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, size_t startY, size_t endY, const class AreaSet &cleanAreas);
 		
 		static void SubtractImage(double *image, const double *psf, size_t width, size_t height, size_t x, size_t y, double factor);
 		
