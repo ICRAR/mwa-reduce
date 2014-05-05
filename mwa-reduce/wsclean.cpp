@@ -452,7 +452,7 @@ void WSClean::Run()
 		}
 	}
 	
-	_firstMSBand = BandData(casa::MeasurementSet(_filenames[0]).spectralWindow());
+	_firstMSBand = MultiBandData(casa::MeasurementSet(_filenames[0]).spectralWindow(), casa::MeasurementSet(_filenames[0]).dataDescription());
 	_weightPerChannel.assign(_channelsOut, 0);
 	
 	if(_mfsWeighting)
@@ -506,7 +506,7 @@ void WSClean::selectChannels(MSSelection& selection, size_t outChannelIndex, siz
 	}
 	else {
 		startCh = 0;
-		endCh = _firstMSBand.ChannelCount();
+		endCh = _firstMSBand.MaxChannels();
 	}
 	size_t newStart = startCh + (endCh - startCh) * outChannelIndex / channelsOut;
 	size_t newEnd = startCh + (endCh - startCh) * (outChannelIndex+1) / channelsOut;
@@ -628,7 +628,19 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 		size_t currentChannelIndex = _joinedFrequencyCleaning ? ch : outChannelIndex;
 		MSSelection curSelection(_globalSelection);
 		selectChannels(curSelection, currentChannelIndex, _channelsOut);
-		const BandData curBand(_firstMSBand, curSelection.ChannelRangeStart(), curSelection.ChannelRangeEnd());
+		
+		double freqLow, freqHigh;
+		if(_firstMSBand.BandCount() == 1)
+		{
+			const BandData curBand = BandData(_firstMSBand.FirstBand(), curSelection.ChannelRangeStart(), curSelection.ChannelRangeEnd());
+			freqLow = curBand.LowestFrequency();
+			freqHigh = curBand.HighestFrequency();
+		}
+		else {
+			freqLow = _firstMSBand.LowestFrequency();
+			freqHigh = _firstMSBand.HighestFrequency();
+		}
+						
 		for(std::set<PolarizationEnum>::const_iterator curPol=_polarizations.begin(); curPol!=_polarizations.end(); ++curPol)
 		{
 			if(!(*curPol == Polarization::YX && _polarizations.count(Polarization::XY)!=0))
@@ -666,7 +678,6 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 							model.Save(_saveModelFilename.c_str());
 						}
 					
-						double freqLow = curBand.LowestFrequency(), freqHigh = curBand.HighestFrequency();
 						std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
 						renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, Polarization::StokesI);
 						std::cout << "DONE\n";
@@ -1035,13 +1046,23 @@ void WSClean::makeMFSImage(const string& suffix, PolarizationEnum pol, bool isIm
 
 void WSClean::writeFits(const string& suffix, const double* image, PolarizationEnum pol, size_t channelIndex, bool isImaginary)
 {
-	MSSelection selection(_globalSelection);
-	selectChannels(selection, channelIndex, _channelsOut);
-	BandData band(_firstMSBand, selection.ChannelRangeStart(), selection.ChannelRangeEnd());
+	double centreFrequency, bandwidth;
+	if(_firstMSBand.BandCount() == 1)
+	{
+		MSSelection selection(_globalSelection);
+		selectChannels(selection, channelIndex, _channelsOut);
+		BandData band(_firstMSBand.FirstBand(), selection.ChannelRangeStart(), selection.ChannelRangeEnd());
+		centreFrequency = band.CentreFrequency();
+		bandwidth = band.Bandwidth();
+	}
+	else {
+		centreFrequency = _firstMSBand.CentreFrequency();
+		bandwidth = _firstMSBand.Bandwidth();
+	}
 	const std::string name(getPrefix(pol, channelIndex, isImaginary) + '-' + suffix);
 	initFitsWriter(_fitsWriter);
 	_fitsWriter.SetPolarization(pol);
-	_fitsWriter.SetFrequency(band.CentreFrequency(), band.Bandwidth());
+	_fitsWriter.SetFrequency(centreFrequency, bandwidth);
 	_fitsWriter.SetExtraKeyword("WSCIMGWG", _weightPerChannel[channelIndex]);
 	size_t polIndex;
 	if(_joinedPolarizationCleaning)

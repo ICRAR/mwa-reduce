@@ -174,7 +174,7 @@ private:
 	std::vector<PartitionedMS::Handle> _partitionedMSHandles;
 	FitsWriter _fitsWriter;
 	std::vector<MSProvider*> _currentPolMSes;
-	BandData _firstMSBand;
+	MultiBandData _firstMSBand;
 };
 
 #endif

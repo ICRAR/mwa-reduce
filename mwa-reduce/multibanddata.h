@@ -79,12 +79,22 @@ class MultiBandData
 			return freq;
 		}
 		
+		double CentreFrequency() const
+		{
+			return (LowestFrequency() + HighestFrequency()) * 0.5;
+		}
+		
 		double HighestFrequency() const
 		{
 			double freq = _bandData[0].HighestFrequency();
 			for(size_t i=0; i!=_bandData.size(); ++i)
 				freq = std::max(freq, _bandData[i].HighestFrequency());
 			return freq;
+		}
+		
+		double Bandwidth() const
+		{
+			return HighestFrequency() - LowestFrequency();
 		}
 		
 		double BandStart() const
