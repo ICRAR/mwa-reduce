@@ -87,7 +87,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		delete resultLanes[i];
 	}
 	std::cout << "Stopped on peak " << peakNormalized << '\n';
-	reachedStopGain = peakNormalized <= stopGainThreshold;
+	reachedStopGain = peakNormalized <= stopGainThreshold && (peakNormalized != 0.0);
 }
 
 template<typename ImageSetType>
@@ -96,11 +96,14 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 	double peakMax = std::numeric_limits<double>::min();
 	size_t peakIndex = 0;
 	
-	const size_t xiStart = 0, xiEnd = _width;
-	const size_t yiStart = startY, yiEnd = stopY;
+	const size_t
+		horBorderSize = floor(_width*this->CleanBorderRatio()),
+		verBorderSize = floor(_height*this->CleanBorderRatio());
+	const size_t xiStart = horBorderSize, xiEnd = _width - horBorderSize;
+	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _height - verBorderSize);
 	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
-		size_t index=yi*_width + yiStart;
+		size_t index=yi*_width + xiStart;
 		for(size_t xi=xiStart; xi!=xiEnd; ++xi)
 		{
 			double value = image.AbsJoinedValue(index);

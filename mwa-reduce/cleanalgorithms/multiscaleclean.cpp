@@ -42,12 +42,8 @@ void MultiScaleClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImag
 		std::cout << "Minimum scale reached, finishing cleaning with delta functions.\n";
 		// Finish off with normal clean
 		JoinedClean<ImageSetType> joinedClean;
-		joinedClean.SetMaxNIter(this->_maxIter);
-		joinedClean.SetThreshold(this->Threshold());
-		joinedClean.SetAllowNegativeComponents(this->AllowNegativeComponents());
-		joinedClean.SetStopGain(this->StopGain());
-		joinedClean.SetSubtractionGain(this->SubtractionGain());
-		joinedClean.SetIterationNumber(this->_iterationNumber);
+		joinedClean.CopyConfigFrom(*this);
+		joinedClean.SetIterationNumber(this->IterationNumber());
 		bool reachedStopGainOnCurrentScale;
 		joinedClean.ExecuteMajorIteration(dataImage, modelImage, psfImages, width, height, reachedStopGainOnCurrentScale);
 		reachedStopGain = reachedStopGainOnCurrentScale;
@@ -269,7 +265,9 @@ void MultiScaleClean<ImageSetType>::findPeak(size_t& x, size_t& y, size_t startY
 	size_t peakIndex = lastIndex;
 	
 	const double scaleBias = scaleBiasFunction(1.0, 2.0);
-	const size_t horBorderSize = _rescaledWidth*5/100, verBorderSize = _rescaledHeight*5/100;
+	const size_t
+		horBorderSize = floor(_rescaledWidth*this->CleanBorderRatio()),
+		verBorderSize = floor(_rescaledHeight*this->CleanBorderRatio());
 	const size_t xiStart = horBorderSize, xiEnd = _rescaledWidth - horBorderSize;
 	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _rescaledHeight - verBorderSize);
 	for(size_t yi=yiStart; yi!=yiEnd; ++yi)

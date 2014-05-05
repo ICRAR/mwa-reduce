@@ -26,6 +26,7 @@ public:
 	void SetCleanGain(double gain) { _gain = gain; }
 	void SetCleanMGain(double mGain) { _mGain = mGain; }
 	void SetNIter(size_t nIter) { _nIter = nIter; }
+	void SetCleanBorderRatio(double borderRatio) { _cleanBorderRatio = borderRatio; }
 	void SetThreshold(double threshold) { _threshold = threshold; }
 	void SetColumnName(const std::string& columnName) { _columnName = columnName; }
 	void SetPolarizations(const std::set<PolarizationEnum>& polarizations) { _polarizations = polarizations; }
@@ -147,7 +148,7 @@ private:
 	}
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
-	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _manualBeamSize, _memFraction, _absMemLimit, _wLimit;
+	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio, _manualBeamSize, _memFraction, _absMemLimit, _wLimit;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor;
 	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _addModelFilename, _saveModelFilename, _cleanAreasFilename;

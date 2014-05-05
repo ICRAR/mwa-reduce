@@ -29,10 +29,13 @@ public:
 	
 	void SetResizePSF(bool resizePSF) { _resizePSF = resizePSF; }
 	
+	void SetCleanBorderRatio(double borderRatio) { _cleanBorderRatio = borderRatio; }
+	
 	size_t MaxNIter() const { return _maxIter; }
 	double Threshold() const { return _threshold; }
 	double SubtractionGain() const { return _subtractionGain; }
 	double StopGain() const { return _stopGain; }
+	double CleanBorderRatio() const { return _cleanBorderRatio; }
 	bool AllowNegativeComponents() const { return _allowNegativeComponents; }
 	bool StopOnNegativeComponents() const { return _allowNegativeComponents; }
 	bool ResizePSF() const { return _resizePSF; }
@@ -51,10 +54,23 @@ public:
 	static void RemoveNaNsInPSF(double* psf, size_t width, size_t height);
 	
 	static void CalculateFastCleanPSFSize(size_t& psfWidth, size_t& psfHeight, size_t imageWidth, size_t imageHeight);
+	
+	void CopyConfigFrom(const CleanAlgorithm& source)
+	{
+		_threshold = source._threshold;
+		_subtractionGain = source._subtractionGain;
+		_stopGain = source._stopGain;
+		_cleanBorderRatio = source._cleanBorderRatio;
+		_maxIter = source._maxIter;
+		// skip _iterationNumber
+		_allowNegativeComponents = source._allowNegativeComponents;
+		_stopOnNegativeComponent = source._stopOnNegativeComponent;
+		_resizePSF = source._resizePSF;
+	}
 protected:
 	CleanAlgorithm();
 	
-	double _threshold, _subtractionGain, _stopGain;
+	double _threshold, _subtractionGain, _stopGain, _cleanBorderRatio;
 	size_t _maxIter, _iterationNumber;
 	bool _allowNegativeComponents, _stopOnNegativeComponent, _resizePSF;
 	const class AreaSet *_cleanAreas;

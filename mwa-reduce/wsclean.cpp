@@ -29,7 +29,7 @@ std::string commandLine;
 WSClean::WSClean() :
 	_imgWidth(2048), _imgHeight(2048), _channelsOut(1),
 	_pixelScaleX(0.01 * M_PI / 180.0), _pixelScaleY(0.01 * M_PI / 180.0),
-	_threshold(0.0), _gain(0.1), _mGain(1.0), _manualBeamSize(0.0), _memFraction(1.0), _absMemLimit(0.0), _wLimit(0.0),
+	_threshold(0.0), _gain(0.1), _mGain(1.0), _cleanBorderRatio(0.05), _manualBeamSize(0.0), _memFraction(1.0), _absMemLimit(0.0), _wLimit(0.0),
 	_nWLayers(0), _nIter(0), _antialiasingKernelSize(7), _overSamplingFactor(63),
 	_globalSelection(),
 	_columnName(), _addModelFilename(), _saveModelFilename(), _cleanAreasFilename(),
@@ -278,7 +278,7 @@ void WSClean::initializeMFSImageWeights()
 	{
 		std::cout << "Precalculating MFS weights for " << _weightMode.ToString() << " weighting...\n";
 		_imageWeights.reset(new ImageWeights(_imgWidth, _imgHeight, _pixelScaleX, _pixelScaleY, _weightMode.SuperWeight()));
-		for(size_t i=0; i!=_partitionedMSHandles.size(); ++i)
+		for(size_t i=0; i!=_filenames.size(); ++i)
 		{
 			if(_doReorder)
 			{
@@ -373,6 +373,7 @@ void WSClean::initializeCleanAlgorithm()
 		_cleanAlgorithms[p]->SetThreshold(_threshold);
 		_cleanAlgorithms[p]->SetSubtractionGain(_gain);
 		_cleanAlgorithms[p]->SetStopGain(_mGain);
+		_cleanAlgorithms[p]->SetCleanBorderRatio(_cleanBorderRatio);
 		_cleanAlgorithms[p]->SetAllowNegativeComponents(_allowNegative);
 		_cleanAlgorithms[p]->SetStopOnNegativeComponents(_stopOnNegative);
 		_cleanAlgorithms[p]->SetResizePSF(_smallPSF);

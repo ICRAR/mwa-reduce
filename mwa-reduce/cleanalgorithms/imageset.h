@@ -209,7 +209,7 @@ namespace clean_algorithms {
 		
 		double JoinedValueNormalized(size_t index) const
 		{
-			return sqrt(SquaredSum(index));
+			return sqrt(SquaredSum(index)*0.5);
 		}
 		
 		double AbsJoinedValue(size_t index) const
