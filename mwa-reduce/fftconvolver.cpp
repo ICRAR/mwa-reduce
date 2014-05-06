@@ -5,6 +5,7 @@
 #include <fftw3.h>
 
 #include <complex>
+#include <stdexcept>
 
 void FFTConvolver::Convolve(double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
 {
