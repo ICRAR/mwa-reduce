@@ -30,6 +30,7 @@ WSClean::WSClean() :
 	_imgWidth(2048), _imgHeight(2048), _channelsOut(1),
 	_pixelScaleX(0.01 * M_PI / 180.0), _pixelScaleY(0.01 * M_PI / 180.0),
 	_threshold(0.0), _gain(0.1), _mGain(1.0), _cleanBorderRatio(0.05), _manualBeamSize(0.0), _memFraction(1.0), _absMemLimit(0.0), _wLimit(0.0),
+	_multiscaleThresholdBias(0.7), _multiscaleScaleBias(0.6),
 	_nWLayers(0), _nIter(0), _antialiasingKernelSize(7), _overSamplingFactor(63),
 	_globalSelection(),
 	_columnName(), _addModelFilename(), _saveModelFilename(), _cleanAreasFilename(),
@@ -327,9 +328,26 @@ void WSClean::initializeCleanAlgorithm()
 			if(_multiscale)
 			{
 				if(fourPol)
-					_cleanAlgorithms[0] = new MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<4>>>(beamSize, _pixelScaleX, _pixelScaleY);
-				else
-					_cleanAlgorithms[0] = new MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>(beamSize, _pixelScaleX, _pixelScaleY);
+				{
+					MultiScaleClean<clean_algorithms::MultiImageSet
+					<clean_algorithms::PolarizedImageSet<4>>>* msc =
+					new MultiScaleClean
+					<clean_algorithms::MultiImageSet
+					<clean_algorithms::PolarizedImageSet<4>>>(beamSize, _pixelScaleX, _pixelScaleY);
+					msc->SetScaleBias(_multiscaleScaleBias);
+					msc->SetThresholdBias(_multiscaleThresholdBias);
+					_cleanAlgorithms[0] = msc;
+				}
+				else {
+					MultiScaleClean
+					<clean_algorithms::MultiImageSet
+					<clean_algorithms::PolarizedImageSet<2>>>* msc =
+					new MultiScaleClean
+					<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>(beamSize, _pixelScaleX, _pixelScaleY);
+					msc->SetScaleBias(_multiscaleScaleBias);
+					msc->SetThresholdBias(_multiscaleThresholdBias);
+					_cleanAlgorithms[0] = msc;
+				}
 			}
 			else {
 				if(fourPol)

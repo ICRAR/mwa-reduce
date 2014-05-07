@@ -16,7 +16,9 @@ public:
 		_minScale(0.0),
 		_beamSize(beamSize),
 		_pixelSizeX(pixelSizeX),
-		_pixelSizeY(pixelSizeY)
+		_pixelSizeY(pixelSizeY),
+		_thresholdBiasLevel(0.7),
+		_scaleBiasLevel(0.6)
 	{ }
 	
 	virtual void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain);
@@ -28,20 +30,26 @@ public:
 		shapeFunction(n, output, scaleSizeInPixels);
 	}
 	
+	void SetThresholdBias(double thresholdBias) { _thresholdBiasLevel = thresholdBias; }
+	
+	void SetScaleBias(double scaleBias) { _scaleBiasLevel = scaleBias; }
+	
 private:
 	size_t _originalWidth, _originalHeight;
 	size_t _rescaledWidth, _rescaledHeight;
-	double _startScale, _minScale, _beamSize, _pixelSizeX, _pixelSizeY;
+	double
+		_startScale, _minScale, _beamSize, _pixelSizeX, _pixelSizeY,
+		_thresholdBiasLevel, _scaleBiasLevel;
 	ImageSetType *_dataImageLargeScale, *_dataImageNextScale, *_dataImageOriginal, *_modelImage;
 	std::vector<double*> *_originalPsfs, *_scaledPsfs;
 	
 	void executeMajorIterationForScale(double currentScale, double nextScale, bool& reachedStopGain, bool& canCleanFurther);
 	
-	static double scaleBiasFunction(double smallerScale, double largerScale)
+	double scaleBiasFunction(double smallerScale, double largerScale) const
 	{
 		// From Cornwell 2008, "Multi-Scale CLEAN deconvolution of radio synthesis images"
 		// S(alpha) = 1.0 - 0.6 alpha / alpha_Max
-		return 1.0 - 0.6 * (smallerScale / largerScale);
+		return 1.0 - _scaleBiasLevel * (smallerScale / largerScale);
 	}
 	
 	static void shapeFunction(size_t n, ao::uvector<double>& output2d, double scaleSizeInPixels)

@@ -54,6 +54,10 @@ public:
 	void SetJoinPolarizations(bool joinPolarizations) { _joinedPolarizationCleaning = joinPolarizations; }
 	void SetJoinChannels(bool joinChannels) { _joinedFrequencyCleaning = joinChannels; }
 	void SetMultiscale(bool multiscale) { _multiscale = multiscale; }
+	void SetMultiscaleThresholdBias(double thresholdBias)
+	{ _multiscaleThresholdBias = thresholdBias; }
+	void SetMultiscaleScaleBias(double scaleBias)
+	{ _multiscaleScaleBias = scaleBias; }
 	void SetMFSWeighting(bool mfsWeighting) { _mfsWeighting = mfsWeighting; }
 	void SetWeightMode(enum WeightMode::WeightingEnum weighting) {
 		_weightMode.SetMode(WeightMode(weighting));
@@ -148,7 +152,7 @@ private:
 	}
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
-	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio, _manualBeamSize, _memFraction, _absMemLimit, _wLimit;
+	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio, _manualBeamSize, _memFraction, _absMemLimit, _wLimit, _multiscaleThresholdBias, _multiscaleScaleBias;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor;
 	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _addModelFilename, _saveModelFilename, _cleanAreasFilename;
