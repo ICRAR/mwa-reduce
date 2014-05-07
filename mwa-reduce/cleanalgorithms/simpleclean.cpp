@@ -17,11 +17,11 @@ double SimpleClean::FindPeak(const double *image, size_t width, size_t height, s
 {
 	double peakMax = std::numeric_limits<double>::min();
 	size_t index = 0;
-	const double *imgIter = &image[startY*width];
 	x = 0; y = startY;
 	
 	for(size_t yi=startY; yi!=endY; ++yi)
 	{
+		const double *imgIter = &image[yi*width];
 		for(size_t xi=0; xi!=width; ++xi)
 		{
 			double value = *imgIter;
@@ -32,7 +32,7 @@ double SimpleClean::FindPeak(const double *image, size_t width, size_t height, s
 				{
 					x = xi;
 					y = yi;
-					peakMax = std::fabs(*imgIter);
+					peakMax = std::fabs(value);
 				}
 			}
 			++index;

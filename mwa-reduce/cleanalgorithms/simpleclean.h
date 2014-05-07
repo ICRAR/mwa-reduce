@@ -40,6 +40,7 @@ class SimpleClean : public TypedCleanAlgorithm<clean_algorithms::SingleImageSet>
 						}
 					}
 					++value;
+					++index;
 				}
 			}
 			if(peakIndex == width * height)
