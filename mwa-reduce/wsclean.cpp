@@ -841,6 +841,7 @@ void WSClean::performSimpleClean(CleanAlgorithm& cleanAlgorithm, size_t currentC
 	_cleaningWatch.Pause();
 	
 	_modelImages.Store(modelImage.Data(), polarization, 0, false);
+	_residualImages.Store(residualImage.Data(), polarization, 0, false);
 	
 	updateCleanParameters(_fitsWriter, cleanAlgorithm.IterationNumber(), majorIterationNr);
 	
