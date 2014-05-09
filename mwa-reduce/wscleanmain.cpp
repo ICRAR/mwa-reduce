@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 			"   Cleaning gain: Ratio of peak that will be subtracted in each iteration. Default: 0.1\n"
 			"-mgain <gain>\n"
 			"   Cleaning gain for major iterations: Ratio of peak that will be subtracted in each major\n"
-			"   iteration (default = 1.0, to use major iterations, 0.9 is a good value). Default: 1.0\n"
+			"   iteration. To use major iterations, 0.85 is a good value. Default: 1.0\n"
 			"-joinpolarizations\n"
 			"   Perform cleaning by searching for peaks in the sum of squares of the polarizations (either I^2+Q^2+U^2+V^2\n"
 			"   or XX^2+real(XY)^2+imag(XY)^2+YY^2), but subtract components from individual channels. Only possible when\n"
