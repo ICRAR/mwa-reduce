@@ -32,6 +32,7 @@ WSClean::WSClean() :
 	_threshold(0.0), _gain(0.1), _mGain(1.0), _cleanBorderRatio(0.05), _manualBeamSize(0.0), _memFraction(1.0), _absMemLimit(0.0), _wLimit(0.0),
 	_multiscaleThresholdBias(0.7), _multiscaleScaleBias(0.6),
 	_nWLayers(0), _nIter(0), _antialiasingKernelSize(7), _overSamplingFactor(63),
+	_threadCount(sysconf(_SC_NPROCESSORS_ONLN)),
 	_globalSelection(),
 	_columnName(), _addModelFilename(), _saveModelFilename(), _cleanAreasFilename(),
 	_polarizations(),
@@ -533,7 +534,7 @@ void WSClean::selectChannels(MSSelection& selection, size_t outChannelIndex, siz
 
 void WSClean::runIndependentChannel(size_t outChannelIndex)
 {
-	_inversionAlgorithm.reset(new WSInversion(&_imageAllocator, _memFraction, _absMemLimit));
+	_inversionAlgorithm.reset(new WSInversion(&_imageAllocator, _threadCount, _memFraction, _absMemLimit));
 	static_cast<WSInversion&>(*_inversionAlgorithm).SetGridMode(_gridMode);
 	
 	size_t  joinedChannelsOut;

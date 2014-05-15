@@ -69,6 +69,7 @@ public:
 	void SetBeamSize(double beamSize) { _manualBeamSize = beamSize; }
 	void SetAntialiasingKernelSize(size_t kernelSize) { _antialiasingKernelSize = kernelSize; }
 	void SetOversamplingFactor(size_t oversampling) { _overSamplingFactor = oversampling; }
+	void SetThreadCount(size_t threadCount) { _threadCount = threadCount; }
 	void SetForceReorder(bool forceReorder) { _forceReorder = forceReorder; }
 	void SetForceNoReorder(bool forceNoReorder) { _forceNoReorder = forceNoReorder; }
 	void SetMemFraction(double memFraction) { _memFraction = memFraction; }
@@ -153,7 +154,7 @@ private:
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio, _manualBeamSize, _memFraction, _absMemLimit, _wLimit, _multiscaleThresholdBias, _multiscaleScaleBias;
-	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor;
+	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor, _threadCount;
 	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _addModelFilename, _saveModelFilename, _cleanAreasFilename;
 	std::set<PolarizationEnum> _polarizations;
