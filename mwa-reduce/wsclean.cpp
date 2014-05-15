@@ -396,6 +396,7 @@ void WSClean::initializeCleanAlgorithm()
 		_cleanAlgorithms[p]->SetAllowNegativeComponents(_allowNegative);
 		_cleanAlgorithms[p]->SetStopOnNegativeComponents(_stopOnNegative);
 		_cleanAlgorithms[p]->SetResizePSF(_smallPSF);
+		_cleanAlgorithms[p]->SetThreadCount(_threadCount);
 		if(!_cleanAreasFilename.empty())
 		{
 			_cleanAreas.reset(new AreaSet());

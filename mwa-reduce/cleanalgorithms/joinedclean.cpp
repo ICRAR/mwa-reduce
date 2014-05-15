@@ -28,7 +28,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		std::cout << "Major iteration threshold reached global threshold of " << this->_threshold << ": final major iteration.\n";
 	}
 
-	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	size_t cpuCount = this->_threadCount;
 	std::vector<ao::lane<CleanTask>*> taskLanes(cpuCount);
 	std::vector<ao::lane<CleanResult>*> resultLanes(cpuCount);
 	boost::thread_group threadGroup;

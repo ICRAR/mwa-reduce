@@ -42,7 +42,7 @@ double SimpleClean::FindPeak(const double *image, size_t width, size_t height, s
 	return image[x + y*width];
 }
 
-#ifdef __AVX__
+#if defined __AVX__ && !defined FORCE_NON_AVX
 template<bool AllowNegativeComponent>
 double SimpleClean::FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, size_t startY, size_t endY, double borderRatio)
 {
@@ -327,11 +327,10 @@ void SimpleClean::ExecuteMajorIteration(double* dataImage, double* modelImage, c
 		std::cout << "Major iteration threshold reached global threshold of " << _threshold << ": final major iteration.\n";
 	}
 
-	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-	std::vector<ao::lane<CleanTask>*> taskLanes(cpuCount);
-	std::vector<ao::lane<CleanResult>*> resultLanes(cpuCount);
+	std::vector<ao::lane<CleanTask>*> taskLanes(_threadCount);
+	std::vector<ao::lane<CleanResult>*> resultLanes(_threadCount);
 	boost::thread_group threadGroup;
-	for(size_t i=0; i!=cpuCount; ++i)
+	for(size_t i=0; i!=_threadCount; ++i)
 	{
 		taskLanes[i] = new ao::lane<CleanTask>(1);
 		resultLanes[i] = new ao::lane<CleanResult>(1);
@@ -342,8 +341,8 @@ void SimpleClean::ExecuteMajorIteration(double* dataImage, double* modelImage, c
 		cleanThreadData.psfWidth = psfWidth;
 		cleanThreadData.psfHeight = psfHeight;
 		cleanThreadData.psfImage = psfImage;
-		cleanThreadData.startY = (height*i)/cpuCount;
-		cleanThreadData.endY = height*(i+1)/cpuCount;
+		cleanThreadData.startY = (height*i)/_threadCount;
+		cleanThreadData.endY = height*(i+1)/_threadCount;
 		threadGroup.add_thread(new boost::thread(&SimpleClean::cleanThreadFunc, this, &*taskLanes[i], &*resultLanes[i], cleanThreadData));
 	}
 	while(fabs(peak) > firstThreshold && _iterationNumber < _maxIter && (peak >= 0.0 || !_stopOnNegativeComponent))
@@ -358,13 +357,13 @@ void SimpleClean::ExecuteMajorIteration(double* dataImage, double* modelImage, c
 		task.cleanCompX = componentX;
 		task.cleanCompY = componentY;
 		task.peakLevel = peak;
-		for(size_t i=0; i!=cpuCount; ++i)
+		for(size_t i=0; i!=_threadCount; ++i)
 			taskLanes[i]->write(task);
 		
 		modelImage[componentX + componentY*width] += _subtractionGain * peak;
 		
 		peak = 0.0;
-		for(size_t i=0; i!=cpuCount; ++i)
+		for(size_t i=0; i!=_threadCount; ++i)
 		{
 			CleanResult result;
 			resultLanes[i]->read(result);
@@ -378,10 +377,10 @@ void SimpleClean::ExecuteMajorIteration(double* dataImage, double* modelImage, c
 		
 		++_iterationNumber;
 	}
-	for(size_t i=0; i!=cpuCount; ++i)
+	for(size_t i=0; i!=_threadCount; ++i)
 		taskLanes[i]->write_end();
 	threadGroup.join_all();
-	for(size_t i=0; i!=cpuCount; ++i)
+	for(size_t i=0; i!=_threadCount; ++i)
 	{
 		delete taskLanes[i];
 		delete resultLanes[i];

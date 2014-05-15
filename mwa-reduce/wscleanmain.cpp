@@ -58,6 +58,9 @@ int main(int argc, char *argv[])
 			"   Default: only reorder when in channel imaging mode.\n"
 			"-makepsf\n"
 			"   Always make the psf, even when no cleaning is performed.\n"
+			"-j <threads>\n"
+			"   Specify number of computing threads to use, i.e., number of cpu cores that will be used.\n"
+			"   Default: use all cpu cores.\n"
 			"-mem <percentage>\n"
 			"   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
 			"   Default: 100.\n"
@@ -366,6 +369,11 @@ int main(int argc, char *argv[])
 		{
 			wsclean.SetForceNoReorder(true);
 			wsclean.SetForceReorder(false);
+		}
+		else if(param == "j")
+		{
+			++argi;
+			wsclean.SetThreadCount(atoi(argv[argi]));
 		}
 		else if(param == "mem")
 		{

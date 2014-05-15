@@ -8,6 +8,8 @@
 #include "cleanalgorithm.h"
 #include "imageset.h"
 
+#define FORCE_NON_AVX 1
+
 namespace ao {
 	template<typename T> class lane;
 }
@@ -57,7 +59,7 @@ class SimpleClean : public TypedCleanAlgorithm<clean_algorithms::SingleImageSet>
 
 		static double FindPeak(const double *image, size_t width, size_t height, size_t &x, size_t &y, bool allowNegativeComponents, const class AreaSet &cleanAreas);
 
-#ifdef __AVX__
+#if defined __AVX__ && !defined FORCE_NON_AVX
 		template<bool AllowNegativeComponent>
 		static double FindPeakAVX(const double *image, size_t width, size_t height, size_t &x, size_t &y, size_t startY, size_t endY, double borderRatio);
 		

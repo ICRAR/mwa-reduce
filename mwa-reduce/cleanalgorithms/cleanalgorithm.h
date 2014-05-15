@@ -31,6 +31,8 @@ public:
 	
 	void SetCleanBorderRatio(double borderRatio) { _cleanBorderRatio = borderRatio; }
 	
+	void SetThreadCount(size_t threadCount) { _threadCount = threadCount; }
+	
 	size_t MaxNIter() const { return _maxIter; }
 	double Threshold() const { return _threshold; }
 	double SubtractionGain() const { return _subtractionGain; }
@@ -71,7 +73,7 @@ protected:
 	CleanAlgorithm();
 	
 	double _threshold, _subtractionGain, _stopGain, _cleanBorderRatio;
-	size_t _maxIter, _iterationNumber;
+	size_t _maxIter, _iterationNumber, _threadCount;
 	bool _allowNegativeComponents, _stopOnNegativeComponent, _resizePSF;
 	const class AreaSet *_cleanAreas;
 };

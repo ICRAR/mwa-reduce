@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 {
 	ao::uvector<double> img(16, 0);
 	size_t x=size_t(-1), y=size_t(-1);
-#ifdef __AVX__
+#if defined __AVX__ && !defined FORCE_NON_AVX
 	img[0] = 1;
 	SimpleClean::FindPeakAVX(img.data(), 4, 2, x, y, true, 0, 2, 0.0);
 	test(x == 0 && y == 0, "x,y == 0,0");
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
 	}
 	std::cout << "FindPeakSimple: " << watch.ToMilliSecondsString() << '\n';
 	
-#ifdef __AVX__
+#if defined __AVX__ && !defined FORCE_NON_AVX
 	watch.Reset();
 	watch.Start();
 	for(size_t repeat=0; repeat!=100; ++repeat)
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 		SimpleClean::PartialSubtractImage(img.data(), n, n, psf.data(), n, n, x, y, 0.5, 0, n/2);
 	std::cout << "PartialSubtractImage: " << watch.ToMilliSecondsString() << '\n';
 	
-#ifdef __AVX__
+#if defined __AVX__ && !defined FORCE_NON_AVX
 	x=n/2; y=n/2;
 	watch.Reset();
 	watch.Start();
