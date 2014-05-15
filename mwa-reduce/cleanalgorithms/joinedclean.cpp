@@ -66,7 +66,7 @@ void JoinedClean<ImageSetType>::ExecuteMajorIteration(ImageSetType& dataImage, I
 		{
 			CleanResult result;
 			resultLanes[i]->read(result);
-			if(result.peakLevelUnnormalized >= peakUnnormalized)
+			if(std::isfinite(result.peakLevelUnnormalized) && result.peakLevelUnnormalized >= peakUnnormalized)
 			{
 				peakUnnormalized = result.peakLevelUnnormalized;
 				componentX = result.nextPeakX;
@@ -94,13 +94,15 @@ template<typename ImageSetType>
 void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, size_t& y, size_t startY, size_t stopY) const
 {
 	double peakMax = std::numeric_limits<double>::min();
-	size_t peakIndex = 0;
+	size_t peakIndex = _width * _height;
 	
 	const size_t
 		horBorderSize = floor(_width*this->CleanBorderRatio()),
 		verBorderSize = floor(_height*this->CleanBorderRatio());
-	const size_t xiStart = horBorderSize, xiEnd = _width - horBorderSize;
-	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _height - verBorderSize);
+	size_t xiStart = horBorderSize, xiEnd = _width - horBorderSize;
+	size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _height - verBorderSize);
+	if(xiEnd < xiStart) xiEnd = xiStart;
+	if(yiEnd < yiStart) yiEnd = yiStart;
 	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
 		size_t index=yi*_width + xiStart;
@@ -118,8 +120,15 @@ void JoinedClean<ImageSetType>::findPeak(const ImageSetType& image, size_t& x, s
 			++index;
 		}
 	}
-	x = peakIndex % _width;
-	y = peakIndex / _width;
+	if(peakIndex == _width * _height)
+	{
+		x = _width;
+		y = _height;
+	}
+	else {
+		x = peakIndex % _width;
+		y = peakIndex / _width;
+	}
 }
 
 template<typename ImageSetType>
@@ -137,7 +146,10 @@ void JoinedClean<ImageSetType>::cleanThreadFunc(ao::lane<CleanTask> *taskLane, a
 		
 		CleanResult result;
 		findPeak(*cleanData.dataImage, result.nextPeakX, result.nextPeakY, cleanData.startY, cleanData.endY);
-		result.peakLevelUnnormalized = cleanData.dataImage->AbsJoinedValue(result.nextPeakX + result.nextPeakY*_width);
+		if(result.nextPeakX < _width)
+			result.peakLevelUnnormalized = cleanData.dataImage->AbsJoinedValue(result.nextPeakX + result.nextPeakY*_width);
+		else
+			result.peakLevelUnnormalized = std::numeric_limits<double>::quiet_NaN();
 		
 		resultLane->write(result);
 	}

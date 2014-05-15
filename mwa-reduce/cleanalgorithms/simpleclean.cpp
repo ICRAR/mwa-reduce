@@ -52,8 +52,10 @@ double SimpleClean::FindPeakAVX(const double *image, size_t width, size_t height
 	__m256d mPeakMax = _mm256_set1_pd(peakMax);
 	
 	const size_t horBorderSize = floor(width*borderRatio), verBorderSize = floor(height*borderRatio);
-	const size_t xiStart = horBorderSize, xiEnd = width - horBorderSize;
-	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(endY, height - verBorderSize);
+	size_t xiStart = horBorderSize, xiEnd = width - horBorderSize;
+	size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(endY, height - verBorderSize);
+	if(xiEnd < xiStart) xiEnd = xiStart;
+	if(yiEnd < yiStart) yiEnd = yiStart;
 	
 	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{

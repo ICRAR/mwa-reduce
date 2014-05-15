@@ -8,7 +8,7 @@
 #include "cleanalgorithm.h"
 #include "imageset.h"
 
-#define FORCE_NON_AVX 1
+//#define FORCE_NON_AVX 1
 
 namespace ao {
 	template<typename T> class lane;
@@ -23,8 +23,10 @@ class SimpleClean : public TypedCleanAlgorithm<clean_algorithms::SingleImageSet>
 			size_t peakIndex = width * height;
 			
 			const size_t horBorderSize = round(width*borderRatio), verBorderSize = round(height*borderRatio);
-			const size_t xiStart = horBorderSize, xiEnd = width - horBorderSize;
-			const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(endY, height - verBorderSize);
+			size_t xiStart = horBorderSize, xiEnd = width - horBorderSize;
+			size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(endY, height - verBorderSize);
+			if(xiEnd < xiStart) xiEnd = xiStart;
+			if(yiEnd < yiStart) yiEnd = yiStart;
 	
 			for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 			{

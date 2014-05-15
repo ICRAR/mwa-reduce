@@ -268,8 +268,10 @@ void MultiScaleClean<ImageSetType>::findPeak(size_t& x, size_t& y, size_t startY
 	const size_t
 		horBorderSize = floor(_rescaledWidth*this->CleanBorderRatio()),
 		verBorderSize = floor(_rescaledHeight*this->CleanBorderRatio());
-	const size_t xiStart = horBorderSize, xiEnd = _rescaledWidth - horBorderSize;
-	const size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _rescaledHeight - verBorderSize);
+	size_t xiStart = horBorderSize, xiEnd = _rescaledWidth - horBorderSize;
+	size_t yiStart = std::max(startY, verBorderSize), yiEnd = std::min(stopY, _rescaledHeight - verBorderSize);
+	if(xiEnd < xiStart) xiEnd = xiStart;
+	if(yiEnd < yiStart) yiEnd = yiStart;
 	for(size_t yi=yiStart; yi!=yiEnd; ++yi)
 	{
 		size_t index=yi*_rescaledWidth + xiStart;
