@@ -348,10 +348,10 @@ void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, 
 			yKernel = (yKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
 			std::vector<double> &kernel = _griddingKernels[xKernel + yKernel*_overSamplingFactor];
 			int mid = _kernelSize / 2;
-			if(x < 0) x += _width;
-			if(y < 0) y += _height;
-			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+			if(x > -int(_width)/2 && y > -int(_height)/2 && x <= int(_width)/2 && y <= int(_height)/2)
 			{
+				if(x < 0) x += _width;
+				if(y < 0) y += _height;
 				// Are we on the edge?
 				if(x < mid || x+mid+1 >= int(_width) || y < mid || y+mid+1 >= int(_height))
 				{
@@ -390,10 +390,10 @@ void LayeredImager::AddDataSample(std::complex<float> sample, double uInLambda, 
 			int
 				x = int(round(uInLambda * _pixelSizeX * _width)),
 				y = int(round(vInLambda * _pixelSizeY * _height));
-			if(x < 0) x += _width;
-			if(y < 0) y += _height;
-			if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+			if(x > -int(_width)/2 && y > -int(_height)/2 && x <= int(_width)/2 && y <= int(_height)/2)
 			{
+				if(x < 0) x += _width;
+				if(y < 0) y += _height;
 				uvData[x + y*_width] += sample;
 			} else {
 				//std::cout << "Sample fell off uv-plane (" << x << "," << y << ")\n";
@@ -428,11 +428,6 @@ void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, dou
 		{
 			size_t layerIndex = wLayer - layerOffset;
 			std::complex<double>* uvData = _layeredUVData[layerIndex];
-			int
-				x = int(round(u * _pixelSizeX * _width)),
-				y = int(round(v * _pixelSizeY * _height));
-			if(x < 0) x += _width;
-			if(y < 0) y += _height;
 			std::complex<double> sample;
 			if(_gridMode == KaiserBessel)
 			{
@@ -449,10 +444,10 @@ void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, dou
 				yKernel = (yKernel + (_overSamplingFactor*3)/2) % _overSamplingFactor;
 				std::vector<double> &kernel = _griddingKernels[xKernel + yKernel*_overSamplingFactor];
 				int mid = _kernelSize / 2;
-				if(x < 0) x += _width;
-				if(y < 0) y += _height;
-				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+				if(x > -int(_width)/2 && y > -int(_height)/2 && x <= int(_width)/2 && y <= int(_height)/2)
 				{
+					if(x < 0) x += _width;
+					if(y < 0) y += _height;
 					// Are we on the edge?
 					if(x < mid || x+mid+1 >= int(_width) || y < mid || y+mid+1 >= int(_height))
 					{
@@ -488,8 +483,13 @@ void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, dou
 				}
 			}
 			else {
-				if(x >= 0 && y >= 0 && x < (int) _width && y < (int) _height)
+				int
+					x = int(round(u * _pixelSizeX * _width)),
+					y = int(round(v * _pixelSizeY * _height));
+				if(x > -int(_width)/2 && y > -int(_height)/2 && x <= int(_width)/2 && y <= int(_height)/2)
 				{
+					if(x < 0) x += _width;
+					if(y < 0) y += _height;
 					sample = uvData[x + y*_width];
 				} else {
 					//std::cout << "Sampling outside uv-plane (" << x << "," << y << ")\n";
