@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
 		}
 		dataCol.get(row, dataArray);
 		Visibility vis;
-		vis.timestep = ant1Col(row);
+		vis.timestep = timestep;
 		vis.a1 = ant1Col(row);
 		vis.a2 = ant2Col(row);
 		casa::Array<casa::Complex>::const_contiter iter = dataArray.cbegin();
@@ -83,15 +83,18 @@ int main(int argc, char* argv[])
 	}
 	progress.SetProgress(ms.nrow(), ms.nrow());
 	
+	size_t index = 0;
 	for(std::set<Visibility>::const_iterator i=lowest.begin(); i!=lowest.end(); ++i)
 	{
 		std::cout <<
+			"Index: " << index << '\n' <<
 			"Value: " << sqrt(i->amplitudeSq) << " (" << i->value.real() << " + " << i->value.imag() << "i)\n" <<
 			"Timestep: " << i->timestep << '\n' <<
 			"Antenna1: " << i->a1 << '\n' <<
 			"Antenna2: " << i->a2 << '\n' <<
 			"Channel: " << i->channel << '\n' <<
 			"Polarization: " << i->polarization << "\n\n";
+		++index;
 	}
 	
 	return 0;
