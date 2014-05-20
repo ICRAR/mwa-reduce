@@ -121,7 +121,7 @@ void WSClean::updateCleanParameters(FitsWriter& writer, size_t minorIterationNr,
 	writer.SetExtraKeyword("WSCMAJOR", majorIterationNr);
 }
 
-void WSClean::imagePSF(size_t joinedChannelIndex)
+void WSClean::imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex)
 {
 	std::cout << std::flush << " == Constructing PSF ==\n";
 	_inversionWatch.Start();
@@ -139,7 +139,8 @@ void WSClean::imagePSF(size_t joinedChannelIndex)
 	std::cout << "Beam size is " << _inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
 	
 	std::cout << "Writing psf image... " << std::flush;
-	_fitsWriter.Write(_prefixName + "-psf.fits", _inversionAlgorithm->ImageRealResult());
+	const std::string name(getPSFPrefix(currentChannelIndex) + "-psf.fits");
+	_fitsWriter.Write(name, _inversionAlgorithm->ImageRealResult());
 	std::cout << "DONE\n";
 }
 
@@ -755,7 +756,7 @@ void WSClean::runFirstInversion(size_t currentChannelIndex, PolarizationEnum pol
 	const bool firstBeforePSF = _isFirstInversion;
 
 	if((_nIter > 0 || _makePSF) && polarization == *_polarizations.begin())
-		imagePSF(joinedChannelIndex);
+		imagePSF(currentChannelIndex, joinedChannelIndex);
 	
 	initFitsWriter(_fitsWriter);
 	_modelImages.SetFitsWriter(_fitsWriter);

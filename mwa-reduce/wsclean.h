@@ -107,7 +107,7 @@ private:
 	void storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum polarization, size_t joinedChannelIndex, bool isImaginary, const double* image);
 	void selectChannels(MSSelection& selection, size_t outChannelIndex, size_t channelsOut);
 	
-	void imagePSF(size_t joinedChannelIndex);
+	void imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex);
 	void imageGridding();
 	void imageMainFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
 	void imageMainNonFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
@@ -115,6 +115,21 @@ private:
 	
 	void makeMFSImage(const string& suffix, PolarizationEnum pol, bool isImaginary);
 	void writeFits(const string& suffix, const double* image, PolarizationEnum pol, size_t channelIndex, bool isImaginary);
+	
+	std::string getPSFPrefix(size_t channelIndex) const
+	{
+		std::ostringstream partPrefixNameStr;
+		partPrefixNameStr << _prefixName;
+		if(_channelsOut != 1)
+		{
+			partPrefixNameStr << '-';
+			if(channelIndex < 1000) partPrefixNameStr << '0';
+			if(channelIndex < 100) partPrefixNameStr << '0';
+			if(channelIndex < 10) partPrefixNameStr << '0';
+			partPrefixNameStr << channelIndex;
+		}
+		return partPrefixNameStr.str();
+	}
 	
 	std::string getPrefix(PolarizationEnum polarization, size_t channelIndex, bool isImaginary) const
 	{
