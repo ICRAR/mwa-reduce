@@ -51,10 +51,9 @@ public:
 			totalSize += double(i->size) * double(sizeof(NumType)*2);
 		}
 		std::cout << "Image buf alloc stats:\n"
-			"   max alloc of real images = " << _nRealMax << "\n"
-			"max alloc of complex images = " << _nComplexMax << "\n"
+			"         max alloc'd images = " << _nRealMax << " real + " << _nComplexMax << " complex\n"
 			"       max allocated chunks = " << _buffers.size() << "\n"
-			"          max allocated mem = " << round(totalSize/1e8)/10.0 << " GB \n";
+			"      current allocated mem = " << round(totalSize/1e8)/10.0 << " GB \n";
 	}
 	
 	NumType* Allocate(size_t size)
