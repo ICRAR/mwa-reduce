@@ -248,14 +248,14 @@ private:
 	{
 		lane_read_buffer<RowData> bufferedInputLane(lane, ION_SPECTRUM_ROW_BUFFER_SIZE);
 		size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-		std::vector<ao::lane<SampleData> > outLanesInternal(cpuCount);
+		std::vector<ao::lane<SampleData>*> outLanesInternal(cpuCount);
 		std::vector<lane_write_buffer<SampleData>> bufferedOutLanes(cpuCount);
 		boost::thread_group threadGroup;
 		for(size_t c=0; c!=cpuCount; ++c)
 		{
-			outLanesInternal[c].resize(ION_SPECTRUM_SAMPLE_LANE_SIZE);
-			bufferedOutLanes[c].reset(&outLanesInternal[c], ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
-			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, &outLanesInternal[c]));
+			outLanesInternal[c] = new ao::lane<SampleData>(ION_SPECTRUM_SAMPLE_LANE_SIZE);
+			bufferedOutLanes[c].reset(outLanesInternal[c], ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
+			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c]));
 		}
 		RowData rowData;
 		ao::uvector<double> wavelengths(_bandData.ChannelCount());
@@ -299,6 +299,8 @@ private:
 		for(size_t c=0; c!=cpuCount; ++c)
 			bufferedOutLanes[c].write_end();
 		threadGroup.join_all();
+		for(size_t c=0; c!=cpuCount; ++c)
+			delete outLanesInternal[c];
 	}
 	
 	void processSamples(ao::lane<SampleData>* lane)
