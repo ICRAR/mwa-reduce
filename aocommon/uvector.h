@@ -541,7 +541,7 @@ public:
 		if(_end == _endOfStorage)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(enlarge_size(), index, 1);
+			enlarge_for_insert(enlarge_size(1), index, 1);
 			position = _begin + index;
 		}
 		else {

@@ -194,7 +194,7 @@ public:
 	 */
 	uvector& operator=(const uvector<Tp,Alloc>& other)
 	{
-		return assign_copy_from(other, std::false_type);
+		return assign_copy_from(other, std::false_type());
 	}
 	
 	/** @brief Assign another uvector to this uvector.
@@ -203,7 +203,7 @@ public:
 	 */
 	uvector& operator=(uvector<Tp,Alloc>&& other)
 	{
-		return assign_move_from(std::move(other), std::false_type);
+		return assign_move_from(std::move(other), std::false_type());
 	}
 	
 	/** @brief Get iterator to first element. */
@@ -470,7 +470,7 @@ public:
 		if(_end == _endOfStorage)
 		{
 			size_t index = position - _begin;
-			enlarge_for_insert(enlarge_size(), index, 1);
+			enlarge_for_insert(enlarge_size(1), index, 1);
 			position = _begin + index;
 		}
 		else {
@@ -562,7 +562,7 @@ public:
 	 */
 	void swap(uvector<Tp, Alloc>& other)
 	{
-		swap(other, std::false_type);
+		swap(other, std::false_type());
 	}
 	
 	/** @brief Remove all elements from the container. */

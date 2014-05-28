@@ -5,6 +5,9 @@ project(aocommon)
 add_executable(uvector main.cpp)
 set_target_properties(uvector PROPERTIES COMPILE_FLAGS "-std=c++11 -Wall -pedantic -O3 -march=native")
 
+add_executable(tuvector03 tuvector03.cpp)
+set_target_properties(tuvector03 PROPERTIES COMPILE_FLAGS "-std=c++11 -Wall -pedantic -O3 -march=native")
+
 add_executable(tcompare tcompare.cpp stopwatch.cpp)
 set_target_properties(tcompare PROPERTIES COMPILE_FLAGS "-std=c++11 -Wall -pedantic -O3 -march=native")
 
