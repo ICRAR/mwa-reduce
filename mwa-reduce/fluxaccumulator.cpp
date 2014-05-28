@@ -1,14 +1,17 @@
 #include "fluxaccumulator.h"
 
 FluxAccumulator::FluxAccumulator(double l, double m, double lambda, const std::complex<double>* modelFlux) :
-	_accFluxesBeforeBeamChange({0.0, 0.0, 0.0, 0.0}),
-	_accFluxes({0.0, 0.0, 0.0, 0.0}),
-	_accWeights({0.0, 0.0, 0.0, 0.0}),
-	_beamGains({0.0, 0.0, 0.0, 0.0}),
 	_accVisWeightBeforeBeamChange(0.0),
 	_l(l), _m(m),
 	_ionG(0.0), _movedL(0.0), _movedM(0.0), _movedLMSqrt(0.0)
 {
+	for(size_t p=0; p!=4; ++p)
+	{
+		_accFluxesBeforeBeamChange[p] = 0.0;
+		_accFluxes[p] = 0.0;
+		_accWeights[p] = 0.0;
+		_beamGains[p] = 0.0;
+	}
 	memcpy(_modelFlux, modelFlux, sizeof(std::complex<double>)*4);
 }
 
