@@ -110,7 +110,7 @@ public:
 	/** @brief Construct an empty uvector.
 	 * @param allocator Allocator used for allocating and deallocating memory.
 	 */
-	uvector(const allocator_type& allocator = Alloc()) noexcept
+	uvector(const allocator_type& allocator = Alloc())
 	: Alloc(allocator), _begin(nullptr), _end(nullptr), _endOfStorage(nullptr)
 	{
 	}
@@ -243,10 +243,10 @@ public:
 	const_reverse_iterator crend() const { return const_reverse_iterator(begin()); }
 	
 	/** @brief Get number of elements in container. */
-	size_t size() const noexcept { return _end - _begin; }
+	size_t size() const { return _end - _begin; }
 	
 	/** @brief Get maximum number of elements that this container can hold. */ 
-	size_t max_size() const noexcept { return Alloc::max_size(); }
+	size_t max_size() const { return Alloc::max_size(); }
 	
 	/** @brief Change the number of elements in the container.
 	 * @details If the new size is larger than the current size, new values will be
@@ -297,11 +297,11 @@ public:
 	}
 	
 	/** @brief Get the number of elements the container can currently hold without reallocating storage. */
-	size_t capacity() const noexcept { return _endOfStorage - _begin; }
+	size_t capacity() const { return _endOfStorage - _begin; }
 	
 	/** @brief Determine if the container is currently empty.
 	 * @returns @c true if @ref size() == 0. */
-	bool empty() const noexcept { return _begin == _end; }
+	bool empty() const { return _begin == _end; }
 	
 	/** @brief Reserve space for a number of elements, to prevent the overhead of extra
 	 * reallocations.
@@ -572,7 +572,7 @@ public:
 	}
 	
 	/** @brief Get a copy of the allocator. */
-	allocator_type get_allocator() const noexcept
+	allocator_type get_allocator() const
 	{
 		return *this;
 	}
@@ -788,7 +788,7 @@ private:
 			throw std::out_of_range("Access to element in uvector past end");
 	}
 	
-	size_t enlarge_size(size_t extra_space_needed) const noexcept
+	size_t enlarge_size(size_t extra_space_needed) const
 	{
 		return size() + std::max(size(), extra_space_needed);
 	}
