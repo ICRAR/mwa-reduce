@@ -161,7 +161,7 @@ public:
 	 * @param other Source uvector to be copied from.
 	 */
 	uvector(const uvector<Tp,Alloc>& other) :
-		Alloc(std::allocator_traits<Alloc>::select_on_container_copy_construction(static_cast<allocator_type>(other))),
+		Alloc(static_cast<allocator_type>(other)),
 		_begin(allocate(other.size())),
 		_end(_begin + other.size()),
 		_endOfStorage(_end)
@@ -194,7 +194,7 @@ public:
 	 */
 	uvector& operator=(const uvector<Tp,Alloc>& other)
 	{
-		return assign_copy_from(other, typename std::allocator_traits<Alloc>::propagate_on_container_copy_assignment());
+		return assign_copy_from(other, std::false_type);
 	}
 	
 	/** @brief Assign another uvector to this uvector.
@@ -203,7 +203,7 @@ public:
 	 */
 	uvector& operator=(uvector<Tp,Alloc>&& other)
 	{
-		return assign_move_from(std::move(other), typename std::allocator_traits<Alloc>::propagate_on_container_move_assignment());
+		return assign_move_from(std::move(other), std::false_type);
 	}
 	
 	/** @brief Get iterator to first element. */
@@ -562,7 +562,7 @@ public:
 	 */
 	void swap(uvector<Tp, Alloc>& other)
 	{
-		swap(other, typename std::allocator_traits<Alloc>::propagate_on_container_swap());
+		swap(other, std::false_type);
 	}
 	
 	/** @brief Remove all elements from the container. */
