@@ -2,9 +2,9 @@
 #define TILE_IMPEDANCE_H
 
 #include <complex>
-#include <initializer_list>
 #include <iostream>
 #include <cstring>
+#include <vector>
 
 #define TILE_IMPEDANCE_MATRIX_COUNT 5
 
@@ -13,6 +13,9 @@ class TileImpedance
 public:
 	static const std::complex<double> *Get(double frequency)
 	{
+		if(matrices.empty())
+			initializeMatrices();
+		
 		const struct ImpedanceMatrix *m = 0;
 		double minDist = 1e10;
 		
@@ -40,17 +43,19 @@ private:
 	typedef std::complex<double> ctype;
 	
 	struct ImpedanceMatrix {
-		ImpedanceMatrix(double frequency, std::initializer_list<ctype> values) :
+		ImpedanceMatrix(double frequency, const ctype* values) :
 			_frequency(frequency)
 		{
-			std::copy(values.begin(), values.end(), _values);
+			memcpy(_values, values, sizeof(std::complex<double>)*32*32);
 		}
 		
 		double _frequency;
 		ctype _values[32*32];
 	};
 	
-	static const ImpedanceMatrix matrices[TILE_IMPEDANCE_MATRIX_COUNT];
+	static void initializeMatrices();
+	
+	static std::vector<ImpedanceMatrix> matrices;
 };
 
 #endif
