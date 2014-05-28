@@ -34,7 +34,7 @@ public:
 		return m->_values;
 	}
 	
-	static const void Get(double frequency, std::complex<double>* dest)
+	static void Get(double frequency, std::complex<double>* dest)
 	{
 		memcpy(dest, Get(frequency), sizeof(std::complex<double>)*32*32);
 	}

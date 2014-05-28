@@ -33,7 +33,7 @@ class BTPImager
 		}
 		NumType OverallMaxUVDist() const { return _overallMaxUVDist; }
 		
-		const size_t SkippedTimesteps() const { return _skippedTimesteps; }
+		size_t SkippedTimesteps() const { return _skippedTimesteps; }
 	private:
 		typedef double FftwNum;
 		typedef fftw_complex FftwComplex;

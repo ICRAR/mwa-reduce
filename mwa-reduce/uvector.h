@@ -7,15 +7,8 @@
 
 #else
 
-#warning "uvector does not work on this platform: using slower std::vector instead"
+#include "aocommon/uvector_03.h"
 
-#include <vector>
-
-namespace ao {
-	using std::vector;
-}
-#define uvector vector
-
-#endif
+#endif // HAVE_UVECTOR
 
 #endif
