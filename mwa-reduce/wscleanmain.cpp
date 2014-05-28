@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
 			"   Number of w-layers to use. Default: minimum suggested #w-layers for first MS.\n"
 			"-channelsout <count>\n"
 			"   Splits the bandwidth and makes count nr. of images. Default: 1.\n"
+			"-predict <image-prefix>\n"
+			"   Only perform a single prediction for an existing image. Doesn't do any imaging or cleaning.\n"
 			"-smallinversion\n"
 			"   Perform inversion at the Nyquist resolution and upscale the image to the requested image size afterwards.\n"
 			"   This can speed up inversion considerably, but makes aliasing slightly worse. This effect is\n"
@@ -144,11 +146,15 @@ int main(int argc, char *argv[])
 	
 	WSClean wsclean;
 	int argi = 1;
-	bool mfsWeighting = false, noMFSWeighting = false;
+	bool mfsWeighting = false, noMFSWeighting = false, predictionMode = false;
 	while(argi < argc && argv[argi][0] == '-')
 	{
 		const std::string param = &argv[argi][1];
-		if(param == "size")
+		if(param == "predict")
+		{
+			predictionMode = true;
+		}
+		else if(param == "size")
 		{
 			size_t
 				width = atoi(argv[argi+1]),
@@ -421,6 +427,9 @@ int main(int argc, char *argv[])
 	for(int i=1; i!=argc; ++i)
 		commandLineStr << ' ' << argv[i];
 	wsclean.SetCommandLine(commandLineStr.str());
-			
-	wsclean.Run();
+	
+	if(predictionMode)
+		wsclean.RunPredict();
+	else
+		wsclean.RunClean();
 }

@@ -431,22 +431,8 @@ void WSClean::prepareInversionAlgorithm(PolarizationEnum polarization)
 	_inversionAlgorithm->SetSmallInversion(_smallInversion);
 }
 
-void WSClean::Run()
+void WSClean::checkPolarizations()
 {
-	// If no column specified, determine column to use
-	if(_columnName.empty())
-	{
-		casa::MeasurementSet ms(_filenames.front());
-		bool hasCorrected = ms.tableDesc().isColumn("CORRECTED_DATA");
-		if(hasCorrected) {
-			std::cout << "First measurement set has corrected data: tasks will be applied on the corrected data column.\n";
-			_columnName = "CORRECTED_DATA";
-		} else {
-			std::cout << "No corrected data in first measurement set: tasks will be applied on the data column.\n";
-			_columnName= "DATA";
-		}
-	}
-
 	if(_joinedPolarizationCleaning)
 	{
 		if(Polarization::HasFullPolarization(_polarizations))
@@ -462,16 +448,37 @@ void WSClean::Run()
 		else 
 			throw std::runtime_error("Joined polarization cleaning requested, but neither 2 or 4 polarizations are imaged that are suitable for this");
 	}
-	
-	_doReorder = ((_channelsOut != 1) || (_polarizations.size()>=4) || _forceReorder) && !_forceNoReorder;
-	
-	if(_doReorder)
+}
+
+void WSClean::performReordering()
+{
+	for(std::vector<std::string>::const_iterator i=_filenames.begin(); i != _filenames.end(); ++i)
 	{
-		for(std::vector<std::string>::const_iterator i=_filenames.begin(); i != _filenames.end(); ++i)
-		{
-			_partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0, _polarizations));
+		_partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0, _polarizations));
+	}
+}
+
+void WSClean::RunClean()
+{
+	// If no column specified, determine column to use
+	if(_columnName.empty())
+	{
+		casa::MeasurementSet ms(_filenames.front());
+		bool hasCorrected = ms.tableDesc().isColumn("CORRECTED_DATA");
+		if(hasCorrected) {
+			std::cout << "First measurement set has corrected data: tasks will be applied on the corrected data column.\n";
+			_columnName = "CORRECTED_DATA";
+		} else {
+			std::cout << "No corrected data in first measurement set: tasks will be applied on the data column.\n";
+			_columnName= "DATA";
 		}
 	}
+
+	checkPolarizations();
+	
+	_doReorder = preferReordering();
+	
+	if(_doReorder) performReordering();
 	
 	_firstMSBand = MultiBandData(casa::MeasurementSet(_filenames[0]).spectralWindow(), casa::MeasurementSet(_filenames[0]).dataDescription());
 	_weightPerChannel.assign(_channelsOut, 0);
@@ -514,6 +521,29 @@ void WSClean::Run()
 				}
 			}
 		}
+	}
+}
+
+void WSClean::RunPredict()
+{
+	if(_joinedFrequencyCleaning)
+		throw std::runtime_error("Joined frequency cleaning specified for prediction: prediction doesn't clean, parameter invalid");
+	if(_joinedPolarizationCleaning)
+		throw std::runtime_error("Joined polarization cleaning specified for prediction: prediction doesn't clean, parameter invalid");
+	
+	_columnName = "DATA";
+	
+	checkPolarizations();
+	
+	_doReorder = preferReordering();
+	
+	if(_doReorder) performReordering();
+	
+	_firstMSBand = MultiBandData(casa::MeasurementSet(_filenames[0]).spectralWindow(), casa::MeasurementSet(_filenames[0]).dataDescription());
+	
+	for(size_t outChannelIndex=0; outChannelIndex!=_channelsOut; ++outChannelIndex)
+	{
+		predictChannel(outChannelIndex);
 	}
 }
 
@@ -718,7 +748,55 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 	
 	_prefixName = rootPrefix;
 	
-	// Needs to be desctructed before image allocator, or image allocator will report error caused by leaked memory
+	// Needs to be destructed before image allocator, or image allocator will report error caused by leaked memory
+	_inversionAlgorithm.reset();
+}
+
+void WSClean::predictChannel(size_t outChannelIndex)
+{
+	_inversionAlgorithm.reset(new WSInversion(&_imageAllocator, _threadCount, _memFraction, _absMemLimit));
+	
+	_currentPartSelection = _globalSelection;
+	selectChannels(_currentPartSelection, outChannelIndex, _channelsOut);
+	
+	_modelImages.Initialize(_fitsWriter, _polarizations.size(), 1, _prefixName + "-model", _imageAllocator);
+	
+	const std::string rootPrefix = _prefixName;
+		
+	for(std::set<PolarizationEnum>::const_iterator curPol=_polarizations.begin(); curPol!=_polarizations.end(); ++curPol)
+	{
+		// load image(s) from disk
+		FitsReader reader(getPrefix(*curPol, outChannelIndex, false) + "-model.fits");
+		double* buffer = _imageAllocator.Allocate(_imgWidth*_imgHeight);
+		if(reader.ImageWidth()!=_imgWidth || reader.ImageHeight()!=_imgHeight)
+			throw std::runtime_error("Inconsistent image size: input image did not match with specified dimensions.");
+		reader.Read(buffer);
+		_modelImages.Store(buffer, *curPol, false, 0);
+		if(Polarization::IsComplex(*curPol))
+		{
+			reader = FitsReader(getPrefix(*curPol, outChannelIndex, true) + "-model.fits");
+			if(reader.ImageWidth()!=_imgWidth || reader.ImageHeight()!=_imgHeight)
+				throw std::runtime_error("Inconsistent image size: input image did not match with specified dimensions.");
+			reader.Read(buffer);
+			_modelImages.Store(buffer, *curPol, true, 0);
+		}
+		_imageAllocator.Free(buffer);
+		
+		prepareInversionAlgorithm(*curPol);
+		
+		initializeCurMSProviders(outChannelIndex, *curPol);
+
+		predict(*curPol, 0);
+		
+		clearCurMSProviders();
+	} // end of polarization loop
+	
+	_imageAllocator.ReportStatistics();
+	std::cout << "Inversion: " << _inversionWatch.ToString() << ", prediction: " << _predictingWatch.ToString() << ", cleaning: " << _cleaningWatch.ToString() << '\n';
+	
+	_prefixName = rootPrefix;
+	
+	// Needs to be destructed before image allocator, or image allocator will report error caused by leaked memory
 	_inversionAlgorithm.reset();
 }
 

@@ -81,11 +81,15 @@ public:
 	
 	void AddInputMS(const std::string& msPath) { _filenames.push_back(msPath); }
 	
-	void Run();
+	void RunClean();
+	
+	void RunPredict();
 	
 	bool JoinedFrequencyCleaning() const { return _joinedFrequencyCleaning; }
 private:
 	void runIndependentChannel(size_t outChannelIndex);
+	void predictChannel(size_t outChannelIndex);
+	
 	void runFirstInversion(size_t outChannelIndex, PolarizationEnum polarization, size_t joinedChannelIndex);
 	void performClean(size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr);
 	void performSimpleClean(class CleanAlgorithm& cleanAlgorithm, size_t currentChannelIndex, bool& reachedMajorThreshold, size_t majorIterationNr, PolarizationEnum polarization);
@@ -94,6 +98,9 @@ private:
 	template<size_t PolCount>
 	void performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majorIterationNr);
 	void prepareInversionAlgorithm(PolarizationEnum polarization);
+	
+	void checkPolarizations();
+	void performReordering();
 	
 	void initFitsWriter(class FitsWriter& writer);
 	void setCleanParameters(class FitsWriter& writer, const class CleanAlgorithm& clean);
@@ -165,6 +172,11 @@ private:
 				partPrefixNameStr << 'i';
 		}
 		return partPrefixNameStr.str();
+	}
+	
+	bool preferReordering() const
+	{
+		return ((_channelsOut != 1) || (_polarizations.size()>=4) || _forceReorder) && !_forceNoReorder;
 	}
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
