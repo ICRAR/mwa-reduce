@@ -38,7 +38,9 @@ std::string getNextName(ParserData& data)
 std::string getNextText(ParserData& data)
 {
 	xmlChar *val = xmlTextReaderReadString(data.reader);
-	std::string s(reinterpret_cast<const char*>(val));
+	std::string s;
+	if(val != 0)
+		s = std::string(reinterpret_cast<const char*>(val));
 	xmlFree(val);
 	return s;
 }
