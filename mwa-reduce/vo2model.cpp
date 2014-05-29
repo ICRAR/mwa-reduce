@@ -16,9 +16,9 @@ struct FieldStruct
 struct ParserData {
 	xmlTextReaderPtr reader;
 	std::string fluxColumn;
-	bool useConstantSI;
-	double frequency, constantSI;
-	std::string siColumn;
+	bool useConstantSI, useSecondFrequency;
+	double frequency, secondFrequency, constantSI;
+	std::string siColumn, secondFluxCol;
 };
 
 std::string getNextName(ParserData& data)
@@ -73,7 +73,7 @@ void parseTable(ParserData& data, Model& model)
 	size_t columnIndex = 0;
 	bool endElement = false;
 	ModelSource source;
-	double flux = 0.0, spectInd = 0.0;
+	double flux = 0.0, secondFlux = 0.0, spectInd = 0.0;
 	
 	std::cout << "Table\n";
 	do {
@@ -97,6 +97,8 @@ void parseTable(ParserData& data, Model& model)
 					flux = getNextTextAsDouble(data);
 				else if(colName == data.siColumn)
 					spectInd = getNextTextAsDouble(data);
+				else if(data.useSecondFrequency && colName == data.secondFluxCol)
+					secondFlux = getNextTextAsDouble(data);
 			}
 		}
 		else if(name == "TR")
@@ -104,6 +106,11 @@ void parseTable(ParserData& data, Model& model)
 			if(xmlTextReaderNodeType(data.reader)==15 /*end*/) {
 				if(data.useConstantSI)
 					source.front().SED().AddMeasurement(flux, data.frequency, data.constantSI);
+				else if(data.useSecondFrequency)
+				{
+					source.front().SED().AddMeasurement(flux, data.frequency);
+					source.front().SED().AddMeasurement(secondFlux, data.secondFrequency);
+				}
 				else if(spectInd != 0.0)
 					source.front().SED().AddMeasurement(flux, data.frequency, spectInd);
 				else
@@ -149,9 +156,11 @@ void parseVOTable(ParserData& data, Model& model)
 
 void processNode(ParserData& data, Model& model)
 {
-	std::string name = getNextName(data);
-	if(name == "VOTABLE")
-		parseVOTable(data, model);
+	std::string name;
+	do {
+		name = getNextName(data);
+	} while(name != "VOTABLE");
+	parseVOTable(data, model);
 }
 
 void readFile(const std::string& filename, Model& model, ParserData& data)
@@ -167,12 +176,13 @@ void readFile(const std::string& filename, Model& model, ParserData& data)
 int main(int argc, char* argv[])
 {
 	if (argc < 5) {
-		std::cerr << "Syntax: vo2model [-si <val>] [-sicol <SI col>] <flux col> <frequency in MHz> <in.vot> <out.txt>\n";
+		std::cerr << "Syntax: vo2model [-si <val>] [-sicol <SI col>] [-flux2 <colname> <MHz>] <flux col> <frequency in MHz> <in.vot> <out.txt>\n";
 		return -1;
 	}
 
 	ParserData data;
 	data.useConstantSI = false;
+	data.useSecondFrequency = false;
 	
 	size_t argi = 1;
 	while(argv[argi][0]=='-')
@@ -189,6 +199,14 @@ int main(int argc, char* argv[])
 			++argi;
 			data.siColumn = argv[argi];
 		}
+		else if(p == "flux2")
+		{
+			++argi;
+			data.secondFluxCol = argv[argi];
+			++argi;
+			data.secondFrequency = atof(argv[argi])*1e6;
+			data.useSecondFrequency = true;
+		}
 		++argi;
 	}
 	std::string
@@ -196,7 +214,7 @@ int main(int argc, char* argv[])
 		inFile(argv[argi+2]),
 		outFile(argv[argi+3]);
 	double
-		frequency = atof(argv[argi+1])*1000000.0;
+		frequency = atof(argv[argi+1])*1e6;
 	Model model;
 
 	LIBXML_TEST_VERSION
