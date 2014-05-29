@@ -91,9 +91,9 @@ void parseTable(ParserData& data, Model& model)
 				std::string colName = fields[columnIndex].name;
 				if(colName == "Name")
 					source.SetName(getNextText(data));
-				else if(colName == "RAJ2000")
+				else if(colName == "RAJ2000" || colName == "RA_J2000")
 					source.front().SetPosRA(getNextTextAsDouble(data)*(M_PI/180.0));
-				else if(colName == "DEJ2000")
+				else if(colName == "DEJ2000" || colName == "DEC_J2000")
 					source.front().SetPosDec(getNextTextAsDouble(data)*(M_PI/180.0));
 				else if(colName == data.fluxColumn)
 					flux = getNextTextAsDouble(data);
