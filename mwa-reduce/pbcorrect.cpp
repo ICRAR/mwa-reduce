@@ -2,6 +2,8 @@
 #include "fitswriter.h"
 #include "matrix2x2.h"
 
+#include <boost/filesystem/operations.hpp>
+
 #include <vector>
 #include <stdexcept>
 #include <string>
@@ -11,15 +13,22 @@
 
 void read(const FitsReader& templateReader, const std::string& filename, std::vector<double>& data)
 {
-	FitsReader inpReader(filename);
-	size_t
-		width = inpReader.ImageWidth(),
-		height = inpReader.ImageHeight();
-		
-	if(width != templateReader.ImageWidth() || height != templateReader.ImageHeight())
-		throw std::runtime_error("Not all images had same size");
-	data.resize(width * height);
-	inpReader.Read<double>(&data[0]);
+	if(boost::filesystem::exists(filename))
+	{
+		FitsReader inpReader(filename);
+		size_t
+			width = inpReader.ImageWidth(),
+			height = inpReader.ImageHeight();
+			
+		if(width != templateReader.ImageWidth() || height != templateReader.ImageHeight())
+			throw std::runtime_error("Not all images had same size");
+		data.resize(width * height);
+		inpReader.Read<double>(&data[0]);
+	}
+	else {
+		std::cout << "Warning: file '" << filename << "' did not exist, assuming it is zero!\n";
+		data.resize(templateReader.ImageWidth() * templateReader.ImageHeight(), 0.0);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -28,7 +37,7 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "Syntax:\n"
 			"pbcorrect <image-prefix> <image-postfix> <beam-prefix> <out-prefix>\nFor example:\n\tpbcorrect wsclean image.fits beam stokes\n"
-			"will use images like wsclean-XX-image.fits, beam-xxr.fits and save to stokes-i.fits, ...";
+			"will use images like wsclean-XX-image.fits, beam-xxr.fits and save to stokes-i.fits, ...\n";
 		return -1;
 	}
 	
