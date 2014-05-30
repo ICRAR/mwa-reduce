@@ -111,7 +111,7 @@ public:
 	 * @param allocator Allocator used for allocating and deallocating memory.
 	 */
 	uvector(const allocator_type& allocator = Alloc())
-	: Alloc(allocator), _begin(nullptr), _end(nullptr), _endOfStorage(nullptr)
+	: Alloc(allocator), _begin(0), _end(0), _endOfStorage(0)
 	{
 	}
 	
@@ -338,9 +338,9 @@ public:
 		if(curSize == 0)
 		{
 			deallocate();
-			_begin = nullptr;
-			_end = nullptr;
-			_endOfStorage = nullptr;
+			_begin = 0;
+			_end = 0;
+			_endOfStorage = 0;
 		}
 		else {
 			pointer newStorage = allocate(curSize);
@@ -659,7 +659,7 @@ private:
 	
 	void deallocate(pointer begin, size_t n)
 	{
-		if(begin != nullptr)
+		if(begin != 0)
 			Alloc::deallocate(begin, n);
 	}
 	
@@ -858,9 +858,9 @@ private:
 			_begin = other._begin;
 			_end = other._end;
 			_endOfStorage = other._endOfStorage;
-			other._begin = nullptr;
-			other._end = nullptr;
-			other._endOfStorage = nullptr;
+			other._begin = 0;
+			other._end = 0;
+			other._endOfStorage = 0;
 		}
 		else {
 			// We should not propagate the allocator and the allocators are different.
@@ -880,9 +880,9 @@ private:
 		_begin = other._begin;
 		_end = other._end;
 		_endOfStorage = other._endOfStorage;
-		other._begin = nullptr;
-		other._end = nullptr;
-		other._endOfStorage = nullptr;
+		other._begin = 0;
+		other._end = 0;
+		other._endOfStorage = 0;
 		return *this;
 	}
 	
