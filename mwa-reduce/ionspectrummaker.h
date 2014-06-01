@@ -31,9 +31,9 @@ public:
 		_ionSolutionFile.OpenForReading(ionFilename);
 		
 		casa::MSField fieldTable = _ms.field();
-		casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
-		if(refDirColumn.nrow() != 1)
+		if(fieldTable.nrow() != 1)
 			throw std::runtime_error("Field table nrow != 1");
+		casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
 		casa::Array<double> refDir = refDirColumn(0);
 		casa::Array<double>::const_iterator refDirIter = refDir.begin();
 		long double phaseCentreRA = *refDirIter; ++refDirIter;

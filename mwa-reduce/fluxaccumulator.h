@@ -108,7 +108,7 @@ private:
 		
 		// Now add the flux subtracted by ionpeel
 		// Flux += w * g * (B* B) ModelFlux (B* B)
-		Matrix2x2::ATimesHermB(temp, _beamGains, _beamGains);
+		Matrix2x2::HermATimesB(temp, _beamGains, _beamGains);
 		Matrix2x2::ATimesB(temp2, temp, _modelFlux);
 		Matrix2x2::ScalarMultiply(temp2, _accVisWeightBeforeBeamChange * _ionG);
 		Matrix2x2::PlusATimesB(_accFluxes, temp2, temp);

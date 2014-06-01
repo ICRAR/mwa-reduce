@@ -77,8 +77,8 @@ void Predicter::updateBeam(ModelComponent& component)
 		else {
 			parameters->beamValues[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
 			parameters->beamValues[ch*4+2] = 0.0; parameters->beamValues[ch*4+3] = 1.0;
-			parameters->appBrightness[ch*4+0] = 1.0; parameters->beamValues[ch*4+1] = 0.0;
-			parameters->appBrightness[ch*4+2] = 0.0; parameters->beamValues[ch*4+3] = 1.0;
+			parameters->appBrightness[ch*4+0] = 1.0; parameters->appBrightness[ch*4+1] = 0.0;
+			parameters->appBrightness[ch*4+2] = 0.0; parameters->appBrightness[ch*4+3] = 1.0;
 		}
 	}
 }

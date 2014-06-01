@@ -44,7 +44,7 @@ public:
 		{
 			size_t channelBlockIndex = ch * _channelBlocks / _bandData->ChannelCount();
 			const double frequency = _bandData->ChannelFrequency(ch);
-			evaluator.EvaluateApparentToAbsGain(posInfo, frequency, beamGains);
+			evaluator.EvaluateAbsToApparentGain(posInfo, frequency, beamGains);
 			_accumulators[ch]->UpdateBeam(beamGains, ionG[channelBlockIndex], ionDL[channelBlockIndex], ionDM[channelBlockIndex]);
 		}
 	}

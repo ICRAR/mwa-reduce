@@ -313,6 +313,7 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 			
 			if(sampleGood)
 			{
+				// because the weightScalar is currently sum over 4 individual weights
 				weightScalar = 0.25 * weightScalar;
 			
 				// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
@@ -322,7 +323,7 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 				Matrix2x2::ScalarMultiply(temp, weightScalar * 0.5); // Divide factor of 2 because we add both normal and conjugate at once
 				Matrix2x2::PlusATimesB(measFluxIter, temp, beamWeightPtr);
 				
-				// Calculate Weight += w B* B
+				// Calculate Weight += w (B* B) (B* B)
 				Matrix2x2::HermATimesB(temp, beamWeightPtr, beamWeightPtr);
 				std::complex<double> temp2[4];
 				Matrix2x2::HermATimesB(temp2, temp, temp);
