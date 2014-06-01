@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 		// Find the mid time step
 		casa::MEpoch firstTime = timeColumn(0);
 		casa::MEpoch lastTime = timeColumn(ms.nrow()-1);
-		std::cout << "Start time = " << firstTime << ", mid time = " << lastTime << '\n';
+		std::cout << "Start time = " << firstTime << ", end time = " << lastTime << '\n';
 		time = casa::MEpoch(casa::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
 		std::cout << "Using mid time = " << time << '\n';
 		

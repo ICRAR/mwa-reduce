@@ -60,14 +60,22 @@ public:
 	
 	void Accumulate()
 	{
-		std::string dataColumnName("DATA");
-		
 		/**
 			* Read some meta data from the measurement set
 			*/
 		size_t channelCount = _bandData.ChannelCount();
 		
 		if(_ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
+		
+		bool hasCorrected = _ms.tableDesc().isColumn("CORRECTED_DATA");
+		std::string dataColumnName;
+		if(hasCorrected) {
+			std::cout << "Measurement set has corrected data: tasks will be applied on the corrected data column.\n";
+			dataColumnName = "CORRECTED_DATA";
+		} else {
+			std::cout << "No corrected data in measurement set: tasks will be applied on the data column.\n";
+			dataColumnName= "DATA";
+		}
 		
 		casa::ROArrayColumn<casa::Complex> dataColumn(_ms, dataColumnName);
 		casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
