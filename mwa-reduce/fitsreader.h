@@ -7,8 +7,9 @@
 #include <fitsio.h>
 
 #include "polarizationenum.h"
+#include "fitsiochecker.h"
 
-class FitsReader
+class FitsReader : protected FitsIOChecker
 {
 	public:
 		FitsReader(const std::string &filename) 
@@ -64,7 +65,6 @@ class FitsReader
 		fitsfile *_fitsPtr;
 		
 		void initialize();
-		void checkStatus(int status, const std::string &operation=std::string());
 		
 		size_t _imgWidth, _imgHeight;
 		double _phaseCentreRA, _phaseCentreDec;

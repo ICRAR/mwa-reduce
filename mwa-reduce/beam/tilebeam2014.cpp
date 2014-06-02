@@ -1,4 +1,5 @@
 #include "tilebeam2014.h"
+#include "joneslookupdipole.h"
 
 #define SPEED_OF_LIGHT 299792458.0        // speed of light in m/s
 
@@ -19,6 +20,7 @@ TileBeam2014::TileBeam2014(const double* delays) :
 		_dipoleEast[i] = dipoleEast[i] * _dipoleSeparations;
 		_delays[i] = delays[i]*SPEED_OF_LIGHT*_delayStep;
 	}
+	JonesLookupDipole::Initialize();
 }
 
 void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<double>* output)

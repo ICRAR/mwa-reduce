@@ -6,6 +6,7 @@
 
 #include "tileimpedance.h"
 #include "lnaimpedance.h"
+#include "joneslookupdipole.h"
 
 #ifndef SPEED_OF_LIGHT
 #define SPEED_OF_LIGHT 299792458.0        // speed of light in m/s
@@ -221,12 +222,24 @@ private:
 		ax /= std::abs(cacheInfo->zax);
 		ay /= std::abs(cacheInfo->zay);
 
-		double dipoleJones[4];
-		getJonesShortDipole(az, za, freq, dipoleJones);
-		result[0] = ax * dipoleJones[0];
-		result[1] = ax * dipoleJones[1];
-		result[2] = ay * dipoleJones[2];
-		result[3] = ay * dipoleJones[3];
+		const bool useLookup = true;
+		if(useLookup)
+		{
+			std::complex<double> dipoleJones[4];
+			JonesLookupDipole::Interpolate(dipoleJones, az, za, freq);
+			result[0] = ax * dipoleJones[0];
+			result[1] = ax * dipoleJones[1];
+			result[2] = ay * dipoleJones[2];
+			result[3] = ay * dipoleJones[3];
+		}
+		else {
+			double dipoleJones[4];
+			getJonesShortDipole(az, za, freq, dipoleJones);
+			result[0] = ax * dipoleJones[0];
+			result[1] = ax * dipoleJones[1];
+			result[2] = ay * dipoleJones[2];
+			result[3] = ay * dipoleJones[3];
+		}
 	}
         
 	static void invert32x32(const std::complex<double>* input, std::complex<double>* output);

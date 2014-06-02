@@ -9,30 +9,12 @@
 #include <casa/Quanta/MVTime.h>
 #include <measures/Measures/MeasConvert.h>
 
-void FitsReader::checkStatus(int status, const std::string &operation) 
-{
-	if(status) {
-		/* fits_get_errstatus returns at most 30 characters */
-		char err_text[31];
-		fits_get_errstatus(status, err_text);
-		char err_msg[81];
-		std::stringstream errMsg;
-		if(!operation.empty())
-			errMsg << "During operation " << operation << ", ";
-		errMsg << "CFITSIO reported error when performing IO on file '" << _filename << "': " << err_text << " (";
-		while(fits_read_errmsg(err_msg))
-			errMsg << err_msg;
-		errMsg << ')';
-		throw std::runtime_error(errMsg.str());
-	}
-}
-
 float FitsReader::readFloatKey(const char *key)
 {
 	int status = 0;
 	float floatValue;
 	fits_read_key(_fitsPtr, TFLOAT, key, &floatValue, 0, &status);
-	checkStatus(status, key);
+	checkStatus(status, _filename, std::string("Read float key ") + key);
 	return floatValue;
 }
 
@@ -41,7 +23,7 @@ double FitsReader::readDoubleKey(const char *key)
 	int status = 0;
 	double value;
 	fits_read_key(_fitsPtr, TDOUBLE, key, &value, 0, &status);
-	checkStatus(status, key);
+	checkStatus(status, _filename, std::string("Read float key ") + key);
 	return value;
 }
 
@@ -83,7 +65,7 @@ std::string FitsReader::readStringKey(const char *key)
 	int status = 0;
 	char keyStr[256];
 	fits_read_key(_fitsPtr, TSTRING, key, keyStr, 0, &status);
-	checkStatus(status, key);
+	checkStatus(status, _filename, std::string("Read string key ") + key);
 	return std::string(keyStr);
 }
 
@@ -92,7 +74,6 @@ bool FitsReader::readStringKeyIfExists(const char *key, std::string& value, std:
 	int status = 0;
 	char valueStr[256], commentStr[256];
 	fits_read_key(_fitsPtr, TSTRING, key, valueStr, commentStr, &status);
-	checkStatus(status, key);
 	if(status == 0)
 	{
 		value = valueStr;
@@ -105,22 +86,22 @@ void FitsReader::initialize()
 {
 	int status = 0;
 	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
-	checkStatus(status);
+	checkStatus(status, _filename);
 	
 	// Move to first HDU
 	int hduType;
 	fits_movabs_hdu(_fitsPtr, 1, &hduType, &status);
-	checkStatus(status);
+	checkStatus(status, _filename);
 	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
 	
 	int naxis = 0;
 	fits_get_img_dim(_fitsPtr, &naxis, &status);
-	checkStatus(status);
+	checkStatus(status, _filename);
 	if(naxis < 2) throw std::runtime_error("NAxis in image < 2");
 	
 	std::vector<long> naxes(naxis);
 	fits_get_img_size(_fitsPtr, naxis, &naxes[0], &status);
-	checkStatus(status);
+	checkStatus(status, _filename);
 	for(int i=2;i!=naxis;++i)
 		if(naxes[i] != 1) throw std::runtime_error("Multiple images in fits file");
 	_imgWidth = naxes[0];
@@ -216,7 +197,7 @@ void FitsReader::Read(NumType* image)
 	int status = 0;
 	int naxis = 0;
 	fits_get_img_dim(_fitsPtr, &naxis, &status);
-	checkStatus(status);
+	checkStatus(status, _filename);
 	std::vector<long> firstPixel(naxis);
 	for(int i=0;i!=naxis;++i) firstPixel[i] = 1;
 	
@@ -224,7 +205,7 @@ void FitsReader::Read(NumType* image)
 		fits_read_pix(_fitsPtr, TDOUBLE, &firstPixel[0], _imgWidth*_imgHeight, 0, image, 0, &status);
 	else
 		throw std::runtime_error("sizeof(NumType)!=8 not implemented");
-	checkStatus(status);
+	checkStatus(status, _filename);
 }
 
 void FitsReader::readHistory()
@@ -232,7 +213,7 @@ void FitsReader::readHistory()
 	int status = 0;
 	int npos, moreKeys;
 	fits_get_hdrspace(_fitsPtr, &npos, &moreKeys, &status);
-	checkStatus(status);
+	checkStatus(status, _filename);
 	char keyCard[256];
 	for(int pos=1; pos<=npos; ++pos)
 	{
@@ -248,7 +229,7 @@ FitsReader::~FitsReader()
 {
 	int status = 0;
 	fits_close_file(_fitsPtr, &status);
-	checkStatus(status);
+	checkStatus(status, _filename);
 }
 
 double FitsReader::parseFitsDateToMJD(const char* valueStr)

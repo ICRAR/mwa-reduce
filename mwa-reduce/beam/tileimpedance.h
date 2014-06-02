@@ -6,9 +6,11 @@
 #include <cstring>
 #include <vector>
 
+#include "../fitsiochecker.h"
+
 #define TILE_IMPEDANCE_MATRIX_COUNT 5
 
-class TileImpedance
+class TileImpedance : private FitsIOChecker
 {
 public:
 	static const std::complex<double> *Get(double frequency)

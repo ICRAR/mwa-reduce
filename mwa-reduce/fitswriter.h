@@ -7,8 +7,9 @@
 #include <cmath>
 
 #include "polarizationenum.h"
+#include "fitsiochecker.h"
 
-class FitsWriter
+class FitsWriter : protected FitsIOChecker
 {
 	public:
 		FitsWriter() :
@@ -145,7 +146,6 @@ class FitsWriter
 		std::map<std::string, std::string> _extraStringKeywords;
 		std::map<std::string, double> _extraNumKeywords;
 		
-		void checkStatus(int status, const std::string& filename) const;
 		void julianDateToYMD(double jd, int &year, int &month, int &day) const;
 		void mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec) const;
 };

@@ -11,22 +11,6 @@
 #include <limits>
 #include <iostream>
 
-void FitsWriter::checkStatus(int status, const std::string& filename) const
-{
-	if(status) {
-		/* fits_get_errstatus returns at most 30 characters */
-		char err_text[31];
-		fits_get_errstatus(status, err_text);
-		char err_msg[81];
-		std::stringstream errMsg;
-		errMsg << "CFITSIO reported error when performing IO on file '" << filename << "':" << err_text << " (";
-		while(fits_read_errmsg(err_msg))
-			errMsg << err_msg;
-		errMsg << ')';
-		throw std::runtime_error(errMsg.str());
-	}
-}
-
 template<typename NumType>
 void FitsWriter::Write(const std::string& filename, const NumType* image) const
 {
