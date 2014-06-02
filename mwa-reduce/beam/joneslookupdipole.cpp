@@ -109,11 +109,13 @@ void JonesLookupDipole::loadLookupTable()
 			if(zaVector[zaIndex] == 0.0)
 				zaZero = zaIndex;
 		}
+		if(phZero==size_t(-1) || ph90==size_t(-1) || zaZero==size_t(-1))
+			throw std::runtime_error("Could not find normalization values in matrix file");
 
-		table.norm[0] = d2c(values[4*(phZero*uniqueZAValues + zaZero) + 0]);  // (zaZero, phZero)
-		table.norm[1] = -d2c(values[4*(ph90*uniqueZAValues + zaZero) + 1]);   // (zaZero, ph90)
-		table.norm[2] = d2c(values[4*(ph90*uniqueZAValues + zaZero) + 2]);    // (zaZero, ph90)
-		table.norm[3] = d2c(values[4*(phZero*uniqueZAValues + zaZero) + 3]);  // (zaZero, phZero)
+		table.norm[0] = d2c(values[8*(phZero*uniqueZAValues + zaZero) + 0]);  // (zaZero, phZero)
+		table.norm[1] = -d2c(values[8*(ph90*uniqueZAValues + zaZero) + 2]);   // (zaZero, ph90)
+		table.norm[2] = d2c(values[8*(ph90*uniqueZAValues + zaZero) + 4]);    // (zaZero, ph90)
+		table.norm[3] = d2c(values[8*(phZero*uniqueZAValues + zaZero) + 6]);  // (zaZero, phZero)
 	}
 }
 
