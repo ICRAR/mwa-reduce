@@ -45,3 +45,55 @@ void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<d
 	gsl_matrix_complex_free(gslOutput);
 	gsl_permutation_free(perm);
 }
+
+/**
+	* Get the full Jones matrix response of the tile including the dipole
+	* reponse and array factor incorporating any mutual coupling effects
+	* from the impedance matrix. freq in Hz.
+	*/
+void TileBeam2014::getResponse(double az, double za, double freq, std::complex< double >* result)
+{
+	const FrequencyCacheInfo *cacheInfo;
+	if(_frequencyCache.count(freq) == 0)
+	{
+		// Frequency is not in cache: fill cache
+		FrequencyCacheInfo newCacheInfo;
+		getPortCurrents(freq, newCacheInfo.current, _delays);
+		newCacheInfo.lambda = SPEED_OF_LIGHT / freq;
+		double zenithDelays[16];
+		for(size_t i=0; i!=16; ++i) zenithDelays[i] = 0.0;
+		getArrayFactor(0.0, 0.0, freq, newCacheInfo.zax, newCacheInfo.zay, zenithDelays);
+		
+		_frequencyCache.insert(std::make_pair(freq, newCacheInfo));
+		cacheInfo = &newCacheInfo;
+	}
+	else {
+		cacheInfo = &_frequencyCache.find(freq)->second;
+	}
+		
+	std::complex<double> ax, ay;
+	getArrayFactor(az, za, *cacheInfo, ax, ay);
+	
+	// zenith response to normalise to
+	ax /= std::abs(cacheInfo->zax);
+	ay /= std::abs(cacheInfo->zay);
+
+	const bool useLookup = true;
+	if(useLookup)
+	{
+		std::complex<double> dipoleJones[4];
+		JonesLookupDipole::Interpolate(dipoleJones, az, za, freq);
+		result[0] = ax * dipoleJones[0];
+		result[1] = ax * dipoleJones[1];
+		result[2] = ay * dipoleJones[2];
+		result[3] = ay * dipoleJones[3];
+	}
+	else {
+		double dipoleJones[4];
+		getJonesShortDipole(az, za, freq, dipoleJones);
+		result[0] = ax * dipoleJones[0];
+		result[1] = ax * dipoleJones[1];
+		result[2] = ay * dipoleJones[2];
+		result[3] = ay * dipoleJones[3];
+	}
+}

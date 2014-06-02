@@ -1,11 +1,7 @@
 #ifndef JONES_LOOKUP_DIPOLE_H
 #define JONES_LOOKUP_DIPOLE_H
 
-/**
- * This class is based on Python code written by Randall Wayth,
- * function getJonesLookup(self,az,za,freq,zenith_norm=True) in
- * mwapy/pb/mwa_tile.py, 2014-06-02.
- */
+#ifdef HAVE_ALGLIB
 
 #include "../fitsiochecker.h"
 
@@ -17,6 +13,11 @@
 #include <ap.h>
 #include <interpolation.h>
 
+/**
+ * This class is based on Python code written by Randall Wayth,
+ * function getJonesLookup(self,az,za,freq,zenith_norm=True) in
+ * mwapy/pb/mwa_tile.py, 2014-06-02.
+ */
 class JonesLookupDipole : private FitsIOChecker
 {
 public:
@@ -44,4 +45,25 @@ private:
 	static std::map<double, FrequencyTable> _tables;
 };
 
-#endif
+#else // HAVE_ALGLIB
+
+#include <complex>
+#include <stdexcept>
+
+class JonesLookupDipole
+{
+public:
+	static void Initialize()
+	{
+		throw std::runtime_error("Can not evaluate Jones look-up dipole: library alglib missing");
+	}
+	
+	static void Interpolate(std::complex<double>* jonesMatrix, double az, double za, double freq, bool zenithNorm = true)
+	{
+		throw std::runtime_error("Can not evaluate Jones look-up dipole: library alglib missing");
+	}
+};
+
+#endif // HAVE_ALGLIB
+
+#endif // JONES_LOOKUP_DIPOLE_H
