@@ -1,4 +1,5 @@
 #include "tileimpedance.h"
+#include "system.h"
 
 #include <fitsio.h>
 
@@ -6,7 +7,7 @@ std::vector<TileImpedance::ImpedanceMatrix> TileImpedance::matrices = std::vecto
 
 void TileImpedance::initializeMatrices()
 {
-	const std::string filename("ZMatrix.fits");
+	const std::string filename = System::FindPythonFilePath("mwapy/pb/ZMatrix.fits");
 	
 	int status = 0;
 	fitsfile *fitsPtr;

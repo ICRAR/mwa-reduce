@@ -21,6 +21,7 @@ TileBeam2014::TileBeam2014(const double* delays) :
 		_delays[i] = delays[i]*SPEED_OF_LIGHT*_delayStep;
 	}
 	JonesLookupDipole::Initialize();
+	TileImpedance::Initialize();
 }
 
 void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<double>* output)

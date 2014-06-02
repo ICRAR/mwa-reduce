@@ -21,7 +21,7 @@
 class JonesLookupDipole : private FitsIOChecker
 {
 public:
-	static void Initialize() { if(_tables.empty()) loadLookupTable("Jmatrix.fits"); }
+	static void Initialize() { if(_tables.empty()) loadLookupTable(); }
 	
 	static void Interpolate(std::complex<double>* jonesMatrix, double az, double za, double freq, bool zenithNorm = true);
 private:
@@ -33,7 +33,7 @@ private:
 		std::complex<double> norm[4];
 	};
 	
-	static void loadLookupTable(const std::string& filename);
+	static void loadLookupTable();
 	
 	static std::complex<double>& d2c(double& v)
 	{

@@ -1,4 +1,5 @@
 #include "joneslookupdipole.h"
+#include "system.h"
 
 #ifdef HAVE_ALGLIB
 
@@ -14,8 +15,9 @@ alglib::real_1d_array JonesLookupDipole::_zaValues;
 alglib::real_1d_array JonesLookupDipole::_phValues;
 std::map<double, JonesLookupDipole::FrequencyTable> JonesLookupDipole::_tables;
 
-void JonesLookupDipole::loadLookupTable(const std::string& filename)
+void JonesLookupDipole::loadLookupTable()
 {
+	std::string filename = System::FindPythonFilePath("mwapy/pb/Jmatrix.fits");
 	// Load a dipole Jones response lookup table (FITS file)
 	// Data are a direct conversion of the output of the simulation so has redundant info.
 	// We do all the conversion and stuff here

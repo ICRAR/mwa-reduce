@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 project(mwa-reduce)
 
-set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wall -DNDEBUG -march=native -msse4.1 -std=c++0x")
+set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -msse4.1 -std=c++0x")
 
 find_library(CASA_MS_LIB casa_ms REQUIRED)
 find_library(CASA_TABLES_LIB casa_tables REQUIRED)
@@ -33,14 +33,16 @@ include_directories(${Boost_INCLUDE_DIR})
 include_directories(${FITSIO_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 
+set(BEAM_LIBS ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
+
 if(ALGLIB_LIB AND ALGLIB_INCLUDE_DIR)
   add_definitions(-DHAVE_ALGLIB)
   include_directories(${ALGLIB_INCLUDE_DIR})
-  set(BEAM_LIBS ${ALGLIB_LIB})
+  set(BEAM_LIBS ${BEAM_LIBS} ${ALGLIB_LIB})
+  message("Library alglib found.")
 else(ALGLIB_LIB AND ALGLIB_INCLUDE_DIR)
   message("Library alglib not found! This library is required for calculating the new (2014) beam model.")
   message("You will not be able to use the new beam model.")
-  set(BEAM_LIBS "")
 endif(ALGLIB_LIB AND ALGLIB_INCLUDE_DIR)
 
 if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
@@ -50,8 +52,6 @@ endif(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
 if(GTS_INCLUDE_DIR AND GLIB_INCLUDE_DIR)
   include_directories(${GTS_INCLUDE_DIR} ${GLIB_INCLUDE_DIR})
 endif(GTS_INCLUDE_DIR AND GLIB_INCLUDE_DIR)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Wvla")
 
 set(CMAKE_REQUIRED_FLAGS "-std=c++0x")
 include(CheckCXXSourceCompiles)
@@ -86,7 +86,7 @@ IF("${isSystemDir}" STREQUAL "-1")
    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 ENDIF("${isSystemDir}" STREQUAL "-1")
 
-set(BEAMFILES fitsiochecker.cpp beam/joneslookupdipole.cpp beam/tilebeam.cpp beam/tilebeambase.cpp beam/tilebeam2014.cpp beam/tileimpedance.cpp beam/lnaimpedance.cpp)
+set(BEAMFILES fitsiochecker.cpp beam/joneslookupdipole.cpp beam/system.cpp beam/tilebeam.cpp beam/tilebeambase.cpp beam/tilebeam2014.cpp beam/tileimpedance.cpp beam/lnaimpedance.cpp)
 
 add_executable(addimg addimg.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(aegean2model aegean2model.cpp model.cpp)

@@ -13,6 +13,12 @@
 class TileImpedance : private FitsIOChecker
 {
 public:
+	static void Initialize()
+	{
+		if(matrices.empty())
+			initializeMatrices();
+	}
+	
 	static const std::complex<double> *Get(double frequency)
 	{
 		if(matrices.empty())

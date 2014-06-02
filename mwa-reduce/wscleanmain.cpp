@@ -9,6 +9,11 @@ int main(int argc, char *argv[])
 	std::cout << "\n"
 		" ** This software package is released under the GPL version 3. **\n"
 	  " ** Author: André Offringa (offringa@gmail.com).               **\n\n";
+#ifndef NDEBUG
+	std::cout << "\n"
+		"WARNING: Symbol NDEBUG was not defined; this WSClean version was\n"
+		"compiled as a DEBUG version. This can seriously affect performance!\n";
+#endif
 	
 	if(argc < 2)
 	{
