@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 template<typename TileImplementation, bool DoSquare>
-void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, double pixelSizeY, double refRA, double refDec, double arrLatitude, double zenithHa, double zenithDec, double centralFrequency, const double* delays, const casa::MeasFrame& frame, double dl, double dm)
+void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, double pixelSizeY, double refRA, double refDec, double arrLatitude, double zenithHa, double zenithDec, double centralFrequency, const double* delays, const casa::MeasFrame& frame, double dl, double dm, bool freqInterpolation)
 {
 	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
 	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
@@ -35,7 +35,7 @@ void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, d
 		j2000ToHaDecRef(j2000Ref, hadecRef),
 		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
 
-	TileBeamBase<TileImplementation> tilebeam(delays);
+	TileBeamBase<TileImplementation> tilebeam(delays, freqInterpolation);
 	ProgressBar progressBar("Constructing beam");
 	for(size_t y=0;y!=height;++y)
 	{
@@ -71,7 +71,9 @@ int main(int argc, char *argv[])
 {
 	if(argc < 2)
 	{
-		std::cout << "Syntax: beam [-2013 | -2014] [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] -[m <metafits>] [-delays <0,0,..>]\n";
+		std::cout << "Syntax: beam [-2013 | -2014 | -2014i] [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] -[m <metafits>] [-delays <0,0,..>]\n"
+			"  -2013 selects the 'analytical' beam, -2014 selected the beam that takes tile impedance etc. into account, and\n"
+			"  -2014i selects the same beam but also enables frequency interpolation.\n";
 		return 0;
 	}
 	
@@ -83,6 +85,7 @@ int main(int argc, char *argv[])
 	double delays[16];
 	bool doSquare = false;
 	bool use2013 = false;
+	bool doInterpolate = false;
 	for(size_t i=0; i!=16; ++i)
 		delays[i] = 0.0;
 	while(argi<argc && argv[argi][0] == '-')
@@ -111,7 +114,15 @@ int main(int argc, char *argv[])
 		else if(param == "2013")
 			use2013 = true;
 		else if(param == "2014")
+		{
 			use2013 = false;
+			doInterpolate = false;
+		}
+		else if(param == "2014i")
+		{
+			use2013 = false;
+			doInterpolate = true;
+		}
 		else if(param == "allsky")
 		{
 		}
@@ -273,15 +284,15 @@ int main(int argc, char *argv[])
 	if(doSquare)
 	{
 		if(use2013)
-			MakeBeam<TileBeam2013,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
+			MakeBeam<TileBeam2013,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
 		else
-			MakeBeam<TileBeam2014,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
+			MakeBeam<TileBeam2014,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
 	}
 	else {
 		if(use2013)
-			MakeBeam<TileBeam2013,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
+			MakeBeam<TileBeam2013,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
 		else
-			MakeBeam<TileBeam2014,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM);
+			MakeBeam<TileBeam2014,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
 	}
 	
 	std::cout << "\nWriting...\n";

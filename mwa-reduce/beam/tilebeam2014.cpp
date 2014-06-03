@@ -24,6 +24,7 @@ TileBeam2014::TileBeam2014(const double* delays, bool frequencyInterpolation) :
 	JonesLookupDipole::Initialize();
 	TileImpedance::Initialize();
 	TileImpedance::GetTabulationFrequencies(_tabulationFrequencies);
+	std::cout << "Frequency interpolation of beam is " << (_frequencyInterpolation ? "enabled" : "disabled") << ".\n";
 }
 
 void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<double>* output)
