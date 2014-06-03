@@ -3,6 +3,7 @@
 
 #include <complex>
 #include <map>
+#include <set>
 
 #include "tileimpedance.h"
 #include "lnaimpedance.h"
@@ -14,16 +15,22 @@
 class TileBeam2014
 {
 public:
-	TileBeam2014(const double *delays);
+	TileBeam2014(const double *delays, bool frequencyInterpolation = true);
 	
 	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
 	{
-		getResponse(azimuth, zenithAngle, frequencyHz, gain);
+		if(_frequencyInterpolation)
+			getInterpolatedResponse(azimuth, zenithAngle, frequencyHz, gain);
+		else
+			getTabulatedResponse(azimuth, zenithAngle, frequencyHz, gain);
 	}
 	
 	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, std::complex<double> *gain)
 	{
-		getResponse(azimuth, zenithAngle, frequencyHz, gain);
+		if(_frequencyInterpolation)
+			getInterpolatedResponse(azimuth, zenithAngle, frequencyHz, gain);
+		else
+			getTabulatedResponse(azimuth, zenithAngle, frequencyHz, gain);
 	}
 	
 private:
@@ -31,6 +38,8 @@ private:
 	double _dipoleNorth[16];
 	double _delays[16];
 	const double _dipoleHeight, _dipoleSeparations, _delayStep;
+	std::set<double> _tabulationFrequencies;
+	bool _frequencyInterpolation;
 	
 	struct FrequencyCacheInfo
 	{
@@ -194,7 +203,12 @@ private:
 	 * reponse and array factor incorporating any mutual coupling effects
 	 * from the impedance matrix. freq in Hz.
 	 */
-	void getResponse(double az, double za, double freq, std::complex<double>* result);
+	void getTabulatedResponse(double az, double za, double freq, std::complex<double>* result);
+	
+	/**
+	 * Create a few tabulated responses and interpolated over these.
+	 */
+	void getInterpolatedResponse(double az, double za, double freq, std::complex<double>* result);
         
 	static void invert32x32(const std::complex<double>* input, std::complex<double>* output);
 	

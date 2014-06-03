@@ -7,10 +7,11 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_cblas.h>
 
-TileBeam2014::TileBeam2014(const double* delays) :
+TileBeam2014::TileBeam2014(const double* delays, bool frequencyInterpolation) :
 	_dipoleHeight(0.28), /* Seems to be 0.3 in the RTS, 0.278 in beam script */
 	_dipoleSeparations(1.100),
-	_delayStep(435.0e-12)
+	_delayStep(435.0e-12),
+	_frequencyInterpolation(frequencyInterpolation)
 {
 	const double dipoleEast[16] = {-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5,-1.5,-0.5,0.5,1.5};
 	const double dipoleNorth[16] = {1.5,1.5,1.5,1.5,0.5,0.5,0.5,0.5,-0.5,-0.5,-0.5,-0.5,-1.5,-1.5,-1.5,-1.5};
@@ -22,6 +23,7 @@ TileBeam2014::TileBeam2014(const double* delays) :
 	}
 	JonesLookupDipole::Initialize();
 	TileImpedance::Initialize();
+	TileImpedance::GetTabulationFrequencies(_tabulationFrequencies);
 }
 
 void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<double>* output)
@@ -52,7 +54,7 @@ void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<d
 	* reponse and array factor incorporating any mutual coupling effects
 	* from the impedance matrix. freq in Hz.
 	*/
-void TileBeam2014::getResponse(double az, double za, double freq, std::complex< double >* result)
+void TileBeam2014::getTabulatedResponse(double az, double za, double freq, std::complex< double >* result)
 {
 	const FrequencyCacheInfo *cacheInfo;
 	if(_frequencyCache.count(freq) == 0)
@@ -96,5 +98,66 @@ void TileBeam2014::getResponse(double az, double za, double freq, std::complex< 
 		result[1] = ax * dipoleJones[1];
 		result[2] = ay * dipoleJones[2];
 		result[3] = ay * dipoleJones[3];
+	}
+}
+
+void TileBeam2014::getInterpolatedResponse(double az, double za, double freq, std::complex<double>* result)
+{
+	std::set<double>::iterator bound = _tabulationFrequencies.lower_bound(freq);
+	std::set<double>::iterator beginNext = _tabulationFrequencies.begin();
+	++beginNext;
+	if(bound == _tabulationFrequencies.begin())
+	{
+		++bound; ++bound;
+	}
+	else if(bound == beginNext)
+	{
+		++bound;
+	}
+	else if(bound == _tabulationFrequencies.end())
+	{
+		--bound; --bound;
+	}
+	else {
+		std::set<double>::const_iterator next = bound;
+		++next;
+		if(next == _tabulationFrequencies.end())
+			--bound;
+	}
+	double freqR = *bound;
+	++bound;
+	double freqRR = *bound;
+	--bound; --bound;
+	double freqL = *bound;
+	--bound;
+	double freqLL = *bound;
+	
+	//std::cout << "Interpolating " << freq << " from " << freqLL << "," << freqL << "," << freqR << "," << freqRR << '\n';
+	std::complex<double> valuesLL[4], valuesL[4], valuesR[4], valuesRR[4];
+	getTabulatedResponse(az, za, freqLL, &valuesLL[0]);
+	getTabulatedResponse(az, za, freqL, &valuesL[0]);
+	getTabulatedResponse(az, za, freqR, &valuesR[0]);
+	getTabulatedResponse(az, za, freqRR, &valuesRR[0]);
+	
+	double freqs[4] = {freqLL, freqL, freqR, freqRR};
+	alglib::real_1d_array freqArray;
+	freqArray.setcontent(4, freqs);
+	for(size_t i=0; i!=8; ++i)
+	{
+		double beamValues[4] = {
+			reinterpret_cast<double*>(valuesLL)[i],
+			reinterpret_cast<double*>(valuesL)[i],
+			reinterpret_cast<double*>(valuesR)[i],
+			reinterpret_cast<double*>(valuesRR)[i] };
+			
+		alglib::real_1d_array valArray;
+		valArray.setcontent(4, beamValues);
+		
+		alglib::spline1dinterpolant spline;
+		alglib::spline1dbuildcubic(
+			freqArray, valArray,
+			spline);
+		double v = alglib::spline1dcalc(spline, freq);
+		reinterpret_cast<double*>(result)[i] = v;
 	}
 }

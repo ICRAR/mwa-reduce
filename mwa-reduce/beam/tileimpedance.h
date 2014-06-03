@@ -2,8 +2,9 @@
 #define TILE_IMPEDANCE_H
 
 #include <complex>
-#include <iostream>
 #include <cstring>
+#include <iostream>
+#include <set>
 #include <vector>
 
 #include "../fitsiochecker.h"
@@ -43,6 +44,13 @@ public:
 	static void Get(double frequency, std::complex<double>* dest)
 	{
 		memcpy(dest, Get(frequency), sizeof(std::complex<double>)*32*32);
+	}
+	
+	static void GetTabulationFrequencies(std::set<double>& frequencies)
+	{
+		frequencies.clear();
+		for(std::vector<ImpedanceMatrix>::const_iterator i=matrices.begin(); i!=matrices.end(); ++i)
+			frequencies.insert(i->_frequency);
 	}
 	
 private:
