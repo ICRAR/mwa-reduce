@@ -11,7 +11,7 @@ std::string System::FindPythonFilePath(const std::string& filename)
 	if(boost::filesystem::exists(filename))
 		return filename;
 	std::cout << "Searching " << filename << "... " << std::flush;
-	boost::filesystem::path tempPath = boost::filesystem::unique_path();
+	boost::filesystem::path tempPath = "/tmp/mwa-ao-python-path-list.tmp"; //boost::filesystem::unique_path();
 	const std::string tempFilename = tempPath.string();  // optional
 	std::string command =
 		std::string("echo \"import sys\nfor a in sys.path:\n  print a\"|python>") +
