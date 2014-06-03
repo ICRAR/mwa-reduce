@@ -12,7 +12,7 @@ std::string System::FindPythonFilePath(const std::string& filename)
 		return filename;
 	std::cout << "Searching " << filename << "... " << std::flush;
 	boost::filesystem::path tempPath = boost::filesystem::unique_path();
-	const std::string tempFilename = tempPath.native();  // optional
+	const std::string tempFilename = tempPath.string();  // optional
 	std::string command =
 		std::string("echo \"import sys\nfor a in sys.path:\n  print a\"|python>") +
 		tempFilename;
@@ -28,7 +28,7 @@ std::string System::FindPythonFilePath(const std::string& filename)
 		searchPath /= filename;
 		if(boost::filesystem::exists(searchPath))
 		{
-			const std::string result = searchPath.native();
+			const std::string result = searchPath.string();
 			std::cout << result << '\n';
 			searchPathsFile.close();
 			boost::filesystem::remove(tempPath);
