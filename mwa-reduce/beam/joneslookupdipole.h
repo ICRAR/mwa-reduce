@@ -3,7 +3,7 @@
 
 #include "../fitsiochecker.h"
 
-#include "../aocommon/uvector.h"
+#include "../uvector.h"
 
 #include <complex>
 #include <map>
