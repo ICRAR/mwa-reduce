@@ -1,8 +1,6 @@
 #include "joneslookupdipole.h"
 #include "system.h"
 
-#ifdef HAVE_ALGLIB
-
 #include <fitsio.h>
 
 #include <iostream>
@@ -158,5 +156,3 @@ void JonesLookupDipole::Interpolate(std::complex<double>* jonesMatrix, double az
 		}
 	}
 }
-
-#endif // HAVE_ALGLIB

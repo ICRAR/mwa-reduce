@@ -1,8 +1,6 @@
 #ifndef JONES_LOOKUP_DIPOLE_H
 #define JONES_LOOKUP_DIPOLE_H
 
-#ifdef HAVE_ALGLIB
-
 #include "../fitsiochecker.h"
 
 #include "../aocommon/uvector.h"
@@ -10,8 +8,8 @@
 #include <complex>
 #include <map>
 
-#include <ap.h>
-#include <interpolation.h>
+#include "../alglib/ap.h"
+#include "../alglib/interpolation.h"
 
 /**
  * This class is based on Python code written by Randall Wayth,
@@ -44,26 +42,5 @@ private:
 	
 	static std::map<double, FrequencyTable> _tables;
 };
-
-#else // HAVE_ALGLIB
-
-#include <complex>
-#include <stdexcept>
-
-class JonesLookupDipole
-{
-public:
-	static void Initialize()
-	{
-		throw std::runtime_error("Can not evaluate Jones look-up dipole: library alglib missing");
-	}
-	
-	static void Interpolate(std::complex<double>* jonesMatrix, double az, double za, double freq, bool zenithNorm = true)
-	{
-		throw std::runtime_error("Can not evaluate Jones look-up dipole: library alglib missing");
-	}
-};
-
-#endif // HAVE_ALGLIB
 
 #endif // JONES_LOOKUP_DIPOLE_H
