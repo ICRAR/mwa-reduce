@@ -8,8 +8,6 @@
 
 #include "../fitsiochecker.h"
 
-#define TILE_IMPEDANCE_MATRIX_COUNT 5
-
 class TileImpedance : private FitsIOChecker
 {
 public:
@@ -27,7 +25,7 @@ public:
 		const struct ImpedanceMatrix *m = 0;
 		double minDist = 1e10;
 		
-		for(size_t i=0; i!=TILE_IMPEDANCE_MATRIX_COUNT; ++i)
+		for(size_t i=0; i!=matrices.size(); ++i)
 		{
 			double d = fabs(matrices[i]._frequency - frequency);
 			if(d < minDist) {

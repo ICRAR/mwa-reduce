@@ -20,6 +20,7 @@ void TileImpedance::initializeMatrices()
 	
 	std::cout.precision(16);
 	std::complex<double> cValues[32*32];
+	std::cout << "Loading impedance matrices for freq (MHz): ";
 	for(int hdu=1; hdu<=hdunum; ++hdu)
 	{
 		fits_movabs_hdu(fitsPtr, hdu, NULL, &status);
@@ -29,7 +30,7 @@ void TileImpedance::initializeMatrices()
 		fits_read_keyword(fitsPtr, "FREQ", keyValue, NULL, &status);
 		checkStatus(status, filename);
 		double frequency = atof(keyValue);
-		
+		std::cout << round(frequency*1e-6*10.0)/10.0 << std::flush << ' ';
 		double values[2*32*32];
 		
 		long fpixel[3] = {1, 1, 1};
@@ -45,4 +46,5 @@ void TileImpedance::initializeMatrices()
 		ImpedanceMatrix matrix(frequency, cValues);
 		matrices.push_back(matrix);
 	}
+	std::cout << '\n';
 }
