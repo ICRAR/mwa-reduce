@@ -54,7 +54,7 @@ bool FitsReader::readDateKeyIfExists(const char *key, double &dest)
 	fits_read_key(_fitsPtr, TSTRING, key, keyStr, 0, &status);
 	if(status == 0)
 	{
-		dest = parseFitsDateToMJD(keyStr);
+		dest = FitsReader::ParseFitsDateToMJD(keyStr);
 		return true;
 	}
 	else return false;
@@ -232,13 +232,13 @@ FitsReader::~FitsReader()
 	checkStatus(status, _filename);
 }
 
-double FitsReader::parseFitsDateToMJD(const char* valueStr)
+double FitsReader::ParseFitsDateToMJD(const char* valueStr)
 {
 	casa::MVTime time;
 	casa::MEpoch::Types systypes;
 	bool parseSuccess = casa::FITSDateUtil::fromFITS(time, systypes, valueStr, "UTC");
 	if(!parseSuccess)
-		throw std::runtime_error("Could not parse FITS date");
+		throw std::runtime_error(std::string("Could not parse FITS date: ") + valueStr);
 	casa::MEpoch epoch(time.get(), systypes);
 	return epoch.getValue().get();
 }

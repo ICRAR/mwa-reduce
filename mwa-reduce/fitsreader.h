@@ -50,6 +50,7 @@ class FitsReader : protected FitsIOChecker
 		const std::vector<std::string>& History() const { return _history; }
 		
 		bool ReadDoubleKeyIfExists(const char* key, double& dest) { return readDoubleKeyIfExists(key, dest); }
+		static double ParseFitsDateToMJD(const char* valueStr);
 	private:
 		float readFloatKey(const char* key);
 		double readDoubleKey(const char* key);
@@ -58,7 +59,6 @@ class FitsReader : protected FitsIOChecker
 		std::string readStringKey(const char* key);
 		bool readStringKeyIfExists(const char* key, std::string& value, std::string& comment);
 		void readHistory();
-		double parseFitsDateToMJD(const char* valueStr);
 		bool readDateKeyIfExists(const char *key, double &dest);
 		
 		std::string _filename;

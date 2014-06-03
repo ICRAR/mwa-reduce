@@ -8,6 +8,9 @@
 #include "numberlist.h"
 #include "progressbar.h"
 
+#include "mwa/metafitsfile.h"
+#include "mwa/mwaconfig.h"
+
 #include <ms/MeasurementSets/MeasurementSet.h>
 
 #include <tables/Tables/ArrayColumn.h>
@@ -68,17 +71,18 @@ int main(int argc, char *argv[])
 {
 	if(argc < 2)
 	{
-		std::cout << "Syntax: beam [-2013 | -2014] [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] [-delays <0,0,..>]\n";
+		std::cout << "Syntax: beam [-2013 | -2014] [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] -[m <metafits>] [-delays <0,0,..>]\n";
 		return 0;
 	}
 	
 	int argi= 1;
 	const char* inpFitsname = 0;
 	const char* msName = 0;
+	const char* metafitsName = 0;
 	string prefixName = "beam"; 
 	double delays[16];
 	bool doSquare = false;
-	bool use2013 = true;
+	bool use2013 = false;
 	for(size_t i=0; i!=16; ++i)
 		delays[i] = 0.0;
 	while(argi<argc && argv[argi][0] == '-')
@@ -93,6 +97,11 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			msName = argv[argi];
+		}
+		else if(param == "m")
+		{
+			++argi;
+			metafitsName = argv[argi];
 		}
 		else if(param == "name")
 		{
@@ -129,14 +138,34 @@ int main(int argc, char *argv[])
 	casa::MPosition arrayPos;
 	casa::MEpoch time;
 	double centralFrequency;
+	bool haveTime = false;
 	
-	if(msName == 0)
+	/** If nothing else is read in, use some sensible values:*/
+	arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
+	centralFrequency = 150000000.0;
+		
+	if(metafitsName != 0)
 	{
-		arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
-		time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
-		centralFrequency = 150000000.0;
+		MetaFitsFile mfFile(metafitsName);
+		MWAHeader header;
+		MWAHeaderExt headerExt;
+		mfFile.ReadHeader(header, headerExt);
+		header.Validate(false);
+		std::cout << "Start=" << header.GetDateFirstScanFromFields() << ", end=" << header.GetDateLastScanMJD() << '\n';
+		time = casa::MEpoch(casa::MVEpoch((header.GetDateFirstScanFromFields() + header.GetDateLastScanMJD()) * 0.5));
+		centralFrequency = header.centralFrequencyMHz*1e6;
+		haveTime = true;
+		for(size_t i=0; i!=16; ++i)
+			delays[i] = headerExt.delays[i];
+		std::cout << "Metafits specifies mid time = " << time << '\n';
+		std::cout << "Frequency = " << centralFrequency << '\n';
+		std::cout <<
+			" ***\n"
+			" *** WARNING: using time from metafits file, but these times can be off by a few seconds!\n"
+			" ***\n";
 	}
-	else {
+	
+	if(msName != 0) {
 		/**
 			* Read some meta data from the measurement set
 			*/
@@ -154,6 +183,7 @@ int main(int argc, char *argv[])
 		std::cout << "Start time = " << firstTime << ", end time = " << lastTime << '\n';
 		time = casa::MEpoch(casa::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
 		std::cout << "Using mid time = " << time << '\n';
+		haveTime = true;
 		
 		casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
 		casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
@@ -164,6 +194,11 @@ int main(int argc, char *argv[])
 		
 		BandData bandData(ms.spectralWindow());
 		centralFrequency = bandData.CentreFrequency();
+	}
+	
+	if(!haveTime) {
+		time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
+		std::cout << "Warning: using random *wrong* start time, because no ms or metafits file was specified.\n";
 	}
 	
 	std::cout << "Delays: [";

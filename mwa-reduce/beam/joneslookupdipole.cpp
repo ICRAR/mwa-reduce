@@ -64,6 +64,7 @@ void JonesLookupDipole::loadLookupTable()
 	_zaValues.setcontent(uniqueZAValues, zaVector.data());
 	_phValues.setcontent(uniquePHValues, phVector.data());
 	
+	std::cout << "Loading J lookup matrix for frequency (MHz) :\n  ";
 	for(int f=0; f!=nFreqs; ++f)
 	{
 		fits_movabs_hdu(fitsPtr, f+1, NULL, &status);
@@ -72,7 +73,7 @@ void JonesLookupDipole::loadLookupTable()
 		char keyValue[FLEN_VALUE];
 		fits_read_keyword(fitsPtr, "FREQ", keyValue, NULL, &status);
 		double frequency = atof(keyValue);
-		std::cout << "Loading J lookup matrix for frequency " << round(frequency*100.0*1e-6)/100.0 << " MHz\n";
+		std::cout << round(frequency*100.0*1e-6)/100.0 << std::flush << ' ';
 		if(f != 0)
 			fits_read_pix(fitsPtr, TDOUBLE, fpixel, valueCount, 0, data.data(), 0, &status);
 		
@@ -115,6 +116,7 @@ void JonesLookupDipole::loadLookupTable()
 		table.norm[2] = d2c(values[8*(ph90*uniqueZAValues + zaZero) + 4]);    // (zaZero, ph90)
 		table.norm[3] = d2c(values[8*(phZero*uniqueZAValues + zaZero) + 6]);  // (zaZero, phZero)
 	}
+	std::cout << '\n';
 }
 
 // Return the Jones matrix for a given az, za and freq value

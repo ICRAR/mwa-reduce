@@ -84,7 +84,7 @@ add_executable(applyion applyion.cpp fftconvolver.cpp fitsiochecker.cpp fitsread
 add_executable(applysolutions applysolutions.cpp)
 add_executable(areas areas.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(autoprocess autoprocess.cpp calibrator.cpp model.cpp beamevaluator.cpp peeler.cpp calibrationmethod.cpp mspredicter.cpp predicter.cpp progressbar.cpp spectrumsubtractor.cpp ${BEAMFILES})
-add_executable(beam beam.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp progressbar.cpp ${BEAMFILES})
+add_executable(beam beam.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp mwa/metafitsfile.cpp mwa/mwaconfig.cpp progressbar.cpp ${BEAMFILES})
 add_executable(calibrate calibrate.cpp calibrator.cpp beamevaluator.cpp calibrationmethod.cpp model.cpp predicter.cpp mspredicter.cpp ${BEAMFILES})
 add_executable(combinespectra combinespectra.cpp beamevaluator.cpp imageweights.cpp model.cpp mspredicter.cpp predicter.cpp progressbar.cpp spectrummaker.cpp ${BEAMFILES})
 add_executable(cluster cluster.cpp model.cpp)
