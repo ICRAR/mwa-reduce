@@ -116,7 +116,7 @@ private:
 				++invertedZPtr;
 			}
 		}
-		std::cout << "MWA " << freq << "Hz X dipole current amplitude\n";
+		/*std::cout << "MWA " << freq << "Hz X dipole current amplitude\n";
     for(size_t y=0; y!=4; ++y) {
       for(size_t x=0; x!=4; ++x) {
 				std::cout << std::abs(current[16+y*4 + x])*1000.0 << ' ';
@@ -129,7 +129,7 @@ private:
 				std::cout << std::arg(current[16+y*4 + x])*180.0/M_PI << ' ';
       }
 			std::cout << '\n';
-    }
+    }*/
 	}
 	
 	/**

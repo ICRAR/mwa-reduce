@@ -36,7 +36,7 @@ public:
 		}
 		if(minDist > 2e6)
 			std::cerr << "Nearest tabulated impedance matrix frequency (" << (m->_frequency*1e-6) << " MHz) is more than 2 MHz away from desired frequency (" << (frequency*1e-6) << " MHz).\n";
-		std::cout << "Selected impedance table for frequency " << (m->_frequency*1e-6) << " MHz\n";
+		std::cout << "Selected impedance table for frequency " << (m->_frequency*1e-6) << " MHz (requested: " << frequency*1e-6 << ")\n";
 
 		return m->_values;
 	}
