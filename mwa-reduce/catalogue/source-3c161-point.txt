@@ -1,0 +1,17 @@
+skymodel fileformat 1.1
+source {
+  name "3C161"
+  component {
+    type point
+    position 06h27m10.1s -05d53m05s
+    measurement {
+      frequency 74 MHz
+      fluxdensity Jy 99.73 0 0 0
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 74.9 0 0 0
+    }
+  }
+}
+
