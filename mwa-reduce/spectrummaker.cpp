@@ -48,8 +48,18 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	long double phaseCentreDec = *refDirIter;
 	
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
-	
-	casa::ROArrayColumn<casa::Complex> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+
+	std::string	dataColumnName;
+	bool hasCorrected = ms.tableDesc().isColumn("CORRECTED_DATA");
+	if(hasCorrected) {
+		std::cout << "Measurement set has corrected data: tasks will be applied on the corrected data column.\n";
+		dataColumnName = "CORRECTED_DATA";
+	} else {
+		std::cout << "No corrected data in measurement set: tasks will be applied on the data column.\n";
+		dataColumnName= "DATA";
+	}
+		
+	casa::ROArrayColumn<casa::Complex> dataColumn(ms, dataColumnName);
 	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
 	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
