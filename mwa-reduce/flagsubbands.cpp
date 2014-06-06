@@ -35,8 +35,6 @@ int main(int argc, char **argv)
 		size_t channelsPerSubband = channelCount / subbandCount;
 		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 		
-		typedef float num_t;
-		typedef std::complex<num_t> complex_t;
 		ArrayColumn<bool> flagColumn(ms, ms.columnName(MSMainEnums::FLAG));
 		
 		IPosition flagsShape = flagColumn.shape(0);
