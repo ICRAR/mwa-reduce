@@ -33,9 +33,6 @@ public:
 	void SetAllowNegative(bool allowNegative) { _allowNegative = allowNegative; }
 	void SetStopOnNegative(bool stopOnNegative) { _stopOnNegative = stopOnNegative; }
 	void SetMakePSF(bool makePSF) { _makePSF = makePSF; }
-	void SetAddModelFilename(const std::string& modelFilename) { _addModelFilename = modelFilename; }
-	void SetAddAppModel(bool addAppModel) { _addApparentModel = addAppModel; }
-	void SetSaveModelFilename(const std::string& modelFilename) { _saveModelFilename = modelFilename; }
 	void SetCleanAreasFilename(const std::string& filename) { _cleanAreasFilename = filename; }
 	void SetPrefixName(const std::string& prefixName) { _prefixName = prefixName; }
 	void SetGridMode(LayeredImager::GridModeEnum gridMode) { _gridMode = gridMode; }
@@ -183,11 +180,11 @@ private:
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio, _manualBeamSize, _memFraction, _absMemLimit, _wLimit, _multiscaleThresholdBias, _multiscaleScaleBias;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor, _threadCount;
 	MSSelection _globalSelection, _currentPartSelection;
-	std::string _columnName, _addModelFilename, _saveModelFilename, _cleanAreasFilename;
+	std::string _columnName, _cleanAreasFilename;
 	std::set<PolarizationEnum> _polarizations;
 	WeightMode _weightMode;
 	std::string _prefixName;
-	bool _allowNegative, _smallPSF, _smallInversion, _addApparentModel, _stopOnNegative, _makePSF;
+	bool _allowNegative, _smallPSF, _smallInversion, _stopOnNegative, _makePSF;
 	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning, _mfsWeighting, _multiscale;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;

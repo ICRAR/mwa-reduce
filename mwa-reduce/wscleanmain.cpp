@@ -142,10 +142,7 @@ int main(int argc, char *argv[])
 			"  ** RESTORATION OPTIONS **\n"
 			"-beamsize <arcmin>\n"
 			"   Set the FWHM beam size in arcmin for restoring the clean components. Default: longest projected\n"
-			"   baseline defines restoring beam.\n"
-			"-addmodel <modelfile>\n"
-			"-addmodelapp <modelfile>\n"
-			"-savemodel <modelfile>\n";
+			"   baseline defines restoring beam.\n";
 		return -1;
 	}
 	
@@ -228,22 +225,6 @@ int main(int argc, char *argv[])
 		else if(param == "makepsf")
 		{
 			wsclean.SetMakePSF(true);
-		}
-		else if(param == "addmodel")
-		{
-			++argi;
-			wsclean.SetAddModelFilename(argv[argi]);
-		}
-		else if(param == "addmodelapp")
-		{
-			++argi;
-			wsclean.SetAddModelFilename(argv[argi]);
-			wsclean.SetAddAppModel(true);
-		}
-		else if(param == "savemodel")
-		{
-			++argi;
-			wsclean.SetSaveModelFilename(argv[argi]);
 		}
 		else if(param == "cleanareas")
 		{

@@ -10,6 +10,7 @@
 #include <sstream>
 #include <limits>
 #include <stdexcept>
+
 #include "nlplfitter.h"
 #include "polarizationenum.h"
 

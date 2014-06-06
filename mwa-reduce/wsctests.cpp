@@ -7,6 +7,8 @@
 #include <iostream>
 #include <random>
 
+volatile size_t copyX, copyY;
+
 void test(bool test, const char* descr)
 {
 	if(test)
@@ -51,8 +53,6 @@ int main(int argc, char* argv[])
 	{
 		img[i] = normal_dist(mt);
 	}
-	
-	volatile size_t copyX, copyY;
 	
 	Stopwatch watch(true);
 	for(size_t repeat=0; repeat!=100; ++repeat)

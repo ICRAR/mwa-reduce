@@ -1,7 +1,6 @@
 #include "wsclean.h"
 
 #include "areaset.h"
-#include "beamevaluator.h"
 #include "fitswriter.h"
 #include "imageweights.h"
 #include "inversionalgorithm.h"
@@ -34,7 +33,7 @@ WSClean::WSClean() :
 	_nWLayers(0), _nIter(0), _antialiasingKernelSize(7), _overSamplingFactor(63),
 	_threadCount(sysconf(_SC_NPROCESSORS_ONLN)),
 	_globalSelection(),
-	_columnName(), _addModelFilename(), _saveModelFilename(), _cleanAreasFilename(),
+	_columnName(), _cleanAreasFilename(),
 	_polarizations(),
 	_weightMode(WeightMode::UniformWeighted),
 	_prefixName("wsclean"),
@@ -715,20 +714,9 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 					}
 					else {
 						Model model;
-						if(!_addModelFilename.empty())
-						{
-							std::cout << "Reading model from " << _addModelFilename << "... " << std::flush;
-							model = Model(_addModelFilename.c_str());
-						}
 						// A model cannot hold instrumental pols (xx/xy/yx/yy), hence always use Stokes I here
 						CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, 0.0, _fitsWriter.Frequency(), Polarization::StokesI);
 						
-						if(!_saveModelFilename.empty())
-						{
-							std::cout << "Saving model to " << _saveModelFilename << "... " << std::flush;
-							model.Save(_saveModelFilename.c_str());
-						}
-					
 						std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
 						renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, Polarization::StokesI);
 						std::cout << "DONE\n";
