@@ -601,7 +601,7 @@ int main(int argc, char *argv[])
 			"#set xrange [0.001:]\n"
 			"#set yrange [-8:2]\n"
 			"set output \"spectrum.ps\"\n"
-			"set key bottom left\n"
+			"#set key bottom left\n"
 			"set xlabel \"Frequency (MHz)\"\n"
 			"set ylabel \"Flux (Jy)\"\n"
 			"plot \\\n";
@@ -637,10 +637,19 @@ int main(int argc, char *argv[])
 				std::ostringstream dataStreamName;
 				dataStreamName << "spectrum" << sourceIndex << ".txt";
 				std::ofstream dataStream(dataStreamName.str().c_str());
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 1.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 1.0 title \"\",\\\n";
-				plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 1.0 title \"\"";
+				if(sourceIndex == 0)
+				{
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"I\",\\\n";
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 1.0 title \"Q\",\\\n";
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 1.0 title \"U\",\\\n";
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 1.0 title \"V\"";
+				}
+				else {
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 1.0 title \"\",\\\n";
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 1.0 title \"\",\\\n";
+					plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 1.0 title \"\"";
+				}
 				
 				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
 				if(sourceIndex < 10)
