@@ -6,7 +6,7 @@ source {
     position 23h34m26.2s -41d25m24s
     measurement {
       frequency 160 MHz
-      fluxdensity Jy 31.3 0 0 31.1
+      fluxdensity Jy 31.3 0 0 31.3
     }
     measurement {
       frequency 80 MHz
