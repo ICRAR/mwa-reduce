@@ -1,0 +1,16 @@
+skymodel fileformat 1.1
+source {
+  name "PKS0349-27 (polarized)"
+  component {
+    type point
+    position 03h51m35.7s -27d44m35s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 52 0 0 0
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 24.3 0 0 0
+    }
+  }
+}
