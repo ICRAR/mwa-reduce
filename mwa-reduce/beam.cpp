@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
 		
 		BandData bandData(ms.spectralWindow());
 		centralFrequency = bandData.CentreFrequency();
+		std::cout << "Central frequency of measurement set: " << round(centralFrequency*1e-6*10.0)*0.1 << " MHz.\n";
 	}
 	
 	if(!haveTime) {
@@ -267,6 +268,8 @@ int main(int argc, char *argv[])
 		refDec = reader.PhaseCentreDec();
 		phaseCentreDL = reader.PhaseCentreDL();
 		phaseCentreDM = reader.PhaseCentreDM();
+		centralFrequency = reader.Frequency();
+		std::cout << "Using frequency from fits file: " << round(centralFrequency*1e-6*10.0)*0.1 << " MHz.\n";
 	}
 	std::cout << "Reference dir: "
 		<< refRA*180.0/M_PI << " RA, "
