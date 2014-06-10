@@ -59,13 +59,13 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, unpolarized = false;
+	bool outputPlot = false, outputCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, unpolarized = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0;
-	std::string outputModel, collectName, appThresholdMS, appSortMS;
+	std::string outputModel, collectName, appThresholdMS, appSortMS, csvFilename;
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false, doAppSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
@@ -75,10 +75,15 @@ int main(int argc, char *argv[])
 	double rndRA = 0.0, rndDec = 0.0, rndDist = 0.0;
 	while(argi!=argc && argv[argi][0]=='-')
 	{
-		if(strcmp(argv[argi], "-p") == 0)
+		const std::string option(&argv[argi][1]);
+		if(option == "p")
 		{
 			outputPlot = true;
-		} else if(strcmp(argv[argi], "-near") == 0)
+		} else if(option == "csv") {
+			++argi;
+			outputCsv = true;
+			csvFilename = argv[argi];
+		} else if(option == "near")
 		{
 			++argi;
 			nearFilterRA = RaDecCoord::ParseRA(argv[argi]);
@@ -87,7 +92,7 @@ int main(int argc, char *argv[])
 			++argi;
 			nearFilterDist = atof(argv[argi]) * (M_PI/180.0);
 			nearFilter = true;
-		} else if(strcmp(argv[argi], "-rnd") == 0)
+		} else if(option == "rnd")
 		{
 			++argi;
 			rndN = atof(argv[argi]);
@@ -97,112 +102,112 @@ int main(int argc, char *argv[])
 			rndDec = RaDecCoord::ParseDec(argv[argi]);
 			++argi;
 			rndDist = atof(argv[argi]) * (M_PI/180.0);
-		} else if(strcmp(argv[argi], "-collect") == 0)
+		} else if(strcmp(argv[argi], "collect") == 0)
 		{
 			doCollect = true;
 			++argi;
 			collectName = argv[argi];
-		} else if(strcmp(argv[argi], "-m") == 0)
+		} else if(option == "m")
 		{
 			++argi;
 			outputModel = argv[argi];
-		} else if(strcmp(argv[argi], "-s") == 0)
+		} else if(option == "s")
 		{
 			++argi;
 			scale = atof(argv[argi]);
-		} else if(strcmp(argv[argi], "-sp") == 0)
+		} else if(option == "sp")
 		{
 			scalePeak = true;
 			++argi; scalePeakA = atof(argv[argi]);
 			++argi; scaleFreqA = atof(argv[argi]) * 1000000.0;
 			++argi; scalePeakB = atof(argv[argi]);
 			++argi; scaleFreqB = atof(argv[argi]) * 1000000.0;
-		} else if(strcmp(argv[argi], "-sc") == 0)
+		} else if(option == "sc")
 		{
 			scaleSource = true;
 			++argi; scalePeakA = atof(argv[argi]);
 			++argi; scaleFreqA = atof(argv[argi]) * 1000000.0;
 			++argi; scalePeakB = atof(argv[argi]);
 			++argi; scaleFreqB = atof(argv[argi]) * 1000000.0;
-		} else if(strcmp(argv[argi], "-set0") == 0)
+		} else if(option == "set0")
 		{
 			++argi;
 			setPolarization[0] = true;
 			setPolFlux[0] = atof(argv[argi]);
-		} else if(strcmp(argv[argi], "-set1") == 0)
+		} else if(option == "-set1")
 		{
 			++argi;
 			setPolarization[1] = true;
 			setPolFlux[1] = atof(argv[argi]);
-		} else if(strcmp(argv[argi], "-set2") == 0)
+		} else if(option == "set2")
 		{
 			++argi;
 			setPolarization[2] = true;
 			setPolFlux[2] = atof(argv[argi]);
-		} else if(strcmp(argv[argi], "-set3") == 0)
+		} else if(option == "set3")
 		{
 			++argi;
 			setPolarization[3] = true;
 			setPolFlux[3] = atof(argv[argi]);
-		} else if(strcmp(argv[argi], "-pl") == 0)
+		} else if(option == "pl")
 		{
 			powerlaw = true;
-		} else if(strcmp(argv[argi], "-t") == 0)
+		} else if(option == "t")
 		{
 			++argi;
 			threshold = atof(argv[argi]);
 			applyThreshold = true;
-		} else if(strcmp(argv[argi], "-tapp") == 0)
+		} else if(option == "tapp")
 		{
 			++argi;
 			appThresholdMS = argv[argi];
 			++argi;
 			appThreshold = atof(argv[argi]);
 			applyAppThreshold = true;
-		} else if(strcmp(argv[argi], "-r") == 0)
+		} else if(option == "r")
 		{
 			++argi;
 			newChannelCount = atoi(argv[argi]);
 			resample = true;
-		} else if(strcmp(argv[argi], "-unpolarized") == 0)
+		} else if(option == "unpolarized")
 		{
 			unpolarized = true;
-		} else if(strcmp(argv[argi], "-o") == 0)
+		} else if(option == "o")
 		{
 			optimize = true;
-		} else if(strcmp(argv[argi], "-combine-diff-meas") == 0)
+		} else if(option == "combine-diff-meas")
 		{
 			combineStrategy = DifferentFrequencies;
-		} else if(strcmp(argv[argi], "-combine-avg-meas") == 0)
+		} else if(option == "combine-avg-meas")
 		{
 			combineStrategy = AverageFluxes;
-		} else if(strcmp(argv[argi], "-sort") == 0)
+		} else if(option == "sort")
 		{
 			doSort = true;
-		} else if(strcmp(argv[argi], "-appsort") == 0)
+		} else if(option == "appsort")
 		{
 			doAppSort = true;
 			++argi;
 			appSortMS = argv[argi];
-		} else if(strcmp(argv[argi], "-without") == 0 || strcmp(argv[argi], "-only") == 0)
+		} else if(option == "without" || option == "only")
 		{
-			excludeArea = strcmp(argv[argi], "-without") == 0;
+			excludeArea = (option == "without");
 			++argi;
 			areaSet.reset(new AreaSet());
 			AreaParser areaParser;
 			areaParser.Parse(*areaSet, argv[argi]);
-		} else if(strcmp(argv[argi], "-lognlogs") == 0)
+		} else if(option == "lognlogs")
 		{
 			++argi;
 			logNlogSFrequency = atof(argv[argi]);
 			++argi;
 			logNlogSBinCount = atoi(argv[argi]);
 			logNlogS = true;
-		} else if(strcmp(argv[argi], "-stats") == 0)
+		} else if(option == "stats")
 		{
 			sourceStats = true;
 		} else {
-			throw std::runtime_error(std::string("Unknown option given: ") + argv[argi]);
+			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
 		++argi;
 	}
@@ -590,6 +595,38 @@ int main(int argc, char *argv[])
 			"set ylabel \"log N/S^{-2.5}/avg\"\n"
 			"plot \"lognlogs-data.txt\" using 2:(column(5)/" << avg << ") with lines lw 2.0 title \"Measured\", \\\n"
 			"1 with lines lw 2.0 lt 3 title \"Euclidean\"\n";
+	}
+	
+	if(outputCsv)
+	{
+		std::ofstream csvFile(csvFilename);
+		csvFile << "freq,i,q,u,v\n";
+		if(model.SourceCount() != 0)
+		{
+			if(model.SourceCount() != 1)
+				std::cout << "Warning: multiple sources in model, but will only output a csv file for the first source.\n";
+			const ModelSource& source = *model.begin();
+			if(source.ComponentCount() != 1)
+				std::cout << "Warning: first source has multiple components; only outputting first component.\n";
+			const SpectralEnergyDistribution &sed = source.begin()->SED();
+
+			std::vector<Measurement> measurements;
+			sed.GetMeasurements(measurements);
+			
+			for(SpectralEnergyDistribution::const_iterator iter=sed.begin(); iter!=sed.end(); ++iter)
+			{
+				const Measurement& m = iter->second;
+				long double
+					i = m.FluxDensity(Polarization::StokesI), q = m.FluxDensity(Polarization::StokesQ),
+					u = m.FluxDensity(Polarization::StokesU), v = m.FluxDensity(Polarization::StokesV);
+				if(std::isfinite(i) && std::isfinite(q) && std::isfinite(u) && std::isfinite(v))
+				{
+					csvFile
+						<< m.FrequencyHz()*1e-6 << ','
+						<< i << ',' << q << ',' << u << ',' << v << '\n';
+				}
+			}
+		}
 	}
 	
 	if(outputPlot)
