@@ -35,6 +35,7 @@ class ModelParser : private Tokenizer
 				ModelSource source;
 				parseSource(source);
 				model.AddSource(source);
+				model.FindOrAddCluster(source.ClusterName());
 			}
 		}
 		
@@ -61,7 +62,7 @@ class ModelParser : private Tokenizer
 			else _fileVersion1_0 = false;
 		}
 		
-		void parseSource(ModelSource &source)
+		void parseSource(ModelSource& source)
 		{
 			std::string token;
 			getToken(token);
@@ -70,6 +71,7 @@ class ModelParser : private Tokenizer
 			while(getToken(token) && token != "}")
 			{
 				if(token == "name") source.SetName(getString());
+				else if(token == "cluster") source.SetClusterName(getString());
 				else if(token == "component") {
 					ModelComponent component;
 					parseComponent(component);

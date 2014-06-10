@@ -52,7 +52,7 @@ public:
 			std::vector<double> ras;
 			for(std::vector<const ModelSource*>::const_iterator i=_sources.begin(); i!=_sources.end(); ++i)
 				ras.push_back((*i)->Peak().PosRA());
-			_meanRA = ImageCoordinates::CentreRA(ras);
+			_meanRA = ImageCoordinates::MeanRA(ras);
 			_meanDec = 0.0;
 			for(std::vector<const ModelSource*>::const_iterator i=_sources.begin(); i!=_sources.end(); ++i)
 			{
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
 		++iterationCount;
 	} while(change && iterationCount < 1000);
 	
-	std::cout << "K-means used " << iterationCount << " iterations.\n";
+	std::cout << "Angular K-means used " << iterationCount << " iterations.\n";
 	
 	std::sort(clusters.rbegin(), clusters.rend());
 	
@@ -214,23 +214,21 @@ int main(int argc, char* argv[])
 	Model outputModel;
 	for(size_t cIndex=0; cIndex!=clusters.size(); ++cIndex)
 	{
-		ModelSource sourceCluster;
-		std::ostringstream nameStr;
-		nameStr << "cluster" << (cIndex+1);
-		sourceCluster.SetName(nameStr.str());
 		const Cluster& cluster = clusters[cIndex];
 		if(cluster.SourceCount() != 0)
 		{
+			std::ostringstream clusterNameStr;
+			clusterNameStr << "cluster" << (cIndex+1);
+			ModelCluster modelCluster;
+			modelCluster.SetName(clusterNameStr.str());
+			outputModel.AddCluster(modelCluster);
 			for(size_t s=0; s!=cluster.SourceCount(); ++s)
 			{
 				const ModelSource& source = *cluster.Source(s);
-				for(ModelSource::const_iterator compIter=source.begin(); compIter!=source.end(); ++compIter)
-				{
-					sourceCluster.AddComponent(*compIter);
-				}
+				ModelSource clusteredSource(source);
+				clusteredSource.SetClusterName(modelCluster.Name());
+				outputModel.AddSource(clusteredSource);
 			}
-			sourceCluster.SortComponents();
-			outputModel.AddSource(sourceCluster);
 		}
 	}
 	outputModel.Save(argv[2]);

@@ -88,35 +88,42 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	BeamEvaluator beamEvaluator(ms);
 	beamEvaluator.SetTime(startTime);
 	
-	std::cout << "Initializing model predicter for " << _model.SourceCount() << " sources...\n";
-	_predictionModels.resize(_model.SourceCount());
-	_predicters.resize(_model.SourceCount());
+	std::vector<std::string> clusterNames;
+	_model.GetClusterNames(clusterNames);
+	std::cout << "Requesting to solve for " << clusterNames.size() << " directions.\n";
+	_predictionModels.resize(clusterNames.size());
+	_predicters.resize(clusterNames.size());
 	
 	std::set<size_t> clustersToRemove;
-	for(size_t s=0; s!=_model.SourceCount(); ++s)
+	for(size_t clusterIter=0; clusterIter!=clusterNames.size(); ++clusterIter)
 	{
-		const ModelSource& source(_model.Source(s));
-		_predictionModels[s].AddSource(source);
+		SourceGroup cluster;
+		_model.GetSourcesInCluster(clusterNames[clusterIter], cluster);
+		for(std::vector<ModelSource>::const_iterator sourceIter=cluster.begin();
+				sourceIter!=cluster.end(); ++sourceIter)
+		{
+			_predictionModels[clusterIter].AddSource(*sourceIter);
+		}
 		
-		_predicters[s] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
+		_predicters[clusterIter] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
 		if(_applyBeam)
-			_predicters[s]->Initialize(_predictionModels[s], "", &beamEvaluator);
+			_predicters[clusterIter]->Initialize(_predictionModels[clusterIter], "", &beamEvaluator);
 		else
-			_predicters[s]->Initialize(_predictionModels[s]);
+			_predicters[clusterIter]->Initialize(_predictionModels[clusterIter]);
 		
 		double distance =
 			ImageCoordinates::AngularDistance<double>(phaseCentreRA, phaseCentreDec,
-				source.MeanRA(), source.MeanDec()) * (180.0/M_PI);
+				cluster.MeanRA(), cluster.MeanDec()) * (180.0/M_PI);
 			
 		if(_distanceLimit > 0.0 && distance > _distanceLimit)
 		{
-			std::cout << "Cluster " << source.Name() << " is " << distance << " deg away: removing cluster.\n";
-			clustersToRemove.insert(s);
+			std::cout << "Cluster " << clusterNames[clusterIter] << " is " << distance << " deg away: removing cluster.\n";
+			clustersToRemove.insert(clusterIter);
 		}
-		else if(_clusterFluxLimit > 0.0 && _predicters[s]->TotalFlux(0) < _clusterFluxLimit)
+		else if(_clusterFluxLimit > 0.0 && _predicters[clusterIter]->TotalFlux(0) < _clusterFluxLimit)
 		{
-			std::cout << "Direction for " << source.Name() << " is below cluster flux limit (" << _predicters[s]->TotalFlux(0) << " < " << _clusterFluxLimit << "): removing cluster.\n";
-			clustersToRemove.insert(s);
+			std::cout << "Direction for " << clusterNames[clusterIter] << " is below cluster flux limit (" << _predicters[clusterIter]->TotalFlux(0) << " < " << _clusterFluxLimit << "): removing cluster.\n";
+			clustersToRemove.insert(clusterIter);
 		}
 	}
 	
@@ -167,6 +174,18 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	_solutionFile->SetStartFrequency(_bandData.LowestFrequency());
 	_solutionFile->SetEndFrequency(_bandData.HighestFrequency());
 	_solutionFile->OpenForWriting(solutionFilename);
+	
+	_model.GetClusterNames(clusterNames);
+	for(size_t clusterIter=0; clusterIter!=clusterNames.size(); ++clusterIter)
+	{
+		SourceGroup cluster;
+		_model.GetSourcesInCluster(clusterNames[clusterIter], cluster);
+		std::vector<std::string> sourceNames;
+		sourceNames.reserve(cluster.SourceCount());
+		for(SourceGroup::const_iterator s=cluster.begin(); s!=cluster.end(); ++s)
+			sourceNames.push_back(s->Name());
+		_solutionFile->WriteClusterMetaInfo(clusterNames[clusterIter], sourceNames);
+	}
 	
 	casa::Array<std::complex<float> > data(dataShape);
 	casa::Array<float> weights(dataShape);

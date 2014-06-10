@@ -38,15 +38,44 @@ public:
 		casa::Array<double>::const_iterator refDirIter = refDir.begin();
 		long double phaseCentreRA = *refDirIter; ++refDirIter;
 		long double phaseCentreDec = *refDirIter;
+
+		std::map<std::string, const ModelSource*> sourceMap;
+		for(Model::const_iterator s=_model.begin(); s!=_model.end(); ++s)
+		{
+			sourceMap.insert(std::make_pair(s->Name(), &*s));
+		}
+		Model filteredModel;
+		for(size_t i=0; i!=_ionSolutionFile.DirectionCount(); ++i)
+		{
+			std::cout << i << '\n';
+			std::string clusterName;
+			std::vector<std::string> sourceNames;
+			_ionSolutionFile.ReadClusterMetaInfo(clusterName, sourceNames);
+			for(std::vector<std::string>::const_iterator s=sourceNames.begin(); s!=sourceNames.end(); ++s)
+			{
+				std::cout << *s << '\n';
+				std::map<std::string, const ModelSource*>::const_iterator originalSource = sourceMap.find(*s);
+				if(originalSource == sourceMap.end())
+					throw std::runtime_error("Solution file contains source " + *s + " but this source is not in the model");
+				std::cout <<"NewSource\n";
+				std::cout << originalSource->second->Name() << '\n';
+				ModelSource newSource(*originalSource->second);
+				newSource.SetClusterName(clusterName);
+				filteredModel.AddSource(newSource);
+				_sourceToClusterIndex.push_back(i);
+			}
+		}
+		std::cout << filteredModel.SourceCount() << " / " << _model.SourceCount() << " in solution file.\n";
+		_model = filteredModel;
 		
-		_accumulatorPerSourceComponent.resize(_model.ComponentCount());
-		size_t compIndex=0;
+		_accumulatorPerSource.resize(_model.ComponentCount());
+		size_t compIndex = 0;
 		for(Model::const_iterator s=_model.begin(); s!=_model.end(); ++s)
 		{
 			for(ModelSource::const_iterator c=s->begin(); c!=s->end(); ++c)
 			{
 				const ModelComponent &component = *c;
-				_accumulatorPerSourceComponent[compIndex] = new FluxSpectrumAccumulator(component, &_bandData, _ionSolutionFile.ChannelBlockCount(), phaseCentreRA, phaseCentreDec);
+				_accumulatorPerSource[compIndex] = new FluxSpectrumAccumulator(component, &_bandData, _ionSolutionFile.ChannelBlockCount(), phaseCentreRA, phaseCentreDec);
 				++compIndex;
 			}
 		}
@@ -54,7 +83,7 @@ public:
 	
 	~IonSpectrumMaker()
 	{
-		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSourceComponent.begin(); i!=_accumulatorPerSourceComponent.end(); ++i)
+		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
 			delete *i;
 	}
 	
@@ -178,7 +207,7 @@ public:
 	void Save(const char* filename)
 	{
 		std::ofstream stream(filename);
-		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSourceComponent.begin(); i!=_accumulatorPerSourceComponent.end(); ++i)
+		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
 		{
 			(*i)->Finish();
 			(*i)->Serialize(stream);
@@ -188,7 +217,7 @@ public:
 	void AccumulateFile(const char* filename)
 	{
 		std::ifstream stream(filename);
-		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSourceComponent.begin(); i!=_accumulatorPerSourceComponent.end(); ++i)
+		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
 			(*i)->AccumulateFromStream(stream);
 	}
 	
@@ -203,7 +232,7 @@ public:
 			for(size_t c=0; c!=source.ComponentCount(); ++c)
 			{
 				ModelComponent newComponent;
-				_accumulatorPerSourceComponent[compIndex]->GetSpectrum(newComponent);
+				_accumulatorPerSource[compIndex]->GetSpectrum(newComponent);
 				newSource.AddComponent(newComponent);
 				
 				++compIndex;
@@ -236,17 +265,18 @@ private:
 		size_t compIndex=0;
 		for(size_t sIndex=0; sIndex!=_model.SourceCount(); ++sIndex)
 		{
+			size_t clusterIndex = _sourceToClusterIndex[sIndex];
 			for(size_t cb=0; cb!=ionSolutionFile.ChannelBlockCount(); ++cb)
 			{
 				IonSolutionFile::Solution solution;
-				ionSolutionFile.ReadSolution(solution, interval, cb, 0, sIndex);
+				ionSolutionFile.ReadSolution(solution, interval, cb, 0, clusterIndex);
 				_gSolutions[cb] = solution.gain;
 				_dlSolutions[cb] = solution.dl;
 				_dmSolutions[cb] = solution.dm;
 			}
 			for(ModelSource::const_iterator c=_model.Source(sIndex).begin(); c!=_model.Source(sIndex).end(); ++c)
 			{
-				_accumulatorPerSourceComponent[compIndex]->UpdateBeam(*_beamEvaluator, _gSolutions.data(), _dlSolutions.data(), _dmSolutions.data());
+				_accumulatorPerSource[compIndex]->UpdateBeam(*_beamEvaluator, _gSolutions.data(), _dlSolutions.data(), _dmSolutions.data());
 				++compIndex;
 			}
 		}
@@ -272,8 +302,7 @@ private:
 		
 		while(bufferedInputLane.read(rowData))
 		{
-			size_t compIndex=0;
-			for(std::vector<FluxSpectrumAccumulator*>::const_iterator c=_accumulatorPerSourceComponent.begin(); c!=_accumulatorPerSourceComponent.end(); ++c)
+			for(size_t compIndex=0; compIndex!=_accumulatorPerSource.size(); ++compIndex)
 			{
 				SampleData sample;
 				sample.componentIndex = compIndex;
@@ -297,7 +326,6 @@ private:
 						bufferedOutLanes[ch%cpuCount].write(sample);
 					}
 				}
-				++compIndex;
 			}
 			delete[] rowData.data;
 			delete[] rowData.weights;
@@ -318,7 +346,7 @@ private:
 		SampleData sample;
 		while(bufferedLane.read(sample))
 		{
-			_accumulatorPerSourceComponent[sample.componentIndex]->Accumulate(sample.data, sample.weight, sample.channelIndex, sample.u, sample.v, sample.w);
+			_accumulatorPerSource[sample.componentIndex]->Accumulate(sample.data, sample.weight, sample.channelIndex, sample.u, sample.v, sample.w);
 		}
 	}
 
@@ -327,8 +355,9 @@ private:
 	Model _model;
 	BandData _bandData;
 	std::unique_ptr<BeamEvaluator> _beamEvaluator;
-	std::vector<FluxSpectrumAccumulator*> _accumulatorPerSourceComponent;
+	std::vector<FluxSpectrumAccumulator*> _accumulatorPerSource;
 	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
+	ao::uvector<size_t> _sourceToClusterIndex;
 };
 
 #endif

@@ -274,11 +274,11 @@ void testCentreRA()
 	std::vector<double> ras(5);
 	for(size_t i=0; i!=5; ++i)
 		ras[i] = i;
-	std::cout << "Centre RA 0,1,2,3,4: " << ImageCoordinates::CentreRA(ras) << '\n';
+	std::cout << "Mean RA 0,1,2,3,4: " << ImageCoordinates::MeanRA(ras) << '\n';
 	
 	for(size_t i=0; i!=5; ++i)
 		ras[i] = double(i) + 3.0;
-	std::cout << "Centre RA 3,4,5,6,7: " << ImageCoordinates::CentreRA(ras) << '\n';
+	std::cout << "Mean RA 3,4,5,6,7: " << ImageCoordinates::MeanRA(ras) << '\n';
 }
 
 int main(int argc, char *argv[])

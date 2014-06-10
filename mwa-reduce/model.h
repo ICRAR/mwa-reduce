@@ -19,7 +19,8 @@ class Model
 
 		Model(const Model &source) :
 			_polarizationType(source._polarizationType),
-			_sources(source._sources)
+			_sources(source._sources),
+			_clusters(source._clusters)
 		{
 		}
 		
@@ -29,11 +30,15 @@ class Model
 		{
 			_polarizationType = source._polarizationType;
 			_sources = source._sources;
+			_clusters = source._clusters;
 		}
 		
 		void operator+=(const Model &rhs);
 		
 		size_t SourceCount() const { return _sources.size(); }
+		
+		size_t ClusterCount() const { return _clusters.size(); }
+		
 		bool Empty() const { return _sources.size() == 0; }
 		
 		ModelSource &Source(size_t index) { return _sources[index]; }
@@ -47,7 +52,58 @@ class Model
 		
 		void Optimize();
 		
-		void AddSource(const ModelSource &source) { _sources.push_back(source); }
+		void AddSource(const ModelSource& source) { _sources.push_back(source); }
+		
+		void AddCluster(const ModelCluster& cluster) {
+			bool wasAdded = _clusters.insert(std::make_pair(cluster.Name(), cluster)).second;
+			if(!wasAdded)
+				throw std::runtime_error("AddCluster(): Adding cluster with duplicate name");
+		}
+		
+		ModelCluster& FindOrAddCluster(const std::string& clusterName) {
+			std::map<std::string,ModelCluster>::iterator c =
+				_clusters.find(clusterName);
+			if(c == _clusters.end())
+			{
+				ModelCluster newCluster;
+				newCluster.SetName(clusterName);
+				c = _clusters.insert(std::make_pair(clusterName, newCluster)).first;
+			}
+			return c->second;
+		}
+		
+		ModelCluster& FindCluster(const std::string& clusterName) {
+			std::map<std::string,ModelCluster>::iterator c =
+				_clusters.find(clusterName);
+			if(c == _clusters.end())
+				throw std::runtime_error("FindCluster(): Non-existing cluster '" + clusterName + "' requested.");
+			return c->second;
+		}
+		
+		const ModelCluster& FindCluster(const std::string& clusterName) const {
+			std::map<std::string,ModelCluster>::const_iterator c =
+				_clusters.find(clusterName);
+			if(c == _clusters.end())
+				throw std::runtime_error("FindCluster(): Non-existing cluster '" + clusterName + "' requested.");
+			return c->second;
+		}
+		
+		void GetSourcesInCluster(const std::string& clusterName, SourceGroup &destGroup) const
+		{
+			for(const_iterator s=begin(); s!=end(); ++s)
+			{
+				if(s->ClusterName() == clusterName)
+					destGroup.AddSource(*s);
+			}
+		}
+		
+		void GetClusterNames(std::vector<std::string>& clusterNames) {
+			clusterNames.clear();
+			clusterNames.reserve(_clusters.size());
+			for(std::map<std::string,ModelCluster>::const_iterator i=_clusters.begin();
+					i!=_clusters.end(); ++i)
+				clusterNames.push_back(i->first);
+		}
 		
 		void RemoveSource(size_t index) { _sources.erase(_sources.begin() + index); }
 		
@@ -116,6 +172,7 @@ class Model
 	private:
 		enum PolarizationType _polarizationType;
 		std::vector<ModelSource> _sources;
+		std::map<std::string, ModelCluster> _clusters;
 		
 		static bool isCommentSymbol(char c) { return c=='#'; }
 		static bool isDelimiter(char c) { return c==' ' || c=='\t' || c=='\r' || c=='\n';	}

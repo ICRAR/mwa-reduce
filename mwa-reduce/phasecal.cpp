@@ -15,6 +15,7 @@
 #include "banddata.h"
 #include "predicter.h"
 #include "model.h"
+#include "uvector.h"
 #include "stdint.h"
 
 using namespace casa;
@@ -641,8 +642,8 @@ int main(int argc, char *argv[])
 		const size_t matrixSize = antennaCount * antennaCount;
 		size_t sumsPerBaseline = avgChannelCount * 2;
 		size_t reservedSpace = channelCount * 2; // we reserve more for interpolation
-		lcomplex_t *gainStepValues[matrixSize];
-		long double *gainStepWeights[matrixSize];
+		ao::uvector<lcomplex_t*> gainStepValues(matrixSize);
+		ao::uvector<long double*> gainStepWeights(matrixSize);
 		for(size_t e=0; e!=matrixSize; ++e) 
 		{
 			gainStepValues[e] = new lcomplex_t[reservedSpace];
@@ -654,7 +655,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		lcomplex_t *gainSolutionsPerAntenna[antennaCount];
+		ao::uvector<lcomplex_t*> gainSolutionsPerAntenna(antennaCount);
 		for(size_t a=0; a!=antennaCount; ++a) 
 		{
 			gainSolutionsPerAntenna[a] = new lcomplex_t[reservedSpace];
@@ -765,24 +766,26 @@ int main(int argc, char *argv[])
 		
 		size_t inpChannelCount = channelCount;
 
-		CalculateTimeIntegratedGradients(gainStepValues, gainStepWeights, dataSet, gainSolutionsPerAntenna);
+		CalculateTimeIntegratedGradients(gainStepValues.data(), gainStepWeights.data(), dataSet, gainSolutionsPerAntenna.data());
 
 		long double stdError = 0.0, stdErrorWeight = 0.0;
 		for(size_t ch=0; ch!=avgChannelCount; ++ch)
 		{
-				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, gainStepValues, gainStepWeights);
+				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, gainStepValues.data(), gainStepWeights.data());
 				stdError += result.first * result.second;
 				stdErrorWeight += result.second;
 		}
 		stdError /= stdErrorWeight;
 		std::cout << stdError << ".\n";
 		
-		size_t iteration=0, gotWorseCount=0;
-		long double prevAbsError = 10.0, minError = 10.0, stepSize = 0.5;
+		size_t iteration=0;
+		//size_t gotWorseCount=0;
+		//long double prevAbsError = 10.0;
+		long double minError = 10.0, stepSize = 0.5;
 		do
 		{
 			std::cout << "Iteration " << iteration << ": " << std::flush;
-			prevAbsError = stdError;
+			//prevAbsError = stdError;
 			stdError = 0.0;
 			stdErrorWeight = 0.0;
 			
@@ -792,14 +795,15 @@ int main(int argc, char *argv[])
 				* Calculate per antenna solutions
 				*/
 				size_t eIndex = 0;
-				lcomplex_t gainSteps[sumsPerBaseline];
-				long double antennaWeights[sumsPerBaseline];
+				ao::uvector<lcomplex_t> gainSteps(sumsPerBaseline);
+				ao::uvector<long double> antennaWeights(sumsPerBaseline);
 				for(size_t ch = 0; ch!=avgChannelCount; ++ch)
 				{
 					for(size_t p = 0; p!=2; ++p)
 					{
-						gainSteps[eIndex] = AntennaGainStep(a1, antennaCount, eIndex, gainStepValues, gainStepWeights);
-						antennaWeights[eIndex] = AntennaWeight(a1, antennaCount, eIndex, gainStepWeights);
+						gainSteps[eIndex] = AntennaGainStep(a1, antennaCount, eIndex, gainStepValues.data(), gainStepWeights.data()
+						);
+						antennaWeights[eIndex] = AntennaWeight(a1, antennaCount, eIndex, gainStepWeights.data());
 						
 						if(eIndex == 4 && a1==5)
 						{
@@ -822,11 +826,11 @@ int main(int argc, char *argv[])
 				}
 			}
 			
-			CalculateTimeIntegratedGradients(gainStepValues, gainStepWeights, dataSet, gainSolutionsPerAntenna);
+			CalculateTimeIntegratedGradients(gainStepValues.data(), gainStepWeights.data(), dataSet, gainSolutionsPerAntenna.data());
 			
 			for(size_t ch=0; ch!=avgChannelCount; ++ch)
 			{
-				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, gainStepValues, gainStepWeights);
+				std::pair<long double, long double> result = ChannelStdError(ch, antennaCount, 2, gainStepValues.data(), gainStepWeights.data());
 				stdError += result.first * result.second;
 				stdErrorWeight += result.second;
 			}
@@ -834,20 +838,20 @@ int main(int argc, char *argv[])
 			if(stdError < minError) minError = stdError;
 			std::cout << "Standard error: " << GainToString(stdError) << '\n';
 			
-			bool gotBetter = stdError < prevAbsError;
+			//bool gotBetter = stdError < prevAbsError;
 			++iteration;
 		} while(iteration < 250 && stdError > 0.0000000000001);
 		
-		if(fitSlope) {
-			for(size_t a = 0; a!=antennaCount; ++a)
-			{
-				lcomplex_t *antennaPhases = gainSolutionsPerAntenna[a];
+		// if(fitSlope) {
+			// for(size_t a = 0; a!=antennaCount; ++a)
+			// {
+				// lcomplex_t *antennaPhases = gainSolutionsPerAntenna[a];
 				// TODO FitPhases(avgChannelCount, 2, antennaPhases, antennaPhases, inpChannelCount);
-			}
-		}
+			// }
+		// }
 		
-		SavePhases(outNamePhases, "phases.bin", antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, fitSlope);
-		SaveGains(outNameGains, "gains.bin", antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna, fitSlope);
+		SavePhases(outNamePhases, "phases.bin", antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna.data(), fitSlope);
+		SaveGains(outNameGains, "gains.bin", antennaCount, avgChannelCount, inpChannelCount, polarizationCount, gainSolutionsPerAntenna.data(), fitSlope);
 				
 		for(size_t e=0; e!=matrixSize; ++e) 
 		{

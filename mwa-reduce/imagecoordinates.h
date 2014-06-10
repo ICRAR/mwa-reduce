@@ -88,7 +88,7 @@ class ImageCoordinates
 		}
 		
 		template<typename T>
-		static T CentreRA(const std::vector<T>& raValues)
+		static T MeanRA(const std::vector<T>& raValues)
 		{
 			std::vector<T> sorted(raValues);
 			for(size_t i=0; i!=sorted.size(); ++i) {

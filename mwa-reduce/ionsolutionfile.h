@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include <stdint.h>
+#include "uvector.h"
 
 class IonSolutionFile
 {
@@ -24,7 +25,9 @@ class IonSolutionFile
   IonSolutionFile() : _outputStream(0), _inputStream(0)
   {
     strcpy(_header.intro, "MWAOCAL");
-    _header.fileType = 1; // Multi-directional gain,posl,posm solutions
+		// 1: Multi-directional gain,posl,posm solutions, old format without cluster descs
+		// 2: Same, but new format including cluster descs
+    _header.fileType = 2;
     _header.structureType = 0; // ordered gain/dl/dm, polarization, channel, antenna, time
     _header.intervalCount = 1;
 		_header.antennaCount = 1;
@@ -79,6 +82,8 @@ class IonSolutionFile
 		delete _outputStream;
 		_outputStream = new std::ofstream(filename);    
 		_outputStream->write(reinterpret_cast<const char*>(&_header), sizeof(_header));
+		_firstDataPos = _outputStream->tellp();
+		_clustersInFile = 0;
   }
   
 	void OpenForReading(const char *filename)
@@ -88,6 +93,23 @@ class IonSolutionFile
 		if(_inputStream->bad())
 			throw std::runtime_error("Error reading input ionospheric solutions file");
 		_inputStream->read(reinterpret_cast<char*>(&_header), sizeof(_header));
+		if(_header.fileType != 2)
+			throw std::runtime_error("Error reading ionospherc solution file; old format or file damaged");
+		_clustersInFile = 0;
+	}
+
+  void ReadClusterMetaInfo(std::string& clusterName, std::vector<std::string>& sourceNames)
+	{
+		clusterName = readString();
+		std::cout << "clusterName=" << clusterName << '\n';
+		uint32_t count;
+		_inputStream->read(reinterpret_cast<char*>(&count), sizeof(uint32_t));
+		std::cout << "count=" << count << '\n';
+		sourceNames.resize(count);
+		for(std::vector<std::string>::iterator i=sourceNames.begin(); i!=sourceNames.end(); ++i)
+			*i = readString();
+		_firstDataPos = _inputStream->tellg();
+		_clustersInFile++;
 	}
 
 	double ReadSolution(IonSolutionType type, size_t interval, size_t channelBlock, size_t polarization, size_t direction)
@@ -114,20 +136,35 @@ class IonSolutionFile
 		return sum / (_header.intervalCount * _header.channelBlockCount);
 	}
 	
-  void ReadSolution(Solution& solution, size_t interval, size_t channelBlock, size_t polarization, size_t direction) {
+  void ReadSolution(Solution& solution, size_t interval, size_t channelBlock, size_t polarization, size_t direction)
+	{
+		if(_clustersInFile != _header.directionCount)
+			throw std::runtime_error("ReadSolution() called before all cluster meta data were read");
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelBlockCount + channelBlock) * _header.polarizationCount + polarization) * _header.directionCount + direction;
-		size_t offset = sizeof(_header);
-		_inputStream->seekg(offset + sizeof(Solution) * index, std::ios::beg);
+		_inputStream->seekg(_firstDataPos + sizeof(Solution) * index, std::ios::beg);
 		_inputStream->read(reinterpret_cast<char*>(&solution), sizeof(Solution));
   }
+  
+  void WriteClusterMetaInfo(const std::string& clusterName, const std::vector<std::string>& sourceNames)
+	{
+		writeString(clusterName);
+		uint32_t count = sourceNames.size();
+		_outputStream->write(reinterpret_cast<const char*>(&count), sizeof(uint32_t));
+		for(std::vector<std::string>::const_iterator i=sourceNames.begin(); i!=sourceNames.end(); ++i)
+			writeString(*i);
+		_firstDataPos = _outputStream->tellp();
+		++_clustersInFile;
+	}
 
   void WriteSolution(const Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction)
   {
+		if(_clustersInFile != _header.directionCount)
+			throw std::runtime_error("ReadSolution() called before all cluster meta data were written");
+		
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
-		size_t offset = sizeof(_header);
-		_outputStream->seekp(offset + sizeof(Solution) * index, std::ios::beg);
+		_outputStream->seekp(_firstDataPos + sizeof(Solution) * index, std::ios::beg);
 		_outputStream->write(reinterpret_cast<const char*>(&solution), sizeof(Solution));
   }
 
@@ -135,8 +172,7 @@ class IonSolutionFile
   {
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount;
-		size_t offset = sizeof(_header);
-		_outputStream->seekp(offset + sizeof(Solution) * index, std::ios::beg);
+		_outputStream->seekp(_firstDataPos + sizeof(Solution) * index, std::ios::beg);
 		_outputStream->write(reinterpret_cast<const char*>(solutions), sizeof(Solution) * _header.directionCount);
   }
 
@@ -153,6 +189,24 @@ class IonSolutionFile
   std::ofstream *_outputStream;
   std::ifstream *_inputStream;
 	std::mutex _mutex;
+	size_t _firstDataPos, _clustersInFile;
+	
+	void writeString(const std::string& str)
+	{
+		uint32_t length = str.size();
+		_outputStream->write(reinterpret_cast<const char*>(&length), sizeof(uint32_t));
+		_outputStream->write(str.c_str(), str.size());
+	}
+	
+	std::string readString()
+	{
+		uint32_t length;
+		_inputStream->read(reinterpret_cast<char*>(&length), sizeof(uint32_t));
+		ao::uvector<char> buffer(length+1);
+		_inputStream->read(buffer.data(), length);
+		buffer[length] = 0;
+		return std::string(buffer.data());
+	}
 };
 
 #endif

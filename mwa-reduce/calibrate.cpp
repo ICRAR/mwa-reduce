@@ -14,8 +14,9 @@ int main(int argc, char *argv[])
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
+		// bool saveCrossTermsPlotFile = false, saveFaradayPlotFiles = false;
 		bool
-			savePlotFiles = false, saveFaradayPlotFiles = false, saveCrossTermsPlotFile = false, beamOnSource = false, applyBeam = false,
+			savePlotFiles = false, beamOnSource = false, applyBeam = false,
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
 		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 0;
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
 				plotGainFile = argv[argi+2];
 				argi += 3;
 			}
-			else if(strcmp(argv[argi], "-pf") == 0)
+			/*else if(strcmp(argv[argi], "-pf") == 0)
 			{
 				saveFaradayPlotFiles = true;
 				plotFaradayFile = argv[argi+1];
@@ -44,7 +45,7 @@ int main(int argc, char *argv[])
 				saveCrossTermsPlotFile = true;
 				crossTermsPlotFile = argv[argi+1];
 				argi += 2;
-			}
+			}*/
 			else if(strcmp(argv[argi], "-i") == 0)
 			{
 				niter = atoi(argv[argi+1]);

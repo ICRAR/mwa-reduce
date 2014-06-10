@@ -25,6 +25,9 @@ void Model::operator+=(const Model& rhs)
 	else {
 		for(const_iterator i = rhs.begin(); i!=rhs.end(); ++i)
 			add(*i);
+		for(std::map<std::string,ModelCluster>::const_iterator c = rhs._clusters.begin();
+				c!=rhs._clusters.end(); ++c)
+			_clusters.insert(*c);
 	}
 }
 

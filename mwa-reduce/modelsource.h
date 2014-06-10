@@ -9,6 +9,7 @@
 #include "sourcesdfwithsamples.h"
 #include "radeccoord.h"
 #include "spectralenergydistribution.h"
+#include "imagecoordinates.h"
 
 class ModelComponent
 {
@@ -41,7 +42,7 @@ class ModelComponent
 		const SpectralEnergyDistribution &SED() const { return _sed; }
 		long double L() const { return _l; }
 		long double M() const { return _m; }
-		void *UserData() const { return _userdata; }
+		void* UserData() const { return _userdata; }
 		
 		void SetType(enum Type type) { _type = type; }
 		void SetPosRA(long double posRA) { _posRA = posRA; }
@@ -91,7 +92,7 @@ class ModelSource
 		{
 		}
 		
-		ModelSource(const ModelSource &source) : _name(source._name), _components(source._components), _userdata(source._userdata)
+		ModelSource(const ModelSource &source) : _name(source._name), _components(source._components), _userdata(source._userdata), _clusterName(source._clusterName)
 		{
 		}
 		
@@ -104,6 +105,7 @@ class ModelSource
 			_name = source._name;
 			_components = source._components;
 			_userdata = source._userdata;
+			_clusterName = source._clusterName;
 			return *this;
 		}
 		
@@ -111,15 +113,14 @@ class ModelSource
 		
 		void SetName(const std::string &name) { _name = name; }
 		
-		std::string ToString() const
-		{
-			std::stringstream s;
-			s << "source {\n  name \"" << _name << "\"\n";
-			for(const_iterator i=begin(); i!=end(); ++i)
-				s << i->ToString();
-			s << "}\n";
-			return s.str();
-		}
+		/**
+		 * Returns nullptr in case the source is not part of a cluster.
+		 */
+		const std::string& ClusterName() const { return _clusterName; }
+		
+		void SetClusterName(const std::string& clusterName) { _clusterName = clusterName; }
+		
+		std::string ToString() const;
 		
 		bool operator<(const ModelSource &rhs) const
 		{
@@ -154,10 +155,10 @@ class ModelSource
 		void CombineMeasurements(const ModelSource& source)
 		{
 			for(const_iterator i = source.begin(); i!=source.end(); ++i)
-				combineMeasurements(*i);
+				CombineMeasurements(*i);
 		}
 
-		void combineMeasurements(const ModelComponent& component)
+		void CombineMeasurements(const ModelComponent& component)
 		{
 			for(iterator i = begin(); i!=end(); ++i)
 			{
@@ -284,30 +285,17 @@ class ModelSource
 		
 		double MeanRA() const
 		{
-			long double firstRA = _components[0].PosRA();
-			bool doWrap =
-				(firstRA > - 0.25*M_PI && firstRA < 0.25*M_PI) ||
-				(firstRA > 1.75*M_PI && firstRA < 2.25*M_PI) ||
-				(firstRA > -2.25*M_PI && firstRA < -1.75*M_PI);
-
-			double sum = 0.0;
-			for(const_iterator c=_components.begin(); c!=_components.end(); ++c)
-			{
-				double ra = c->PosRA();
-				if(doWrap)
-				{
-					if(ra > M_PI) ra -= 2.0 * M_PI;
-					else if(ra < -M_PI) ra += 2.0 * M_PI;
-				}
-				sum += ra;
-			}
-			return sum / _components.size();
+			std::vector<double> raValues;
+			raValues.reserve(_components.size());
+			for(const_iterator c=begin(); c!=end(); ++c)
+				raValues.push_back(c->PosRA());
+			return ImageCoordinates::MeanRA(raValues);
 		}
 		
 		double MeanDec() const
 		{
 			double sum = 0.0;
-			for(const_iterator c=_components.begin(); c!=_components.end(); ++c)
+			for(const_iterator c=begin(); c!=end(); ++c)
 				sum += c->PosDec();
 			return sum / _components.size();
 		}
@@ -320,6 +308,64 @@ class ModelSource
 		std::string _name;
 		std::vector<ModelComponent> _components;
 		void *_userdata;
+		std::string _clusterName;
 };
+
+class ModelCluster
+{
+public:
+	const std::string& Name() const { return _name; }
+	
+	void SetName(const std::string& name) { _name = name; }
+	
+private:
+	std::string _name;
+};
+
+class SourceGroup
+{
+public:
+		typedef std::vector<ModelSource>::iterator iterator;
+		typedef std::vector<ModelSource>::const_iterator const_iterator;
+		iterator begin() { return _sources.begin(); }
+		iterator end() { return _sources.end(); }
+		const_iterator begin() const { return _sources.begin(); }
+		const_iterator end() const { return _sources.end(); }
+		
+		size_t SourceCount() const { return _sources.size(); }
+		
+		void AddSource(const ModelSource& source) { _sources.push_back(source); }
+		
+		double MeanRA() const
+		{
+			std::vector<double> raValues;
+			raValues.reserve(_sources.size());
+			for(const_iterator s=begin(); s!=end(); ++s)
+				raValues.push_back(s->MeanRA());
+			return ImageCoordinates::MeanRA(raValues);
+		}
+		
+		double MeanDec() const
+		{
+			double sum = 0.0;
+			for(const_iterator s=_sources.begin(); s!=_sources.end(); ++s)
+				sum += s->MeanDec();
+			return sum / _sources.size();
+		}
+private:
+	std::vector<ModelSource> _sources;
+};
+
+inline std::string ModelSource::ToString() const
+{
+	std::stringstream s;
+	s << "source {\n  name \"" << _name << "\"\n";
+	if(!_clusterName.empty())
+		s << "  cluster \"" << _clusterName << "\"\n";
+	for(const_iterator i=begin(); i!=end(); ++i)
+		s << i->ToString();
+	s << "}\n";
+	return s.str();
+}
 
 #endif
