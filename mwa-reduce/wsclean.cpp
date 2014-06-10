@@ -871,7 +871,7 @@ void WSClean::performClean(size_t currentChannelIndex, bool& reachedMajorThresho
 			else throw std::runtime_error("Incompatible polarization combination for joined polarization cleaning");
 		}
 		else
-			throw std::runtime_error("Can only joinedly clean frequencies when cleaning all polarizations simultaneously");
+			throw std::runtime_error("Can only joinedly clean frequencies when cleaning all polarizations simultaneously. Image at least two polarizations and provide the '-joinpolarizations' option to enable this.");
 	}
 	else if(_joinedPolarizationCleaning) {
 		if(Polarization::HasFullPolarization(_polarizations))
