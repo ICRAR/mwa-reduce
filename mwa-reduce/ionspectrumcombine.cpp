@@ -1,19 +1,22 @@
 #include "ionspectrummaker.h"
 
+#include <ms/MeasurementSets/MeasurementSet.h>
+
 int main(int argc, char* argv[])
 {
-	if(argc < 5) {
-		std::cout << "syntax: ionspectrumcombine <ms> <ionsolutions> <model> <output prefix> <spectrum1> [<spectrum2> ..]\n";
+	if(argc < 4) {
+		std::cout << "syntax: ionspectrumcombine <template-ms> <model> <output prefix> <spectrum1> [<spectrum2> ..]\n";
 		return -1;
 	}
 	
-	const char *msFilename(argv[1]);
-	const char *ionFilename(argv[2]);
-	const char *modelFilename(argv[3]);
-	IonSpectrumMaker isMaker(msFilename, ionFilename, modelFilename);
-	std::string outputPrefix(argv[4]);
+	casa::MeasurementSet ms(argv[1]);
+	const char *modelFilename(argv[2]);
+	IonSpectrumMaker isMaker;
+	BandData bandData(ms.spectralWindow());
+	isMaker.InitializeForFileAcc(modelFilename, bandData);
+	std::string outputPrefix(argv[3]);
 	
-	for(int argi=5; argi!=argc; ++argi)
+	for(int argi=4; argi!=argc; ++argi)
 		isMaker.AccumulateFile(argv[argi]);
 	
 	isMaker.Save((outputPrefix + ".bin").c_str());

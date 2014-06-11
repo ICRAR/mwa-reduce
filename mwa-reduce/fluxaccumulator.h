@@ -8,7 +8,16 @@
 class FluxAccumulator : public Serializable
 {
 public:
+	/**
+	 * This constructor is used when calculating flux from visibilities
+	 */
 	FluxAccumulator(double l, double m, double lambda, const std::complex<double>* modelFlux);
+	
+	/**
+	 * This constructor is used when accumulating serialized files.
+	 */
+	FluxAccumulator(double lambda);
+	
 	void UpdateBeam(const std::complex<double>* beamGains, double ionG, double ionDL, double ionDM);
 	void Add(const std::complex<double>* vis, const double visWeight, double u, double v, double w);
 	

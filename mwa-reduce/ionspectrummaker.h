@@ -23,11 +23,13 @@
 class IonSpectrumMaker
 {
 public:
-	IonSpectrumMaker(const char *msFilename, const char *ionFilename, const char *modelFilename) :
-		_ms(msFilename),
-		_model(modelFilename),
-		_bandData(_ms.spectralWindow())
+	IonSpectrumMaker() { }
+	
+	void InitializeForVisibilityAcc(const char* msFilename, const char* ionFilename, const char* modelFilename)
 	{
+		_ms = casa::MeasurementSet(msFilename);
+		_model = Model(modelFilename);
+		_bandData = BandData(_ms.spectralWindow());
 		_ionSolutionFile.OpenForReading(ionFilename);
 		
 		casa::MSField fieldTable = _ms.field();
@@ -81,10 +83,26 @@ public:
 		}
 	}
 	
+	void InitializeForFileAcc(const char* modelFilename, const BandData& bandData)
+	{
+		_model = Model(modelFilename);
+		_accumulatorPerSource.resize(_model.ComponentCount());
+		_bandData = bandData;
+		size_t compIndex = 0;
+		for(Model::const_iterator s=_model.begin(); s!=_model.end(); ++s)
+		{
+			for(ModelSource::const_iterator c=s->begin(); c!=s->end(); ++c)
+			{
+				const ModelComponent &component = *c;
+				_accumulatorPerSource[compIndex] = new FluxSpectrumAccumulator(component, &_bandData);
+				++compIndex;
+			}
+		}
+	}
+	
 	~IonSpectrumMaker()
 	{
-		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
-			delete *i;
+		clear();
 	}
 	
 	void Accumulate()
@@ -207,18 +225,50 @@ public:
 	void Save(const char* filename)
 	{
 		std::ofstream stream(filename);
-		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
+		size_t sourceCount = _model.SourceCount();
+		Serializable::SerializeToUInt64(stream, sourceCount);
+		size_t compIndex = 0;
+		for(Model::const_iterator s=_model.begin(); s!=_model.end(); ++s)
 		{
-			(*i)->Finish();
-			(*i)->Serialize(stream);
+			Serializable::SerializeToString(stream, s->Name());
+			Serializable::SerializeToUInt64(stream, s->ComponentCount());
+			for(ModelSource::const_iterator c=s->begin(); c!=s->end(); ++c)
+			{
+				_accumulatorPerSource[compIndex]->Finish();
+				_accumulatorPerSource[compIndex]->Serialize(stream);
+				++compIndex;
+			}
 		}
 	}
 	
 	void AccumulateFile(const char* filename)
 	{
 		std::ifstream stream(filename);
-		for(std::vector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
-			(*i)->AccumulateFromStream(stream);
+		// map source name to {source index, component index}
+		std::map<std::string, std::pair<size_t,size_t>> nameToIndices;
+		size_t componentIndex = 0;
+		for(size_t s=0; s!=_model.SourceCount(); ++s)
+		{
+			nameToIndices.insert(std::make_pair(_model.Source(s).Name(), std::make_pair(s, componentIndex)));
+			componentIndex += _model.Source(s).ComponentCount();
+		}
+		size_t sourcesInFile = Serializable::UnserializeUInt64(stream);
+		for(size_t s=0; s!=sourcesInFile; ++s)
+		{
+			std::string sourceName;
+			Serializable::UnserializeString(stream, sourceName);
+			size_t componentCount = Serializable::UnserializeUInt64(stream);
+			std::map<std::string, std::pair<size_t,size_t>>::const_iterator
+				nameToIndicesIter = nameToIndices.find(sourceName);
+			if(nameToIndicesIter == nameToIndices.end())
+				throw std::runtime_error("Accumulating file with a source '"+ sourceName +"' which is not in the model -- the specified model should contain all sources that could possibly be in the spectral files, and should have the same names.");
+			const ModelSource& source(_model.Source(nameToIndicesIter->second.first));
+			if(componentCount != source.ComponentCount())
+				throw std::runtime_error("The model and spectral files are inconsistent: source " + sourceName + " has different number of components");
+			size_t componentIndexOffset = nameToIndicesIter->second.second;
+			for(size_t c = componentIndexOffset; c != componentIndexOffset+componentCount; ++c)
+				_accumulatorPerSource[c]->AccumulateFromStream(stream);
+		}
 	}
 	
 	void GetModel(Model& model) const
@@ -350,12 +400,19 @@ private:
 		}
 	}
 
+	void clear()
+	{
+		for(ao::uvector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
+			delete *i;
+		_accumulatorPerSource.clear();
+	}
+
 	casa::MeasurementSet _ms;
 	IonSolutionFile _ionSolutionFile;
 	Model _model;
 	BandData _bandData;
 	std::unique_ptr<BeamEvaluator> _beamEvaluator;
-	std::vector<FluxSpectrumAccumulator*> _accumulatorPerSource;
+	ao::uvector<FluxSpectrumAccumulator*> _accumulatorPerSource;
 	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
 	ao::uvector<size_t> _sourceToClusterIndex;
 };

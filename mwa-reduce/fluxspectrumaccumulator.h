@@ -10,6 +10,9 @@
 class FluxSpectrumAccumulator : public Serializable
 {
 public:
+	/**
+	 * Constructor for accumulating visibilities
+	 */
 	FluxSpectrumAccumulator(const ModelComponent& component, const BandData* bandData, size_t channelBlocks, double phaseCentreRA, double phaseCentreDec) :
 		_accumulators(bandData->ChannelCount()),
 		_component(component),
@@ -29,9 +32,24 @@ public:
 		}
 	}
 	
+	/**
+	 * Constructor for accumulating from files
+	 */
+	FluxSpectrumAccumulator(const ModelComponent& component, const BandData* bandData) :
+		_accumulators(bandData->ChannelCount()),
+		_component(component),
+		_bandData(bandData),
+		_channelBlocks(0)
+	{
+		for(size_t ch=0; ch!=bandData->ChannelCount(); ++ch)
+		{
+			_accumulators[ch] = new FluxAccumulator(bandData->ChannelWavelength(ch));
+		}
+	}
+	
 	~FluxSpectrumAccumulator()
 	{
-		for(size_t ch=0; ch!=_bandData->ChannelCount(); ++ch)
+		for(size_t ch=0; ch!=_accumulators.size(); ++ch)
 			delete _accumulators[ch];
 	}
 	

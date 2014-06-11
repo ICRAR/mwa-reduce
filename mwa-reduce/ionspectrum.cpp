@@ -11,7 +11,8 @@ int main(int argc, char* argv[])
 	const char *ionFilename(argv[2]);
 	const char *modelFilename(argv[3]);
 	const char *outputFilename(argv[4]);
-	IonSpectrumMaker isMaker(msFilename, ionFilename, modelFilename);
+	IonSpectrumMaker isMaker;
+	isMaker.InitializeForVisibilityAcc(msFilename, ionFilename, modelFilename);
 	isMaker.Accumulate();
 	isMaker.Save(outputFilename);
 	
