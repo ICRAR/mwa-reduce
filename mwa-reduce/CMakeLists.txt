@@ -121,12 +121,16 @@ add_executable(testbugcasams testbugcasams.cpp)
 add_executable(uvdist uvdist.cpp nlplfitter.cpp)
 
 if(LIBXML2_FOUND)
-	add_executable(vo2model vo2model.cpp model.cpp)
 	include_directories(${LIBXML2_INCLUDE_DIR})
+	
+	add_executable(vo2model vo2model.cpp model.cpp)
 	target_link_libraries(vo2model ${LIBXML2_LIBRARIES})
-	message("Libxml2 found: will build vo2model")
+
+	add_executable(scaleimage scaleimage.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp parser/votableparser.cpp)
+	target_link_libraries(scaleimage ${LIBXML2_LIBRARIES} ${FITSIO_LIB} ${CASA_LIBS})
+	message("Libxml2 found: will build vo2model and scaleimage")
 else(LIBXML2_FOUND)
-  message("Libxml2 NOT found: will NOT build vo2model")
+  message("Libxml2 NOT found: will NOT build vo2model and scaleimage")
 endif(LIBXML2_FOUND)
 
 add_executable(wsclean wscleanmain.cpp wsclean.cpp fftconvolver.cpp fftresampler.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp layeredimager.cpp model.cpp modelrenderer.cpp progressbar.cpp stopwatch.cpp wsinversion.cpp cleanalgorithms/cleanalgorithm.cpp cleanalgorithms/joinedclean.cpp cleanalgorithms/multiscaleclean.cpp cleanalgorithms/simpleclean.cpp msprovider/contiguousms.cpp msprovider/msprovider.cpp msprovider/partitionedms.cpp ${BEAMFILES})

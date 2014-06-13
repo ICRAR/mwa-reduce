@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <libxml/xmlreader.h>
-#include <boost/config/posix_features.hpp>
+
 #include "modelsource.h"
 #include "model.h"
 

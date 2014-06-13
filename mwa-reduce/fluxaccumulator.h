@@ -108,24 +108,28 @@ private:
 	
 	void accumulateBeforeBeamChange()
 	{
-		// Add the residual flux still left in the observation after ionpeel:
-		// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
-		// w = data weight, B = beam weight, V = vis
-		std::complex<double> temp[4], temp2[4];
-		Matrix2x2::HermATimesB(temp, _beamGains, _accFluxesBeforeBeamChange);
-		Matrix2x2::PlusATimesB(_accFluxes, temp, _beamGains);
-		
-		// Now add the flux subtracted by ionpeel
-		// Flux += w * g * (B* B) ModelFlux (B* B)
-		Matrix2x2::HermATimesB(temp, _beamGains, _beamGains);
-		Matrix2x2::ATimesB(temp2, temp, _modelFlux);
-		Matrix2x2::ScalarMultiply(temp2, _accVisWeightBeforeBeamChange * _ionG);
-		Matrix2x2::PlusATimesB(_accFluxes, temp2, temp);
-		
-		// Calculate Weight += w (B* B) (B* B)
-		Matrix2x2::HermATimesB(temp, _beamGains, _beamGains);
-		Matrix2x2::HermATimesB(temp2, temp, temp);
-		Matrix2x2::MultiplyAdd(_accWeights, temp2, _accVisWeightBeforeBeamChange);
+		if(_ionG > 0.3 && _ionG < 3.0)
+		{
+			// Add the residual flux still left in the observation after ionpeel:
+			// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
+			// w = data weight * g^2, B = beam weight, V = vis
+			std::complex<double> temp[4], temp2[4];
+			Matrix2x2::HermATimesB(temp, _beamGains, _accFluxesBeforeBeamChange);
+			Matrix2x2::ScalarMultiply(temp, _ionG*_ionG);
+			Matrix2x2::PlusATimesB(_accFluxes, temp, _beamGains);
+			
+			// Now add the flux subtracted by ionpeel
+			// Flux += w * g * (B* B) ModelFlux (B* B)
+			Matrix2x2::HermATimesB(temp, _beamGains, _beamGains);
+			Matrix2x2::ATimesB(temp2, temp, _modelFlux);
+			Matrix2x2::ScalarMultiply(temp2, _accVisWeightBeforeBeamChange * _ionG * (_ionG*_ionG));
+			Matrix2x2::PlusATimesB(_accFluxes, temp2, temp);
+			
+			// Calculate Weight += w (B* B) (B* B)
+			Matrix2x2::HermATimesB(temp, _beamGains, _beamGains);
+			Matrix2x2::HermATimesB(temp2, temp, temp);
+			Matrix2x2::MultiplyAdd(_accWeights, temp2, _accVisWeightBeforeBeamChange * (_ionG*_ionG));
+		}
 		
 		for(size_t p=0; p!=4; ++p)
 			_accFluxesBeforeBeamChange[p] = std::complex<double>(0.0, 0.0);
