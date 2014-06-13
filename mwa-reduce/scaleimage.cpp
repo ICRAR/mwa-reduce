@@ -57,7 +57,8 @@ int main(int argc, char* argv[])
 		std::cout <<
 			"Sum over measured   \n"
 			"----------------- = " << (totalMeasuredFlux / totalModelFlux) << "\n"
-			"  Sum over model\n";
+			"  Sum over model\n\n"
+			"Calculated from " << sourcesUsed << " sources.\n";
 		double factor = totalModelFlux / totalMeasuredFlux;
 		
 		FitsReader reader(argv[4]);
