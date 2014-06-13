@@ -133,9 +133,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		_predictionModels.erase(_predictionModels.begin() + s);
 		delete _predicters[s];
 		_predicters.erase(_predicters.begin() + s);
-		_model.RemoveSource(s);
 	}
-	std::cout << "Filtered model has " << _model.SourceCount() << " clusters.\n";
+	std::cout << "Filtered model has " << _predictionModels.size() << " clusters.\n";
 	
 	_predicters.front()->ReportSources(_predictionModels.front());
 		
@@ -194,7 +193,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	_weightArrays.resize(_channelBlockCount);
 	for(_pass=0; _pass!=_passCount; ++_pass)
 	{
-		_failedConvergencesPerSource.assign(_model.SourceCount(), 0);
+		_failedConvergencesPerSource.assign(_predictionModels.size(), 0);
 		_failedConvergencesPerChannelGroup.assign(_channelBlockCount, 0);
 
 		_startTimestep = timestepCount * _pass / _passCount;
@@ -208,7 +207,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		{
 			std::cout << "Evaluating beam...\n";
 			beamEvaluator.SetTime(timeMColumn(_curStartRow));
-			for(size_t s=0; s!=_model.SourceCount(); ++s)
+			for(size_t s=0; s!=_predictionModels.size(); ++s)
 				_predicters[s]->UpdateBeam(_predictionModels[s]);
 		}
 		
@@ -330,17 +329,18 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 			delete _weightArrays[cb];
 		}
 		
-		for(size_t s=0; s!=_model.SourceCount(); ++s)
+		for(size_t s=0; s!=_predictionModels.size(); ++s)
 		{
 			if(_failedConvergencesPerSource[s] != 0)
 			{
-				std::cout << "Warning: Solutions for " << _model.Source(s).Name() << " failed to converge " << _failedConvergencesPerSource[s] << "x within 100 iterations.\n";
+				const ModelSource& firstSource = _predictionModels.front().Source(0);
+				std::cout << "Warning: Solutions for " << firstSource.ClusterName() << " failed to converge " << _failedConvergencesPerSource[s] << "x within 100 iterations.\n";
 			}
 		}
 	}
 	
-	for(size_t s=0; s!=_model.SourceCount(); ++s)
-		_predicters[s] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
+	for(size_t s=0; s!=_predictionModels.size(); ++s)
+		delete _predicters[s];
 }
 
 void IonPeeler::processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks)
@@ -628,13 +628,6 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 				iter++;
 				status = gsl_multifit_fdfsolver_iterate(solver);
 				
-				/*g = gsl_vector_get(solver->x, 0);
-				if(g < 0.1) {
-					g = 0.1;
-					gsl_vector_set(solver->x, 0, g);
-					std::cout << _model.Source(sourceIndex).Name() << " got gain solution<0.1: resetting.\n";
-				}*/
-			
 				if(status)
 					break;
 				
@@ -651,7 +644,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 			g = gsl_vector_get (solver->x, 0);
 			dl = gsl_vector_get (solver->x, 1);
 			dm = gsl_vector_get (solver->x, 2);
-			std::cout << "Solution " << fitIteration << ", channels " << channelIndexStart << '-' << channelIndexEnd << " for " << _model.Source(sourceIndex).Name() << ": " << g << ',' << dl << ',' << dm << '\n';
+			std::cout << "Solution " << fitIteration << ", channels " << channelIndexStart << '-' << channelIndexEnd << " for " << _predictionModels[sourceIndex].Source(0).ClusterName() << ": " << g << ',' << dl << ',' << dm << '\n';
 			//std::cout << gsl_strerror(status) << "\n";
 			//std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
 			/*if(channelIndex == 5)
