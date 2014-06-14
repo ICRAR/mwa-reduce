@@ -9,6 +9,66 @@
 #include <casa/Quanta/MVTime.h>
 #include <measures/Measures/MeasConvert.h>
 
+FitsReader::FitsReader(const FitsReader& source) :
+	_filename(source._filename),
+	_fitsPtr(0),
+	_imgWidth(source._imgWidth), _imgHeight(source._imgHeight),
+	_phaseCentreRA(source._phaseCentreRA), _phaseCentreDec(source._phaseCentreDec),
+	_pixelSizeX(source._pixelSizeX), _pixelSizeY(source._pixelSizeY),
+	_phaseCentreDL(source._phaseCentreDL), _phaseCentreDM(source._phaseCentreDM),
+	_frequency(source._frequency), _bandwidth(source._bandwidth), _dateObs(source._dateObs),
+	_hasBeam(source._hasBeam),
+	_beamMajorAxisRad(source._beamMajorAxisRad), _beamMinorAxisRad(source._beamMinorAxisRad), _beamPositionAngle(source._beamPositionAngle),
+	_polarization(source._polarization),
+	_origin(source._origin), _originComment(source._originComment),
+	_history(source._history)
+{
+	int status = 0;
+	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
+	checkStatus(status, _filename);
+	
+	// Move to first HDU
+	int hduType;
+	fits_movabs_hdu(_fitsPtr, 1, &hduType, &status);
+	checkStatus(status, _filename);
+	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
+}
+
+FitsReader& FitsReader::operator=(const FitsReader& rhs)
+{
+	_filename = rhs._filename;
+	_imgWidth = rhs._imgWidth;
+	_imgHeight = rhs._imgHeight;
+	_phaseCentreRA = rhs._phaseCentreRA;
+	_phaseCentreDec = rhs._phaseCentreDec;
+	_pixelSizeX = rhs._pixelSizeX;
+	_pixelSizeY = rhs._pixelSizeY;
+	_phaseCentreDL = rhs._phaseCentreDL;
+	_phaseCentreDM = rhs._phaseCentreDM;
+	_frequency = rhs._frequency;
+	_bandwidth = rhs._bandwidth;
+	_dateObs = rhs._dateObs;
+	_hasBeam = rhs._hasBeam;
+	_beamMajorAxisRad = rhs._beamMajorAxisRad;
+	_beamMinorAxisRad = rhs._beamMinorAxisRad;
+	_beamPositionAngle = rhs._beamPositionAngle;
+	_polarization = rhs._polarization;
+	_origin = rhs._origin;
+	_originComment = rhs._originComment;
+	_history = rhs._history;
+	
+	int status = 0;
+	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
+	checkStatus(status, _filename);
+	
+	// Move to first HDU
+	int hduType;
+	fits_movabs_hdu(_fitsPtr, 1, &hduType, &status);
+	checkStatus(status, _filename);
+	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
+	return *this;
+}
+
 float FitsReader::readFloatKey(const char *key)
 {
 	int status = 0;
@@ -229,7 +289,6 @@ FitsReader::~FitsReader()
 {
 	int status = 0;
 	fits_close_file(_fitsPtr, &status);
-	checkStatus(status, _filename);
 }
 
 double FitsReader::ParseFitsDateToMJD(const char* valueStr)

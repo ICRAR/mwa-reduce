@@ -17,7 +17,10 @@ class FitsReader : protected FitsIOChecker
 		{
 			initialize(); 
 		}
+		FitsReader(const FitsReader& source);
 		~FitsReader();
+		
+		FitsReader& operator=(const FitsReader& rhs);
 		
 		template<typename NumType> void Read(NumType *image);
 		
@@ -51,6 +54,8 @@ class FitsReader : protected FitsIOChecker
 		
 		bool ReadDoubleKeyIfExists(const char* key, double& dest) { return readDoubleKeyIfExists(key, dest); }
 		static double ParseFitsDateToMJD(const char* valueStr);
+		
+		const std::string& Filename() const { return _filename; }
 	private:
 		float readFloatKey(const char* key);
 		double readDoubleKey(const char* key);
@@ -61,10 +66,10 @@ class FitsReader : protected FitsIOChecker
 		void readHistory();
 		bool readDateKeyIfExists(const char *key, double &dest);
 		
+		void initialize();
+		
 		std::string _filename;
 		fitsfile *_fitsPtr;
-		
-		void initialize();
 		
 		size_t _imgWidth, _imgHeight;
 		double _phaseCentreRA, _phaseCentreDec;
