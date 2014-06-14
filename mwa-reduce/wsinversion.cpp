@@ -599,6 +599,11 @@ void WSInversion::Invert()
 
 void WSInversion::Predict(double* real, double* imaginary)
 {
+	if(imaginary==0 && IsComplex())
+		throw std::runtime_error("Missing imaginary in complex prediction");
+	if(imaginary!=0 && !IsComplex())
+		throw std::runtime_error("Imaginary specified in non-complex prediction");
+	
 	MSData* msDataVector = new MSData[MeasurementSetCount()];
 	_hasFrequencies = false;
 	for(size_t i=0; i!=MeasurementSetCount(); ++i)

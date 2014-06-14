@@ -30,7 +30,11 @@ class WSInversion : public InversionAlgorithm
 		virtual void Predict(double* real, double* imaginary);
 		
 		virtual double *ImageRealResult() const { return _imager->RealImage(); }
-		virtual double *ImageImaginaryResult() const { return _imager->ImaginaryImage(); }
+		virtual double *ImageImaginaryResult() const {
+			if(!IsComplex())
+				throw std::runtime_error("No imaginary result available for non-complex inversion");
+			return _imager->ImaginaryImage();
+		}
 		virtual double PhaseCentreRA() const { return _phaseCentreRA; }
 		virtual double PhaseCentreDec() const { return _phaseCentreDec; }
 		virtual double HighestFrequencyChannel() const { return _freqHigh; }
