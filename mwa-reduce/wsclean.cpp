@@ -764,6 +764,8 @@ void WSClean::predictChannel(size_t outChannelIndex)
 		if(*curPol != Polarization::YX || _polarizations.count(Polarization::XY)==0)
 		{
 			FitsReader reader(getPrefix(*curPol, outChannelIndex, false) + "-model.fits");
+			_fitsWriter = FitsWriter(reader);
+			_modelImages.SetFitsWriter(_fitsWriter);
 			std::cout << "Reading " << reader.Filename() << "...\n";
 			double* buffer = _imageAllocator.Allocate(_imgWidth*_imgHeight);
 			if(reader.ImageWidth()!=_imgWidth || reader.ImageHeight()!=_imgHeight)
@@ -783,6 +785,7 @@ void WSClean::predictChannel(size_t outChannelIndex)
 		}
 		
 		prepareInversionAlgorithm(*curPol);
+		initFitsWriter(_fitsWriter);
 		
 		initializeCurMSProviders(outChannelIndex, *curPol);
 

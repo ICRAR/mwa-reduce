@@ -46,6 +46,8 @@ public:
 	
 	void Load(value_t* image, PolarizationEnum polarization, size_t freqIndex, bool isImaginary)
 	{
+		if(_writer.Width() == 0 || _writer.Height() == 0)
+			throw std::runtime_error("Writer is not set.");
 		std::cout << "Loading " << name(polarization, freqIndex, isImaginary) << '\n';
 		if(_polCount == 1 && _freqCount == 1)
 			if(_image == 0)
@@ -60,6 +62,8 @@ public:
 	
 	void Store(const value_t* image, PolarizationEnum polarization, size_t freqIndex, bool isImaginary)
 	{
+		if(_writer.Width() == 0 || _writer.Height() == 0)
+			throw std::runtime_error("Writer is not set.");
 		std::cout << "Storing " << name(polarization, freqIndex, isImaginary) << '\n';
 		if(_polCount == 1 && _freqCount == 1)
 		{
