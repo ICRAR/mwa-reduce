@@ -411,6 +411,7 @@ void WSClean::initializeCleanAlgorithm()
 
 void WSClean::prepareInversionAlgorithm(PolarizationEnum polarization)
 {
+	static_cast<WSInversion&>(*_inversionAlgorithm).SetGridMode(_gridMode);
 	_inversionAlgorithm->SetImageWidth(_imgWidth);
 	_inversionAlgorithm->SetImageHeight(_imgHeight);
 	_inversionAlgorithm->SetPixelSizeX(_pixelScaleX);
@@ -570,7 +571,6 @@ void WSClean::selectChannels(MSSelection& selection, size_t outChannelIndex, siz
 void WSClean::runIndependentChannel(size_t outChannelIndex)
 {
 	_inversionAlgorithm.reset(new WSInversion(&_imageAllocator, _threadCount, _memFraction, _absMemLimit));
-	static_cast<WSInversion&>(*_inversionAlgorithm).SetGridMode(_gridMode);
 	
 	size_t  joinedChannelsOut;
 	if(_joinedFrequencyCleaning)
