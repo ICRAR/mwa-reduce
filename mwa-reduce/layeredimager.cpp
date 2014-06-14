@@ -415,7 +415,7 @@ void LayeredImager::SampleData(std::complex<float>* data, size_t dataDescId, dou
 			u = uInM / wavelength,
 			v = vInM / wavelength,
 			w = wInM / wavelength;
-		bool isConjugated = (w < 0.0);
+		bool isConjugated = (w < 0.0 && !_isComplex);
 		if(isConjugated)
 		{
 			u = -u;
@@ -729,7 +729,7 @@ void LayeredImager::copyImageToLayerAndInverseCorrect(std::complex<double> *dest
 			double realVal = dataReal[xDest + yDest*_width];
 			if(IsComplex)
 			{
-				double imagVal = dataImaginary[xDest + yDest*_width];
+				double imagVal = -dataImaginary[xDest + yDest*_width];
 				*dest = std::complex<double>(realVal*c + imagVal*s, imagVal*c - realVal*s);
 			}
 			else
