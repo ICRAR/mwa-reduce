@@ -657,10 +657,13 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 								_residualImages.Load(residualImage, *curPol, ch, false);
 								std::cout << "Writing residual image... " << std::flush;
 								writeFits("residual.fits", residualImage, *curPol, currentChannelIndex, false);
-								if(Polarization::IsComplex(*curPol))
-									writeFits("residual.fits", residualImage, *curPol, currentChannelIndex, true);
-								_imageAllocator.Free(residualImage);
 								std::cout << "DONE\n";
+								if(Polarization::IsComplex(*curPol))
+								{
+									_residualImages.Load(residualImage, *curPol, ch, true);
+									writeFits("residual.fits", residualImage, *curPol, currentChannelIndex, true);
+								}
+								_imageAllocator.Free(residualImage);
 							}
 						}
 					} // end of polarization loop
