@@ -448,16 +448,16 @@ void WSClean::checkPolarizations()
 			throw std::runtime_error("Joined polarization cleaning requested, but neither 2 or 4 polarizations are imaged that are suitable for this");
 	}
 	else {
-		if(_polarizations.count(Polarization::XY)!=0 || _polarizations.count(Polarization::YX)!=0 && _nIter!=0)
+		if((_polarizations.count(Polarization::XY)!=0 || _polarizations.count(Polarization::YX)!=0) && _nIter!=0)
 			throw std::runtime_error("You are imaging XY and/or YX polarizations and have enabled cleaning (niter!=0). This is not possible -- you have to specify '-joinpolarizations' or disable cleaning.");
 	}
 }
 
-void WSClean::performReordering()
+void WSClean::performReordering(bool isPredictMode)
 {
 	for(std::vector<std::string>::const_iterator i=_filenames.begin(); i != _filenames.end(); ++i)
 	{
-		_partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0, _polarizations));
+		_partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0 || isPredictMode, _polarizations));
 	}
 }
 
@@ -481,7 +481,7 @@ void WSClean::RunClean()
 	
 	_doReorder = preferReordering();
 	
-	if(_doReorder) performReordering();
+	if(_doReorder) performReordering(false);
 	
 	_firstMSBand = MultiBandData(casa::MeasurementSet(_filenames[0]).spectralWindow(), casa::MeasurementSet(_filenames[0]).dataDescription());
 	_weightPerChannel.assign(_channelsOut, 0);
@@ -540,7 +540,7 @@ void WSClean::RunPredict()
 	
 	_doReorder = preferReordering();
 	
-	if(_doReorder) performReordering();
+	if(_doReorder) performReordering(true);
 	
 	_firstMSBand = MultiBandData(casa::MeasurementSet(_filenames[0]).spectralWindow(), casa::MeasurementSet(_filenames[0]).dataDescription());
 	
@@ -758,21 +758,26 @@ void WSClean::predictChannel(size_t outChannelIndex)
 	for(std::set<PolarizationEnum>::const_iterator curPol=_polarizations.begin(); curPol!=_polarizations.end(); ++curPol)
 	{
 		// load image(s) from disk
-		FitsReader reader(getPrefix(*curPol, outChannelIndex, false) + "-model.fits");
-		double* buffer = _imageAllocator.Allocate(_imgWidth*_imgHeight);
-		if(reader.ImageWidth()!=_imgWidth || reader.ImageHeight()!=_imgHeight)
-			throw std::runtime_error("Inconsistent image size: input image did not match with specified dimensions.");
-		reader.Read(buffer);
-		_modelImages.Store(buffer, *curPol, false, 0);
-		if(Polarization::IsComplex(*curPol))
+		if(*curPol != Polarization::YX || _polarizations.count(Polarization::XY)==0)
 		{
-			reader = FitsReader(getPrefix(*curPol, outChannelIndex, true) + "-model.fits");
+			FitsReader reader(getPrefix(*curPol, outChannelIndex, false) + "-model.fits");
+			std::cout << "Reading " << reader.Filename() << "...\n";
+			double* buffer = _imageAllocator.Allocate(_imgWidth*_imgHeight);
 			if(reader.ImageWidth()!=_imgWidth || reader.ImageHeight()!=_imgHeight)
 				throw std::runtime_error("Inconsistent image size: input image did not match with specified dimensions.");
 			reader.Read(buffer);
-			_modelImages.Store(buffer, *curPol, true, 0);
+			_modelImages.Store(buffer, *curPol, 0, false);
+			if(*curPol == Polarization::XY)
+			{
+				reader = FitsReader(getPrefix(Polarization::XY, outChannelIndex, true) + "-model.fits");
+				std::cout << "Reading " << reader.Filename() << "...\n";
+				if(reader.ImageWidth()!=_imgWidth || reader.ImageHeight()!=_imgHeight)
+					throw std::runtime_error("Inconsistent image size: input image did not match with specified dimensions.");
+				reader.Read(buffer);
+				_modelImages.Store(buffer, Polarization::XY, 0, true);
+			}
+			_imageAllocator.Free(buffer);
 		}
-		_imageAllocator.Free(buffer);
 		
 		prepareInversionAlgorithm(*curPol);
 		

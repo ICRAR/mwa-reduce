@@ -97,7 +97,7 @@ private:
 	void prepareInversionAlgorithm(PolarizationEnum polarization);
 	
 	void checkPolarizations();
-	void performReordering();
+	void performReordering(bool isPredictMode);
 	
 	void initFitsWriter(class FitsWriter& writer);
 	void setCleanParameters(class FitsWriter& writer, const class CleanAlgorithm& clean);
