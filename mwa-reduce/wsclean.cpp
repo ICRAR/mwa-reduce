@@ -447,6 +447,10 @@ void WSClean::checkPolarizations()
 		else 
 			throw std::runtime_error("Joined polarization cleaning requested, but neither 2 or 4 polarizations are imaged that are suitable for this");
 	}
+	else {
+		if(_polarizations.count(Polarization::XY)!=0 || _polarizations.count(Polarization::YX)!=0 && _nIter!=0)
+			throw std::runtime_error("You are imaging XY and/or YX polarizations and have enabled cleaning (niter!=0). This is not possible -- you have to specify '-joinpolarizations' or disable cleaning.");
+	}
 }
 
 void WSClean::performReordering()
@@ -897,6 +901,7 @@ void WSClean::performSimpleClean(CleanAlgorithm& cleanAlgorithm, size_t currentC
 		modelImage(_imgWidth*_imgHeight, _imageAllocator);
 	double
 		*psfImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
+		
 	_residualImages.Load(residualImage.Data(), polarization, 0, false);
 	_modelImages.Load(modelImage.Data(), polarization, 0, false);
 	_psfImages.Load(psfImage, polarization, 0, false);
