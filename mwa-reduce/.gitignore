@@ -2,3 +2,4 @@
 build/
 *.kate-swp
 *~
+.kdev_include_paths
