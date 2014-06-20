@@ -115,6 +115,11 @@ void JonesLookupDipole::loadLookupTable()
 		table.norm[1] = -d2c(values[8*(ph90*uniqueZAValues + zaZero) + 2]);   // (zaZero, ph90)
 		table.norm[2] = d2c(values[8*(ph90*uniqueZAValues + zaZero) + 4]);    // (zaZero, ph90)
 		table.norm[3] = d2c(values[8*(phZero*uniqueZAValues + zaZero) + 6]);  // (zaZero, phZero)
+		//std::cout << "table.norm:\n  "
+		//	<< table.norm[0] << " , "
+		//	<< table.norm[1] << " , "
+		//	<< table.norm[2] << " , "
+		//	<< table.norm[3] << '\n';
 	}
 	std::cout << '\n';
 }
@@ -152,9 +157,9 @@ void JonesLookupDipole::Interpolate(std::complex<double>* jonesMatrix, double az
 	else {
 		alglib::real_1d_array jonesMatrixArray;
 		alglib::spline2dcalcv(table.spline, zaDeg, phDeg, jonesMatrixArray);
-		for(size_t i=0; i!=4; ++i)
-		{
-			jonesMatrix[i] = d2c(jonesMatrixArray.getcontent()[i*2]) / table.norm[i];
-		}
+		jonesMatrix[0] = d2c(jonesMatrixArray.getcontent()[0*2]) / table.norm[0];
+		jonesMatrix[1] = -d2c(jonesMatrixArray.getcontent()[1*2]) / table.norm[1];
+		jonesMatrix[2] = d2c(jonesMatrixArray.getcontent()[2*2]) / table.norm[2];
+		jonesMatrix[3] = -d2c(jonesMatrixArray.getcontent()[3*2]) / table.norm[3];
 	}
 }

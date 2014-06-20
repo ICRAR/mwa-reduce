@@ -14,6 +14,7 @@
 #include <ms/MeasurementSets/MeasurementSet.h>
 
 #include <tables/Tables/ArrayColumn.h>
+#include <tables/Tables/TableRecord.h>
 #include <tables/Tables/ScalarColumn.h>
 
 #include <measures/Measures/MDirection.h>
