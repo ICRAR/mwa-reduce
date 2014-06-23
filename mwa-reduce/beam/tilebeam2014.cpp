@@ -38,10 +38,14 @@ void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<d
 	
 		// Make LU decomposition of matrix m
 	int s;
-	gsl_linalg_complex_LU_decomp(gslInput, perm, &s);
+	int status = gsl_linalg_complex_LU_decomp(gslInput, perm, &s);
+	if(status != 0)
+		throw std::runtime_error("Couldn't LU decompose matrix");
 
 	// Invert the matrix m
-	gsl_linalg_complex_LU_invert(gslInput, perm, gslOutput);
+	status = gsl_linalg_complex_LU_invert(gslInput, perm, gslOutput);
+	if(status != 0)
+		throw std::runtime_error("Couldn't invert matrix");
 	
 	memcpy(output, gsl_matrix_complex_ptr(gslOutput, 0, 0), sizeof(std::complex<double>)*32*32);
 	
@@ -68,8 +72,9 @@ void TileBeam2014::getTabulatedResponse(double az, double za, double freq, std::
 		for(size_t i=0; i!=16; ++i) zenithDelays[i] = 0.0;
 		getArrayFactor(0.0, 0.0, freq, newCacheInfo.zax, newCacheInfo.zay, zenithDelays);
 		
-		_frequencyCache.insert(std::make_pair(freq, newCacheInfo));
-		cacheInfo = &newCacheInfo;
+		std::map<double, FrequencyCacheInfo>::const_iterator newItem =
+			_frequencyCache.insert(std::make_pair(freq, newCacheInfo)).first;
+		cacheInfo = &newItem->second;
 	}
 	else {
 		cacheInfo = &_frequencyCache.find(freq)->second;
@@ -162,3 +167,65 @@ void TileBeam2014::getInterpolatedResponse(double az, double za, double freq, st
 		reinterpret_cast<double*>(result)[i] = v;
 	}
 }
+
+	/**
+	 * Return the port currents on a tile given the freq (Hz) and delays
+	 */
+ 	void TileBeam2014::getPortCurrents(double freq, std::complex<double>* current, const double* delays)
+	{
+		double lambda = SPEED_OF_LIGHT / freq;
+		std::complex<double> ph_rot[32];
+		for(size_t i=0; i!=16; ++i) {
+			double phase = -2.0 * M_PI * delays[i] / lambda;
+			double s, c;
+			sincos(phase, &s, &c);
+			ph_rot[i] = std::complex<double>(c, s);
+			ph_rot[i+16] = ph_rot[i];
+		}
+		
+		std::complex<double> lnaImp = LNAImpedance::Get(freq);
+		std::complex<double> zTotal[32*32];
+		TileImpedance::Get(freq, zTotal);
+		// Add lna impedance to diagonal values
+		for(size_t diag=0; diag!=32; ++diag)
+			zTotal[diag*33] += lnaImp;
+		std::complex<double> invertedZ[32*32], *invertedZPtr = invertedZ;
+		invert32x32(zTotal, invertedZ);
+		// Compute inner product invertedZ . ph_rot
+		for(size_t j=0; j!=32; ++j)
+		{
+			current[j] = 0.0;
+			for(size_t i=0; i!=32; ++i) {
+				current[j] += *invertedZPtr * ph_rot[i];
+				++invertedZPtr;
+			}
+		}
+		/*std::cout << "MWA " << freq << "Hz X dipole current amplitude\n";
+    for(size_t y=0; y!=4; ++y) {
+      for(size_t x=0; x!=4; ++x) {
+				std::cout << std::abs(current[16+y*4 + x])*1000.0 << ' ';
+      }
+			std::cout << '\n';
+    }
+		std::cout << "MWA " << freq << "MHz X dipole current phase\n";
+    for(size_t y=0; y!=4; ++y) {
+      for(size_t x=0; x!=4; ++x) {
+				std::cout << std::arg(current[16+y*4 + x])*180.0/M_PI << ' ';
+      }
+			std::cout << '\n';
+    }
+		std::cout << "MWA " << freq << "Hz Y dipole current amplitude\n";
+    for(size_t y=0; y!=4; ++y) {
+      for(size_t x=0; x!=4; ++x) {
+				std::cout << std::abs(current[y*4 + x])*1000.0 << ' ';
+      }
+			std::cout << '\n';
+    }
+		std::cout << "MWA " << freq << "MHz Y dipole current phase\n";
+    for(size_t y=0; y!=4; ++y) {
+      for(size_t x=0; x!=4; ++x) {
+				std::cout << std::arg(current[y*4 + x])*180.0/M_PI << ' ';
+      }
+			std::cout << '\n';
+    }*/
+	}
