@@ -785,7 +785,6 @@ void WSClean::predictChannel(size_t outChannelIndex)
 		}
 		
 		prepareInversionAlgorithm(*curPol);
-		initFitsWriter(_fitsWriter);
 		
 		initializeCurMSProviders(outChannelIndex, *curPol);
 
