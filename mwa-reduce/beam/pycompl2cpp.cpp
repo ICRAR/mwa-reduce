@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 
 using namespace std;
 
@@ -39,7 +40,7 @@ void parse(const string line)
 		switch(state)
 		{
 			case Begin:
-				if(isnum(c))
+				if(isnum(c) || c == '-')
 				{
 					state = InReal;
 					real += c;
@@ -48,11 +49,16 @@ void parse(const string line)
 			case InReal:
 				if(isnum(c))
 					real += c;
+				else if(c == '-')
+				{
+					state = InImag;
+					imag='-';
+				}
 				else
 					state = AfterReal;
 				break;
 			case AfterReal:
-				if(isnum(c))
+				if(isnum(c) || c == '-')
 				{
 					state = InImag;
 					imag += c;
@@ -61,6 +67,8 @@ void parse(const string line)
 			case InImag:
 				if(isnum(c))
 					imag += c;
+				else if(c == '-')
+					throw std::runtime_error("Unexpected minus");
 				else {
 					state = Begin;
 					outputComplex(real, imag);
