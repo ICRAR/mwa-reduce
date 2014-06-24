@@ -88,49 +88,7 @@ private:
 	/**
 	 * Return the port currents on a tile given the freq (Hz) and delays
 	 */
- 	static void getPortCurrents(double freq, std::complex<double>* current, const double* delays)
-	{
-		double lambda = SPEED_OF_LIGHT / freq;
-		std::complex<double> ph_rot[32];
-		for(size_t i=0; i!=16; ++i) {
-			double phase = -2.0 * M_PI * delays[i] / lambda;
-			double s, c;
-			sincos(phase, &s, &c);
-			ph_rot[i] = std::complex<double>(c, s);
-			ph_rot[i+16] = ph_rot[i];
-		}
-		
-		std::complex<double> lnaImp = LNAImpedance::Get(freq);
-		std::complex<double> zTotal[32*32];
-		TileImpedance::Get(freq, zTotal);
-		// Add lna impedance to diagonal values
-		for(size_t diag=0; diag!=32; ++diag)
-			zTotal[diag*33] += lnaImp;
-		std::complex<double> invertedZ[32*32], *invertedZPtr = invertedZ;
-		invert32x32(zTotal, invertedZ);
-		// Compute inner product invertedZ . ph_rot
-		for(size_t j=0; j!=32; ++j)
-		{
-			for(size_t i=0; i!=32; ++i) {
-				current[j] += *invertedZPtr * ph_rot[i];
-				++invertedZPtr;
-			}
-		}
-		/*std::cout << "MWA " << freq << "Hz X dipole current amplitude\n";
-    for(size_t y=0; y!=4; ++y) {
-      for(size_t x=0; x!=4; ++x) {
-				std::cout << std::abs(current[16+y*4 + x])*1000.0 << ' ';
-      }
-			std::cout << '\n';
-    }
-		std::cout << "MWA " << freq << "MHz X dipole current phase\n";
-    for(size_t y=0; y!=4; ++y) {
-      for(size_t x=0; x!=4; ++x) {
-				std::cout << std::arg(current[16+y*4 + x])*180.0/M_PI << ' ';
-      }
-			std::cout << '\n';
-    }*/
-	}
+ 	static void getPortCurrents(double freq, std::complex<double>* current, const double* delays);
 	
 	/**
 	 * Get the scalar array factor response of the array for a given

@@ -10,7 +10,7 @@ static_assert(sizeof(std::complex<double>) == sizeof(gsl_complex), "sizeof(std::
 
 int main(int argc, char* argv[])
 {
-	double freqs[]={88,118,155,186,210};
+	double freqs[]={80,130,150,200,230};
 	double delays[] = {6,6,6,6,4,4,4,4,2,2,2,2,0,0,0,0,6,6,6,6,4,4,4,4,2,2,2,2,0,0,0,0};
 	double dq=435e-12*3e8;
 	double za=14;

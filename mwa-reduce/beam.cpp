@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 	const char* metafitsName = 0;
 	string prefixName = "beam"; 
 	double delays[16];
-	bool doSquare = false;
+	bool doSquare = false, hasDelays = false;
 	bool use2013 = false;
 	bool doInterpolate = false;
 	for(size_t i=0; i!=16; ++i)
@@ -138,6 +138,7 @@ int main(int argc, char *argv[])
 			}
 			for(size_t i=0; i!=16; ++i)
 				delays[i] = list[i];
+			hasDelays= true;
 		}
 		else if(param == "square")
 		{
@@ -167,8 +168,10 @@ int main(int argc, char *argv[])
 		time = casa::MEpoch(casa::MVEpoch((header.GetDateFirstScanFromFields() + header.GetDateLastScanMJD()) * 0.5));
 		centralFrequency = header.centralFrequencyMHz*1e6;
 		haveTime = true;
-		for(size_t i=0; i!=16; ++i)
-			delays[i] = headerExt.delays[i];
+		if(!hasDelays) {
+			for(size_t i=0; i!=16; ++i)
+				delays[i] = headerExt.delays[i];
+		}
 		std::cout << "Metafits specifies mid time = " << time << '\n';
 		std::cout << "Frequency = " << centralFrequency << '\n';
 		std::cout <<
@@ -201,8 +204,11 @@ int main(int argc, char *argv[])
 		casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
 		casa::Array<int> delaysArr = delaysCol(0);
 		casa::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
-		for(int i=0; i!=16; ++i)
-			delays[i] = delaysArrPtr[i];
+		if(!hasDelays)
+		{
+			for(int i=0; i!=16; ++i)
+				delays[i] = delaysArrPtr[i];
+		}
 		
 		BandData bandData(ms.spectralWindow());
 		centralFrequency = bandData.CentreFrequency();
