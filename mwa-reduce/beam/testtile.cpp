@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
 		{
 			std::cout << "ZA is: " << zaOfDelays[i] << ". First delay is: " << delays[i][0] << '\n';
 			
-			TileBeam2014 tileBeam(delays[i].data());
+			TileBeam2014 tileBeam(delays[i].data(), false);
 			//tileBeam.ArrayResponse(zas[i], az, freq, gains);
 			
 			//std::cout << "plotting Array factor voltage for ZA " << zaOfDelays[i] << '\n';
