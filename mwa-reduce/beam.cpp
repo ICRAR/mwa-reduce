@@ -256,6 +256,7 @@ int main(int argc, char *argv[])
 		
 		writer.SetImageDimensions(width, height, refRA, refDec, pixelSizeX, pixelSizeY);
 		writer.SetFrequency(centralFrequency, bandWidth);
+		writer.SetDate(time.getValue().get());
 	}
 	else {
 		FitsReader reader(inpFitsname);
