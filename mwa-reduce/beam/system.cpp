@@ -5,13 +5,18 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 std::string System::FindPythonFilePath(const std::string& filename)
 {
 	if(boost::filesystem::exists(filename))
 		return filename;
 	std::cout << "Searching " << filename << "... " << std::flush;
-	boost::filesystem::path tempPath = "/tmp/mwa-ao-python-path-list.tmp"; //boost::filesystem::unique_path();
+	std::random_device rndDev;
+  std::mt19937 gen(rndDev());
+	std::stringstream filenameStr;
+	filenameStr << "/tmp/mwa-ao-python-path-list" << gen() << ".tmp";
+	boost::filesystem::path tempPath = filenameStr.str(); //boost::filesystem::unique_path();
 	const std::string tempFilename = tempPath.string();  // optional
 	std::string command =
 		std::string("echo \"import sys\nfor a in sys.path:\n  print a\"|python>") +
