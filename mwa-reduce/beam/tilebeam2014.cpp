@@ -7,6 +7,8 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_cblas.h>
 
+#include <limits>
+
 TileBeam2014::TileBeam2014(const double* delays, bool frequencyInterpolation) :
 	_dipoleHeight(0.28), /* Seems to be 0.3 in the RTS, 0.278 in beam script */
 	_dipoleSeparations(1.100),
@@ -155,16 +157,23 @@ void TileBeam2014::getInterpolatedResponse(double az, double za, double freq, st
 			reinterpret_cast<double*>(valuesL)[i],
 			reinterpret_cast<double*>(valuesR)[i],
 			reinterpret_cast<double*>(valuesRR)[i] };
-			
-		alglib::real_1d_array valArray;
-		valArray.setcontent(4, beamValues);
 		
-		alglib::spline1dinterpolant spline;
-		alglib::spline1dbuildcubic(
-			freqArray, valArray,
-			spline);
-		double v = alglib::spline1dcalc(spline, freq);
-		reinterpret_cast<double*>(result)[i] = v;
+		if(std::isfinite(beamValues[0]) && std::isfinite(beamValues[1]) &&
+			std::isfinite(beamValues[2]) && std::isfinite(beamValues[3]))
+		{
+			alglib::real_1d_array valArray;
+			valArray.setcontent(4, beamValues);
+			
+			alglib::spline1dinterpolant spline;
+			alglib::spline1dbuildcubic(
+				freqArray, valArray,
+				spline);
+			double v = alglib::spline1dcalc(spline, freq);
+			reinterpret_cast<double*>(result)[i] = v;
+		}
+		else {
+			reinterpret_cast<double*>(result)[i] = std::numeric_limits<double>::quiet_NaN();
+		}
 	}
 }
 
