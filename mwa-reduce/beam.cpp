@@ -313,6 +313,10 @@ int main(int argc, char *argv[])
 		prefixName+"-yxr.fits", prefixName+"-yxi.fits", prefixName+"-yyr.fits", prefixName+"-yyi.fits"
 	};
 	
-	for(size_t i=0; i!=8; ++i)
+  PolarizationEnum
+    linPols[4] = { Polarization::XX, Polarization::XY, Polarization::YX, Polarization::YY };
+	for(size_t i=0; i!=8; ++i) {
+		writer.SetPolarization(linPols[i/2]);
 		writer.Write<double>(names[i], &outImage[i][0]);
+	}
 }
