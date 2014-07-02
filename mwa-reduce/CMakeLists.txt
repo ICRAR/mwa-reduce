@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 project(mwa-reduce)
 
-set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -msse4.1 -std=c++0x")
+set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -std=c++0x")
 
 find_library(CASA_MS_LIB casa_ms REQUIRED)
 find_library(CASA_TABLES_LIB casa_tables REQUIRED)
