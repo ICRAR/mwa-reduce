@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <random>
 
 std::string System::FindPythonFilePath(const std::string& filename)
 {
