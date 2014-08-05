@@ -1,4 +1,5 @@
 #include "wsclean.h"
+#include "wscversion.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -7,12 +8,13 @@
 int main(int argc, char *argv[])
 {
 	std::cout << "\n"
-		" ** This software package is released under the GPL version 3. **\n"
-	  " ** Author: André Offringa (offringa@gmail.com).               **\n\n";
+		"WSClean version " WSCLEAN_VERSION_STR " (" WSCLEAN_VERSION_DATE ")\n"
+		"This software package is released under the GPL version 3.\n"
+	  "Author: André Offringa (offringa@gmail.com).\n\n";
 #ifndef NDEBUG
 	std::cout << "\n"
 		"WARNING: Symbol NDEBUG was not defined; this WSClean version was\n"
-		"compiled as a DEBUG version. This can seriously affect performance!\n";
+		"compiled as a DEBUG version. This can seriously affect performance!\n\n";
 #endif
 	
 	if(argc < 2)
@@ -21,6 +23,10 @@ int main(int argc, char *argv[])
 			"Will create cleaned images of the input ms(es).\n"
 			"If multiple mses are specified, they need to be phase-rotated to the same point on the sky.\n\n"
 			"Options can be:\n\n"
+			"  ** GENERAL OPTIONS **\n"
+			"-version\n"
+			"   Print WSClean's version and exit.\n"
+			"\n"
 			"  ** INVERSION OPTIONS **\n"
 			"-name <image-prefix>\n"
 			"   Use image-prefix as prefix for output files. Default is 'wsclean'.\n"
@@ -152,8 +158,13 @@ int main(int argc, char *argv[])
 	bool mfsWeighting = false, noMFSWeighting = false, predictionMode = false;
 	while(argi < argc && argv[argi][0] == '-')
 	{
-		const std::string param = &argv[argi][1];
-		if(param == "predict")
+		const std::string param = argv[argi][1]=='-' ? (&argv[argi][2]) : (&argv[argi][1]);
+		if(param == "version")
+		{
+			// version already printed: just exit
+			return 0;
+		}
+		else if(param == "predict")
 		{
 			predictionMode = true;
 		}
