@@ -35,6 +35,8 @@ int main(int argc, char* argv[])
 			"  Execute: without it, nothing will be done, only suggestions will be given.\n"
 			"-noselfcal\n"
 			"  Disable self cal.\n"
+			"-subtract\n"
+			"  Enable direct subtraction of sources.\n"
 			"-nosubtract\n"
 			"  Disable direct subtraction of sources.\n"
 			"-nopeel\n"
@@ -70,6 +72,10 @@ int main(int argc, char* argv[])
 		else if(param == "nopeel")
 		{
 			doPeel = false;
+		}
+		else if(param == "subtract")
+		{
+			doSubtract = true;
 		}
 		else if(param == "nosubtract")
 		{
