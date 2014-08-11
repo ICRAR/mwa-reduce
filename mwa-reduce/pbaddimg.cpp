@@ -39,6 +39,8 @@ int main(int argc, char *argv[])
 		std::cout << "Syntax:\n"
 			"  pbaddimg [options] <out-prefix> {<image-prefix> <image-postfix> <beam-prefix> [..]}\n\n"
 			"Options:\n"
+			"-withp\n"
+			"  Also save total polarization image.\n"
 			"-nopb <nopb-image-prefix> <nopb-weight-prefix>"
 			"  Save the images and image weights before beam correction.\n\n"
 			"Example:\n"
@@ -48,11 +50,17 @@ int main(int argc, char *argv[])
 	}
 	
 	std::string nopbImagePrefix, nopbWeightPrefix;
+	bool withStokesP = false;
+	
 	size_t argi = 1;
 	while(argv[argi][0] == '-')
 	{
 		const std::string param(&argv[argi][1]);
-		if(param == "nopb")
+		if(param == "withp")
+		{
+			withStokesP = true;
+		}
+		else if(param == "nopb")
 		{
 			++argi;
 			nopbImagePrefix = argv[argi];
@@ -180,5 +188,16 @@ int main(int argc, char *argv[])
 	{
 		writer.SetPolarization(stokesPols[p]);
 		writer.Write<double>(outFilenames[p], &stokesOutputImages[p][0]);
+	}
+	
+	if(withStokesP)
+	{
+		for(size_t i=0; i!=imgSize; ++i)
+		{
+			double q = stokesOutputImages[1][i], u = stokesOutputImages[2][i];
+			stokesOutputImages[1][i] = sqrt(q*q + u*u);
+		}
+		writer.SetPolarization(Polarization::StokesI);
+		writer.Write<double>(outPrefix+"-P.fits", &stokesOutputImages[1][0]);
 	}
 }
