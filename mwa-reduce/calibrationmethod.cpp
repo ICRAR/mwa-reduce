@@ -56,7 +56,7 @@ void CalibrationMethod::InitSolutions(const CalibrationMethod &source)
 		bool isFlagged = false;
 		for(size_t p=0; p!=4; ++p)
 		{
-			if(std::isfinite(ptr->real()) || std::isfinite(ptr->imag()))
+			if(!std::isfinite(ptr->real()) || !std::isfinite(ptr->imag()))
 				isFlagged = true;
 			++ptr;
 		}
