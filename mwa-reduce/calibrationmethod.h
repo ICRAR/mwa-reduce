@@ -35,10 +35,8 @@ class CalibrationMethod
 		
 		void InitSolutionsToUnity();
 		void InitSolutionsToNaN();
-		void InitSolutions(const CalibrationMethod &source)
-		{
-			_jonesSolutions = source._jonesSolutions;
-		}
+		void InitSolutions(const CalibrationMethod &source);
+		
 		void SetOnlySolveDiag(bool onlySolveDiag) {
 			_onlySolveDiag = onlySolveDiag;
 		}
@@ -63,7 +61,7 @@ class CalibrationMethod
 		
 		DataArray _data, _model;
 		WeightArray _weights, _weightSums;
-		std::vector<std::complex<double> > _jonesSolutions;
+		ao::uvector<std::complex<double> > _jonesSolutions;
 		size_t _nChannels, _nAntenna, _nTimesteps;
 		bool _onlySolveDiag, _onlySolveScalar, _onlySolveRotation;
 		

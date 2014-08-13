@@ -11,7 +11,7 @@ CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t n
 	_model(nChannels, nAntenna, nTimesteps),
 	_weights(nChannels, nAntenna, nTimesteps),
 	_weightSums(1, nAntenna, 1),
-	_jonesSolutions(nAntenna * 4 * nChannels),
+	_jonesSolutions(nAntenna * 4 * nChannels, 0.0),
 	_nChannels(nChannels),
 	_nAntenna(nAntenna),
 	_nTimesteps(nTimesteps),
@@ -44,6 +44,27 @@ void CalibrationMethod::InitSolutionsToNaN()
 		*_jonesPtr = nan; ++_jonesPtr;
 		*_jonesPtr = nan; ++_jonesPtr;
 		*_jonesPtr = nan; ++_jonesPtr;
+	}
+}
+
+void CalibrationMethod::InitSolutions(const CalibrationMethod &source)
+{
+	_jonesSolutions = source._jonesSolutions;
+	ao::uvector<std::complex<double>>::iterator ptr = _jonesSolutions.begin();
+	for(size_t i=0; i!=_nChannels*_nAntenna; ++i)
+	{
+		bool isFlagged = false;
+		for(size_t p=0; p!=4; ++p)
+		{
+			if(std::isfinite(ptr->real()) || std::isfinite(ptr->imag()))
+				isFlagged = true;
+			++ptr;
+		}
+		if(isFlagged)
+		{
+			*(ptr-4) = 1.0; *(ptr-3) = 0.0;
+			*(ptr-2) = 0.0; *(ptr-1) = 1.0;
+		}
 	}
 }
 
@@ -245,7 +266,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		
 		//reportDistances();
 		
-		std::vector<std::complex<double> > nextJones(_jonesSolutions);
+		ao::uvector<std::complex<double> > nextJones(_jonesSolutions);
 		
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
