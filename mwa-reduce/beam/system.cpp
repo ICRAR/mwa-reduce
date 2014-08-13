@@ -32,7 +32,12 @@ std::string System::FindPythonFilePath(const std::string& filename)
 		std::getline(searchPathsFile, prefixPath);
 		boost::filesystem::path searchPath(prefixPath);
 		searchPath /= filename;
-		if(boost::filesystem::exists(searchPath))
+		
+		bool pathExists = false;
+		try {
+			pathExists = boost::filesystem::exists(searchPath);
+		} catch(...) { }
+		if(pathExists)
 		{
 			const std::string result = searchPath.string();
 			std::cout << result << '\n';
