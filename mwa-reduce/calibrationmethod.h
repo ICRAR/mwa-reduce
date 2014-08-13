@@ -54,7 +54,7 @@ class CalibrationMethod
 		static double DefaultStoppingAccuracy() { return 0.000001; }
 		static size_t DefaultNIter() { return 100; }
 	private:
-		void calculateNextIter(size_t ant, std::complex<double> *nextJones);
+		void calculateNextIter(size_t ant, std::complex<double> *nextJones, bool* antennaResults);
 		
 		void applyWeightsToData();
 		double totalDistance(size_t antenna);

@@ -237,6 +237,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 	
 	double globalChangeSizes[4] = {0.0,0.0,0.0,0.0};
 	double stepsize = 0.25;
+	ao::uvector<bool> antennaResults(_nAntenna * _nChannels, false);
 	do
 	{
 		++iterationNumber;
@@ -248,7 +249,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
-			calculateNextIter(ant, &nextJones[ant*4*_nChannels]);
+			calculateNextIter(ant, &nextJones[ant*4*_nChannels], &antennaResults[ant*_nChannels]);
 			if(_onlySolveScalar) {
 				for(size_t ch=0; ch!=_nChannels; ++ch)
 				{
@@ -338,6 +339,26 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 	precisionLimit = std::max(
 		std::max(globalChangeSizes[0], globalChangeSizes[1]),
 		std::max(globalChangeSizes[2], globalChangeSizes[3]));
+	
+	std::complex<double> *jonesPtr = &_jonesSolutions[0];
+	const std::complex<double> nan(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
+	for(size_t ant=0; ant!=_nAntenna; ++ant)
+	{
+		for(size_t ch=0; ch!=_nChannels; ++ch)
+		{
+			if(!antennaResults[ant*_nChannels + ch])
+			{
+				for(size_t p=0; p!=4; ++p)
+				{
+					*jonesPtr = nan;
+					++jonesPtr;
+				}
+			}
+			else {
+				jonesPtr += 4;
+			}
+		}
+	}
 }
 
 std::string CalibrationMethod::MatrixToString(const std::complex<double> *matrix)
@@ -351,7 +372,7 @@ std::string CalibrationMethod::MatrixToString(const std::complex<double> *matrix
 	return s.str();
 }
 
-void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *nextJones)
+void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *nextJones, bool* antennaResults)
 {
 	// Calculate the next Jones estimate for the given ant, based on
 	// the previous Jones estimates.
@@ -422,10 +443,11 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	{
 		if(Matrix2x2::MultiplyWithInverse(&solutions[ch * 4], &rTerm[ch * 4]))
 		{
+			antennaResults[ch] = true;
 			for(size_t i=0; i!=4; ++i)
 				nextJones[ch * 4 + i] = solutions[ch * 4 + i];
 		}
-		//else std::cout << "Failed cal for ant " << ant << ", ch " << ch << ".\n";
+		else antennaResults[ch] = false;
 	}
 }
 

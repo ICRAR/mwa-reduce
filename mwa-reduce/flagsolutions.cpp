@@ -7,9 +7,9 @@
 
 int main(int argc, char **argv)
 {
-  if(argc < 3)
+  if(argc < 2)
     {
-      std::cout << "Usage: flagsolutions <solutions.bin> <solutions-flag-file.txt>\n"
+      std::cout << "Usage: flagsolutions <solutions.bin> [<solutions-flag-file.txt>]\n"
 				"Will flag solutions in the solution file as specified by the flag file.\n";
     } else {
 		size_t argi = 1;
@@ -24,14 +24,18 @@ int main(int argc, char **argv)
 		
 		std::cout << solutionFile.IntervalCount() << " intervals, " << solutionFile.AntennaCount() << " antennas, " << solutionFile.ChannelCount() << " channels, " << solutionFile.PolarizationCount() << " polarizations in solution file.\n";
 		
-		SolutionFlagFile flagFile(argv[argi+1]);
+		std::unique_ptr<SolutionFlagFile> flagFile;
 		
-		if(solutionFile.IntervalCount() != flagFile.IntervalCount())
-			throw std::runtime_error("solutionFile.IntervalCount() != flagFile.IntervalCount()");
-		if(solutionFile.AntennaCount() != flagFile.AntennaCount())
-			throw std::runtime_error("solutionFile.AntennaCount() != flagFile.AntennaCount()");
-		if(solutionFile.ChannelCount() != flagFile.ChannelCount())
-			throw std::runtime_error("solutionFile.ChannelCount() != flagFile.ChannelCount()");
+		if(argi+1 < size_t(argc))
+		{
+			flagFile.reset(new SolutionFlagFile(argv[argi+1]));
+			if(solutionFile.IntervalCount() != flagFile->IntervalCount())
+				throw std::runtime_error("solutionFile.IntervalCount() != flagFile.IntervalCount()");
+			if(solutionFile.AntennaCount() != flagFile->AntennaCount())
+				throw std::runtime_error("solutionFile.AntennaCount() != flagFile.AntennaCount()");
+			if(solutionFile.ChannelCount() != flagFile->ChannelCount())
+				throw std::runtime_error("solutionFile.ChannelCount() != flagFile.ChannelCount()");
+		}
 		
 		SolutionFile newFile;
 		std::string newFilename(std::string(argv[argi]) + "-tmp");
@@ -48,16 +52,17 @@ int main(int argc, char **argv)
 					for(size_t p = 0; p!=4; ++p) {
 						std::complex<double> val = solutionFile.ReadNextSolution();
 						bool alreadyFlagged = !std::isfinite(val.real()) || !std::isfinite(val.imag());
+						bool isFlaggedInFile = (flagFile==0) ? false : flagFile->IsFlagged(interval, a, ch);
 						if(alreadyFlagged)
 							++alreadyFlaggedCount;
-						if(flagFile.IsFlagged(interval, a, ch))
+						if(isFlaggedInFile)
 						{
 							val = std::complex<double>(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
 							++flaggedInFlagFile;
 							if(!alreadyFlagged)
 								++flagsChanged;
 						}
-						if(alreadyFlagged || (flagFile.IsFlagged(interval, a, ch)))
+						if(alreadyFlagged || isFlaggedInFile)
 							++totalFlags;
 						newFile.WriteSolution(val, interval, a, ch, p);
 					}
