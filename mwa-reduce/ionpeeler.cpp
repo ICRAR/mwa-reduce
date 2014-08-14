@@ -15,6 +15,8 @@
 #include <measures/Measures/MEpoch.h>
 #include <measures/TableMeasures/ScalarMeasColumn.h>
 
+#include <boost/thread/thread.hpp>
+
 #ifdef HAVE_GSL
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multifit_nlin.h>
@@ -284,11 +286,10 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		for(size_t cb=0; cb!=_channelBlockCount; ++cb)
 			tasks.push_back(_channelBlockCount - cb - 1);
 		std::mutex mutex;
-		std::vector<std::thread> threads;
+		boost::thread_group threads;
 		for(size_t i=0; i!=_cpuCount; ++i)
-			threads.push_back(std::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
-		for(std::vector<std::thread>::iterator t = threads.begin(); t!=threads.end(); ++t)
-			t->join();
+			threads.add_thread(new boost::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
+		threads.join_all();
 		
 		// Write back
 		for(size_t rowIndex=_curStartRow; rowIndex!=_curEndRow; ++rowIndex)
