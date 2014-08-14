@@ -22,6 +22,13 @@ FFTResampler::FFTResampler(size_t inWidth, size_t inHeight, size_t outWidth, siz
 	fftw_free(inputData);
 }
 
+FFTResampler::~FFTResampler()
+{
+	Finish();
+	fftw_destroy_plan(_inToFPlan);
+	fftw_destroy_plan(_fToOutPlan);
+}
+
 void FFTResampler::runThread()
 {
 	Task task;

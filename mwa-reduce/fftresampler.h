@@ -19,10 +19,7 @@ private:
 public:
 	FFTResampler(size_t inWidth, size_t inHeight, size_t outWidth, size_t outHeight, size_t cpuCount, bool verbose=true);
 	
-	~FFTResampler()
-	{
-		Finish();
-	}
+	~FFTResampler();
 	
 	void AddTask(double* input, double* output)
 	{

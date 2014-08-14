@@ -506,6 +506,7 @@ void WSInversion::predictWriteThread(ao::lane<PredictionWorkItem>* predictionWor
 	while(predictionWorkLane->read(workItem))
 	{
 		msData->msProvider->WriteModel(workItem.rowId, workItem.data);
+		delete[] workItem.data;
 	}
 }
 
