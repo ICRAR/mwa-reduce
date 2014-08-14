@@ -645,8 +645,8 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 			g = gsl_vector_get (solver->x, 0);
 			dl = gsl_vector_get (solver->x, 1);
 			dm = gsl_vector_get (solver->x, 2);
-			if(sourceIndex <= 4)
-				std::cout << "Solution " << fitIteration << ", channels " << channelIndexStart << '-' << channelIndexEnd << " for " << _predictionModels[sourceIndex].Source(0).ClusterName() << ": " << g << ',' << dl << ',' << dm << '\n';
+			//if(sourceIndex <= 4)
+			//	std::cout << "Solution " << fitIteration << ", channels " << channelIndexStart << '-' << channelIndexEnd << " for " << _predictionModels[sourceIndex].Source(0).ClusterName() << ": " << g << ',' << dl << ',' << dm << '\n';
 			//std::cout << gsl_strerror(status) << "\n";
 			//std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
 			/*if(channelIndex == 5)
