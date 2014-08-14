@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 	if(argc < 3)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
