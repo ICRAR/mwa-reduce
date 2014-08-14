@@ -3,10 +3,10 @@
 
 #include "lane.h"
 
-#include <thread>
 #include <vector>
 
 #include <fftw3.h>
+#include <boost/thread/thread.hpp>
 
 class FFTResampler
 {
@@ -33,16 +33,14 @@ public:
 	{
 		for(size_t i=0; i!=_tasks.capacity(); ++i)
 		{
-			_threads.push_back(std::thread(&FFTResampler::runThread, this));
+			_threads.add_thread(new boost::thread(&FFTResampler::runThread, this));
 		}
 	}
 	
 	void Finish()
 	{
 		_tasks.write_end();
-		for(std::vector<std::thread>::iterator i=_threads.begin(); i!=_threads.end(); ++i)
-			i->join();
-		_threads.clear();
+		_threads.join_all();
 		_tasks.clear();
 	}
 	
@@ -64,7 +62,7 @@ private:
 	fftw_plan _inToFPlan, _fToOutPlan;
 	
 	ao::lane<Task> _tasks;
-	std::vector<std::thread> _threads;
+	boost::thread_group _threads;
 	bool _verbose;
 };
 

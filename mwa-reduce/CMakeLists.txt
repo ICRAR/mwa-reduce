@@ -152,7 +152,7 @@ target_link_libraries(beam ${BEAM_LIBS} ${CASA_LIBS} ${CASA_MEASURES_LIB} ${FITS
 target_link_libraries(calibrate ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(combinespectra ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(editmodel ${BEAM_LIBS} ${FITSIO_LIB} ${CASA_LIBS})
-target_link_libraries(fftresample ${FITSIO_LIB} ${FFTW3_LIB} ${CASA_LIBS})
+target_link_libraries(fftresample ${FITSIO_LIB} ${FFTW3_LIB} ${CASA_LIBS} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(fitsmodel ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} )
 target_link_libraries(flagantennae ${CASA_LIBS})
 target_link_libraries(flagbaselines ${CASA_LIBS})
