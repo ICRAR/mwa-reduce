@@ -334,7 +334,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		{
 			if(_failedConvergencesPerSource[s] != 0)
 			{
-				const ModelSource& firstSource = _predictionModels.front().Source(0);
+				const ModelSource& firstSource = _predictionModels[s].Source(0);
 				std::cout << "Warning: Solutions for " << firstSource.ClusterName() << " failed to converge " << _failedConvergencesPerSource[s] << "x within 100 iterations.\n";
 			}
 		}
