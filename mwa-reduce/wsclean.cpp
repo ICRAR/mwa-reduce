@@ -754,6 +754,9 @@ void WSClean::predictChannel(size_t outChannelIndex)
 			if(reader.ImageWidth()!=_imgWidth || reader.ImageHeight()!=_imgHeight)
 				throw std::runtime_error("Inconsistent image size: input image did not match with specified dimensions.");
 			reader.Read(buffer);
+			for(size_t i=0; i!=_imgWidth*_imgHeight; ++i)
+				if(!std::isfinite(buffer[i]))
+					throw std::runtime_error("The input image contains non-finite values -- can't predict from an image with non-finite values");
 			_modelImages.Store(buffer, *curPol, 0, false);
 			if(*curPol == Polarization::XY)
 			{
