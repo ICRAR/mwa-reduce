@@ -125,7 +125,7 @@ add_executable(uvdist uvdist.cpp nlplfitter.cpp)
 if(LIBXML2_FOUND)
 	include_directories(${LIBXML2_INCLUDE_DIR})
 	
-	add_executable(vo2model vo2model.cpp model.cpp)
+	add_executable(vo2model vo2model.cpp model.cpp parser/votableparser.cpp)
 	target_link_libraries(vo2model ${LIBXML2_LIBRARIES})
 
 	add_executable(scaleimage scaleimage.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp parser/votableparser.cpp)

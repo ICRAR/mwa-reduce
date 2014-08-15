@@ -178,6 +178,14 @@ class AreaSet
 					foundAreas.push_back(&*i);
 		}
 		
+		template<typename NumType>
+		bool IsInArea(NumType ra, NumType dec) const
+		{
+			for(std::vector<SkyArea>::const_iterator i=_areas.begin(); i!=_areas.end(); ++i)
+				if(i->IsIn(ra, dec)) return true;
+			return false;
+		}
+		
 		void FindAreasInImage(std::vector<const SkyArea*> &foundAreas, size_t x, size_t y) const
 		{
 			long double l, m, ra, dec;

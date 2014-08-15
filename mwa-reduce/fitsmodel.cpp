@@ -11,6 +11,8 @@
 #include "cleanalgorithms/simpleclean.h"
 
 #include "areaset.h"
+#include "parser/areaparser.h"
+#include "uvector.h"
 
 int main(int argc, char **argv)
 {
@@ -18,19 +20,23 @@ int main(int argc, char **argv)
 	{
 		std::cout << "Usage: fitsmodel [options] <output model> <fitsfile> [spectral index] [ref freq MHz]\n"
 			"Turns components in fitsfile into a model.\nOptions:\n"
-			"\t-a <output areafile>\n\t-d <merge distance>\n\t-l <lower limit>\n";
+			"\t-a <output areafile>\n"
+			"\t-d <merge distance>\n"
+			"\t-l <lower limit>\n"
+			"\t-in <areafile>\n"
+			"\t-out <areafile>\n";
 	} else {
 		size_t argi = 1;
 		bool merge = false;
 		double mergeDistance = 0.0;
 		double limit = 0.0;
-		std::string areaFilename;
+		std::string outputAreaFilename, insideFilename, outsideFilename;
 		while(argv[argi][0] == '-')
 		{
 			std::string option(&argv[argi][1]);
 			if(option == "a") {
 				++argi;
-				areaFilename = argv[argi];
+				outputAreaFilename = argv[argi];
 			}
 			else if(option == "d") {
 				++argi;
@@ -40,6 +46,14 @@ int main(int argc, char **argv)
 			else if(option == "l") {
 				++argi;
 				limit = atof(argv[argi]);
+			}
+			else if(option == "in") {
+				++argi;
+				insideFilename = argv[argi];
+			}
+			else if(option == "out") {
+				++argi;
+				outsideFilename = argv[argi];
 			}
 			else throw std::runtime_error("Invalid param");
 			++argi;
@@ -57,11 +71,47 @@ int main(int argc, char **argv)
 		else
 			refFreq = 100000000.0;
 		FitsReader fitsReader(fitsFilename);
-		std::vector<double> image(fitsReader.ImageWidth() * fitsReader.ImageHeight());
+		const size_t
+			width = fitsReader.ImageWidth(),
+			height = fitsReader.ImageHeight();
+		ao::uvector<double> image(width * height);
 		fitsReader.Read(&image[0]);
 		
+		if(!insideFilename.empty() || !outsideFilename.empty())
+		{
+			std::cout << "Applying areas... " << std::flush;
+			AreaParser parser;
+			AreaSet areaIn, areaOut;
+			if(!insideFilename.empty())
+				parser.Parse(areaIn, insideFilename);
+			if(!outsideFilename.empty())
+				parser.Parse(areaOut, outsideFilename);
+			for(size_t y=0; y!=height; ++y)
+			{
+				double* imageRow = &image[y*width];
+				for(size_t x=0; x!=width; ++x)
+				{
+					if(imageRow[x] != 0.0)
+					{
+						long double l, m;
+						ImageCoordinates::XYToLM<long double>(x, y, fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), width, height, l, m);
+					
+						ModelComponent component;
+						long double ra, dec;
+						ImageCoordinates::LMToRaDec<long double>(l, m, fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), ra, dec);
+						
+						bool isIn = insideFilename.empty() || areaIn.IsInArea(ra, dec);
+						bool isOut = areaOut.IsInArea(ra, dec);
+						if(!isIn || isOut)
+							imageRow[x] = 0.0;
+					}
+				}
+			}
+			std::cout << "DONE\n";
+		}
+		
 		Model model;
-		CleanAlgorithm::GetModelFromImage(model, &image[0], fitsReader.ImageWidth(), fitsReader.ImageHeight(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), spectralIndex, refFreq);
+		CleanAlgorithm::GetModelFromImage(model, &image[0], width, height, fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), spectralIndex, refFreq);
 		
 		model.SortOnBrightness();
 		
@@ -91,12 +141,20 @@ int main(int argc, char **argv)
 		
 		if(limit > 0.0)
 		{
+			std::cout << "Thresholding sources... " << std::flush;
+			double totalFlux = 0., removedFlux = 0.0;
 			for(size_t i=model.SourceCount(); i>0; --i)
 			{
 				size_t sIndex = model.SourceCount() - 1;
-				if(model.Source(sIndex).Peak().SED().FluxAtLowestFrequency() < limit)
+				double flux = model.Source(sIndex).Peak().SED().FluxAtLowestFrequency();
+				if(flux < limit)
+				{
 					model.RemoveSource(i);
+					removedFlux += flux;
+				}
+				totalFlux += flux;
 			}
+			std::cout << "DONE (removed: " << removedFlux << " / " << totalFlux << " Jy)\n";
 		}
 		
 		AreaSet areaSet;
@@ -114,11 +172,13 @@ int main(int argc, char **argv)
 			area.SetName(source.Name());
 			areaSet.AddArea(area);
 		}
-		if(!areaFilename.empty())
+		if(!outputAreaFilename.empty())
 		{
-			std::ofstream areaFile(areaFilename.c_str());
+			std::ofstream areaFile(outputAreaFilename.c_str());
 			areaSet.Save(areaFile);
 		}
+		std::cout << "Writing model with " << model.SourceCount() << " sources... " << std::flush;
 		model.Save(modelFilename);
+		std::cout << "DONE\n";
 	}
 }

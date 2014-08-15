@@ -538,7 +538,7 @@ class SpectralEnergyDistribution
 		long double FluxAtLowestFrequency() const
 		{
 			const Measurement &m = _measurements.begin()->second;
-			return m.FluxDensityFromIndex(0) * 0.5;
+			return m.FluxDensityFromIndex(0);
 		}
 		
 		bool operator<(const SpectralEnergyDistribution &other) const

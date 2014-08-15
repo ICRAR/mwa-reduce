@@ -15,12 +15,47 @@ int main(int argc, char *argv[])
 {
 	if(argc != 5 && argc != 2)
 	{
-		std::cerr << "Syntax: imgclean <inpimage> [<psfimage> <outpimage> <modelimage>]\n"
-			"All images should be fits files. If only an inpimage is specified, the first peak is returned.\n";
+		std::cerr << "Syntax: imgclean [options] <inpimage> [<psfimage> <outpimage> <modelimage>]\n"
+			"All images should be fits files. If only an inpimage is specified, the first peak is returned.\n"
+			"Options:\n"
+			"-t <threshold>\n"
+			"  Stop at given threshold\n"
+			"-g <gain>\n"
+			"  Use given loop gain\n"
+			"-b <border size>\n"
+			"  Specify border size that won't be cleaned, as ratio of image size (after boxing).\n"
+			"-box <x> <y> <width> <height>\n"
+			"  Cut the inpimage centred on x,y with given width and height and only clean that.\n";
 		return -1;
 	}
-	bool onlyFindPeak = argc == 2;
-	const char *inpImageName = argv[1];
+	int argi=1;
+	double threshold = 1.0, gain = 0.1, border = 0.05;
+	size_t boxX = 0, boxY = 0, boxWidth = 0, boxHeight = 0;
+	while(argv[argi][0] == '-')
+	{
+		const std::string param = &argv[argi][1];
+		if(param == "box")
+		{
+		}
+		else if(param == "b") {
+			++argi;
+			border = atof(argv[argi]);
+		}
+		else if(param == "t") {
+			++argi;
+			threshold = atof(argv[argi]);
+		}
+		else if(param == "g") {
+			++argi;
+			gain = atof(argv[argi]);
+		}
+		else
+			throw std::runtime_error("Unknown parameter");
+		++argi;
+	}
+	
+	bool onlyFindPeak = (argc-argi) == 1;
+	const char *inpImageName = argv[argi];
 	const char *psfImageName, *outImageName, *modelImageName;
 	if(onlyFindPeak)
 	{
@@ -28,13 +63,12 @@ int main(int argc, char *argv[])
 		outImageName = 0;
 		modelImageName = 0;
 	} else {
-		psfImageName = argv[2];
-		outImageName = argv[3];
-		modelImageName = argv[4];
+		psfImageName = argv[argi+1];
+		outImageName = argv[argi+2];
+		modelImageName = argv[argi+3];
 	}
-	double threshold = 5.0, subtractionFactor = 0.25;
 	size_t maxIter = 50000;
-	bool allowNegativeComponents = true, stopWhenDiverging = false;
+	bool allowNegativeComponents = true;
 	
 	FitsReader inpReader(inpImageName);
 	const size_t width = inpReader.ImageWidth();
@@ -49,7 +83,7 @@ int main(int argc, char *argv[])
 	inpReader.Read<double>(&image[0]);
 	
 	size_t componentX, componentY;
-	double peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents, 0, height, 0.05);
+	double peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents, 0, height, border);
 	if(onlyFindPeak)
 	{
 		double l, m, ra, dec;
@@ -66,20 +100,18 @@ int main(int argc, char *argv[])
 		outputModel.AddSource(source);
 		outputModel.Save(std::cout);
 	} else {
-		double lastPeak = peak;
 		std::cout << "Initial peak: " << peak << '\n';
 		size_t iterationNumber = 0;
 		FitsReader psfReader(psfImageName);
 		psfReader.Read<double>(&psf[0]);
-		while(fabs(peak) > threshold && iterationNumber < maxIter && (!stopWhenDiverging || peak<=lastPeak))
+		while(fabs(peak) > threshold && iterationNumber < maxIter)
 		{
 			if(iterationNumber % 10 == 0)
 				std::cout << "Iteration " << iterationNumber << ": (" << componentX << ',' << componentY << "), " << peak << " Jy\n";
-			SimpleClean::SubtractImage(&image[0], &psf[0], width, height, componentX, componentY, subtractionFactor * peak);
-			model[componentX + componentY*width] += subtractionFactor * peak;
+			SimpleClean::SubtractImage(&image[0], &psf[0], width, height, componentX, componentY, gain * peak);
+			model[componentX + componentY*width] += gain * peak;
 			
-			lastPeak = peak;
-			peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents, 0, height, 0.05);
+			peak = SimpleClean::FindPeak(&image[0], width, height, componentX, componentY, allowNegativeComponents, 0, height, border);
 			++iterationNumber;
 		}
 		std::cout << "Stopped on peak " << peak << '\n';

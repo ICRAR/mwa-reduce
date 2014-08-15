@@ -7,6 +7,7 @@
 
 #include "modelsource.h"
 #include "model.h"
+#include "parser/votableparser.h"
 
 struct FieldStruct
 {
@@ -19,7 +20,7 @@ struct ParserData {
 	bool useConstantSI, useSecondFrequency;
 	double frequency, secondFrequency, constantSI;
 	std::string siColumn, secondFluxCol;
-};
+} parserData;
 
 std::string getNextName(ParserData& data)
 {
@@ -48,6 +49,11 @@ std::string getNextText(ParserData& data)
 double getNextTextAsDouble(ParserData& data)
 {
 	return atof(getNextText(data).c_str());
+}
+
+double getAsDouble(const std::string& data)
+{
+	return atof(data.c_str());
 }
 
 std::string getAttribute(ParserData& data, const std::string& name)
@@ -165,7 +171,50 @@ void processNode(ParserData& data, Model& model)
 	parseVOTable(data, model);
 }
 
+void readValue(const std::string& columnName, const std::string& value)
+{
+	/*
+	if(columnName == "Name")
+		source.SetName(value);
+	else if(columnName == "RAJ2000" || columnName == "RA_J2000")
+		source.front().SetPosRA(getAsDouble(value)*(M_PI/180.0));
+	else if(columnName == "DEJ2000" || columnName == "DEC_J2000")
+		source.front().SetPosDec(getAsDouble(value)*(M_PI/180.0));
+	else if(columnName == data.fluxColumn)
+		flux = getAsDouble(value);
+	else if(columnName == data.siColumn)
+		spectInd = getNextTextAsDouble(data);
+	else if(data.useSecondFrequency && columnName == data.secondFluxCol)
+		secondFlux = getNextTextAsDouble(data);*/
+}
+
+void startRow()
+{
+	//curRowModelFlux = std::numeric_limits<double>::quiet_NaN();
+	//curRowMeasuredFlux = std::numeric_limits<double>::quiet_NaN();
+}
+
+void endRow()
+{
+	//if(std::isfinite(curRowModelFlux) && std::isfinite(curRowMeasuredFlux))
+	//{
+	//	totalModelFlux += curRowModelFlux;
+	//	totalMeasuredFlux += curRowMeasuredFlux;
+	//	++sourcesUsed;
+	//}
+}
+
 void readFile(const std::string& filename, Model& model, ParserData& data)
+{
+	VOTableParser parser;
+	parser.SetReadValueCallback(&readValue);
+	parser.SetStartRowCallback(&startRow);
+	parser.SetEndRowCallback(&endRow);
+	
+	parser.Parse(filename);
+}
+
+void old__ReadFile(const std::string& filename, Model& model, ParserData& data)
 {
 	data.reader = xmlReaderForFile(filename.c_str(), NULL, 0);
 	if(data.reader != NULL) {
@@ -182,9 +231,8 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	ParserData data;
-	data.useConstantSI = false;
-	data.useSecondFrequency = false;
+	parserData.useConstantSI = false;
+	parserData.useSecondFrequency = false;
 	
 	size_t argi = 1;
 	while(argv[argi][0]=='-')
@@ -193,21 +241,21 @@ int main(int argc, char* argv[])
 		if(p == "si")
 		{
 			++argi;
-			data.constantSI = atof(argv[argi]);
-			data.useConstantSI = true;
+			parserData.constantSI = atof(argv[argi]);
+			parserData.useConstantSI = true;
 		}
 		else if(p == "sicol")
 		{
 			++argi;
-			data.siColumn = argv[argi];
+			parserData.siColumn = argv[argi];
 		}
 		else if(p == "flux2")
 		{
 			++argi;
-			data.secondFluxCol = argv[argi];
+			parserData.secondFluxCol = argv[argi];
 			++argi;
-			data.secondFrequency = atof(argv[argi])*1e6;
-			data.useSecondFrequency = true;
+			parserData.secondFrequency = atof(argv[argi])*1e6;
+			parserData.useSecondFrequency = true;
 		}
 		++argi;
 	}
@@ -221,10 +269,10 @@ int main(int argc, char* argv[])
 
 	LIBXML_TEST_VERSION
 
-	data.fluxColumn = fluxDensityColumn;
-	data.frequency = frequency;
+	parserData.fluxColumn = fluxDensityColumn;
+	parserData.frequency = frequency;
 	
-	readFile(inFile, model, data);
+	readFile(inFile, model, parserData);
 
 	xmlCleanupParser();
 	

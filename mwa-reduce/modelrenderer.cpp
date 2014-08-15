@@ -114,7 +114,6 @@ void ModelRenderer::RenderModel(NumType* imageData, size_t imageWidth, size_t im
 {
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
-		std::cout << "Rendering " << src->Name() << '\n';
 		for(ModelSource::const_iterator comp=src->begin(); comp!=src->end(); ++comp)
 		{
 			long double

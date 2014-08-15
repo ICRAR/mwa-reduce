@@ -53,9 +53,9 @@ int main(int argc, char *argv[])
 {
 	if(argc == 1)
 	{
-		std::cout << "sdf -- Interpolation, extrapolation, plotting and scaling of the \n"
+		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 			rndDec = RaDecCoord::ParseDec(argv[argi]);
 			++argi;
 			rndDist = atof(argv[argi]) * (M_PI/180.0);
-		} else if(strcmp(argv[argi], "collect") == 0)
+		} else if(option == "collect")
 		{
 			doCollect = true;
 			++argi;

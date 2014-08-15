@@ -42,7 +42,10 @@ int main(int argc, char *argv[])
 			"-withp\n"
 			"  Also save total polarization image.\n"
 			"-nopb <nopb-image-prefix> <nopb-weight-prefix>"
-			"  Save the images and image weights before beam correction.\n\n"
+			"  Save the images and image weights before beam correction.\n"
+			"-psf"
+			"  This will read only XX parts in order to make the PSF.\n"
+			"\n"
 			"Example:\n"
 			"  pbaddimg integrated-stokes wsclean-A image.fits beam-A wsclean-B image.fits beam-B\n"
 			"This command will look for image names wsclean-A-XX-image.fits, beam-A-xxr.fits, ... and save to integrated-stokes-i.fits, ...\n";
