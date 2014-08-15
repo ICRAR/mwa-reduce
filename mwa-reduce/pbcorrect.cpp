@@ -106,6 +106,9 @@ int main(int argc, char *argv[])
 			inputData[1][i] = 0.5*(out[1].real()+out[2].real());
 			inputData[2][i] = 0.5*(out[1].imag()-out[2].imag());
 			inputData[3][i] = out[3].real();
+			
+			for(size_t  p=0; p!=4; ++p)
+				if(!std::isfinite(inputData[p][i])) inputData[p][i] = 0.0;
 		}
 		else {
 			std::complex<double> imgValues[4];
