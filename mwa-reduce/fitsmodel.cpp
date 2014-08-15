@@ -66,11 +66,11 @@ int main(int argc, char **argv)
 			spectralIndex = atof(argv[argi + 1]);
 		else
 			spectralIndex = 0.0;
+		FitsReader fitsReader(fitsFilename);
 		if(argc - argi > 2)
 			refFreq = atof(argv[argi + 2]) * 1000000;
 		else
-			refFreq = 100000000.0;
-		FitsReader fitsReader(fitsFilename);
+			refFreq = fitsReader.Frequency();
 		const size_t
 			width = fitsReader.ImageWidth(),
 			height = fitsReader.ImageHeight();
@@ -142,14 +142,14 @@ int main(int argc, char **argv)
 		if(limit > 0.0)
 		{
 			std::cout << "Thresholding sources... " << std::flush;
-			double totalFlux = 0., removedFlux = 0.0;
+			double totalFlux = 0.0, removedFlux = 0.0;
 			for(size_t i=model.SourceCount(); i>0; --i)
 			{
-				size_t sIndex = model.SourceCount() - 1;
-				double flux = model.Source(sIndex).Peak().SED().FluxAtLowestFrequency();
+				size_t sIndex = i - 1;
+				double flux = model.Source(sIndex).TotalFlux(refFreq, Polarization::StokesI);
 				if(flux < limit)
 				{
-					model.RemoveSource(i);
+					model.RemoveSource(sIndex);
 					removedFlux += flux;
 				}
 				totalFlux += flux;
