@@ -15,10 +15,10 @@
 #include "uvector.h"
 #include "buffered_lane.h"
 
-#define ION_SPECTRUM_ROW_LANE_SIZE 1024
-#define ION_SPECTRUM_ROW_BUFFER_SIZE 512
-#define ION_SPECTRUM_SAMPLE_LANE_SIZE 65536
-#define ION_SPECTRUM_SAMPLE_BUFFER_SIZE 32768
+#define ION_SPECTRUM_ROW_LANE_SIZE 512
+#define ION_SPECTRUM_ROW_BUFFER_SIZE 256
+#define ION_SPECTRUM_SAMPLE_LANE_SIZE 2048
+#define ION_SPECTRUM_SAMPLE_BUFFER_SIZE 1024
 
 class IonSpectrumMaker
 {
@@ -298,7 +298,7 @@ private:
 
 	struct SampleData
 	{
-		size_t channelIndex, componentIndex;
+		size_t channelIndex;
 		double u, v, w;
 		std::complex<double> data[4];
 		double weight;
@@ -339,7 +339,7 @@ private:
 		{
 			outLanesInternal[c] = new ao::lane<SampleData>(ION_SPECTRUM_SAMPLE_LANE_SIZE);
 			bufferedOutLanes[c].reset(outLanesInternal[c], ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
-			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c]));
+			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c], c, cpuCount));
 		}
 		RowData rowData;
 		ao::uvector<double> wavelengths(_bandData.ChannelCount());
@@ -370,10 +370,8 @@ private:
 				
 				if(!isFlagged)
 				{
-					const size_t laneIndex = ch%cpuCount;
-					for(size_t compIndex=0; compIndex!=_accumulatorPerSource.size(); ++compIndex)
+					for(size_t laneIndex=0; laneIndex!=cpuCount; ++laneIndex)
 					{
-						sample.componentIndex = compIndex;
 						bufferedOutLanes[laneIndex].write(sample);
 					}
 				}
@@ -390,14 +388,18 @@ private:
 			delete outLanesInternal[c];
 	}
 	
-	void processSamples(ao::lane<SampleData>* lane)
+	void processSamples(ao::lane<SampleData>* lane, size_t threadIndex, size_t threadCount)
 	{
 		lane_read_buffer<SampleData> bufferedLane(lane, ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
+		const size_t componentCount = _accumulatorPerSource.size();
 		
 		SampleData sample;
 		while(bufferedLane.read(sample))
 		{
-			_accumulatorPerSource[sample.componentIndex]->Accumulate(sample.data, sample.weight, sample.channelIndex, sample.u, sample.v, sample.w);
+			for(size_t compIndex = threadIndex; compIndex < componentCount; compIndex+=threadCount)
+			{
+				_accumulatorPerSource[compIndex]->Accumulate(sample.data, sample.weight, sample.channelIndex, sample.u, sample.v, sample.w);
+			}
 		}
 	}
 
