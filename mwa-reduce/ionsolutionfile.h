@@ -101,10 +101,8 @@ class IonSolutionFile
   void ReadClusterMetaInfo(std::string& clusterName, std::vector<std::string>& sourceNames)
 	{
 		clusterName = readString();
-		std::cout << "clusterName=" << clusterName << '\n';
 		uint32_t count;
 		_inputStream->read(reinterpret_cast<char*>(&count), sizeof(uint32_t));
-		std::cout << "count=" << count << '\n';
 		sourceNames.resize(count);
 		for(std::vector<std::string>::iterator i=sourceNames.begin(); i!=sourceNames.end(); ++i)
 			*i = readString();
