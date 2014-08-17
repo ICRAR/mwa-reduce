@@ -67,6 +67,7 @@ MRCCatalogue::MRCCatalogue(const std::string& filename) :
 
 bool MRCCatalogue::ReadNext(ModelSource& source)
 {
+	source = ModelSource();
 	if(!_file.good()) return false;
 	MrcEntry entry;
 	_file.read(reinterpret_cast<char*>(&entry), sizeof(entry));
@@ -91,10 +92,14 @@ bool MRCCatalogue::ReadNext(ModelSource& source)
 		digToVal(entry.fluxDensity[3])*1.0 +
 		digToVal(entry.fluxDensity[5])*0.1 +
 		digToVal(entry.fluxDensity[6])*0.01;
-	component.SetSED(SpectralEnergyDistribution(fluxDensity, 408.0));
-	entry.name[10] = 0;
+	component.SetSED(SpectralEnergyDistribution(fluxDensity, 408000000.0));
 	
-	source.SetName(entry.name);
+	char nameStr[11];
+	memcpy(nameStr, entry.name, 10);
+	nameStr[9] = 0;
+	if(nameStr[8] == 32) nameStr[8] = 0;
+	
+	source.SetName(nameStr);
 	source.AddComponent(component);
 	
 	return true;
