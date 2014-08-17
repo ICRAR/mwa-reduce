@@ -342,12 +342,20 @@ private:
 			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c]));
 		}
 		RowData rowData;
-		ao::uvector<double> wavelengths(_bandData.ChannelCount());
+		ao::uvector<double> wavelengths(_bandData.ChannelCount()),
+			us(_bandData.ChannelCount()), vs(_bandData.ChannelCount()), ws(_bandData.ChannelCount());
 		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			wavelengths[ch] = _bandData.ChannelWavelength(ch);
 		
 		while(bufferedInputLane.read(rowData))
 		{
+			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+			{
+				const double lambda = wavelengths[ch];
+				us[ch] = rowData.uInM/lambda;
+				vs[ch] = rowData.vInM/lambda;
+				ws[ch] = rowData.wInM/lambda;
+			}
 			for(size_t compIndex=0; compIndex!=_accumulatorPerSource.size(); ++compIndex)
 			{
 				SampleData sample;
@@ -364,11 +372,10 @@ private:
 					}
 					if(!flagged)
 					{
-						const double lambda = wavelengths[ch];
 						sample.channelIndex = ch;
-						sample.u = rowData.uInM/lambda;
-						sample.v = rowData.vInM/lambda;
-						sample.w = rowData.wInM/lambda;
+						sample.u = us[ch];
+						sample.v = vs[ch];
+						sample.w = ws[ch];
 						bufferedOutLanes[ch%cpuCount].write(sample);
 					}
 				}
