@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 			}
 		}
 		std::cout <<
-			"Already flagged:     " << alreadyFlaggedCount << " (" << round(1000.0*double(alreadyFlaggedCount)/totalSolutions)/10.0 << "%\n" <<
+			"Already flagged:     " << alreadyFlaggedCount << " (" << round(1000.0*double(alreadyFlaggedCount)/totalSolutions)/10.0 << "%)\n" <<
 			"Flagged by flagfile: " << flaggedInFlagFile << '\n' <<
 			"Flags changed:       " << flagsChanged << '\n' <<
 			"Total flags now:     " << totalFlags << '\n';
