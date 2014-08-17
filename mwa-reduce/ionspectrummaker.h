@@ -342,8 +342,7 @@ private:
 			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c]));
 		}
 		RowData rowData;
-		ao::uvector<double> wavelengths(_bandData.ChannelCount()),
-			us(_bandData.ChannelCount()), vs(_bandData.ChannelCount()), ws(_bandData.ChannelCount());
+		ao::uvector<double> wavelengths(_bandData.ChannelCount());
 		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			wavelengths[ch] = _bandData.ChannelWavelength(ch);
 		
@@ -351,32 +350,31 @@ private:
 		{
 			for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			{
-				const double lambda = wavelengths[ch];
-				us[ch] = rowData.uInM/lambda;
-				vs[ch] = rowData.vInM/lambda;
-				ws[ch] = rowData.wInM/lambda;
-			}
-			for(size_t compIndex=0; compIndex!=_accumulatorPerSource.size(); ++compIndex)
-			{
 				SampleData sample;
-				sample.componentIndex = compIndex;
-				for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
+				const double lambda = wavelengths[ch];
+				sample.u = rowData.uInM/lambda;
+				sample.v = rowData.vInM/lambda;
+				sample.w = rowData.wInM/lambda;
+				sample.weight =
+					rowData.weights[ch*4 + 0] + rowData.weights[ch*4 + 1] +
+					rowData.weights[ch*4 + 2] + rowData.weights[ch*4 + 3];
+				for(size_t p=0; p!=4; ++p)
+					sample.data[p] = rowData.data[ch*4 + p];
+				sample.channelIndex = ch;
+				bool isFlagged =
+					(rowData.flags[ch*4 + 0] || rowData.flags[ch*4 + 1] ||
+					rowData.flags[ch*4 + 2] || rowData.flags[ch*4 + 3])
+					||
+					!(isFinite(sample.data[0]) && isFinite(sample.data[1]) &&
+					isFinite(sample.data[2]) && isFinite(sample.data[3]));
+				
+				if(!isFlagged)
 				{
-					sample.weight = 0.0;
-					bool flagged = false;
-					for(size_t p=0; p!=4; ++p)
+					const size_t laneIndex = ch%cpuCount;
+					for(size_t compIndex=0; compIndex!=_accumulatorPerSource.size(); ++compIndex)
 					{
-						sample.data[p] = rowData.data[ch*4 + p];
-						sample.weight += rowData.weights[ch*4 + p];
-						flagged = flagged || rowData.flags[ch*4 + p];
-					}
-					if(!flagged)
-					{
-						sample.channelIndex = ch;
-						sample.u = us[ch];
-						sample.v = vs[ch];
-						sample.w = ws[ch];
-						bufferedOutLanes[ch%cpuCount].write(sample);
+						sample.componentIndex = compIndex;
+						bufferedOutLanes[laneIndex].write(sample);
 					}
 				}
 			}
@@ -409,6 +407,9 @@ private:
 			delete *i;
 		_accumulatorPerSource.clear();
 	}
+	
+	static bool isFinite(std::complex<double> v)
+	{ return std::isfinite(v.real()) && std::isfinite(v.imag()); }
 
 	casa::MeasurementSet _ms;
 	IonSolutionFile _ionSolutionFile;
