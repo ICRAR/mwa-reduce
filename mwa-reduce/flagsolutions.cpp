@@ -45,6 +45,8 @@ int main(int argc, char **argv)
 		newFile.SetPolarizationCount(solutionFile.PolarizationCount());
 		newFile.OpenForWriting(newFilename.c_str());
 		
+		size_t totalSolutions =
+			solutionFile.IntervalCount() * solutionFile.AntennaCount() * solutionFile.ChannelCount() * 4;
 		size_t alreadyFlaggedCount = 0, flaggedInFlagFile = 0, flagsChanged = 0, totalFlags = 0;
 		for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval) {
 			for(size_t a = 0; a!=solutionFile.AntennaCount(); ++a) {
@@ -70,7 +72,7 @@ int main(int argc, char **argv)
 			}
 		}
 		std::cout <<
-			"Already flagged:     " << alreadyFlaggedCount << '\n' <<
+			"Already flagged:     " << alreadyFlaggedCount << " (" << round(1000.0*double(alreadyFlaggedCount)/totalSolutions)/10.0 << "%\n" <<
 			"Flagged by flagfile: " << flaggedInFlagFile << '\n' <<
 			"Flags changed:       " << flagsChanged << '\n' <<
 			"Total flags now:     " << totalFlags << '\n';
