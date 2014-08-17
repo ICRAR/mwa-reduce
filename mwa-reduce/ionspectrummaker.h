@@ -49,18 +49,14 @@ public:
 		Model filteredModel;
 		for(size_t i=0; i!=_ionSolutionFile.DirectionCount(); ++i)
 		{
-			std::cout << i << '\n';
 			std::string clusterName;
 			std::vector<std::string> sourceNames;
 			_ionSolutionFile.ReadClusterMetaInfo(clusterName, sourceNames);
 			for(std::vector<std::string>::const_iterator s=sourceNames.begin(); s!=sourceNames.end(); ++s)
 			{
-				std::cout << *s << '\n';
 				std::map<std::string, const ModelSource*>::const_iterator originalSource = sourceMap.find(*s);
 				if(originalSource == sourceMap.end())
 					throw std::runtime_error("Solution file contains source " + *s + " but this source is not in the model");
-				std::cout <<"NewSource\n";
-				std::cout << originalSource->second->Name() << '\n';
 				ModelSource newSource(*originalSource->second);
 				newSource.SetClusterName(clusterName);
 				filteredModel.AddSource(newSource);
@@ -163,7 +159,7 @@ public:
 		
 		size_t timeIndex = 0, interval = 0;
 		updateBeam(timeColumn(0), _ionSolutionFile, interval);
-		std::cout << "Starting timestep " << timeIndex << '/' << timestepCount << " of interval " << interval << '/' << _ionSolutionFile.IntervalCount() << "...\n";
+		std::cout << "Starting timestep " << timeIndex << '/' << timestepCount << " of interval " << interval << '/' << _ionSolutionFile.IntervalCount() << "..." << std::endl;
 		std::unique_ptr<boost::thread> processRowThread(new boost::thread(&IonSpectrumMaker::processRows, this, &internalLane));
 		for(size_t rowIndex=0; rowIndex!=_ms.nrow(); ++rowIndex)
 		{
