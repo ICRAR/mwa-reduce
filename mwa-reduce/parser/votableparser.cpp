@@ -67,12 +67,13 @@ void VOTableParser::parseTable()
 	
 	do {
 		std::string name = getNextName();
+		bool isEmpty = xmlTextReaderIsEmptyElement(_reader);
 		if(name == "FIELD") {
 			fields.push_back(FieldStruct());
 			parseField( fields.back());
 		}
 		else if(name == "TD") {
-			if(xmlTextReaderNodeType(_reader)==15 /*end*/) {
+			if(xmlTextReaderNodeType(_reader)==15 /*end*/ || isEmpty) {
 				++columnIndex;
 			} else {
 				std::string colName = fields[columnIndex].name;
