@@ -20,7 +20,7 @@
 
 #include <limits>
 
-SpectrumMaker::SpectrumMaker() : _applyBeam(false), _weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
+SpectrumMaker::SpectrumMaker(size_t threadCount) : _applyBeam(false), _weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0), _threadCount(threadCount)
 {
 }
 
@@ -71,7 +71,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		measFlux(channelCount * _sources.size() * 4),
 		measWeights(channelCount * _sources.size() * 4);
 	
-	MSPredicter modelPredicter(ms, _subtractedModel, solutionsFile);
+	MSPredicter modelPredicter(ms, _threadCount, _subtractedModel, solutionsFile);
 	modelPredicter.SetApplyBeam(_applyBeam);
 	
 	std::vector<std::unique_ptr<Predicter>> predicters;

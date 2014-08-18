@@ -273,7 +273,7 @@ int main(int argc, char* argv[])
 			applier.Apply(ms, calibrator.GetSolutionFile());
 			
 			std::cout << "Subtracting model...\n";
-			Subtractor subtractor;
+			Subtractor subtractor(threadCount);
 			subtractor.SetApplyBeam(true);
 			subtractor.Subtract(ms, calModel);
 		}
@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
 				}
 				peelModel.AddSource(peelSource);
 				
-				Peeler peeler(ms);
+				Peeler peeler(ms, threadCount);
 				
 				peeler.SetModel(peelModel);
 				peeler.SetDataColumnName(dataColumn);

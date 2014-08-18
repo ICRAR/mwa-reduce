@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
 	if(argc < 4)
 		std::cout << "Syntax: combinespectra <positionsmodel> <outputmodel> <intermediate1> [<intermediate2>..]\n";
 	else {
-		SpectrumMaker spectrumMaker;
+		SpectrumMaker spectrumMaker(1);
 		
 		Model model(argv[1]);
 		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)

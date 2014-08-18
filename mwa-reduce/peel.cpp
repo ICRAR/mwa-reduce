@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
 		std::string modelFile, rhsSolutionFile;
 		std::string dataColumnName = "DATA";
 		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 1;
+		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 		double
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
 		//const char *outName = argv[argi+1];
 		
 		casa::MeasurementSet ms(msName);
-		Peeler peeler(ms);
+		Peeler peeler(ms, threadCount);
 		
 		peeler.SetNIter(niter);
 		peeler.SetAccuracy(minAccuracy, stopAccuracy);

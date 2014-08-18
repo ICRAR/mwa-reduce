@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 		bool revert = false , setvis = false, addNoise = false, applyBeam = false;
 		double noiseSigma = 1.0;
 		size_t argi = 1;
+		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 		while(argv[argi][0] == '-')
 		{
 			if(strcmp(argv[argi], "-r") == 0) { revert=true; }
@@ -36,7 +37,7 @@ int main(int argc, char **argv)
 		std::cout << "Opening measurement set... " << std::flush;
 		MeasurementSet ms(argv[argi+1], Table::Update);
 		
-		Subtractor subtractor;
+		Subtractor subtractor(threadCount);
 		subtractor.SetRevert(revert);
 		subtractor.SetToModel(setvis);
 		subtractor.SetAddNoise(addNoise);

@@ -29,6 +29,7 @@ int main(int argc, char **argv)
 		bool applyBeam = false;
 		WeightMode weightMode(WeightMode::NaturalWeighted);
 		size_t weightGridSize = 0;
+		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 		double weightPixelScale = 0.0;
 		while(argv[argi][0] == '-')
 		{
@@ -81,7 +82,7 @@ int main(int argc, char **argv)
 		Model model(argv[argi]);
 		const char *modelFilename = argv[argi+1];
 		
-		SpectrumMaker spectrumMaker;
+		SpectrumMaker spectrumMaker(threadCount);
 		for(int i=argi+2; i!=argc; ++i)
 		{
 			if(solutionsFile != 0)

@@ -39,7 +39,7 @@ private:
 	};
 
 public:
-	SpectrumMaker();
+	SpectrumMaker(size_t threadCount);
 	
 	~SpectrumMaker();
 	
@@ -300,6 +300,7 @@ private:
 	size_t _weightGridSize;
 	double _weightPixelScale;
 	std::unique_ptr<ImageWeights> _imageWeights;
+	size_t _threadCount;
 };
 
 #endif

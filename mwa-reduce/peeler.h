@@ -13,7 +13,7 @@
 class Peeler
 {
 public:
-	Peeler(casa::MeasurementSet& ms);
+	Peeler(casa::MeasurementSet& ms, size_t threadCount);
 	
 	void Perform();
 	
@@ -126,6 +126,7 @@ private:
 	double _minAccuracy, _stoppingAccuracy, _minUVW;
 	size_t _solutionInterval;
 	Model _model;
+	size_t _threadCount;
 };
 
 #endif

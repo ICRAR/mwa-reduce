@@ -20,9 +20,9 @@
 class Subtractor
 {
 public:
-	Subtractor() :
+	Subtractor(size_t threadCount) :
 		_revert(false), _setToModel(false), _addNoise(false), _applyBeam(false),
-		_noiseSigma(1.0)
+		_noiseSigma(1.0), _threadCount(threadCount)
 	{
 	}
 	
@@ -51,7 +51,7 @@ public:
 		
 		BeamEvaluator beamEvaluator(ms);
 		
-		MSPredicter predicter(ms, model);
+		MSPredicter predicter(ms, _threadCount, model);
 		predicter.SetApplyBeam(_applyBeam);
 		predicter.Start(true);
 		
@@ -131,6 +131,7 @@ private:
 	
 	bool _revert, _setToModel, _addNoise, _applyBeam;
 	double _noiseSigma;
+	size_t _threadCount;
 };
 
 #endif

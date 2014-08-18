@@ -192,7 +192,7 @@ void Calibrator::Perform()
 					std::cout << '\n';
 				}
 				
-				predicter.reset(new MSPredicter(_ms, _model));
+				predicter.reset(new MSPredicter(_ms, _threadCount, _model));
 				predicter->SetStartRow(intervalRowStart);
 				predicter->SetEndRow(intervalRowEnd);
 				predicter->SetApplyBeam(_applyBeam);

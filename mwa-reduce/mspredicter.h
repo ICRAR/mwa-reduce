@@ -42,7 +42,7 @@ public:
 		_threadCount(threadCount)
 	{ }
 	
-	MSPredicter(casa::MeasurementSet &ms, const Model &model, const std::string solutionFile = "") :
+	MSPredicter(casa::MeasurementSet &ms, size_t threadCount, const Model &model, const std::string solutionFile = "") :
 		_ms(ms),
 		_beamEvaluator(ms, false),
 		_applyBeam(true),
@@ -54,7 +54,8 @@ public:
 		_availableBufferLane(_laneSize),
 		_solutionFile(solutionFile),
 		_startRow(0),
-		_endRow(ms.nrow())
+		_endRow(ms.nrow()),
+		_threadCount(threadCount)
 	{ }
 	
 	~MSPredicter();

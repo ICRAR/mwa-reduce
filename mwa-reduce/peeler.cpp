@@ -17,7 +17,7 @@
 #include <memory>
 #include <complex>
 
-Peeler::Peeler(casa::MeasurementSet& ms) :
+Peeler::Peeler(casa::MeasurementSet& ms, size_t threadCount) :
 	_ms(ms),
 	_beamOnSource(false),
 	_applyBeam(false),
@@ -30,7 +30,8 @@ Peeler::Peeler(casa::MeasurementSet& ms) :
 	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
 	_stoppingAccuracy(CalibrationMethod::DefaultStoppingAccuracy()),
 	_minUVW(0.0),
-	_solutionInterval(1)
+	_solutionInterval(1),
+	_threadCount(threadCount)
 {
 	_ms.reopenRW();
 }
@@ -141,7 +142,7 @@ void Peeler::Perform()
 				}
 			}
 			
-			predicter.reset(new MSPredicter(_ms, _model));
+			predicter.reset(new MSPredicter(_ms, _threadCount, _model));
 			predicter->SetApplyBeam(_applyBeam);
 			predicter->SetStartRow(startRow);
 			predicter->SetEndRow(endRow);
@@ -299,7 +300,7 @@ void Peeler::Perform()
 		/**
 		 * Do the subtraction
 		 */
-		predicter.reset(new MSPredicter(_ms, _model));
+		predicter.reset(new MSPredicter(_ms, _threadCount, _model));
 		predicter->SetApplyBeam(_applyBeam);
 		predicter->SetStartRow(startRow);
 		predicter->SetEndRow(endRow);
