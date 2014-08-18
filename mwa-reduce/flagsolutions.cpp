@@ -26,7 +26,10 @@ int main(int argc, char **argv)
 		
 		std::unique_ptr<SolutionFlagFile> flagFile;
 		
-		if(argi+1 < size_t(argc))
+		std::unique_ptr<SolutionFile> newFile;
+		std::string newFilename(std::string(argv[argi]) + "-tmp");
+		bool hasFlagfile = argi+1 < size_t(argc);
+		if(hasFlagfile)
 		{
 			flagFile.reset(new SolutionFlagFile(argv[argi+1]));
 			if(solutionFile.IntervalCount() != flagFile->IntervalCount())
@@ -35,15 +38,13 @@ int main(int argc, char **argv)
 				throw std::runtime_error("solutionFile.AntennaCount() != flagFile.AntennaCount()");
 			if(solutionFile.ChannelCount() != flagFile->ChannelCount())
 				throw std::runtime_error("solutionFile.ChannelCount() != flagFile.ChannelCount()");
+			
+			newFile->SetIntervalCount(solutionFile.IntervalCount());
+			newFile->SetAntennaCount(solutionFile.AntennaCount());
+			newFile->SetChannelCount(solutionFile.ChannelCount());
+			newFile->SetPolarizationCount(solutionFile.PolarizationCount());
+			newFile->OpenForWriting(newFilename.c_str());
 		}
-		
-		SolutionFile newFile;
-		std::string newFilename(std::string(argv[argi]) + "-tmp");
-		newFile.SetIntervalCount(solutionFile.IntervalCount());
-		newFile.SetAntennaCount(solutionFile.AntennaCount());
-		newFile.SetChannelCount(solutionFile.ChannelCount());
-		newFile.SetPolarizationCount(solutionFile.PolarizationCount());
-		newFile.OpenForWriting(newFilename.c_str());
 		
 		size_t totalSolutions =
 			solutionFile.IntervalCount() * solutionFile.AntennaCount() * solutionFile.ChannelCount() * 4;
@@ -66,7 +67,8 @@ int main(int argc, char **argv)
 						}
 						if(alreadyFlagged || isFlaggedInFile)
 							++totalFlags;
-						newFile.WriteSolution(val, interval, a, ch, p);
+						if(hasFlagfile)
+							newFile->WriteSolution(val, interval, a, ch, p);
 					}
 				}
 			}
@@ -76,6 +78,8 @@ int main(int argc, char **argv)
 			"Flagged by flagfile: " << flaggedInFlagFile << '\n' <<
 			"Flags changed:       " << flagsChanged << '\n' <<
 			"Total flags now:     " << totalFlags << '\n';
-		boost::filesystem::rename(newFilename, std::string(argv[argi]));
+			
+		if(hasFlagfile)
+			boost::filesystem::rename(newFilename, std::string(argv[argi]));
 	}
 }
