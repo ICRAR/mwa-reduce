@@ -19,13 +19,14 @@
 #include <queue>
 #include <complex>
 
-Calibrator::Calibrator(casa::MeasurementSet& ms) :
+Calibrator::Calibrator(casa::MeasurementSet& ms, size_t threadCount) :
 	_ms(ms),
 	_dataColumnName("DATA"),
 	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
 	_stoppingAccuracy(CalibrationMethod::DefaultStoppingAccuracy()),
 	_nIter(1000),
 	_solutionInterval(0),
+	_threadCount(threadCount),
 	_onlyScalar(false),
 	_onlyDiag(false),
 	_onlyRotation(false),
@@ -124,6 +125,7 @@ void Calibrator::Perform()
 		double memPerChannel = samplesPerChannel * 5 * sizeof(double);
 		if(_verbose)
 		{
+			std::cout << "Will use " << _threadCount << " cores.\n";
 			std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
 			std::cout << "One channel takes " << round(memPerChannel*10.0/(1024*1024))/10.0 << " MB of mem.\n";
 		}
@@ -160,7 +162,7 @@ void Calibrator::Perform()
 			std::vector<std::complex<double>> beamValues;
 			if(_model.Empty()) {
 				std::cout << "Reading data and model column...\n";
-				predicter.reset(new MSPredicter(_ms));
+				predicter.reset(new MSPredicter(_ms, _threadCount));
 				predicter->SetStartRow(intervalRowStart);
 				predicter->SetEndRow(intervalRowEnd);
 			}
@@ -278,10 +280,9 @@ void Calibrator::Perform()
 			std::queue<size_t> tasks;
 			for(size_t ch=0; ch!=partChannelCount; ++ch)
 				tasks.push(ch);
-			size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 			boost::thread_group threadGroup;
 			boost::mutex mutex;
-			for(size_t i=0; i!=cpuCount; ++i)
+			for(size_t i=0; i!=_threadCount; ++i)
 			{
 				ThreadData threadData;
 				threadData.mutex = &mutex;

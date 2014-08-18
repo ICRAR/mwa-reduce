@@ -27,7 +27,7 @@ public:
 		double u, v, w;
 	};
 	
-	explicit MSPredicter(casa::MeasurementSet &ms) :
+	explicit MSPredicter(casa::MeasurementSet &ms, size_t threadCount) :
 		_ms(ms),
 		_beamEvaluator(ms, false),
 		_applyBeam(false),
@@ -38,7 +38,8 @@ public:
 		_outputLane(_laneSize),
 		_availableBufferLane(_laneSize),
 		_startRow(0),
-		_endRow(ms.nrow())
+		_endRow(ms.nrow()),
+		_threadCount(threadCount)
 	{ }
 	
 	MSPredicter(casa::MeasurementSet &ms, const Model &model, const std::string solutionFile = "") :
@@ -96,7 +97,7 @@ private:
 	std::vector<std::complex<double>*> _buffers;
 	std::unique_ptr<BandData> _bandData;
 	std::string _solutionFile;
-	size_t _startRow, _endRow;
+	size_t _startRow, _endRow, _threadCount;
 };
 
 #endif

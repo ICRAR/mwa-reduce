@@ -13,7 +13,7 @@
 class Calibrator
 {
 public:
-	Calibrator(casa::MeasurementSet& ms);
+	Calibrator(casa::MeasurementSet& ms, size_t threadCount);
 	
 	void Perform();
 
@@ -124,7 +124,7 @@ private:
 	std::string _modelFilename, _solutionFilename, _rhsSolutionFilename, _dataColumnName;
 	Model _model;
 	double _minAccuracy, _stoppingAccuracy;
-	size_t _nIter, _solutionInterval;
+	size_t _nIter, _solutionInterval, _threadCount;
 	bool _onlyScalar, _onlyDiag, _onlyRotation;
 	bool _beamOnSource, _applyBeam;
 	double _minUVW;

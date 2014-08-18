@@ -74,12 +74,12 @@ void MSPredicter::Start(bool reportSources)
 	
 void MSPredicter::ReadThreadFunc()
 {
-	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	size_t actualThreadCount = _threadCount;
 	if(!_useModelColumn)
 	{
 		if(_model.SourceCount() == 0)
-			cpuCount = 1;
-		for(size_t i=0; i!=cpuCount; ++i)
+			actualThreadCount = 1;
+		for(size_t i=0; i!=actualThreadCount; ++i)
 			_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
 	}
 	
@@ -127,7 +127,7 @@ void MSPredicter::ReadThreadFunc()
 				_beamEvaluator.SetTime(time);
 				_predicter->UpdateBeam(_model);
 				_workThreadGroup.reset(new boost::thread_group());
-				for(size_t i=0; i!=cpuCount; ++i)
+				for(size_t i=0; i!=actualThreadCount; ++i)
 					_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
 			}
 			

@@ -58,6 +58,7 @@ int main(int argc, char* argv[])
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
 	size_t nIter = CalibrationMethod::DefaultNIter();
+	size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	while(argv[argi][0] == '-')
 	{
 		std::string param(&argv[argi][1]);
@@ -249,7 +250,7 @@ int main(int argc, char* argv[])
 		{
 			std::cout << "Calibrating using " << sourceList(calibrateSources) << "...\n";
 			
-			Calibrator calibrator(ms);
+			Calibrator calibrator(ms, threadCount);
 			
 			Model calModel;
 			for(std::vector<ModelSource*>::const_iterator i=calibrateSources.begin(); i!=calibrateSources.end(); ++i)
