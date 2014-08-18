@@ -267,7 +267,7 @@ public:
 		}
 	}
 	
-	void GetModel(Model& model) const
+	void GetModelWithSpectra(Model& model) const
 	{
 		size_t compIndex = 0;
 		for(size_t s=0; s!=_model.SourceCount(); ++s)
@@ -283,8 +283,14 @@ public:
 				
 				++compIndex;
 			}
-			model.AddSource(newSource);
+			if(newSource.HasValidMeasurement())
+				model.AddSource(newSource);
 		}
+	}
+	
+	const Model& PositionsModel() const
+	{
+		return _model;
 	}
 private:
 	struct RowData

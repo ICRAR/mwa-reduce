@@ -541,6 +541,19 @@ class SpectralEnergyDistribution
 			return m.FluxDensityFromIndex(0);
 		}
 		
+		bool HasValidMeasurement() const
+		{
+			for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
+			{
+				if(std::isfinite(i->second.FluxDensity(Polarization::StokesI)) ||
+					std::isfinite(i->second.FluxDensity(Polarization::StokesQ)) ||
+					std::isfinite(i->second.FluxDensity(Polarization::StokesU)) ||
+					std::isfinite(i->second.FluxDensity(Polarization::StokesV)))
+					return true;
+			}
+			return false;
+		}
+		
 		bool operator<(const SpectralEnergyDistribution &other) const
 		{
 			double thisFrequency = _measurements.begin()->first;

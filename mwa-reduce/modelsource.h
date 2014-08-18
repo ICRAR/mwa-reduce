@@ -65,6 +65,8 @@ class ModelComponent
 			return s.str();
 		}
 		
+		bool HasValidMeasurement() const { return _sed.HasValidMeasurement(); }
+		
 		bool operator<(const ModelComponent& rhs) const
 		{
 			return _sed < rhs._sed;
@@ -304,6 +306,14 @@ class ModelSource
 		{
 			std::sort(_components.rbegin(), _components.rend());
 		}
+		
+		bool HasValidMeasurement() const
+		{
+			for(const_iterator i=begin(); i!=end(); ++i)
+				if(i->HasValidMeasurement()) return true;
+			return false;
+		}
+		
 	private:
 		std::string _name;
 		std::vector<ModelComponent> _components;

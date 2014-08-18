@@ -22,8 +22,10 @@ int main(int argc, char* argv[])
 	isMaker.Save((outputPrefix + ".bin").c_str());
 	
 	Model model;
-	isMaker.GetModel(model);
+	isMaker.GetModelWithSpectra(model);
 	model.Save(outputPrefix + "-model.txt");
+	
+	std::cout << "Saved spectra for " << model.SourceCount() << " / " << isMaker.PositionsModel().SourceCount() << " sources.\n";
 	
 	return 0;
 }
