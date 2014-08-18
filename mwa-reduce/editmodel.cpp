@@ -666,15 +666,15 @@ int main(int argc, char *argv[])
 			"set ylabel \"Flux (Jy)\"\n"
 			"plot \\\n";
 
-		size_t sourceIndex = 0;
+		size_t compIndex = 0, sourceIndex = 0;
 		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
 			for(ModelSource::const_iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 			{
 				std::ostringstream dataStreamName;
-				dataStreamName << "spectrum" << sourceIndex << ".txt";
+				dataStreamName << "spectrum" << compIndex << ".txt";
 				std::ofstream dataStream(dataStreamName.str().c_str());
-				if(sourceIndex == 0)
+				if(compIndex == 0)
 				{
 					plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"I\",\\\n";
 					plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 1.0 title \"Q\",\\\n";
@@ -689,15 +689,15 @@ int main(int argc, char *argv[])
 				}
 				
 				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
-				if(sourceIndex < 10)
-					plot10IStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"\",\\\n";
+				if(sourceIndex < 10 && compPtr == sourcePtr->begin())
+					plot10IStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"" << sourcePtr->Name() << "\",\\\n";
 				
 				const SpectralEnergyDistribution &sed = compPtr->SED();
 				/*long double e, f;
 				sed.FitPowerlaw(f, e, Polarization::StokesI);
 				plotIStream << (f/2.0) << " * (x*1000000)**" << e << " with lines lw 1.0 title \"\"";*/
 				
-				if(sourceIndex != model.ComponentCount()-1)
+				if(compIndex != model.ComponentCount()-1)
 				{
 					plotStream << ",\\";
 					//plotIStream << ",\\";
@@ -717,8 +717,9 @@ int main(int argc, char *argv[])
 						<< i->FluxDensity(Polarization::StokesU) << '\t'
 						<< i->FluxDensity(Polarization::StokesV) << '\n';
 				}
-				++sourceIndex;
+				++compIndex;
 			}
+			++sourceIndex;
 		}
 	}
 	
