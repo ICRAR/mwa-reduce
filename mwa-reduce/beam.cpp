@@ -171,6 +171,7 @@ int main(int argc, char *argv[])
 		if(!hasDelays) {
 			for(size_t i=0; i!=16; ++i)
 				delays[i] = headerExt.delays[i];
+			hasDelays = true;
 		}
 		std::cout << "Metafits specifies mid time = " << time << '\n';
 		std::cout << "Frequency = " << centralFrequency << '\n';
@@ -208,16 +209,12 @@ int main(int argc, char *argv[])
 		{
 			for(int i=0; i!=16; ++i)
 				delays[i] = delaysArrPtr[i];
+			hasDelays = true;
 		}
 		
 		BandData bandData(ms.spectralWindow());
 		centralFrequency = bandData.CentreFrequency();
 		std::cout << "Central frequency of measurement set: " << round(centralFrequency*1e-6*10.0)*0.1 << " MHz.\n";
-	}
-	
-	if(!haveTime) {
-		time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
-		std::cout << "Warning: using random *wrong* start time, because no ms or metafits file was specified.\n";
 	}
 	
 	std::cout << "Delays: [";
@@ -228,22 +225,6 @@ int main(int argc, char *argv[])
 	}
 	std::cout << "]\n";
 	
-	casa::MeasFrame frame(arrayPos, time);
-	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
-	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
-	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
-	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
-	double arrLatitude = wgs.getValue().getLat(); // arrayPos.getValue().getLat();
-	
-	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
-	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
-	double zenithHa = zenithHaDec.getAngle().getValue()[0];
-	double zenithDec = zenithHaDec.getAngle().getValue()[1];
-	std::cout << "Zenith: "
-		<< (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0]*180.0/M_PI << " RA, "
-		<< zenithDec*180.0/M_PI << " dec, "
-		<< zenithHa*180.0/M_PI << " HA.\n";
-		
 	size_t width, height;
 	double pixelSizeX, pixelSizeY, refRA, refDec, phaseCentreDL, phaseCentreDM;
 	FitsWriter writer;
@@ -254,13 +235,17 @@ int main(int argc, char *argv[])
 		height = 512;
 		pixelSizeX = 2.0 / (double) width;
 		pixelSizeY = 2.0 / (double) height;
-		refRA = (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0];
-		refDec = zenithDec;
+		refRA = 0.0; // will be set later
+		refDec = 0.0;
 		phaseCentreDL = 0.0;
 		phaseCentreDM = 0.0;
 		double bandWidth = 1000000.0;
 		
-		writer.SetImageDimensions(width, height, refRA, refDec, pixelSizeX, pixelSizeY);
+		if(!haveTime) {
+			time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
+			std::cout << "Warning: using random *wrong* start time, because no ms, fits file or metafits file was specified.\n";
+		}
+		
 		writer.SetFrequency(centralFrequency, bandWidth);
 		writer.SetDate(time.getValue().get());
 	}
@@ -278,12 +263,48 @@ int main(int argc, char *argv[])
 		phaseCentreDM = reader.PhaseCentreDM();
 		centralFrequency = reader.Frequency();
 		std::cout << "Using frequency from fits file: " << round(centralFrequency*1e-6*10.0)*0.1 << " MHz.\n";
+		if(!haveTime) {
+			time = casa::MEpoch(casa::MVEpoch(reader.DateObs())); //casa::Quantity(reader.DateObs(), "s")));
+			std::cout << "Using time from Fits file: " << time << '\n';
+			std::cout << "WARNING: Fits file records START of observation instead of (as is normally the case) the MIDDLE of the observation.\n";
+			std::cout << "WARNING: Suggest using -ms to get more accurate timing.\n";
+		}
+		if(!hasDelays) {
+			int dDelays[16];
+			MetaFitsFile::GetDelays(reader.FitsHandle(), dDelays);
+			for(size_t i=0; i!=16; ++i)
+				delays[i] = dDelays[i];
+			hasDelays= true;
+		}
 	}
+	
+	casa::MeasFrame frame(arrayPos, time);
+	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
+	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
+	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
+	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
+	double arrLatitude = wgs.getValue().getLat(); // arrayPos.getValue().getLat();
+	
+	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
+	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
+	double zenithHa = zenithHaDec.getAngle().getValue()[0];
+	double zenithDec = zenithHaDec.getAngle().getValue()[1];
+	std::cout << "Zenith: "
+		<< (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0]*180.0/M_PI << " RA, "
+		<< zenithDec*180.0/M_PI << " dec, "
+		<< zenithHa*180.0/M_PI << " HA.\n";
+		
+	if(inpFitsname == 0)
+	{
+		refRA = (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0];
+		refDec = zenithDec;
+		writer.SetImageDimensions(width, height, refRA, refDec, pixelSizeX, pixelSizeY);
+	}
+	
 	std::cout << "Reference dir: "
 		<< refRA*180.0/M_PI << " RA, "
 		<< refDec*180.0/M_PI << " dec.\n";
-	
-	
+		
 	std::vector<double> outImage[8];
 	double *imgPtr[8];
 	for(size_t i=0; i!=8; ++i)

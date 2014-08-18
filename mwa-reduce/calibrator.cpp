@@ -106,7 +106,7 @@ void Calibrator::Perform()
 
 	for(size_t intervalIndex=0; intervalIndex!=intervalCount; ++intervalIndex)
 	{
-		std::cout << " >>> INTERVAL " << (intervalIndex+1) << " <<<\n";
+		std::cout << " >>> INTERVAL " << (intervalIndex+1) << " / " << intervalCount << " <<<\n";
 		size_t
 			intervalTimestepStart = (intervalIndex*timestepCount) / intervalCount,
 			intervalTimestepEnd = ((intervalIndex+1)*timestepCount) / intervalCount,

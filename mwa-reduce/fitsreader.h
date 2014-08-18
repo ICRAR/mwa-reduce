@@ -56,6 +56,8 @@ class FitsReader : protected FitsIOChecker
 		static double ParseFitsDateToMJD(const char* valueStr);
 		
 		const std::string& Filename() const { return _filename; }
+		
+		fitsfile* FitsHandle() const { return _fitsPtr; }
 	private:
 		float readFloatKey(const char* key);
 		double readDoubleKey(const char* key);
