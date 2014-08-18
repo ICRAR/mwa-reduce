@@ -29,82 +29,82 @@ int main(int argc, char *argv[])
 		while(argv[argi][0] == '-')
 		{
 			std::string param(&argv[argi][1]);
-			if(param == "-p")
+			if(param == "p")
 			{
 				savePlotFiles = true;
 				plotPhaseFile = argv[argi+1];
 				plotGainFile = argv[argi+2];
 				argi += 3;
 			}
-			/*else if(param == "-pf") == 0)
+			/*else if(param == "pf") == 0)
 			{
 				saveFaradayPlotFiles = true;
 				plotFaradayFile = argv[argi+1];
 				argi += 2;
 			}
-			else if(param == "-px") == 0)
+			else if(param == "px") == 0)
 			{
 				saveCrossTermsPlotFile = true;
 				crossTermsPlotFile = argv[argi+1];
 				argi += 2;
 			}*/
-			else if(param == "-i")
+			else if(param == "i")
 			{
 				niter = atoi(argv[argi+1]);
 				argi += 2;
 			}
-			else if(param == "-j")
+			else if(param == "j")
 			{
 				threadCount = atoi(argv[argi+1]);
 				argi += 2;
 			}
-			else if(param == "-a")
+			else if(param == "a")
 			{
 				minAccuracy = atof(argv[argi+1]);
 				stopAccuracy = atof(argv[argi+2]);
 				argi += 3;
 			}
-			else if(param == "-m")
+			else if(param == "m")
 			{
 				modelFile = argv[argi+1];
 				argi += 2;
 			}
-			else if(param == "-t")
+			else if(param == "t")
 			{
 				solutionInterval = atoi(argv[argi+1]);
 				argi += 2;
 			}
-			else if(param == "-minuv")
+			else if(param == "minuv")
 			{
 				minUVW = atof(argv[argi+1]);
 				argi += 2;
 			}
-			else if(param == "-applybeam")
+			else if(param == "applybeam")
 			{
 				applyBeam = true;
 				++argi;
 			}
-			else if(param == "-beam-on-source")
+			else if(param == "beam-on-source")
 			{
 				beamOnSource = true;
 				++argi;
 			}
-			else if(param == "-scalar")
+			else if(param == "scalar")
 			{
 				onlyScalar = true;
 				++argi;
 			}
-			else if(param == "-diag")
+			else if(param == "diag")
 			{
 				onlyDiag = true;
 				++argi;
 			}
-			else if(param == "-rhs")
+			else if(param == "rhs")
 			{
 				rhsSolutionFile = argv[argi+1];
 				argi += 2;
 			}
-			else if(param == "-rotation")
+			else if(param == "rotation")
 			{
 				onlyRotation = true;
 				argi++;
