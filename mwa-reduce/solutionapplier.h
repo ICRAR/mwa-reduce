@@ -55,7 +55,6 @@ public:
 		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 		casa::ArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
-		casa::ArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
 		std::cout << "DONE\n";
 		
 		std::unique_ptr<casa::ArrayColumn<complex_t>> copyColumn;
