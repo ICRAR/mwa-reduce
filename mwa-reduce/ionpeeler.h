@@ -40,6 +40,7 @@ public:
 	void SetClusterFluxLimit(double limit) { _clusterFluxLimit = limit; }
 	void SetDistanceLimit(double limit) { _distanceLimit = limit; }
 	void SetVerbose(bool verbose) { _verbose = verbose; }
+	void SetMinUV(double minUV) { _minUVSq = minUV*minUV; }
 	
 	void Peel(const char* msName, const char* modelName, const char* solutionFilename);
 	
@@ -107,7 +108,7 @@ private:
 	
 	Model _model;
 	std::vector<VisibilityArray<std::complex<double>, 4>*> _dataArrays;
-	std::vector<VisibilityArray<double, 2>*> _weightArrays;
+	std::vector<VisibilityArray<double, 1>*> _weightArrays;
 	std::vector<Predicter*> _predicters;
 	std::vector<Model> _predictionModels;
 	std::vector<RowData> _rowData;
@@ -122,7 +123,7 @@ private:
 	
 	WeightMode _weightMode;
 	size_t _weightGridSize;
-	double _weightPixelScale, _clusterFluxLimit, _distanceLimit;
+	double _weightPixelScale, _clusterFluxLimit, _distanceLimit, _minUVSq;
 	bool _verbose;
 	std::unique_ptr<ImageWeights> _imageWeights;
 	std::unique_ptr<ProgressBar> _progressBar;

@@ -11,6 +11,7 @@
 #include "fluxaccumulator.h"
 #include "fluxspectrumaccumulator.h"
 #include "lane.h"
+#include "imageweights.h"
 #include "ionsolutionfile.h"
 #include "uvector.h"
 #include "buffered_lane.h"
@@ -23,7 +24,16 @@
 class IonSpectrumMaker
 {
 public:
-	IonSpectrumMaker() { }
+	IonSpectrumMaker() :
+		_weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
+	{ }
+	
+	void SetWeighting(WeightMode mode, size_t gridSize, double pixelScale)
+	{
+		_weightMode = mode;
+		_weightGridSize = gridSize;
+		_weightPixelScale = pixelScale;
+	}
 	
 	void InitializeForVisibilityAcc(const char* msFilename, const char* ionFilename, const char* modelFilename)
 	{
@@ -31,6 +41,8 @@ public:
 		_model = Model(modelFilename);
 		_bandData = BandData(_ms.spectralWindow());
 		_ionSolutionFile.OpenForReading(ionFilename);
+		
+		initWeighting();
 		
 		casa::MSField fieldTable = _ms.field();
 		if(fieldTable.nrow() != 1)
@@ -208,6 +220,17 @@ public:
 				memcpy(rowData.data, dataArray.cbegin(), sizeof(std::complex<float>)*channelCount*4);
 				memcpy(rowData.weights, weightArray.cbegin(), sizeof(float)*channelCount*4);
 				memcpy(rowData.flags, flagArray.cbegin(), sizeof(bool)*channelCount*4);
+				if(_weightMode.RequiresGridding())
+				{
+					for(size_t ch=0; ch!=channelCount; ++ch)
+					{
+						double lambda = _bandData.ChannelFrequency(ch);
+						double uInL = u / lambda, vInL = v / lambda;
+						double imgWeight = _imageWeights->GetWeight(uInL, vInL, _weightMode);
+						for(size_t p=0; p!=4; ++p)
+							rowData.weights[ch*4+p] *= imgWeight;
+					}
+				}
 				bufferedLane.write(rowData);
 			}
 		}
@@ -409,6 +432,16 @@ private:
 		}
 	}
 
+	void initWeighting()
+	{
+		if(_weightMode.RequiresGridding())
+		{
+			std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
+			_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
+			_imageWeights->Grid(_ms, _weightMode, MSSelection::Everything());
+		}
+	}
+
 	void clear()
 	{
 		for(ao::uvector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
@@ -427,6 +460,10 @@ private:
 	ao::uvector<FluxSpectrumAccumulator*> _accumulatorPerSource;
 	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
 	ao::uvector<size_t> _sourceToClusterIndex;
+	WeightMode _weightMode;
+	size_t _weightGridSize;
+	double _weightPixelScale;
+	std::unique_ptr<ImageWeights> _imageWeights;
 };
 
 #endif

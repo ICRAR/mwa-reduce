@@ -35,13 +35,24 @@ class ImageWeights
 			else
 				return 0.0;
 		}
-		double GetInverseTaperedWeight(double u, double v)
+		double GetInverseTaperedWeight(double u, double v) const
 		{
 			return sqrt(u*u + v*v);
 		}
 		double GetBriggsWeight(double u, double v) const
 		{
 			return sumValue(u, v);
+		}
+		double GetWeight(double u, double v, const WeightMode& weightMode) const
+		{
+			switch(weightMode.Mode())
+			{
+				case WeightMode::UniformWeighted: return GetUniformWeight(u, v);
+				case WeightMode::BriggsWeighted: return GetBriggsWeight(u, v);
+				case WeightMode::DistanceWeighted: return GetInverseTaperedWeight(u, v);
+				default:
+				case WeightMode::NaturalWeighted: return GetNaturalWeight(u, v);
+			}
 		}
 
 		void Grid(casa::MeasurementSet& ms, WeightMode weightMode, const MSSelection& selection);

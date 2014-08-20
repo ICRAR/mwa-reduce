@@ -46,15 +46,18 @@ void FluxAccumulator::UpdateBeam(const std::complex<double>* beamGains, double i
 
 void FluxAccumulator::Add(const std::complex<double>* vis, const double visWeight, double u, double v, double w)
 {
-	double angle = 2.0*M_PI*(u*_movedL + v*_movedM + w*(_movedLMSqrt-1.0));
-	
-	double sinAngle, cosAngle;
-	sincos(angle, &sinAngle, &cosAngle);
-	std::complex<double>
-		phaseAndWeight(std::complex<double>(cosAngle, sinAngle) * (visWeight*_movedLMSqrt)),
-		predict[4] = { phaseAndWeight, std::complex<double>(0.0), std::complex<double>(0.0), phaseAndWeight };
-	Matrix2x2::PlusATimesHermB(_accFluxesBeforeBeamChange, vis, predict);
-	Matrix2x2::PlusHermATimesB(_accFluxesBeforeBeamChange, vis, predict);
-	// Weight is multiplied by factor of 2 because we add both normal and conjugate at once
-	_accVisWeightBeforeBeamChange += 2.0 * visWeight;
+	if(std::isfinite(_ionG))
+	{
+		double angle = 2.0*M_PI*(u*_movedL + v*_movedM + w*(_movedLMSqrt-1.0));
+		
+		double sinAngle, cosAngle;
+		sincos(angle, &sinAngle, &cosAngle);
+		std::complex<double>
+			phaseAndWeight(std::complex<double>(cosAngle, sinAngle) * (visWeight*_movedLMSqrt)),
+			predict[4] = { phaseAndWeight, std::complex<double>(0.0), std::complex<double>(0.0), phaseAndWeight };
+		Matrix2x2::PlusATimesHermB(_accFluxesBeforeBeamChange, vis, predict);
+		Matrix2x2::PlusHermATimesB(_accFluxesBeforeBeamChange, vis, predict);
+		// Weight is multiplied by factor of 2 because we add both normal and conjugate at once
+		_accVisWeightBeforeBeamChange += 2.0 * visWeight;
+	}
 }

@@ -32,6 +32,8 @@ int main(int argc, char* argv[])
 			"\tRemove clusters further away than given radius.\n"
 			" -savemodel <out-filename>\n"
 			"\tSave the model after heuristics have been applied.\n"
+			" -minuv <dist in m>\n"
+			"\tDon't use baselines > dist in the solutions (they will be peeled though).\n"
 			" -v\n"
 			"\tBe verbose.\n";
 		return -1;
@@ -45,7 +47,7 @@ int main(int argc, char* argv[])
 	size_t weightGridSize = 0;
 	double weightPixelScale = 0.0;
 	size_t channelBlockSize = 1;
-	double clusterFluxLimit = 0.0, distLimit = 0.0;
+	double clusterFluxLimit = 0.0, distLimit = 0.0, minUV = 0.0;
 	bool verbose = false;
 	
 	while(argv[argi][0] == '-')
@@ -78,7 +80,7 @@ int main(int argc, char* argv[])
 			++argi;
 			weightGridSize = atoi(argv[argi]);
 			++argi;
-			weightPixelScale = atof(argv[argi]);
+			weightPixelScale = atof(argv[argi]) * M_PI / 180.0;
 			++argi;
 			std::string weightArg = argv[argi];
 			if(weightArg == "natural")
@@ -115,6 +117,11 @@ int main(int argc, char* argv[])
 			++argi;
 			outModelFilename = argv[argi];
 		}
+		else if(param == "minuv")
+		{
+			++argi;
+			minUV = atof(argv[argi]);
+		}
 		else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		++argi;
 	}
@@ -131,6 +138,7 @@ int main(int argc, char* argv[])
 	peeler.SetWeighting(weightMode, weightGridSize, weightPixelScale);
 	peeler.SetChannelBlockSize(channelBlockSize);
 	peeler.SetVerbose(verbose);
+	peeler.SetMinUV(minUV);
 	if(clusterFluxLimit != 0.0)
 		peeler.SetClusterFluxLimit(clusterFluxLimit);
 	if(distLimit != 0.0)
