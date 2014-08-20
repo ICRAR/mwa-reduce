@@ -224,7 +224,7 @@ public:
 				{
 					for(size_t ch=0; ch!=channelCount; ++ch)
 					{
-						double lambda = _bandData.ChannelFrequency(ch);
+						double lambda = _bandData.ChannelWavelength(ch);
 						double uInL = u / lambda, vInL = v / lambda;
 						double imgWeight = _imageWeights->GetWeight(uInL, vInL, _weightMode);
 						for(size_t p=0; p!=4; ++p)

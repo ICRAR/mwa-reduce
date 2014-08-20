@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 				++argi;
 				weightGridSize = atoi(argv[argi]);
 				++argi;
-				weightPixelScale = atof(argv[argi]);
+				weightPixelScale = atof(argv[argi]) * M_PI / 180.0;
 				++argi;
 				std::string weightArg = argv[argi];
 				if(weightArg == "natural")

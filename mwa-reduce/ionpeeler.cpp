@@ -399,6 +399,7 @@ int IonPeeler::posMinimizationFunc(const gsl_vector *xvec, void *data, gsl_vecto
 			if(rowData.a1 != rowData.a2)
 			{
 				const std::complex<double>* dataPtr = ionPeeler._dataArrays[fittingInfo.channelBlockIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimestep + timeIndexOffset);
+				// These weights are in 1.0/sigma (so have already been squarerooted suitable for GSL)
 				const double weight = *ionPeeler._weightArrays[fittingInfo.channelBlockIndex]->ValuePtr(rowData.a1, rowData.a2, rowData.timeIndex - startTimestep + timeIndexOffset);
 				std::complex<double> value = 0.0;
 				if(isfinite(dataPtr[0]) && isfinite(dataPtr[3]))

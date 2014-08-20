@@ -37,6 +37,7 @@ int main(int argc, char* argv[])
 				weightMode.SetMode(WeightMode::Briggs(robustness));
 			}
 			else throw std::runtime_error("Unknown weighting mode specified");
+			++argi;
 		}
 		else throw std::runtime_error("Unknown option specified");
 	}	

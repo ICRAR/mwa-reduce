@@ -90,11 +90,11 @@ class IonSolutionFile
 	{
 		delete _inputStream;
 		_inputStream = new std::ifstream(filename);
-		if(_inputStream->bad())
+		if(!_inputStream->good())
 			throw std::runtime_error("Error reading input ionospheric solutions file");
 		_inputStream->read(reinterpret_cast<char*>(&_header), sizeof(_header));
 		if(_header.fileType != 2)
-			throw std::runtime_error("Error reading ionospherc solution file; old format or file damaged");
+			throw std::runtime_error("Error reading ionospheric solution file; old format or file damaged");
 		_clustersInFile = 0;
 	}
 
