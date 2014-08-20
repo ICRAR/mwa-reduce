@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0;
-	std::string outputModel, collectName, appThresholdMS, appSortMS, csvFilename;
+	std::string outputModel, collectName, appThresholdMS, appSortMS, csvFilename, plotTitle;
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false, doAppSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
@@ -79,6 +79,10 @@ int main(int argc, char *argv[])
 		if(option == "p")
 		{
 			outputPlot = true;
+		} else if(option == "ptitle") {
+			++argi;
+			outputPlot = true;
+			plotTitle = argv[argi];
 		} else if(option == "csv") {
 			++argi;
 			outputCsv = true;
@@ -640,7 +644,10 @@ int main(int argc, char *argv[])
 			"set output \"spectrum.ps\"\n"
 			"#set key bottom left\n"
 			"set xlabel \"Frequency (MHz)\"\n"
-			"set ylabel \"Flux (Jy)\"\n"
+			"set ylabel \"Flux (Jy)\"\n";
+		if(!plotTitle.empty())
+			plotStream << "set title \"" << plotTitle << "\"\n";
+		plotStream <<
 			"plot \\\n";
 
 		std::ofstream plotIStream("spectrum-I.plt");
@@ -652,7 +659,10 @@ int main(int argc, char *argv[])
 			"set output \"spectrum-I.ps\"\n"
 			"set key bottom left\n"
 			"set xlabel \"Frequency (MHz)\"\n"
-			"set ylabel \"Flux (Jy)\"\n"
+			"set ylabel \"Flux (Jy)\"\n";
+		if(!plotTitle.empty())
+			plotIStream << "set title \"" << plotTitle << "\"\n";
+		plotIStream <<
 			"plot \\\n";
 		std::ofstream plot10IStream("spectrum10-I.plt");
 		plot10IStream <<
@@ -663,7 +673,10 @@ int main(int argc, char *argv[])
 			"set output \"spectrum10-I.ps\"\n"
 			"set key bottom left\n"
 			"set xlabel \"Frequency (MHz)\"\n"
-			"set ylabel \"Flux (Jy)\"\n"
+			"set ylabel \"Flux (Jy)\"\n";
+		if(!plotTitle.empty())
+			plot10IStream << "set title \"" << plotTitle << "\"\n";
+		plot10IStream <<
 			"plot \\\n";
 
 		size_t compIndex = 0, sourceIndex = 0;
@@ -688,7 +701,7 @@ int main(int argc, char *argv[])
 					plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 1.0 title \"\"";
 				}
 				
-				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
+				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"\",\\\n";
 				if(sourceIndex < 10 && compPtr == sourcePtr->begin())
 					plot10IStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"" << sourcePtr->Name() << "\",\\\n";
 				

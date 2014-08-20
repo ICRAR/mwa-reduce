@@ -314,6 +314,32 @@ class ModelSource
 			return false;
 		}
 		
+		SpectralEnergyDistribution GetIntegratedSED() const
+		{
+			if(_components.empty())
+				return SpectralEnergyDistribution();
+			const_iterator i=begin();
+			SpectralEnergyDistribution sum(i->SED());
+			++i;
+			while(i != end())
+			{
+				const SpectralEnergyDistribution& sed = i->SED();
+				SpectralEnergyDistribution::const_iterator sedIter = sed.begin();
+				SpectralEnergyDistribution::iterator sumIter = sum.begin();
+				while(sedIter != sed.end() && sumIter != sum.end())
+				{
+					double frequency = sumIter->second.FrequencyHz();
+					if(sedIter->second.FrequencyHz() != frequency)
+						throw std::runtime_error("GetIntegratedSED() called for source with components having different SED frequency gridding");
+					sumIter->second += sedIter->second;
+					++sedIter;
+					++sumIter;
+				}
+				++i;
+			}
+			return sum;
+		}
+		
 	private:
 		std::string _name;
 		std::vector<ModelComponent> _components;

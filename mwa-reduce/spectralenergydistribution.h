@@ -474,6 +474,23 @@ class SpectralEnergyDistribution
 			}
 		}
 		
+		long double AverageFlux(PolarizationEnum polarization) const
+		{
+			long double sum = 0.0;
+			size_t count = 0;
+			for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
+			{
+				const Measurement &m = i->second;
+				long double flux = m.FluxDensity(polarization);
+				if(std::isfinite(flux))
+				{
+					++count;
+					sum += flux;
+				}
+			}
+			return sum / (long double) count;
+		}
+		
 		void FitPowerlaw(long double& factor, long double& exponent, PolarizationEnum polarization) const
 		{
 			long double sumxy = 0.0, sumx = 0.0, sumy = 0.0, sumxx = 0.0;
@@ -515,10 +532,10 @@ class SpectralEnergyDistribution
 				}
 				double eTemp = 0.0, fTemp = 1.0;
 				fitter.Fit(eTemp, fTemp);
-				if(n == 0)
-					std::cout << "No valid data in power law fit\n";
-				else
-					std::cout << "Non-linear fit yielded: " << fTemp << " * x^" << eTemp << "\n";
+				//if(n == 0)
+				//	std::cout << "No valid data in power law fit\n";
+				//else
+				//	std::cout << "Non-linear fit yielded: " << fTemp << " * x^" << eTemp << "\n";
 				exponent = eTemp;
 				factor = fTemp;
 			}
@@ -566,6 +583,7 @@ class SpectralEnergyDistribution
 		size_t MeasurementCount() const { return _measurements.size(); }
 		long double LowestFrequency() const { return _measurements.begin()->first; }
 		long double HighestFrequency() const { return _measurements.rbegin()->first; }
+		long double CentreFrequency() const { return 0.5 * (LowestFrequency() + HighestFrequency()); }
 		
 		void GetMeasurements(std::vector<Measurement> &measurements) const
 		{
