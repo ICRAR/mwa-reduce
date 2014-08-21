@@ -122,7 +122,10 @@ int main(int argc, char *argv[])
 				std::complex<double> tempValues[4];
 				Matrix2x2::ATimesB(tempValues, beamValues, imgValues);
 				Matrix2x2::ATimesHermB(imgValues, tempValues, beamValues);
-				Polarization::LinearToStokes(imgValues, &inputData[0][i]);
+				double outputValues[4];
+				Polarization::LinearToStokes(imgValues, outputValues);
+				for(size_t p=0; p!=4; ++p)
+					inputData[p][i] = outputValues[p];
 			}
 			else {
 				for(size_t p=0; p!=4; ++p)

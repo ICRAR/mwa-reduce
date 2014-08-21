@@ -49,6 +49,7 @@ void JonesLookupDipole::loadLookupTable()
 	fits_read_pix(fitsPtr, TDOUBLE, fpixel, valueCount, 0, data.data(), 0, &status);
 	checkStatus(status, filename);
 	ao::uvector<double> zaVector(rowCount), phVector(rowCount);
+	std::cout << "Zas,phs:\n";
 	for(size_t row=0; row!=rowCount; ++row)
 	{
 		zaVector[row] = data[row * columnCount];
@@ -80,10 +81,16 @@ void JonesLookupDipole::loadLookupTable()
 		FrequencyTable& table = _tables.insert(std::make_pair(frequency, FrequencyTable())).first->second;
 		
 		ao::uvector<double> values(uniqueZAValues * uniquePHValues * 8);
-		for(size_t row=0; row!=uniqueZAValues * uniquePHValues; ++row)
+		size_t row=0;
+		for(size_t phI=0; phI!=uniquePHValues; ++phI)
 		{
-			for(size_t i=0; i!=8; ++i)
-				values[row*8+i] = data[row * columnCount + 2 + i];
+			for(size_t zaI=0; zaI!=uniqueZAValues; ++zaI)
+			{
+				size_t destIndex = (phI*uniqueZAValues + zaI) * 8;
+				for(size_t i=0; i!=8; ++i)
+					values[destIndex+i] = data[row * columnCount + 2 + i];
+				++row;
+			}
 		}
 		
 		table.values.setcontent(uniqueZAValues*uniquePHValues*8, values.data());
@@ -155,6 +162,7 @@ void JonesLookupDipole::Interpolate(std::complex<double>* jonesMatrix, double az
 			jonesMatrix[i] = std::numeric_limits<double>::quiet_NaN();
 	}
 	else {
+		//std::cout << "Lookup: " << zaDeg << ',' << phDeg << '\n';
 		alglib::real_1d_array jonesMatrixArray;
 		alglib::spline2dcalcv(table.spline, zaDeg, phDeg, jonesMatrixArray);
 		jonesMatrix[0] = d2c(jonesMatrixArray.getcontent()[0*2]) / table.norm[0];
