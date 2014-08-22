@@ -94,6 +94,7 @@ add_executable(fftresample fftresample.cpp fftresampler.cpp fitsiochecker.cpp fi
 add_executable(fitsmodel fitsmodel.cpp model.cpp fitsiochecker.cpp fitsreader.cpp cleanalgorithms/cleanalgorithm.cpp)
 add_executable(flagantennae flagantennae.cpp)
 add_executable(flagbaselines flagbaselines.cpp)
+add_executable(flagionsolutions flagionsolutions.cpp)
 add_executable(flagmwa flagmwa.cpp)
 add_executable(flagsolutions flagsolutions.cpp)
 add_executable(flagsubbands flagsubbands.cpp)
