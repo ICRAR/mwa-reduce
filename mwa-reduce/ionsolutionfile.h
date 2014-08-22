@@ -141,6 +141,8 @@ class IonSolutionFile
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelBlockCount + channelBlock) * _header.polarizationCount + polarization) * _header.directionCount + direction;
 		_inputStream->seekg(_firstDataPos + sizeof(Solution) * index, std::ios::beg);
+		if(!_inputStream->good())
+			throw std::runtime_error("Error while reading solution from solutionfile: file corrupted?");
 		_inputStream->read(reinterpret_cast<char*>(&solution), sizeof(Solution));
   }
   
