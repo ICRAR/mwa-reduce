@@ -22,9 +22,10 @@
 #include <gsl/gsl_multifit_nlin.h>
 #endif
 
-IonPeeler::IonPeeler() :
+IonPeeler::IonPeeler(size_t cpuCount) :
 	_solutionInterval(1), _fitIterationCount(3), _applyBeam(true),
 	_channelBlockSize(0), _channelBlockCount(1),
+	_cpuCount(cpuCount),
 	_weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0),
 	_clusterFluxLimit(0.0), _distanceLimit(0.0), _verbose(false)
 { }
@@ -161,7 +162,6 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
 	
-	_cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	_passCount = (_solutionInterval==0) ? 1 : (timestepCount + _solutionInterval - 1) / _solutionInterval;
 	_channelBlockCount = _bandData.ChannelCount() / _channelBlockSize;
 	std::cout << "Will process " << channelCount << " channels in " << _channelBlockCount << " channel groups\n";

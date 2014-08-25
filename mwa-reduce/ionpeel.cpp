@@ -34,6 +34,8 @@ int main(int argc, char* argv[])
 			"\tSave the model after heuristics have been applied.\n"
 			" -minuv <dist in m>\n"
 			"\tDon't use baselines > dist in the solutions (they will be peeled though).\n"
+			" -j <cpucount>\n"
+			"\tSet number of threads to use.\n"
 			" -v\n"
 			"\tBe verbose.\n";
 		return -1;
@@ -42,7 +44,7 @@ int main(int argc, char* argv[])
 	int argi = 1;
 	bool applyBeam = true;
 	std::string dataColumnName, outModelFilename;
-	size_t solutionInterval = 1;
+	size_t solutionInterval = 1, threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	WeightMode weightMode(WeightMode::NaturalWeighted);
 	size_t weightGridSize = 0;
 	double weightPixelScale = 0.0;
@@ -70,6 +72,11 @@ int main(int argc, char* argv[])
 		{
 			++argi;
 			solutionInterval = atoi(argv[argi]);
+		}
+		else if(param == "j")
+		{
+			++argi;
+			threadCount = atoi(argv[argi]);
 		}
 		else if(param == "v")
 		{
@@ -131,7 +138,7 @@ int main(int argc, char* argv[])
 		throw std::runtime_error("You have not specified an output model filename (with -savemodel) but have specified a cluster flux limit (-climit): you will not be able to apply the solutions without the changed model!");
 	}
 
-	IonPeeler peeler;
+	IonPeeler peeler(threadCount);
 	peeler.SetSolutionInterval(solutionInterval);
 	peeler.SetApplyBeam(applyBeam);
 	peeler.SetDataColumnName(dataColumnName);

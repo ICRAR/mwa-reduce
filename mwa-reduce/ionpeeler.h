@@ -24,7 +24,7 @@ class IonPeeler
 private:
 	typedef std::size_t size_t;
 public:
-	IonPeeler();
+	IonPeeler(size_t cpuCount);
 	~IonPeeler();
 	
 	void SetApplyBeam(bool applyBeam) { _applyBeam = applyBeam; }
