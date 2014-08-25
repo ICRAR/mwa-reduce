@@ -18,7 +18,10 @@ int main(int argc, char* argv[])
 	std::string outputPrefix(argv[3]);
 	
 	for(int argi=4; argi!=argc; ++argi)
+	{
+		std::cout << "Adding " << argv[argi] << "...\n";
 		isMaker.AccumulateFile(argv[argi]);
+	}
 	
 	isMaker.Save((outputPrefix + ".bin").c_str());
 	
