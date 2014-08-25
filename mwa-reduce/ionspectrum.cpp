@@ -5,12 +5,13 @@ int main(int argc, char* argv[])
 	if(argc < 4) {
 		std::cout << "syntax: ionspectrum [options] <ms> <ionsolutions> <model> <output>\n"
 			"Options:\n"
-			" -weight <gridsize> <pixelscale> <mode> [robustness]\n";
+			" -weight <gridsize> <pixelscale> <mode> [robustness]\n"
+			" -j <thread count>\n";
 		return -1;
 	}
 	
 	WeightMode weightMode(WeightMode::NaturalWeighted);
-	size_t weightGridSize = 0;
+	size_t weightGridSize = 0, threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	double weightPixelScale = 0.0;
 	int argi = 1;
 	while(argv[argi][0] == '-')
@@ -39,13 +40,18 @@ int main(int argc, char* argv[])
 			else throw std::runtime_error("Unknown weighting mode specified");
 			++argi;
 		}
+		else if(param == "j")
+		{
+			++argi;
+			threadCount = atoi(argv[argi]);
+		}
 		else throw std::runtime_error("Unknown option specified");
 	}	
 	const char *msFilename(argv[argi]);
 	const char *ionFilename(argv[argi+1]);
 	const char *modelFilename(argv[argi+2]);
 	const char *outputFilename(argv[argi+3]);
-	IonSpectrumMaker isMaker;
+	IonSpectrumMaker isMaker(threadCount);
 	isMaker.SetWeighting(weightMode, weightGridSize, weightPixelScale);
 	isMaker.InitializeForVisibilityAcc(msFilename, ionFilename, modelFilename);
 	isMaker.Accumulate();

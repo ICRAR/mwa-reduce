@@ -8,10 +8,11 @@ int main(int argc, char* argv[])
 		std::cout << "syntax: ionspectrumcombine <template-ms> <model> <output prefix> <spectrum1> [<spectrum2> ..]\n";
 		return -1;
 	}
-	
 	casa::MeasurementSet ms(argv[1]);
 	const char *modelFilename(argv[2]);
-	IonSpectrumMaker isMaker;
+
+	size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+	IonSpectrumMaker isMaker(threadCount);
 	BandData bandData(ms.spectralWindow());
 	isMaker.InitializeForFileAcc(modelFilename, bandData);
 	std::string outputPrefix(argv[3]);

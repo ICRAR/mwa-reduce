@@ -24,8 +24,8 @@
 class IonSpectrumMaker
 {
 public:
-	IonSpectrumMaker() :
-		_weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
+	IonSpectrumMaker(size_t threadCount) :
+		_threadCount(threadCount), _weightMode(WeightMode::NaturalWeighted), _weightGridSize(0), _weightPixelScale(0.0)
 	{ }
 	
 	void SetWeighting(WeightMode mode, size_t gridSize, double pixelScale)
@@ -360,15 +360,14 @@ private:
 	void processRows(ao::lane<RowData>* lane)
 	{
 		lane_read_buffer<RowData> bufferedInputLane(lane, ION_SPECTRUM_ROW_BUFFER_SIZE);
-		size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-		std::vector<ao::lane<SampleData>*> outLanesInternal(cpuCount);
-		std::vector<lane_write_buffer<SampleData>> bufferedOutLanes(cpuCount);
+		std::vector<ao::lane<SampleData>*> outLanesInternal(_threadCount);
+		std::vector<lane_write_buffer<SampleData>> bufferedOutLanes(_threadCount);
 		boost::thread_group threadGroup;
-		for(size_t c=0; c!=cpuCount; ++c)
+		for(size_t c=0; c!=_threadCount; ++c)
 		{
 			outLanesInternal[c] = new ao::lane<SampleData>(ION_SPECTRUM_SAMPLE_LANE_SIZE);
 			bufferedOutLanes[c].reset(outLanesInternal[c], ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
-			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c], c, cpuCount));
+			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c], c, _threadCount));
 		}
 		RowData rowData;
 		ao::uvector<double> wavelengths(_bandData.ChannelCount());
@@ -399,7 +398,7 @@ private:
 				
 				if(!isFlagged)
 				{
-					for(size_t laneIndex=0; laneIndex!=cpuCount; ++laneIndex)
+					for(size_t laneIndex=0; laneIndex!=_threadCount; ++laneIndex)
 					{
 						bufferedOutLanes[laneIndex].write(sample);
 					}
@@ -410,10 +409,10 @@ private:
 			delete[] rowData.flags;
 		}
 		
-		for(size_t c=0; c!=cpuCount; ++c)
+		for(size_t c=0; c!=_threadCount; ++c)
 			bufferedOutLanes[c].write_end();
 		threadGroup.join_all();
-		for(size_t c=0; c!=cpuCount; ++c)
+		for(size_t c=0; c!=_threadCount; ++c)
 			delete outLanesInternal[c];
 	}
 	
@@ -460,6 +459,7 @@ private:
 	ao::uvector<FluxSpectrumAccumulator*> _accumulatorPerSource;
 	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
 	ao::uvector<size_t> _sourceToClusterIndex;
+	size_t _threadCount;
 	WeightMode _weightMode;
 	size_t _weightGridSize;
 	double _weightPixelScale;
