@@ -127,6 +127,8 @@ public:
 				s << "Antenna counts do not match: " << solutionFile.AntennaCount() << " in solution file, " << antennaCount << " in MS.";
 				throw std::runtime_error(s.str());
 			}
+			if(solutionFile.ChannelCount() != channelCount)
+				throw std::runtime_error("Set and solution file have different number of channels");
 			if(solutionFile.PolarizationCount() != polarizationCount) throw std::runtime_error("Polarization counts do not match");
 			if(channelCount%solutionFile.ChannelCount()!=0) throw std::runtime_error("Channel counts do not match");
 			std::cout << " DONE\n";
