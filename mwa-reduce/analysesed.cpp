@@ -6,12 +6,13 @@ struct SourceInfo
 {
 	size_t index, componentCount;
 	long double plExponent, plFactor;
-	long double modalFlux, rms, stokesVFrac;
+	long double modalFlux, rms, stokesVFrac, maxError;
 	
 	bool operator<(const SourceInfo& rhs) const { return modalFlux < rhs.modalFlux; }
 	static bool hasLowerRMS(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.rms < rhs.rms; }
 	static bool hasLowerSI(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.plExponent < rhs.plExponent; }
 	static bool hasLowerVFrac(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.stokesVFrac < rhs.stokesVFrac; }
+	static bool hasLowerMaxError(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.maxError < rhs.maxError; }
 };
 
 double SourceRMS(const SpectralEnergyDistribution& sed, long double factor, long double exponent)
@@ -37,7 +38,7 @@ std::string SourceDesc(const SourceInfo& source, const Model& model)
 	std::ostringstream str;
 	const ModelSource& ms = model.Source(source.index);
 	const SpectralEnergyDistribution sed = ms.GetIntegratedSED();
-	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << ", V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << ")";
+	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << ", V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << source.maxError;
 	return str.str();
 }
 
@@ -78,6 +79,12 @@ int main(int argc, char* argv[])
 		newSource.componentCount = source.ComponentCount();
 		newSource.rms = SourceRMS(sed, newSource.plFactor, newSource.plExponent);
 		newSource.stokesVFrac = std::fabs(sed.AverageFlux(Polarization::StokesV) / sed.AverageFlux(Polarization::StokesI));
+		newSource.maxError = 0.0;
+		for(SpectralEnergyDistribution::const_iterator m=sed.begin(); m!=sed.end(); ++m)
+		{
+			double err = (m->second.FluxDensity(Polarization::StokesI) - newSource.plFactor * powl(m->first, newSource.plExponent)) / newSource.rms;
+			if(err > newSource.maxError) newSource.maxError = err;
+		}
 		if(source.ComponentCount() == 1) // skip complex sources
 			sources.push_back(newSource);
 	}
@@ -134,4 +141,10 @@ int main(int argc, char* argv[])
 	std::cout << "DONE\n";
 	std::cout << "High V-fractional sources:\n";
 	outputList(sources, model, "highvfrac", false);
+
+	std::cout << "\nSorting on max error... " << std::flush;
+	std::sort(sources.rbegin(), sources.rend(), &SourceInfo::hasLowerMaxError);
+	std::cout << "DONE\n";
+	std::cout << "Max errors:\n";
+	outputList(sources, model, "maxerror", false);
 }
