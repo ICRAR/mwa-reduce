@@ -41,10 +41,8 @@ int main(int argc, char *argv[])
 			"Options:\n"
 			"-withp\n"
 			"  Also save total polarization image.\n"
-			"-nopb <nopb-image-prefix> <nopb-weight-prefix>"
-			"  Save the images and image weights before beam correction.\n"
-			"-psf"
-			"  This will read only XX parts in order to make the PSF.\n"
+			"-intermediate <nopb-image-prefix> <nopb-weight-prefix>"
+			"  Save the intermediate images and image weights before beam correction. These can be added to other uncorrected images.\n"
 			"\n"
 			"Example:\n"
 			"  pbaddimg integrated-stokes wsclean-A image.fits beam-A wsclean-B image.fits beam-B\n"
@@ -52,7 +50,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	std::string nopbImagePrefix, nopbWeightPrefix;
+	std::string intermImagePrefix, intermWeightPrefix;
 	bool withStokesP = false;
 	
 	size_t argi = 1;
@@ -63,12 +61,12 @@ int main(int argc, char *argv[])
 		{
 			withStokesP = true;
 		}
-		else if(param == "nopb")
+		else if(param == "intermediate")
 		{
 			++argi;
-			nopbImagePrefix = argv[argi];
+			intermImagePrefix = argv[argi];
 			++argi;
-			nopbWeightPrefix = argv[argi];
+			intermWeightPrefix = argv[argi];
 		}
 		else
 			throw std::runtime_error("Invalid command line parameter: "+param);
@@ -151,12 +149,57 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+	FitsWriter writer(firstImage);
+	
+	if(!intermImagePrefix.empty())
+	{
+		ao::uvector<double> intermediateImages[2];
+		intermediateImages[0].resize(imgSize);
+		intermediateImages[1].resize(imgSize);
+		
+		std::cout << "Saving intermediate files...\n";
+		std::string
+			outImageFilenames[4] =
+				{ intermImagePrefix+"-XX", intermImagePrefix+"-XY", intermImagePrefix+"-YX", intermImagePrefix+"-YY" },
+			outWeightFilenames[4] =
+				{ intermWeightPrefix+"-XX", intermWeightPrefix+"-XY", intermWeightPrefix+"-YX", intermWeightPrefix+"-YY" };
+		PolarizationEnum
+			intermPols[4] = { Polarization::XX, Polarization::XY, Polarization::YX, Polarization::YY };
+			
+		for(size_t p=0; p!=4; ++p)
+		{
+			writer.SetPolarization(intermPols[p]);
+			
+			ao::uvector<std::complex<double>>::iterator jonesIter = outputJonesData.begin()+p;
+			for(size_t i=0; i!=imgSize; ++i)
+			{
+				intermediateImages[0][i] = jonesIter->real();
+				intermediateImages[1][i] = jonesIter->imag();
+				jonesIter += 4;
+			}
+			
+			writer.Write<double>(outImageFilenames[p] + ".fits", &intermediateImages[0][0]);
+			writer.Write<double>(outImageFilenames[p] + "i.fits", &intermediateImages[1][0]);
+			
+			ao::uvector<std::complex<double>>::iterator beamIter = beamJonesData.begin()+p;
+			for(size_t i=0; i!=imgSize; ++i)
+			{
+				intermediateImages[0][i] = beamIter->real();
+				intermediateImages[1][i] = beamIter->imag();
+				beamIter += 4;
+			}
+			writer.Write<double>(outWeightFilenames[p] + ".fits", &intermediateImages[0][0]);
+			writer.Write<double>(outWeightFilenames[p] + "i.fits", &intermediateImages[1][0]);
+		}
+	}
+	
 	std::cout << "Dividing by weights and primary beams...\n";
 	
-	ao::uvector<std::complex<double>>::iterator jonesIter = outputJonesData.begin(), beamIter = beamJonesData.begin();
 	ao::uvector<double> stokesOutputImages[4];
 	for(size_t p=0; p!=4; ++p)
 		stokesOutputImages[p].resize(imgSize);
+	
+	ao::uvector<std::complex<double>>::iterator jonesIter = outputJonesData.begin(), beamIter = beamJonesData.begin();
 	for(size_t i=0; i!=imgSize; ++i)
 	{
 		double stokesMatrix[4];
@@ -180,13 +223,12 @@ int main(int argc, char *argv[])
 		beamIter += 4;
 	}
 	
-	FitsWriter writer(firstImage);
-	
 	std::string outFilenames[4] =
 		{ outPrefix+"-I.fits", outPrefix+"-Q.fits", outPrefix+"-U.fits", outPrefix+"-V.fits" };
 	PolarizationEnum
 		stokesPols[4] = { Polarization::StokesI, Polarization::StokesQ, Polarization::StokesU, Polarization::StokesV };
 
+	std::cout << "Saving files...\n";
 	for(size_t p=0; p!=4; ++p)
 	{
 		writer.SetPolarization(stokesPols[p]);
