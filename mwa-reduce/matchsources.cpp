@@ -9,11 +9,12 @@ int main(int argc, char* argv[])
 			"Syntax: matchsources [type] <base model> <additional model> <arcmin distance> <output model>\n"
 			"types:\n"
 			" - findnew    -- Find any sources in additional and not in base\n"
-			" - addspectra -- Match sources and combine frequency info of both catalogues\n";
+			" - addspectra -- Match sources and combine frequency info of both catalogues\n"
+			" - avgspectra -- Match sources and combine frequency info of both catalogues. Duplicate measurements are averaged.\n";
 			return 0;
 	}
 	
-	enum { FindNewMatching, AddSpectraMatching } matchingType;
+	enum { FindNewMatching, AddSpectraMatching, AvgSpectraMatching } matchingType;
 	
 	Model baseModel(argv[2]), addModel(argv[3]), restModel;
 	double distance = atof(argv[4])*(M_PI/60.0/180.0);
@@ -23,6 +24,8 @@ int main(int argc, char* argv[])
 		matchingType = FindNewMatching;
 	else if(matchingTypeStr == "addspectra")
 		matchingType = AddSpectraMatching;
+	else if(matchingTypeStr == "avgspectra")
+		matchingType = AvgSpectraMatching;
 	else
 		throw std::runtime_error("Unknown matching type specified");
 	
@@ -116,7 +119,10 @@ int main(int argc, char* argv[])
 				if(newSource.ComponentCount() != 1 || addSource.ComponentCount() != 1)
 					std::cout << "Warning: matching sources have more than one component, skipping.\n";
 				else {
-					newSource.front().SED().CombineMeasurements(addSource.front().SED());
+					if(matchingType == AddSpectraMatching)
+						newSource.front().SED().CombineMeasurements(addSource.front().SED());
+					else
+						newSource.front().SED().CombineMeasurementsWithAveraging(addSource.front().SED());
 					restModel.AddSource(newSource);
 				}
 			}

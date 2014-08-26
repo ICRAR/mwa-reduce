@@ -54,6 +54,14 @@ class Measurement
 			}
 		}
 		
+		void AverageWidth(const Measurement &rhs)
+		{
+			for(size_t p=0; p!=4; ++p)
+			{
+				_fluxDensities[p] = (_fluxDensities[p] + rhs._fluxDensities[p]) * 0.5;
+			}
+		}
+		
 		long double FrequencyHz() const { return _frequencyHz; }
 		
 		void SetFrequencyHz(long double frequencyHz) { _frequencyHz = frequencyHz; }
@@ -204,6 +212,24 @@ class SpectralEnergyDistribution
 					throw std::runtime_error("Combining measurements for new frequencies, but frequencies overlap");
 				const Measurement& m = i->second;
 				AddMeasurement(m);
+			}
+		}
+		
+		void CombineMeasurementsWithAveraging(const SpectralEnergyDistribution& other)
+		{
+			for(const_iterator i=other.begin(); i!=other.end(); ++i)
+			{
+				double freq = i->first;
+				FluxMap::iterator pos = _measurements.find(freq);
+				if(pos == end())
+				{
+					const Measurement& m = i->second;
+					AddMeasurement(m);
+				}
+				else {
+					Measurement& m = pos->second;
+					m.AverageWidth(i->second);
+				}
 			}
 		}
 		
