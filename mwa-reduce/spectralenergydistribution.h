@@ -142,6 +142,8 @@ class SpectralEnergyDistribution
 		//typedef boost::select_second_const_range<FluxMap>::const_iterator const_iterator;
 		typedef FluxMap::iterator iterator;
 		typedef FluxMap::const_iterator const_iterator;
+		typedef FluxMap::reverse_iterator reverse_iterator;
+		typedef FluxMap::const_reverse_iterator const_reverse_iterator;
 		
 		SpectralEnergyDistribution()
 		{ }
@@ -624,6 +626,11 @@ class SpectralEnergyDistribution
 		const_iterator begin() const { return _measurements.begin(); }
 		iterator end() { return _measurements.end(); }
 		const_iterator end() const { return _measurements.end(); }
+		
+		reverse_iterator rbegin() { return _measurements.rbegin(); }
+		const_reverse_iterator rbegin() const { return _measurements.rbegin(); }
+		reverse_iterator rend() { return _measurements.rend(); }
+		const_reverse_iterator rend() const { return _measurements.rend(); }
 	private:
 		FluxMap _measurements;
 };

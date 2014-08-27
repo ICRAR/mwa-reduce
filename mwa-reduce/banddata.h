@@ -48,6 +48,17 @@ class BandData
 			}
 		}
 		
+		BandData(size_t channelCount, const double* frequencies) :
+			_channelCount(channelCount)
+		{
+			_channelFrequencies = new double[channelCount];
+			memcpy(_channelFrequencies, frequencies, sizeof(double)*channelCount);
+			if(channelCount >= 2)
+				_frequencyStep = _channelFrequencies[1] - _channelFrequencies[0];
+			else
+				_frequencyStep = 0.0;
+		}
+		
 		~BandData()
 		{
 			delete[] _channelFrequencies;
@@ -68,6 +79,14 @@ class BandData
 			else {
 				_channelFrequencies = 0;
 			}
+		}
+		
+		void Set(size_t channelCount, const double* frequencies)
+		{
+			_channelCount = channelCount;
+			delete[] _channelFrequencies;
+			_channelFrequencies = new double[channelCount];
+			memcpy(_channelFrequencies, frequencies, sizeof(double)*channelCount);
 		}
 		
 		size_t ChannelCount() const { return _channelCount; }
