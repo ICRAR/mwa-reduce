@@ -114,7 +114,8 @@ void FitsWriter::Write(const std::string& filename, const NumType* image) const
 	for(std::map<std::string, double>::const_iterator i=_extraNumKeywords.begin(); i!=_extraNumKeywords.end(); ++i)
 	{
 		const char* name = i->first.c_str();
-		fits_write_key(fptr, TDOUBLE, name, (void*) &i->second, "", &status);
+		double value = setNotFiniteToZero(i->second);
+		fits_write_key(fptr, TDOUBLE, name, (void*) &value, "", &status);
 		checkStatus(status, filename);
 	}
 	
