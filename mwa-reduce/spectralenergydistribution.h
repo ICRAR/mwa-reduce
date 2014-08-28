@@ -519,6 +519,39 @@ class SpectralEnergyDistribution
 			return sum / (long double) count;
 		}
 		
+		long double AverageFlux(long double startFrequency, long double endFrequency, PolarizationEnum polarization) const
+		{
+			if(startFrequency == endFrequency)
+				return FluxAtFrequency(startFrequency, polarization);
+			
+			/** Handle special cases */
+			if(_measurements.empty())
+				return 0.0;
+			
+			FluxMap::const_iterator iter = _measurements.lower_bound(startFrequency);
+			if(iter == _measurements.end()) // all keys are lower
+				return std::numeric_limits<long double>::quiet_NaN();
+			
+			size_t count = 0;
+			long double fluxSum = 0.0;
+			
+			while(iter->first < endFrequency && iter != _measurements.end())
+			{
+				long double flux = iter->second.FluxDensity(polarization);
+				if(std::isfinite(flux))
+				{
+					++count;
+					fluxSum += flux;
+				}
+				++iter;
+			}
+			
+			if(count == 0)
+				return std::numeric_limits<long double>::quiet_NaN();
+			else
+				return fluxSum / count;
+		}
+		
 		void FitPowerlaw(long double& factor, long double& exponent, PolarizationEnum polarization) const
 		{
 			long double sumxy = 0.0, sumx = 0.0, sumy = 0.0, sumxx = 0.0;
@@ -597,6 +630,25 @@ class SpectralEnergyDistribution
 					return true;
 			}
 			return false;
+		}
+		
+		void RemoveInvalidMeasurements()
+		{
+			FluxMap::iterator i=_measurements.begin();
+			while(i!=_measurements.end())
+			{
+				if(!std::isfinite(i->second.FluxDensity(Polarization::StokesI)) ||
+					!std::isfinite(i->second.FluxDensity(Polarization::StokesQ)) ||
+					!std::isfinite(i->second.FluxDensity(Polarization::StokesU)) ||
+					!std::isfinite(i->second.FluxDensity(Polarization::StokesV)))
+				{
+					_measurements.erase(i);
+					i = _measurements.begin();
+				}
+				else {
+					++i;
+				}
+			}
 		}
 		
 		bool operator<(const SpectralEnergyDistribution &other) const

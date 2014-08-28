@@ -55,11 +55,11 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]]\n";
+		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]] [-delnans]\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, outputCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, unpolarized = false;
+	bool outputPlot = false, outputCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
@@ -173,6 +173,11 @@ int main(int argc, char *argv[])
 			++argi;
 			newChannelCount = atoi(argv[argi]);
 			resample = true;
+		} else if(option == "ravg")
+		{
+			++argi;
+			newChannelCount = atoi(argv[argi]);
+			resampleByAveraging = true;
 		} else if(option == "unpolarized")
 		{
 			unpolarized = true;
@@ -210,6 +215,9 @@ int main(int argc, char *argv[])
 		} else if(option == "stats")
 		{
 			sourceStats = true;
+		} else if(option == "delnans")
+		{
+			delNaNs = true;
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
@@ -249,6 +257,14 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+	if(delNaNs)
+	{
+		for(Model::iterator s=model.begin(); s!=model.end(); ++s)
+		{
+			for(ModelSource::iterator c=s->begin(); c!=s->end(); ++c)
+				c->SED().RemoveInvalidMeasurements();
+		}
+	}
 	if(optimize)
 		model.Optimize();
 	if(doSort)
@@ -419,21 +435,38 @@ int main(int argc, char *argv[])
 				newSED.AddMeasurement(m2);
 				compPtr->SetSED(newSED);
 			}
-			else if(resample)
+			else if(resample || resampleByAveraging)
 			{
 				SpectralEnergyDistribution newSED;
 				const long double newBandSize = (endFreq - startFreq) / newChannelCount;
 				for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
 				{
 					long double chStartFreq = startFreq + newBandSize*newChIndex;
-					long double chEndFreq = endFreq + newBandSize*(newChIndex+1.0);
-					long double flux;
-					if(newChannelCount < sed.MeasurementCount())
-						flux = sed.IntegratedFlux(chStartFreq, chEndFreq, Polarization::StokesI);
-					else
-						flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, Polarization::StokesI);
+					long double chEndFreq = startFreq + newBandSize*(newChIndex+1.0);
 					
-					newSED.AddMeasurement(flux, (chStartFreq+chEndFreq)*0.5);
+					Measurement m;
+					m.SetFrequencyHz((chStartFreq+chEndFreq)*0.5);
+					
+					long double flux;
+					if(newChannelCount >= sed.MeasurementCount())
+						flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, Polarization::StokesI);
+					else if(resampleByAveraging)
+						flux = sed.AverageFlux(chStartFreq, chEndFreq, Polarization::StokesI);
+					else 
+						flux = sed.IntegratedFlux(chStartFreq, chEndFreq, Polarization::StokesI);
+					m.SetFluxDensity(Polarization::StokesI, flux);
+					
+					PolarizationEnum pols[3] = { Polarization::StokesQ, Polarization::StokesU, Polarization::StokesV };
+					for(size_t p=0; p!=3; ++p)
+					{
+						if(newChannelCount >= sed.MeasurementCount())
+							flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, pols[p]);
+						else
+							flux = sed.AverageFlux(chStartFreq, chEndFreq, pols[p]);
+						m.SetFluxDensity(pols[p], flux);
+					}
+					
+					newSED.AddMeasurement(m);
 				}
 				
 				compPtr->SetSED(newSED);
