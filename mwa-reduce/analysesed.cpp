@@ -1,18 +1,25 @@
 #include <iostream>
 
 #include "model.h"
+#include "rmsynthesis.h"
+#include "progressbar.h"
 
 struct SourceInfo
 {
 	size_t index, componentCount;
 	long double plExponent, plFactor;
 	long double modalFlux, rms, stokesVFrac, maxError;
+	double rmPeakValue, rmPeakPos, rmZeroValue;
+	
+	double RMRelValue() const { return rmPeakPos / rmZeroValue; }
 	
 	bool operator<(const SourceInfo& rhs) const { return modalFlux < rhs.modalFlux; }
 	static bool hasLowerRMS(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.rms < rhs.rms; }
 	static bool hasLowerSI(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.plExponent < rhs.plExponent; }
 	static bool hasLowerVFrac(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.stokesVFrac < rhs.stokesVFrac; }
 	static bool hasLowerMaxError(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.maxError < rhs.maxError; }
+	static bool hasLowerRMValue(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.rmPeakValue < rhs.rmPeakValue; }
+	static bool hasLowerRMRelValue(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.RMRelValue() < rhs.RMRelValue(); }
 };
 
 double SourceRMS(const SpectralEnergyDistribution& sed, long double factor, long double exponent)
@@ -38,7 +45,7 @@ std::string SourceDesc(const SourceInfo& source, const Model& model)
 	std::ostringstream str;
 	const ModelSource& ms = model.Source(source.index);
 	const SpectralEnergyDistribution sed = ms.GetIntegratedSED();
-	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << ", V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << source.maxError;
+	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << ", V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << source.maxError << ", RMpeak=" << source.rmPeakValue << " @ " << source.rmPeakPos << " / " << source.rmZeroValue << " @0";
 	return str.str();
 }
 
@@ -89,6 +96,20 @@ int main(int argc, char* argv[])
 			sources.push_back(newSource);
 	}
 	std::cout << "DONE\n";
+	
+	ProgressBar progress("Doing RM synthesis");
+	for(size_t i=0; i!=sources.size(); ++i)
+	{
+		SourceInfo& newSource = sources[i];
+		const ModelSource& source = model.Source(newSource.index);
+		const SpectralEnergyDistribution sed = source.GetIntegratedSED();
+		RMSynthesis rmSynthesis(sed);
+		rmSynthesis.Synthesize();
+		rmSynthesis.PeakWithNonZeroRM(5, newSource.rmPeakPos, newSource.rmPeakValue);
+		double tmp;
+		rmSynthesis.PeakWithSmallRM(5, tmp, newSource.rmZeroValue);
+		progress.SetProgress(i+1, model.SourceCount());
+	}
 	
 	std::cout << "Sorting... " << std::flush;
 	std::sort(sources.rbegin(), sources.rend());
@@ -147,4 +168,10 @@ int main(int argc, char* argv[])
 	std::cout << "DONE\n";
 	std::cout << "Max errors:\n";
 	outputList(sources, model, "maxerror", false);
+	
+	std::cout << "\nSorting on RM value... " << std::flush;
+	std::sort(sources.rbegin(), sources.rend(), &SourceInfo::hasLowerRMValue);
+	std::cout << "DONE\n";
+	std::cout << "Relatively high RM values:\n";
+	outputList(sources, model, "highrm", false);
 }

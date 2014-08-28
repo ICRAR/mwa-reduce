@@ -6,6 +6,7 @@
 #include "loghistogram.h"
 #include "beamevaluator.h"
 #include "uvector.h"
+#include "rmsynthesis.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 
@@ -55,11 +56,11 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]] [-delnans]\n";
+		"\tsdf [-p] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]] [-delnans]\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, outputCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false;
+	bool outputPlot = false, outputRMPlot = false, outputCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
@@ -83,6 +84,9 @@ int main(int argc, char *argv[])
 			++argi;
 			outputPlot = true;
 			plotTitle = argv[argi];
+		} else if(option == "rmp")
+		{
+			outputRMPlot = true;
 		} else if(option == "csv") {
 			++argi;
 			outputCsv = true;
@@ -662,6 +666,53 @@ int main(int argc, char *argv[])
 						<< m.FrequencyHz()*1e-6 << ','
 						<< i << ',' << q << ',' << u << ',' << v << '\n';
 				}
+			}
+		}
+	}
+	
+	if(outputRMPlot)
+	{
+		std::ofstream plotStream("rmplot.plt");
+		plotStream <<
+			"set terminal postscript enhanced color\n"
+			"#set logscale y\n"
+			"#set xrange [0.001:]\n"
+			"#set yrange [-8:2]\n"
+			"set output \"rmplot.ps\"\n"
+			"#set key bottom left\n"
+			"set xlabel \"Frequency^-1 (/Hz)\"\n"
+			"set ylabel \"Flux (Jy)\"\n"
+			"plot \\\n";
+			
+		size_t compIndex = 0;
+		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			for(ModelSource::const_iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			{
+				std::ostringstream dataStreamName;
+				dataStreamName << "rm" << compIndex << ".txt";
+				std::ofstream dataStream(dataStreamName.str().c_str());
+				
+				plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"\"\\\n";
+				
+				if(compIndex != model.ComponentCount()-1)
+				{
+					plotStream << ",\\";
+				}
+				plotStream << "\n";
+				
+				const SpectralEnergyDistribution &sed = compPtr->SED();
+				RMSynthesis rmSynth(sed);
+				rmSynth.Synthesize();
+				const ao::uvector<double>& fdf = rmSynth.FDF();
+				
+				for(size_t i=0; i!=fdf.size(); ++i)
+				{
+					dataStream
+						<< rmSynth.IndexToValue(i) << '\t'
+						<< std::abs(fdf[i]) << '\n';
+				}
+				++compIndex;
 			}
 		}
 	}
