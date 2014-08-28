@@ -24,19 +24,25 @@ void RMSynthesis::Synthesize()
 		if(std::isfinite(q) && std::isfinite(u))
 			addSample(lambda*lambda, q, u);
 	}
+	
+	double fact = 1.0 / _sed.MeasurementCount();
+	for(size_t i=0; i!=_fdf.size(); ++i)
+	{
+		_fdf[i] *= fact;
+	}
 }
 
 void RMSynthesis::addSample(double lambdaSq, double q, double u)
 {
 	for(size_t i=0; i!=_fdf.size(); ++i)
 	{
-		double x = IndexToValue(i); //(double(i) - double(_fdf.size()/2))/100.0;
+		double x = IndexToValue(i);
 		// (q + iu) exp ( i 2 pi x lambdasq ) + (q - iu) exp ( - i 2 pi x lambdasq )
 		// = 2 real ( (q + iu) exp ( i 2 pi x lambdasq ) )
 		// = 2 real ( (q + iu) [ cos ( 2 pi x lambdasq ) + i sin ( 2 pi x lambdasq ) ] )
 		// = 2 [ q cos ( 2 pi x lambdasq ) - u sin ( 2 pi x lambdasq ) ]
 		double s, c;
 		sincos(x*lambdaSq*2.0, &s, &c);
-		_fdf[i] += 2.0 * (q * c + u * s);
+		_fdf[i] += q * c + u * s;
 	}
 }

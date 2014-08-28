@@ -680,8 +680,8 @@ int main(int argc, char *argv[])
 			"#set yrange [-8:2]\n"
 			"set output \"rmplot.ps\"\n"
 			"#set key bottom left\n"
-			"set xlabel \"Frequency^-1 (/Hz)\"\n"
-			"set ylabel \"Flux (Jy)\"\n"
+			"set xlabel \"rad/m^2\"\n"
+			"set ylabel \"Flux (Jy/beam)\"\n"
 			"plot \\\n";
 			
 		size_t compIndex = 0;

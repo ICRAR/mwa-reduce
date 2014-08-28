@@ -108,7 +108,7 @@ private:
 	
 	void accumulateBeforeBeamChange()
 	{
-		if(std::isfinite(_ionG) && _ionG > 0.3 && _ionG < 3.0)
+		if(std::isfinite(_ionG))
 		{
 			// Add the residual flux still left in the observation after ionpeel:
 			// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
