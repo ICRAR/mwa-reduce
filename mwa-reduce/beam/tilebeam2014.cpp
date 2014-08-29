@@ -9,6 +9,8 @@
 
 #include <limits>
 
+bool TileBeam2014::_firstInit = true;
+
 TileBeam2014::TileBeam2014(const double* delays, bool frequencyInterpolation) :
 	_dipoleHeight(0.28), /* Seems to be 0.3 in the RTS, 0.278 in beam script */
 	_dipoleSeparations(1.100),
@@ -26,7 +28,11 @@ TileBeam2014::TileBeam2014(const double* delays, bool frequencyInterpolation) :
 	JonesLookupDipole::Initialize();
 	TileImpedance::Initialize();
 	TileImpedance::GetTabulationFrequencies(_tabulationFrequencies);
-	std::cout << "Frequency interpolation of beam is " << (_frequencyInterpolation ? "enabled" : "disabled") << ".\n";
+	if(_firstInit)
+	{
+		std::cout << "Frequency interpolation of beam is " << (_frequencyInterpolation ? "enabled" : "disabled") << ".\n";
+		_firstInit = false;
+	}
 }
 
 void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<double>* output)

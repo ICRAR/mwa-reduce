@@ -74,25 +74,29 @@ void addSolutionFile(const Model& model, const char* solutionFilename, const cha
 	for(size_t direction=0; direction!=file.DirectionCount(); ++direction)
 	{
 		double gain = file.ReadAverageSolution(IonSolutionFile::GainSolution, 0, direction);
-		gainSum += gain;
 		
-		const std::vector<size_t>& sourceIndices = sourceIndexPerCluster[direction];
-		
-		for(size_t s=0; s!=sourceIndices.size(); ++s)
+		if(std::isfinite(gain))
 		{
-			size_t index = sourceIndices[s];
-			const ModelSource& source = model.Source(index);
-			std::complex<double> temp[4], beamSq[4];
-			beamEvaluator.EvaluateAbsToApparentGain(source.MeanRA(), source.MeanDec(), centralFrequency, temp);
+			gainSum += gain;
 			
-			// (w is assumed unity for now)
-			// gainsum += B* w g B
-			Matrix2x2::HermATimesB(beamSq, temp, temp);
-			Matrix2x2::MultiplyAdd(&gainPerSource[index*4], beamSq, gain);
+			const std::vector<size_t>& sourceIndices = sourceIndexPerCluster[direction];
 			
-			// weightsum += (B* B) w
-			//Matrix2x2::ATimesB(temp, beamSq, beamSq);
-			Matrix2x2::Add(&weightsPerSource[index*4], beamSq);
+			for(size_t s=0; s!=sourceIndices.size(); ++s)
+			{
+				size_t index = sourceIndices[s];
+				const ModelSource& source = model.Source(index);
+				std::complex<double> temp[4], beamSq[4];
+				beamEvaluator.EvaluateAbsToApparentGain(source.MeanRA(), source.MeanDec(), centralFrequency, temp);
+				
+				// (w is assumed unity for now)
+				// gainsum += B* w g B
+				Matrix2x2::HermATimesB(beamSq, temp, temp);
+				Matrix2x2::MultiplyAdd(&gainPerSource[index*4], beamSq, gain);
+				
+				// weightsum += (B* B) w
+				//Matrix2x2::ATimesB(temp, beamSq, beamSq);
+				Matrix2x2::Add(&weightsPerSource[index*4], beamSq);
+			}
 		}
 	}
 	std::cout << " avg gain=" << (gainSum / file.DirectionCount()) << '\n';

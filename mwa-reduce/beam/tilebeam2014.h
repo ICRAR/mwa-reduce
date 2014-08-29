@@ -40,6 +40,7 @@ private:
 	const double _dipoleHeight, _dipoleSeparations, _delayStep;
 	std::set<double> _tabulationFrequencies;
 	bool _frequencyInterpolation;
+	static bool _firstInit;
 	
 	struct FrequencyCacheInfo
 	{
