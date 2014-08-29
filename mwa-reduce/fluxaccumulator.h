@@ -127,7 +127,7 @@ private:
 			
 			// Calculate Weight += w (B* B) (B* B)
 			Matrix2x2::HermATimesB(temp, _beamGains, _beamGains);
-			Matrix2x2::HermATimesB(temp2, temp, temp);
+			Matrix2x2::ATimesB(temp2, temp, temp); //Herm?!
 			Matrix2x2::MultiplyAdd(_accWeights, temp2, _accVisWeightBeforeBeamChange * (_ionG*_ionG));
 		}
 		
