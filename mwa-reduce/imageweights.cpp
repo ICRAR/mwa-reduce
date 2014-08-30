@@ -14,7 +14,8 @@ ImageWeights::ImageWeights(const WeightMode& weightMode, size_t imageWidth, size
 	_imageHeight(round(double(imageHeight) / superWeight)),
 	_pixelScaleX(pixelScaleX),
 	_pixelScaleY(pixelScaleY),
-	_totalSum(0.0)
+	_totalSum(0.0),
+	_isGriddingFinished(false)
 {
 	if(_imageWidth%2 != 0) ++_imageWidth;
 	if(_imageHeight%2 != 0) ++_imageHeight;
@@ -44,6 +45,8 @@ double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, 
 
 void ImageWeights::Grid(casa::MeasurementSet& ms, const MSSelection& selection)
 {
+	if(_isGriddingFinished)
+		throw std::runtime_error("Grid() called after a call to FinishGridding()");
 	const MultiBandData bandData(ms.spectralWindow(), ms.dataDescription());
 	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
 	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
@@ -148,6 +151,8 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, const MSSelection& selection)
 
 void ImageWeights::Grid(MSProvider& msProvider, const MSSelection& selection)
 {
+	if(_isGriddingFinished)
+		throw std::runtime_error("Grid() called after a call to FinishGridding()");
 	const MultiBandData bandData(msProvider.MS().spectralWindow(), msProvider.MS().dataDescription());
 	MultiBandData selectedBand;
 	if(selection.HasChannelRange())
@@ -192,6 +197,10 @@ void ImageWeights::Grid(MSProvider& msProvider, const MSSelection& selection)
 
 void ImageWeights::FinishGridding()
 {
+	if(_isGriddingFinished)
+		throw std::runtime_error("FinishGridding() called twice");
+	_isGriddingFinished = true;
+	
 	if(_weightMode.IsBriggs())
 	{
 		double avgW = 0.0;
@@ -219,6 +228,8 @@ void ImageWeights::FinishGridding()
 
 void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep)
 {
+	if(_isGriddingFinished)
+		throw std::runtime_error("Grid() called after a call to FinishGridding()");
 	for(size_t ch=0;ch!=channelCount;++ch)
 	{
 		if(!flags[ch])
