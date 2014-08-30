@@ -126,12 +126,20 @@ class IonSolutionFile
 	double ReadAverageSolution(IonSolutionType type, size_t polarization, size_t direction)
 	{
 		double sum = 0.0;
+		size_t count = 0;
 		for(size_t i=0; i!=_header.intervalCount; ++i)
 		{
 			for(size_t c=0; c!=_header.channelBlockCount; ++c)
-				sum += ReadSolution(type, i, c, polarization, direction);
+			{
+				double solution = ReadSolution(type, i, c, polarization, direction);
+				if(std::isfinite(solution))
+				{
+					sum += solution;
+					++count;
+				}
+			}
 		}
-		return sum / (_header.intervalCount * _header.channelBlockCount);
+		return sum / count;
 	}
 	
   void ReadSolution(Solution& solution, size_t interval, size_t channelBlock, size_t polarization, size_t direction)
