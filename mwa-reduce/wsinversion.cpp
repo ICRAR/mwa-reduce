@@ -336,9 +336,7 @@ void WSInversion::gridMeasurementSet(MSData &msData)
 						double
 							u = newItem.u / curBand.ChannelWavelength(ch),
 							v = newItem.v / curBand.ChannelWavelength(ch),
-							weight = Weighting().IsUniform() ?
-								PrecalculatedWeightInfo()->GetUniformWeight(u, v) :
-								PrecalculatedWeightInfo()->GetBriggsWeight(u, v);
+							weight = PrecalculatedWeightInfo()->GetWeight(u, v);
 						*dataIter *= weight;
 						_totalWeight += weight * *weightIter;
 						++dataIter;

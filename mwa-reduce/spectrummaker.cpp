@@ -299,18 +299,7 @@ void SpectrumMaker::measureThreadFunc(ao::lane<SpectrumMaker::ThreadTaskInfo>* t
 			}
 			if(_imageWeights != 0)
 			{
-				switch(_weightMode.Mode())
-				{
-					case WeightMode::UniformWeighted:
-						weightScalar *= _imageWeights->GetUniformWeight(uOverL, vOverL);
-						break;
-					case WeightMode::BriggsWeighted:
-						weightScalar *= _imageWeights->GetBriggsWeight(uOverL, vOverL);
-						break;
-					case WeightMode::NaturalWeighted:
-					case WeightMode::DistanceWeighted:
-						break;
-				}
+				weightScalar *= _imageWeights->GetWeight(uOverL, vOverL);
 			}
 			
 			std::complex<double> visSample[4];
@@ -354,14 +343,15 @@ void SpectrumMaker::initWeighting()
 	if(_weightMode.RequiresGridding())
 	{
 		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting... " << std::flush;
-		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
+		_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
 		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
 		{
 			casa::MeasurementSet ms(i->first);
-			_imageWeights->Grid(ms, _weightMode, MSSelection::Everything());
+			_imageWeights->Grid(ms, MSSelection::Everything());
 			if(_files.size() > 1)
 				std::cout << ". " << std::flush;
 		}
+		_imageWeights->FinishGridding();
 		std::cout << "DONE\n";
 	}
 }

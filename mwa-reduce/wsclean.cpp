@@ -261,13 +261,14 @@ void WSClean::initializeImageWeights(const MSSelection& partSelection)
 		}
 		else {
 			std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting... " << std::flush;
-			_imageWeights.reset(new ImageWeights(_imgWidth, _imgHeight, _pixelScaleX, _pixelScaleY, _weightMode.SuperWeight()));
+			_imageWeights.reset(new ImageWeights(_weightMode, _imgWidth, _imgHeight, _pixelScaleX, _pixelScaleY, _weightMode.SuperWeight()));
 			for(size_t i=0; i!=_inversionAlgorithm->MeasurementSetCount(); ++i)
 			{
-				_imageWeights->Grid(_inversionAlgorithm->MeasurementSet(i), _weightMode, partSelection);
+				_imageWeights->Grid(_inversionAlgorithm->MeasurementSet(i), partSelection);
 				if(_inversionAlgorithm->MeasurementSetCount() > 1)
 					std::cout << i << ' ' << std::flush;
 			}
+			_imageWeights->FinishGridding();
 			_inversionAlgorithm->SetPrecalculatedWeightInfo(_imageWeights.get());
 			std::cout << "DONE\n";
 		}
@@ -279,7 +280,7 @@ void WSClean::initializeMFSImageWeights()
 	if(_weightMode.RequiresGridding())
 	{
 		std::cout << "Precalculating MFS weights for " << _weightMode.ToString() << " weighting...\n";
-		_imageWeights.reset(new ImageWeights(_imgWidth, _imgHeight, _pixelScaleX, _pixelScaleY, _weightMode.SuperWeight()));
+		_imageWeights.reset(new ImageWeights(_weightMode, _imgWidth, _imgHeight, _pixelScaleX, _pixelScaleY, _weightMode.SuperWeight()));
 		for(size_t i=0; i!=_filenames.size(); ++i)
 		{
 			if(_doReorder)
@@ -289,15 +290,16 @@ void WSClean::initializeMFSImageWeights()
 					MSSelection partSelection(_globalSelection);
 					selectChannels(partSelection, ch, _channelsOut);
 					PartitionedMS msProvider(_partitionedMSHandles[i], ch, *_polarizations.begin());
-					_imageWeights->Grid(msProvider, _weightMode, partSelection);
+					_imageWeights->Grid(msProvider, partSelection);
 				}
 			}
 			else {
 				ContiguousMS msProvider(_filenames[i], _columnName, _globalSelection, *_polarizations.begin(), _mGain != 1.0);
-				_imageWeights->Grid(msProvider, _weightMode, _globalSelection);
+				_imageWeights->Grid(msProvider,  _globalSelection);
 				std::cout << '.' << std::flush;
 			}
 		}
+		_imageWeights->FinishGridding();
 	}
 }
 

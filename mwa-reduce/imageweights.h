@@ -14,59 +14,60 @@
 class ImageWeights
 {
 	public:
-		ImageWeights(size_t imageWidth, size_t imageHeight, double pixelScaleX, double pixelScaleY, double superWeight=1.0);
+		ImageWeights(const WeightMode& weightMode, size_t imageWidth, size_t imageHeight, double pixelScaleX, double pixelScaleY, double superWeight=1.0);
 		
-		double GetWeight(double u, double v)
-		{
-			return GetUniformWeight(u ,v);
-			//return GetCountWeight(u ,v);
-			//return GetInverseTaperedWeight(u, v);
-			//return GetNaturalWeight(u ,v);
-		}
 		double GetNaturalWeight(double u, double v) const
 		{
 			return 1.0;
 		}
+		
 		double GetUniformWeight(double u, double v) const
 		{
-			double val = sumValue(u, v);
+			double val = sampleGridValue(u, v);
 			if(val != 0.0)
 				return 1.0 / val;
 			else
 				return 0.0;
 		}
+		
 		double GetInverseTaperedWeight(double u, double v) const
 		{
 			return sqrt(u*u + v*v);
 		}
-		double GetBriggsWeight(double u, double v) const
+		
+		double GetWeight(double u, double v) const
 		{
-			return sumValue(u, v);
-		}
-		double GetWeight(double u, double v, const WeightMode& weightMode) const
-		{
-			switch(weightMode.Mode())
+			switch(_weightMode.Mode())
 			{
-				case WeightMode::UniformWeighted: return GetUniformWeight(u, v);
-				case WeightMode::BriggsWeighted: return GetBriggsWeight(u, v);
+				case WeightMode::UniformWeighted:
+				case WeightMode::BriggsWeighted: return sampleGridValue(u, v);
 				case WeightMode::DistanceWeighted: return GetInverseTaperedWeight(u, v);
 				default:
 				case WeightMode::NaturalWeighted: return GetNaturalWeight(u, v);
 			}
 		}
 
-		void Grid(casa::MeasurementSet& ms, WeightMode weightMode, const MSSelection& selection);
-		void Grid(class MSProvider& ms, WeightMode weightMode, const MSSelection& selection);
+		void Grid(casa::MeasurementSet& ms, const MSSelection& selection);
+		void Grid(class MSProvider& ms, const MSSelection& selection);
+		
+		void FinishGridding();
 		
 		double ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 
 		void Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 
 	private:
-		ImageWeights(const ImageWeights&) { }
+		ImageWeights(const ImageWeights&) :
+			_weightMode(WeightMode::NaturalWeighted),
+			_imageWidth(0),
+			_imageHeight(0),
+			_pixelScaleX(0.0),
+			_pixelScaleY(0.0),
+			_totalSum(0.0)
+		{ }
 		void operator=(const ImageWeights&) { }
 		
-		double sumValue(double u, double v) const
+		double sampleGridValue(double u, double v) const
 		{
 			if(v < 0.0) {
 				u = -u;
@@ -75,7 +76,7 @@ class ImageWeights
 			double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
 			double y = round(v*_imageHeight*_pixelScaleY);
 			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
-				return _sum[(size_t) x + (size_t) y*_imageWidth];
+				return _grid[(size_t) x + (size_t) y*_imageWidth];
 			else {
 				return 0.0;
 			}
@@ -90,10 +91,12 @@ class ImageWeights
 		{
 			return 299792458.0L;
 		}
+		const WeightMode _weightMode;
 		std::size_t _imageWidth, _imageHeight;
-		double _pixelScaleX, _pixelScaleY;
+		const double _pixelScaleX, _pixelScaleY;
 		
-		ao::uvector<double> _sum;
+		ao::uvector<double> _grid;
+		double _totalSum = 0.0;
 };
 
 #endif

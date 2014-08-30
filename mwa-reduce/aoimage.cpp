@@ -371,7 +371,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	std::cout << "ChannelCount: " << channelCount << ", polarizationCount: " << polarizationCount << ", freqstep: " << frequencyStep << '\n';
 	
 	std::cout << "Initializing weights... " << std::flush;
-	ImageWeights weights(imager.ImageSize(), imager.ImageSize(), imager.PixelScale(), imager.PixelScale());
+	ImageWeights weights(WeightMode::UniformWeighted, imager.ImageSize(), imager.ImageSize(), imager.PixelScale(), imager.PixelScale());
 	bool weightsNeedData = true;
 	if(info.onlyModel) weightsNeedData = false;
 	

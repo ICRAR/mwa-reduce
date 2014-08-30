@@ -226,7 +226,7 @@ public:
 					{
 						double lambda = _bandData.ChannelWavelength(ch);
 						double uInL = u / lambda, vInL = v / lambda;
-						double imgWeight = _imageWeights->GetWeight(uInL, vInL, _weightMode);
+						double imgWeight = _imageWeights->GetWeight(uInL, vInL);
 						for(size_t p=0; p!=4; ++p)
 							rowData.weights[ch*4+p] *= imgWeight;
 					}
@@ -436,8 +436,9 @@ private:
 		if(_weightMode.RequiresGridding())
 		{
 			std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
-			_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
-			_imageWeights->Grid(_ms, _weightMode, MSSelection::Everything());
+			_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
+			_imageWeights->Grid(_ms, MSSelection::Everything());
+			_imageWeights->FinishGridding();
 		}
 	}
 

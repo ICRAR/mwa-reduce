@@ -38,8 +38,9 @@ void IonPeeler::initWeighting(casa::MeasurementSet& ms)
 	if(_weightMode.RequiresGridding())
 	{
 		std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
-		_imageWeights.reset(new ImageWeights(_weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
-		_imageWeights->Grid(ms, _weightMode, MSSelection::Everything());
+		_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
+		_imageWeights->Grid(ms, MSSelection::Everything());
+		_imageWeights->FinishGridding();
 	}
 }
 
@@ -272,7 +273,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 						
 						double lambda = _bandData.ChannelWavelength(channelIndex);
 						double uInL = rowData.u / lambda, vInL = rowData.v / lambda;
-						double imageWeight = _imageWeights->GetWeight(uInL, vInL, _weightMode);
+						double imageWeight = _imageWeights->GetWeight(uInL, vInL);
 						double* weightsWritePtr = _weightArrays[cb]->ValuePtr(rowData.a1, rowData.a2, timeIndex - _startTimestep + timeIndexOffset);
 						if(uvDistSq < _minUVSq)
 							weightsWritePtr[0] = 0.0;
