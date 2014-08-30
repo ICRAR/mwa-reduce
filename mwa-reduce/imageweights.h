@@ -96,7 +96,7 @@ class ImageWeights
 		const double _pixelScaleX, _pixelScaleY;
 		
 		ao::uvector<double> _grid;
-		double _totalSum = 0.0;
+		double _totalSum;
 		bool _isGriddingFinished;
 };
 
