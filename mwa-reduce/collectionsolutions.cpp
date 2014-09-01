@@ -99,7 +99,6 @@ void addSolutionFile(Model& model, const char* solutionFilename, const char* msF
 				Matrix2x2::MultiplyAdd(&gainPerSource[index*4], beamSq, gain);
 				
 				// weightsum += (B* B) w
-				//Matrix2x2::ATimesB(temp, beamSq, beamSq);
 				Matrix2x2::Add(&weightsPerSource[index*4], beamSq);
 			}
 		}
@@ -155,10 +154,13 @@ int main(int argc, char* argv[])
 	Model outputModel;
 	for(size_t s=0; s!=model.SourceCount(); ++s)
 	{
-		std::complex<double> *sw = &weightsPerSource[s*4];
-		if(sw[0] != 0.0 || sw[1] != 0.0 || sw[2] != 0.0 || sw[3] != 0.0)
+		std::complex<double>
+			*sw = &weightsPerSource[s*4],
+			*sg = &gainPerSource[s*4];
+		bool weightIsNonZero = sw[0] != 0.0 || sw[1] != 0.0 || sw[2] != 0.0 || sw[3] != 0.0;
+		bool fluxIsNonZero = sg[0] != 0.0 || sg[1] != 0.0 || sg[2] != 0.0 || sg[3] != 0.0;
+		if(weightIsNonZero && fluxIsNonZero)
 		{
-			std::complex<double> *sg = &gainPerSource[s*4];
 			std::complex<double> correctedLinear[4];
 			
 			// Calculate: W*GW sum(W*W)^-1
