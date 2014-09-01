@@ -17,9 +17,10 @@ int main(int argc, char *argv[])
 	}
 	const char *outImageName = argv[1];
 	const char *outWeightName = argv[2];
-	size_t width = 0, height = 0;
+	size_t width = 0, height = 0, count = 0;
 	double *outImage = 0, *outWeights = 0;
 	std::unique_ptr<FitsWriter> imgWriter;
+	double frequencySum = 0.0, lowestFreq = 0.0, highestFreq = 0.0;
 	for(int argi=3; argi + 1 < argc; argi += 2)
 	{
 		const char *inpImageName = argv[argi];
@@ -44,6 +45,21 @@ int main(int argc, char *argv[])
 			if(width != inpReader.ImageWidth() || height != inpReader.ImageHeight())
 				throw std::runtime_error("Not all images have same size");
 		}
+		
+		double thisFrequency = inpReader.Frequency();
+		frequencySum += thisFrequency;
+		if(count == 0)
+		{
+			lowestFreq = thisFrequency - inpReader.Bandwidth()*0.5;
+			highestFreq = thisFrequency + inpReader.Bandwidth()*0.5;
+		}
+		else {
+			if(thisFrequency - inpReader.Bandwidth()*0.5 < lowestFreq)
+				lowestFreq = thisFrequency - inpReader.Bandwidth()*0.5;
+			if(thisFrequency + inpReader.Bandwidth()*0.5 > highestFreq)
+				highestFreq = thisFrequency + inpReader.Bandwidth()*0.5;
+		}
+		count++;
 		
 		ao::uvector<double> inpImage(width*height), weightImage(width*height);
 		
@@ -94,6 +110,7 @@ int main(int argc, char *argv[])
 		
 		std::cout << '.' << std::flush;
 	}
+	std::cout << '\n';
 	
 	// Divide the weight out
 	const double *weightsIter = outWeights;
@@ -106,6 +123,7 @@ int main(int argc, char *argv[])
 		++weightsIter;
 	}
 	
+	imgWriter->SetFrequency(frequencySum / count, (highestFreq - lowestFreq));
 	imgWriter->Write<double>(outImageName, outImage);
 	delete[] outImage;
 	
