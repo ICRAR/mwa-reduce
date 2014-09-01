@@ -28,7 +28,7 @@ std::map<std::string, size_t> sourceNameToIndex;
 ao::uvector<std::complex<double>> gainPerSource, weightsPerSource;
 double centralFrequency = 0.0;
 
-void addSolutionFile(const Model& model, const char* solutionFilename, const char* msFilename)
+void addSolutionFile(Model& model, const char* solutionFilename, const char* msFilename)
 {
 	std::cout << "Opening " << solutionFilename << "... " << std::flush;
 	IonSolutionFile file;
@@ -70,6 +70,10 @@ void addSolutionFile(const Model& model, const char* solutionFilename, const cha
 			throw std::runtime_error("Measurement sets have different frequency coverage");
 	}
 	
+	char hasBeenProcessedMark = 1, hasNotBeenProcessedMark = 0;
+	for(Model::iterator s=model.begin(); s!=model.end(); ++s)
+		s->SetUserData(&hasNotBeenProcessedMark);
+	
 	double gainSum = 0.0;
 	for(size_t direction=0; direction!=file.DirectionCount(); ++direction)
 	{
@@ -84,7 +88,8 @@ void addSolutionFile(const Model& model, const char* solutionFilename, const cha
 			for(size_t s=0; s!=sourceIndices.size(); ++s)
 			{
 				size_t index = sourceIndices[s];
-				const ModelSource& source = model.Source(index);
+				ModelSource& source = model.Source(index);
+				source.SetUserData(&hasBeenProcessedMark);
 				std::complex<double> temp[4], beamSq[4];
 				beamEvaluator.EvaluateAbsToApparentGain(source.MeanRA(), source.MeanDec(), centralFrequency, temp);
 				
@@ -99,7 +104,21 @@ void addSolutionFile(const Model& model, const char* solutionFilename, const cha
 			}
 		}
 	}
-	std::cout << " avg gain=" << (gainSum / file.DirectionCount()) << '\n';
+	
+	for(size_t index=0; index!=model.SourceCount(); ++index)
+	{
+		ModelSource& source = model.Source(index);
+		if(source.UserData() == &hasNotBeenProcessedMark)
+		{
+			std::complex<double> temp[4], beamSq[4];
+			beamEvaluator.EvaluateAbsToApparentGain(source.MeanRA(), source.MeanDec(), centralFrequency, temp);
+			// Only add to weight, since it hasn't been peeled
+			Matrix2x2::HermATimesB(beamSq, temp, temp);
+			Matrix2x2::Add(&weightsPerSource[index*4], beamSq);
+		}
+	}
+
+	std::cout << "Avg gain=" << (gainSum / file.DirectionCount()) << '\n';
 }
 
 int main(int argc, char* argv[])
@@ -114,7 +133,7 @@ int main(int argc, char* argv[])
 	const char* outputModelFilename = argv[argi+1];
 	
 	std::cout << "Reading model...\n";
-	const Model model(modelFilename);
+	Model model(modelFilename);
 	
 	gainPerSource.assign(model.SourceCount()*4, 0.0);
 	weightsPerSource.assign(model.SourceCount()*4, 0.0);
