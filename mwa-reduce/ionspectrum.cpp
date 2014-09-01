@@ -38,7 +38,6 @@ int main(int argc, char* argv[])
 				weightMode.SetMode(WeightMode::Briggs(robustness));
 			}
 			else throw std::runtime_error("Unknown weighting mode specified");
-			++argi;
 		}
 		else if(param == "j")
 		{
@@ -46,6 +45,7 @@ int main(int argc, char* argv[])
 			threadCount = atoi(argv[argi]);
 		}
 		else throw std::runtime_error("Unknown option specified");
+		++argi;
 	}	
 	const char *msFilename(argv[argi]);
 	const char *ionFilename(argv[argi+1]);
