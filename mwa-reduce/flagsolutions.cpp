@@ -5,22 +5,37 @@
 #include <limits>
 #include <boost/filesystem/operations.hpp>
 
+double phaseDist(double phase1, double phase2)
+{
+	double dist = fmod(fabs(phase2 - phase1), 2.0*M_PI);
+	if(dist > M_PI) dist = M_PI - dist;
+	return dist;
+}
+
 int main(int argc, char **argv)
 {
   if(argc < 2)
     {
-      std::cout << "Usage: flagsolutions <solutions.bin> [<solutions-flag-file.txt>]\n"
+      std::cout << "Usage: flagsolutions [-c <second-sol.bin>] <solutions.bin> [<solutions-flag-file.txt>]\n"
 				"Will flag solutions in the solution file as specified by the flag file.\n";
     } else {
 		size_t argi = 1;
+		const char* comparisonFilename = 0;
 		while(argv[argi][0] == '-')
 		{
-			//std::string p(&argv[argi][1]);
-			throw std::runtime_error("Bad option");
+			std::string p(&argv[argi][1]);
+			if(p == "c")
+			{
+				++argi;
+				comparisonFilename = argv[argi];
+			}
+			else throw std::runtime_error("Bad option");
 			++argi;
 		}
+		const char* solutionFilename = argv[argi];
+		
 		SolutionFile solutionFile;
-		solutionFile.OpenForReading(argv[argi]);
+		solutionFile.OpenForReading(solutionFilename);
 		
 		std::cout << solutionFile.IntervalCount() << " intervals, " << solutionFile.AntennaCount() << " antennas, " << solutionFile.ChannelCount() << " channels, " << solutionFile.PolarizationCount() << " polarizations in solution file.\n";
 		
@@ -81,5 +96,60 @@ int main(int argc, char **argv)
 			
 		if(hasFlagfile)
 			boost::filesystem::rename(newFilename, std::string(argv[argi]));
+		
+		if(comparisonFilename != 0)
+		{
+			SolutionFile compSol1, compSol2;
+			compSol1.OpenForReading(comparisonFilename);
+			compSol2.OpenForReading(solutionFilename);
+			
+			ao::uvector<double>
+				sumXX(compSol1.AntennaCount(), 0.0), sumYY(compSol1.AntennaCount(), 0.0),
+				referencePhase[4];
+			for(size_t i=0; i!=4; ++i)
+				referencePhase[i].resize(compSol1.ChannelCount());
+			
+			for(size_t a = 0; a!=compSol1.AntennaCount(); ++a) {
+				for(size_t ch = 0; ch!=compSol1.ChannelCount(); ++ch) {
+					double vals[4];
+					vals[0] = std::arg(compSol1.ReadNextSolution());
+					compSol1.ReadNextSolution(); compSol1.ReadNextSolution();
+					vals[1] = std::arg(compSol1.ReadNextSolution());
+					
+					vals[2] = std::arg(compSol2.ReadNextSolution());
+					compSol2.ReadNextSolution(); compSol2.ReadNextSolution();
+					vals[3] = std::arg(compSol2.ReadNextSolution());
+
+					if(a == 0)
+					{
+						for(size_t i=0; i!=4; ++i)
+							referencePhase[i][ch] = vals[i];
+					}
+					
+					double
+						xxDist = phaseDist(vals[0]-referencePhase[0][ch], vals[2]-referencePhase[2][ch]),
+						yyDist = phaseDist(vals[1]-referencePhase[1][ch], vals[3]-referencePhase[3][ch]);
+					sumXX[a] += xxDist*xxDist;
+					sumYY[a] += yyDist*yyDist;
+				}
+			}
+			
+			ao::uvector<std::pair<double, size_t>>
+				xxToAntenna(compSol1.AntennaCount()), yyToAntenna(compSol1.AntennaCount());
+			for(size_t a = 0; a!=compSol1.AntennaCount(); ++a) {
+				xxToAntenna[a] = std::make_pair(sqrt(sumXX[a]/compSol1.AntennaCount()), a);
+				yyToAntenna[a] = std::make_pair(sqrt(sumYY[a]/compSol1.AntennaCount()), a);
+			}
+			std::sort(xxToAntenna.rbegin(), xxToAntenna.rend());
+			std::sort(yyToAntenna.rbegin(), yyToAntenna.rend());
+			
+			std::cout << "XX\tRMS\tYY\tRM\n";
+			for(size_t a=0; a!=compSol1.AntennaCount(); ++a)
+			{
+				std::cout
+					<< xxToAntenna[a].second << '\t' << xxToAntenna[a].first << '\t'
+					<< yyToAntenna[a].second << '\t' << yyToAntenna[a].first << '\n';
+			}
+		}
 	}
 }
