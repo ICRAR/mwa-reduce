@@ -106,6 +106,8 @@ int main(int argc, char **argv)
 			ao::uvector<double>
 				sumXX(compSol1.AntennaCount(), 0.0), sumYY(compSol1.AntennaCount(), 0.0),
 				referencePhase[4];
+			ao::uvector<size_t>
+				countXX(compSol1.AntennaCount(), 0), countYY(compSol1.AntennaCount(), 0);
 			for(size_t i=0; i!=4; ++i)
 				referencePhase[i].resize(compSol1.ChannelCount());
 			
@@ -129,16 +131,24 @@ int main(int argc, char **argv)
 					double
 						xxDist = phaseDist(vals[0]-referencePhase[0][ch], vals[2]-referencePhase[2][ch]),
 						yyDist = phaseDist(vals[1]-referencePhase[1][ch], vals[3]-referencePhase[3][ch]);
-					sumXX[a] += xxDist*xxDist;
-					sumYY[a] += yyDist*yyDist;
+					if(std::isfinite(xxDist))
+					{
+						sumXX[a] += xxDist*xxDist;
+						countXX[a]++;
+					}
+					if(std::isfinite(yyDist))
+					{
+						sumYY[a] += yyDist*yyDist;
+						countYY[a]++;
+					}
 				}
 			}
 			
 			ao::uvector<std::pair<double, size_t>>
 				xxToAntenna(compSol1.AntennaCount()), yyToAntenna(compSol1.AntennaCount());
 			for(size_t a = 0; a!=compSol1.AntennaCount(); ++a) {
-				xxToAntenna[a] = std::make_pair(sqrt(sumXX[a]/compSol1.ChannelCount())*180.0/M_PI, a);
-				yyToAntenna[a] = std::make_pair(sqrt(sumYY[a]/compSol1.ChannelCount())*180.0/M_PI, a);
+				xxToAntenna[a] = std::make_pair(sqrt(sumXX[a]/countXX[a])*180.0/M_PI, a);
+				yyToAntenna[a] = std::make_pair(sqrt(sumYY[a]/countYY[a])*180.0/M_PI, a);
 			}
 			std::sort(xxToAntenna.rbegin(), xxToAntenna.rend());
 			std::sort(yyToAntenna.rbegin(), yyToAntenna.rend());
