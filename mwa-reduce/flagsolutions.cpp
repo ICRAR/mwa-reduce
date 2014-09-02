@@ -137,8 +137,8 @@ int main(int argc, char **argv)
 			ao::uvector<std::pair<double, size_t>>
 				xxToAntenna(compSol1.AntennaCount()), yyToAntenna(compSol1.AntennaCount());
 			for(size_t a = 0; a!=compSol1.AntennaCount(); ++a) {
-				xxToAntenna[a] = std::make_pair(sqrt(sumXX[a]/compSol1.AntennaCount()), a);
-				yyToAntenna[a] = std::make_pair(sqrt(sumYY[a]/compSol1.AntennaCount()), a);
+				xxToAntenna[a] = std::make_pair(sqrt(sumXX[a]/compSol1.ChannelCount())*180.0/M_PI, a);
+				yyToAntenna[a] = std::make_pair(sqrt(sumYY[a]/compSol1.ChannelCount())*180.0/M_PI, a);
 			}
 			std::sort(xxToAntenna.rbegin(), xxToAntenna.rend());
 			std::sort(yyToAntenna.rbegin(), yyToAntenna.rend());
