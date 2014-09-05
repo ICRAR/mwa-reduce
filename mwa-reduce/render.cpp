@@ -9,6 +9,8 @@
 #include "modelrenderer.h"
 #include "banddata.h"
 
+void meanPos(const std::vector<ModelSource*>& sources, double& ra, double& dec);
+
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
@@ -113,8 +115,9 @@ int main(int argc, char* argv[])
 			solutionFile.OpenForReading(ionSolutionFilename);
 			std::cout << "Sources in model: " << model.SourceCount() << '\n';
 			std::cout << "Directions in solution file: " << solutionFile.DirectionCount() << '\n';
-			if(solutionFile.DirectionCount() != model.SourceCount())
+			if(solutionFile.DirectionCount() != model.ClusterCount())
 				throw std::runtime_error("Direction count in solutions and cluster count in model do not match!");
+			interpolator.InitializeFile(solutionFile);
 			
 			std::ofstream
 				plotPosFile(ionOutPrefix+"-posplot.plt"),
@@ -140,10 +143,12 @@ int main(int argc, char* argv[])
 				<< "set xlabel \"Freq (\\lambda^2)\"\n"
 				<< "set ylabel \"Gain\"\n"
 				<< "plot\\\n";
-
+				
 			for(size_t s=0; s!=solutionFile.DirectionCount(); ++s)
 			{
-				const ModelSource& source = model.Source(s);
+				double meanRA, meanDec;
+				interpolator.GetMeanPosForDirection(s, meanRA, meanDec);
+				
 				std::ostringstream name;
 				name << ionOutPrefix << "-direc" << s << "-";
 				if(s != 0) {
@@ -183,9 +188,9 @@ int main(int argc, char* argv[])
 				totalDm *= 100.0/solutionFile.ChannelBlockCount();
 				vectorPlot
 					<< "LINE\t"
-					<< source.MeanRA()*(180.0/M_PI) << '\t' << source.MeanDec()*(180.0/M_PI) << '\t'
-					<< (source.MeanRA()-totalDl)*(180.0/M_PI) << '\t'
-					<< (source.MeanDec()-totalDm)*(180.0/M_PI) << '\n';
+					<< meanRA*(180.0/M_PI) << '\t' << meanDec*(180.0/M_PI) << '\t'
+					<< (meanRA-totalDl)*(180.0/M_PI) << '\t'
+					<< (meanDec-totalDm)*(180.0/M_PI) << '\n';
 			}
 			plotPosFile << '\n';
 			plotGainFile << '\n';

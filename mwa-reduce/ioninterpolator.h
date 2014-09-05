@@ -16,7 +16,7 @@ private:
 public:
 	IonInterpolator(const Model& model, const FitsReader& templateReader) :
 		_model(model),
-		_sourceIndices(_model.SourceCount()),
+		_directionIndices(),
 		_phaseCentreRA(templateReader.PhaseCentreRA()),
 		_phaseCentreDec(templateReader.PhaseCentreDec()),
 		_pixelSizeX(templateReader.PixelSizeX()),
@@ -24,13 +24,11 @@ public:
 		_width(templateReader.ImageWidth()),
 		_height(templateReader.ImageHeight())
 	{
-		for(size_t i=0; i!=_model.SourceCount(); ++i)
-			_sourceIndices[i] = i;
 	}
 	
 	IonInterpolator(const Model& model, double ra, double dec, double scaleX, double scaleY, size_t width, size_t height) :
 		_model(model),
-		_sourceIndices(_model.SourceCount()),
+		_directionIndices(),
 		_phaseCentreRA(ra),
 		_phaseCentreDec(dec),
 		_pixelSizeX(scaleX),
@@ -38,8 +36,19 @@ public:
 		_width(width),
 		_height(height)
 	{
-		for(size_t i=0; i!=_model.SourceCount(); ++i)
-			_sourceIndices[i] = i;
+	}
+	
+	void InitializeFile(IonSolutionFile& solutions)
+	{
+		_directionIndices.resize(solutions.DirectionCount());
+		for(size_t i=0; i!=solutions.DirectionCount(); ++i)
+			_directionIndices[i] = i;
+		solutions.ReadClusterMetaInfo(_model, _sourcesPerDirection);
+	}
+	
+	void GetMeanPosForDirection(size_t direction, double& meanRA, double& meanDec)
+	{
+		meanPos(_sourcesPerDirection[direction], meanRA, meanDec);
 	}
 	
 	/**
@@ -55,12 +64,12 @@ public:
 		_polarization = polarization;
 		
 		_triangulator.Clear();
-		for(size_t i=0; i!=_model.SourceCount(); ++i)
+		for(size_t direction=0; direction!=solutions.DirectionCount(); ++direction)
 		{
-			const ModelSource& source = _model.Source(i);
-			double posRA = source.MeanRA(), posDec = source.MeanDec();
+			double posRA, posDec;
+			GetMeanPosForDirection(direction, posRA, posDec);
 			IonSolutionFile::Solution solution;
-			getAverageSolution(solutions, solution, i);
+			getAverageSolution(solutions, solution, direction);
 			// Invert the ionospheric corrections: the source in our model
 			//   is observed at position l+dl, m+dm, so if we want to know
 			//   what is really at position l,m, we need to displace
@@ -71,7 +80,7 @@ public:
 			l += solution.dl;
 			m += solution.dm;
 			ImageCoordinates::LMToRaDec(l, m, _phaseCentreRA, _phaseCentreDec, posRA, posDec);
-			_triangulator.AddVertex(source.MeanRA(), source.MeanDec(), &_sourceIndices[i]);
+			_triangulator.AddVertex(posRA, posDec, &_directionIndices[direction]);
 		}
 		_triangulator.Triangulate();
 		_triangulator.SaveConvexHullAsKvis("convex.ann");
@@ -81,10 +90,10 @@ public:
 	
 	void Interpolate(double* image, IonSolutionFile& file, IonSolutionFile::IonSolutionType solutionType)
 	{
-		ao::uvector<double> solutionValues(_model.SourceCount());
-		for(size_t i=0; i!=_model.SourceCount(); ++i)
+		ao::uvector<double> solutionValues(file.DirectionCount());
+		for(size_t direction=0; direction!=file.DirectionCount(); ++direction)
 		{
-			solutionValues[i] = getAverageSolution(file, solutionType, i);
+			solutionValues[direction] = getAverageSolution(file, solutionType, direction);
 		}
 		
 		TriangleInterpolator interpolator;
@@ -175,9 +184,24 @@ private:
 		return val / double((_endChannel - _startChannel) * (_endInterval - _startInterval));
 	}
 	
+	void meanPos(const std::vector<ModelSource*>& sources, double& meanRA, double& meanDec)
+	{
+		std::vector<double> raValues;
+		double decSum = 0.0;
+		
+		raValues.reserve(sources.size());
+		for(std::vector<ModelSource*>::const_iterator s=sources.begin(); s!=sources.end(); ++s)
+		{
+			raValues.push_back((*s)->MeanRA());
+			decSum += (*s)->MeanDec();
+		}
+		meanDec = decSum / sources.size();
+		meanRA = ImageCoordinates::MeanRA(raValues);
+	}
+
 	Model _model;
 	Delaunay _triangulator;
-	std::vector<size_t> _sourceIndices;
+	std::vector<size_t> _directionIndices;
 
 	const double
 		_phaseCentreRA, _phaseCentreDec,
@@ -186,6 +210,7 @@ private:
 		_width, _height;
 	
 	size_t _startInterval, _endInterval, _startChannel, _endChannel, _polarization;
+	std::vector<std::vector<ModelSource*>> _sourcesPerDirection;
 };
 
 #endif

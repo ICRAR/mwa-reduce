@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include "uvector.h"
+#include "model.h"
 
 class IonSolutionFile
 {
@@ -108,6 +109,29 @@ class IonSolutionFile
 			*i = readString();
 		_firstDataPos = _inputStream->tellg();
 		_clustersInFile++;
+	}
+	
+	void ReadClusterMetaInfo(Model& expectedSources, std::vector<std::vector<ModelSource*>>& sourcesPerDirection)
+	{
+		sourcesPerDirection.clear();
+		std::map<std::string,size_t> sourceNameToIndex;
+		for(size_t s=0; s!=expectedSources.SourceCount(); ++s)
+			sourceNameToIndex.insert(std::make_pair(expectedSources.Source(s).Name(), s));
+		
+		for(size_t d=0; d!=DirectionCount(); ++d)
+		{
+			std::string clusterName;
+			std::vector<std::string> sourceNames;
+			ReadClusterMetaInfo(clusterName, sourceNames);
+			std::vector<ModelSource*> sources;
+			for(size_t i=0; i!=sourceNames.size(); ++i)
+			{
+				std::map<std::string,size_t>::iterator sIter = sourceNameToIndex.find(sourceNames[i]);
+				if(sIter == sourceNameToIndex.end()) throw std::runtime_error("Source not found in model");
+				sources.push_back(&expectedSources.Source(sIter->second));
+			}
+			sourcesPerDirection.push_back(sources);
+		}
 	}
 
 	double ReadSolution(IonSolutionType type, size_t interval, size_t channelBlock, size_t polarization, size_t direction)
