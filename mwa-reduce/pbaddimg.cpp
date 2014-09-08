@@ -136,8 +136,8 @@ int main(int argc, char *argv[])
 			// Calculate Flux += w B* V B  (from: w (B* B) B^-1 V B*^-1 (B* B))
 			// 'w' is 1 for now.
 			std::complex<double> tempValues[4];
-			Matrix2x2::ATimesB(tempValues, beamValues, imgValues);
-			Matrix2x2::PlusATimesHermB(&*jonesIter, tempValues, beamValues);
+			Matrix2x2::HermATimesB(tempValues, beamValues, imgValues);
+			Matrix2x2::PlusATimesB(&*jonesIter, tempValues, beamValues);
 			
 			// Calculate Weight += w (B* B) (B* B)
 			Matrix2x2::HermATimesB(tempValues, beamValues, beamValues);
