@@ -22,10 +22,12 @@ std::string System::FindPythonFilePath(const std::string& filename)
 	std::string command =
 		std::string("echo \"import sys\nfor a in sys.path:\n  print a\"|python>") +
 		tempFilename;
-	system(command.c_str());
+	int status = system(command.c_str());
+	if(status != 0)
+	  throw std::runtime_error("system() returned non-zero error code: might be out of memory, or python might not be working properly");
 	std::ifstream searchPathsFile(tempFilename.c_str());
-	if(searchPathsFile.bad())
-		throw std::runtime_error(("Error in findPythonFilePath: system call did not create expected temporary file " + tempFilename).c_str());
+	if(!searchPathsFile.good())
+	  throw std::runtime_error(("Error in findPythonFilePath: system call did not create expected temporary file " + tempFilename).c_str());
 	while(searchPathsFile.good())
 	{
 		std::string prefixPath;
