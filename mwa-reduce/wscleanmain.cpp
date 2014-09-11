@@ -40,10 +40,10 @@ int main(int argc, char *argv[])
 			"   Splits the bandwidth and makes count nr. of images. Default: 1.\n"
 			"-predict <image-prefix>\n"
 			"   Only perform a single prediction for an existing image. Doesn't do any imaging or cleaning.\n"
-			"-smallinversion\n"
+			"-nosmallinversion and -smallinversion\n"
 			"   Perform inversion at the Nyquist resolution and upscale the image to the requested image size afterwards.\n"
-			"   This can speed up inversion considerably, but makes aliasing slightly worse. This effect is\n"
-			"   in most cases <1%. Default: off.\n"
+			"   This speeds up inversion considerably, but makes aliasing slightly slightly worse. This effect is\n"
+			"   in most cases <1%. Default: on.\n"
 			"-weight <weightmode>\n"
 			"   Weightmode can be: natural, mwa, uniform, briggs. Default: uniform. When using Briggs' weighting,\n"
 			"   add the robustness parameter, like: \"-weight briggs 0.5\".\n"
@@ -263,6 +263,10 @@ int main(int argc, char *argv[])
 		else if(param == "smallinversion")
 		{
 			wsclean.SetSmallInversion(true);
+		}
+		else if(param == "nosmallinversion")
+		{
+			wsclean.SetSmallInversion(false);
 		}
 		else if(param == "smallpsf")
 		{
