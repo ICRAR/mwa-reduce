@@ -697,7 +697,7 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 						writeFits("residual.fits", restoredImage, *curPol, currentChannelIndex, *isImaginary);
 					double* modelImage = _imageAllocator.Allocate(_imgWidth*_imgHeight);
 					_modelImages.Load(modelImage, *curPol, currentChannelIndex, *isImaginary);
-					ModelRenderer renderer(_fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY);
+					ModelRenderer renderer(_fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, _fitsWriter.PhaseCentreDL(), _fitsWriter.PhaseCentreDM());
 					if(_multiscale)
 					{
 						std::cout << "Rendering sources to restored image... " << std::flush;
@@ -707,7 +707,7 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 					else {
 						Model model;
 						// A model cannot hold instrumental pols (xx/xy/yx/yy), hence always use Stokes I here
-						CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, 0.0, _fitsWriter.Frequency(), Polarization::StokesI);
+						CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, _fitsWriter.PhaseCentreDL(), _fitsWriter.PhaseCentreDM(), 0.0, _fitsWriter.Frequency(), Polarization::StokesI);
 						
 						std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
 						renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, Polarization::StokesI);

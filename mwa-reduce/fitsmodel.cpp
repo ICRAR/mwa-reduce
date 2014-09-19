@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 		}
 		
 		Model model;
-		CleanAlgorithm::GetModelFromImage(model, &image[0], width, height, fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), spectralIndex, refFreq);
+		CleanAlgorithm::GetModelFromImage(model, &image[0], width, height, fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), fitsReader.PhaseCentreDL(), fitsReader.PhaseCentreDM(), spectralIndex, refFreq);
 		
 		model.SortOnBrightness();
 		
