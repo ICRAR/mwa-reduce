@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 	if(argc < 3)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
 			onlyScalar = false, onlyDiag = false, onlyRotation = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
 		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 0;
+		std::string dataColumnName = "DATA";
 		double
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
@@ -35,6 +36,11 @@ int main(int argc, char *argv[])
 				plotPhaseFile = argv[argi+1];
 				plotGainFile = argv[argi+2];
 				argi += 3;
+			}
+			else if(param == "datacolumn")
+			{
+				dataColumnName = argv[argi+1];
+				argi += 2;
 			}
 			/*else if(param == "pf") == 0)
 			{
@@ -133,6 +139,7 @@ int main(int argc, char *argv[])
 		calibrator.SetSolutionOutputFilename(outName);
 		calibrator.SetVerbose(true);
 		calibrator.SetSavePlotFiles(savePlotFiles);
+		calibrator.SetDataColumnName(dataColumnName);
 		if(savePlotFiles)
 		{
 			calibrator.SetPlotFilenames(plotPhaseFile, plotGainFile);
