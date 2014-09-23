@@ -127,6 +127,8 @@ class FitsWriter : protected FitsIOChecker
 		}
 		size_t Width() const { return _width; }
 		size_t Height() const { return _height; }
+		double PhaseCentreDL() const { return _phaseCentreDL; }
+		double PhaseCentreDM() const { return _phaseCentreDM; }
 	private:
 		template<typename T>
 		static T setNotFiniteToZero(T num)

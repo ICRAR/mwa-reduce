@@ -20,7 +20,7 @@ CleanAlgorithm::CleanAlgorithm() :
 {
 }
 
-void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double spectralIndex, double refFreq, PolarizationEnum polarization)
+void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double phaseCentreDL, double phaseCentreDM, double spectralIndex, double refFreq, PolarizationEnum polarization)
 {
 	for(size_t y=0; y!=height; ++y)
 	{
@@ -31,7 +31,7 @@ void CleanAlgorithm::GetModelFromImage(Model &model, const double* image, size_t
 			{
 				long double l, m;
 				ImageCoordinates::XYToLM<long double>(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
-			
+				l += phaseCentreDL; m += phaseCentreDM;
 				ModelComponent component;
 				long double ra, dec;
 				ImageCoordinates::LMToRaDec<long double>(l, m, phaseCentreRA, phaseCentreDec, ra, dec);
