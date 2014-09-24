@@ -16,7 +16,9 @@
 class SolutionApplier
 {
 public:
-	SolutionApplier() : _preset(false), _outputColumnName(casa::MeasurementSet::columnName(casa::MSMainEnums::DATA))
+	SolutionApplier() : _preset(false),
+	_inputColumnName(casa::MeasurementSet::columnName(casa::MSMainEnums::DATA)),
+	_outputColumnName(casa::MeasurementSet::columnName(casa::MSMainEnums::DATA))
 	{
 	}
 	
@@ -27,6 +29,11 @@ public:
 		_presetValues[1] = xy;
 		_presetValues[2] = yx;
 		_presetValues[3] = yy;
+	}
+	
+	void SetInputColumn(const std::string& inputColumnName)
+	{
+		_inputColumnName = inputColumnName;
 	}
 	
 	void SetOutputColumn(const std::string& dataColumn)
@@ -54,12 +61,12 @@ public:
 		casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
 		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
 		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-		casa::ArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+		casa::ArrayColumn<complex_t> dataColumn(ms, _inputColumnName);
 		std::cout << "DONE\n";
 		
 		std::unique_ptr<casa::ArrayColumn<complex_t>> copyColumn;
 		casa::ArrayColumn<complex_t> *outputColumn;
-		if(_outputColumnName == std::string(ms.columnName(casa::MSMainEnums::DATA)))
+		if(_outputColumnName == _inputColumnName)
 		{
 			outputColumn = &dataColumn;
 		}
@@ -206,7 +213,7 @@ private:
 
 	bool _preset;
 	std::complex<double> _presetValues[4];
-	std::string _outputColumnName;
+	std::string _inputColumnName, _outputColumnName;
 };
 
 #endif
