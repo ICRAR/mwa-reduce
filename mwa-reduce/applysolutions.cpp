@@ -22,7 +22,8 @@ int main(int argc, char **argv)
       std::cout << "Usage: applysolutions [-datacolumn <name>] [-gflag <solutions-flag-file.txt>] [-copy/-nocopy] [-s xx xy yx yy] <ms> <gains-bin-file>\n"
 				"Will apply the found solution matrices.\n"
 				"Options:\n"
-				"  -copy         Don't alter the original DATA column but store the corrected data in the CORRECTED_DATA (this is std CASA behaviour)\n";
+				"  -copy/-nocopy Don't(/do) alter the original DATA column but store the corrected data in the CORRECTED_DATA (this is std CASA behaviour)\n"
+				"    default: -copy\n";
     } else {
 		size_t argi = 1;
 		double xx=0.0, xy=0.0, yx=0.0, yy=0.0;
