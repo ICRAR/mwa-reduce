@@ -48,7 +48,9 @@ int main(int argc, char* argv[])
 			"-save-solution-files\n"
 			"   Save the solution files, such as 'peel-sol-ant25.txt', etc.\n"
 			"-a <min accuracy> <stop accuracy>\n"
-			"   Set accuracy at which to accept or immediately accept a solution.\n";
+			"   Set accuracy at which to accept or immediately accept a solution.\n"
+			"-peelthreshold <app flux level>\n"
+			"   Set apparent flux level at which to start peeling.\n";
 		return 1;
 	}
 	int argi = 1;
@@ -56,7 +58,8 @@ int main(int argc, char* argv[])
 		noPeelingRunnerupCheck = false, saveSolutionFiles = false;
 	double
 		minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
-		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy();
+		stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
+		peelThreshold = 50.0;
 	size_t nIter = CalibrationMethod::DefaultNIter();
 	size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 	while(argv[argi][0] == '-')
@@ -105,6 +108,11 @@ int main(int argc, char* argv[])
 			stopAccuracy = atof(argv[argi+2]);
 			argi+=2;
 		}
+		else if(param == "peelthreshold")
+		{
+			++argi;
+			peelThreshold = atof(argv[argi]);
+		}
 		else throw std::runtime_error("Invalid parameter");
 		++argi;
 	}
@@ -124,7 +132,6 @@ int main(int argc, char* argv[])
 	
 	double
 		subtractThreshold = 20.0,
-		peelThreshold = 50.0,
 		peelMinRunnerUpFactor = 3.0,
 		maxCalibrateDist = 12.5;
 	
