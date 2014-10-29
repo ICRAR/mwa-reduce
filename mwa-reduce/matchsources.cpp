@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 	if(argc < 6)
 	{
 		std::cout <<
-			"Syntax: matchsources [type] <base model> <additional model> <arcmin distance> <output model>\n"
+			"Syntax: matchsources <type> [options] <base model> <additional model> <arcmin distance> <output model>\n"
 			"types:\n"
 			" - findnew    -- Find any sources in additional and not in base\n"
 			" - addspectra -- Match sources and combine frequency info of both catalogues\n"
@@ -16,9 +16,7 @@ int main(int argc, char* argv[])
 	
 	enum { FindNewMatching, AddSpectraMatching, AvgSpectraMatching } matchingType;
 	
-	Model baseModel(argv[2]), addModel(argv[3]), restModel;
-	double distance = atof(argv[4])*(M_PI/60.0/180.0);
-	const std::string matchingTypeStr(argv[1]), restModelFilename(argv[5]);
+	const std::string matchingTypeStr(argv[1]);
 	
 	if(matchingTypeStr == "findnew")
 		matchingType = FindNewMatching;
@@ -28,6 +26,24 @@ int main(int argc, char* argv[])
 		matchingType = AvgSpectraMatching;
 	else
 		throw std::runtime_error("Unknown matching type specified");
+	
+	double weight = 0.5;
+	size_t argi = 2;
+	while(argv[argi][0] == '-')
+	{
+		std::string p(&argv[argi][1]);
+		if(p == "weight")
+		{
+			weight = atof(argv[argi+1]);
+			++argi;
+		}
+		else throw std::runtime_error("Invalid parameter");
+		++argi;
+	}
+	
+	Model baseModel(argv[argi]), addModel(argv[argi+1]), restModel;
+	double distance = atof(argv[argi+2])*(M_PI/60.0/180.0);
+	const std::string restModelFilename(argv[argi+3]);
 	
 	baseModel.SortOnBrightness();
 	addModel.SortOnBrightness();
@@ -122,7 +138,7 @@ int main(int argc, char* argv[])
 					if(matchingType == AddSpectraMatching)
 						newSource.front().SED().CombineMeasurements(addSource.front().SED());
 					else
-						newSource.front().SED().CombineMeasurementsWithAveraging(addSource.front().SED());
+						newSource.front().SED().CombineMeasurementsWithAveraging(addSource.front().SED(), weight);
 					restModel.AddSource(newSource);
 				}
 			}

@@ -64,6 +64,8 @@ void outputList(const std::vector<SourceInfo>& sortedList, const Model& model, c
 
 int main(int argc, char* argv[])
 {
+	bool withRM = false;
+	
 	std::cout << "Reading model... " << std::flush;
 	const char* filename = argv[1];
 	Model model(filename);
@@ -97,18 +99,21 @@ int main(int argc, char* argv[])
 	}
 	std::cout << "DONE\n";
 	
-	ProgressBar progress("Doing RM synthesis");
-	for(size_t i=0; i!=sources.size(); ++i)
+	if(withRM)
 	{
-		SourceInfo& newSource = sources[i];
-		const ModelSource& source = model.Source(newSource.index);
-		const SpectralEnergyDistribution sed = source.GetIntegratedSED();
-		RMSynthesis rmSynthesis(sed);
-		rmSynthesis.Synthesize();
-		rmSynthesis.PeakWithNonZeroRM(5, newSource.rmPeakPos, newSource.rmPeakValue);
-		double tmp;
-		rmSynthesis.PeakWithSmallRM(5, tmp, newSource.rmZeroValue);
-		progress.SetProgress(i+1, model.SourceCount());
+		ProgressBar progress("Doing RM synthesis");
+		for(size_t i=0; i!=sources.size(); ++i)
+		{
+			SourceInfo& newSource = sources[i];
+			const ModelSource& source = model.Source(newSource.index);
+			const SpectralEnergyDistribution sed = source.GetIntegratedSED();
+			RMSynthesis rmSynthesis(sed);
+			rmSynthesis.Synthesize();
+			rmSynthesis.PeakWithNonZeroRM(5, newSource.rmPeakPos, newSource.rmPeakValue);
+			double tmp;
+			rmSynthesis.PeakWithSmallRM(5, tmp, newSource.rmZeroValue);
+			progress.SetProgress(i+1, model.SourceCount());
+		}
 	}
 	
 	std::cout << "Sorting... " << std::flush;
