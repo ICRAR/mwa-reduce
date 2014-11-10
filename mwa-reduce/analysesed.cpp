@@ -62,6 +62,38 @@ void outputList(const std::vector<SourceInfo>& sortedList, const Model& model, c
 	outputModel.Save(name + "-sources-model.txt");
 }
 
+void outputSIStats(const std::vector<SourceInfo>& sortedList, size_t n)
+{
+	size_t actualN = n > sortedList.size() ? sortedList.size() : n;
+	std::vector<long double> sis(actualN);
+	long double sum = 0.0;
+	for(size_t i=0; i!=actualN; ++i)
+	{
+		const SourceInfo& source = sortedList[i];
+		sis[i] = source.plExponent;
+		sum += source.plExponent;
+	}
+	long double lowestFlux = sortedList[actualN-1].modalFlux;
+	long double average = sum / actualN;
+	long double squaredDistSum = 0.0;
+	for(size_t i=0; i!=actualN; ++i)
+	{
+		long double dist = sis[i]-average;
+		squaredDistSum += dist*dist;
+	}
+	long double stddev = sqrtl(squaredDistSum/actualN);
+	
+	std::sort(sis.begin(), sis.end());
+	long double median;
+	if(actualN%2 == 0)
+		median = (sis[actualN/2-1] + sis[actualN/2]) * 0.5;
+	else
+		median = sis[actualN/2];
+	long double highestSI = sis.back(), lowestSI = sis.front();
+	
+	std::cout << actualN << ' ' << average << ' ' << median << ' ' << stddev << ' ' << lowestSI << ' ' << highestSI <<' ' << lowestFlux << ' ' << '\n';
+}
+
 int main(int argc, char* argv[])
 {
 	bool withRM = false;
@@ -124,7 +156,7 @@ int main(int argc, char* argv[])
 	
 	std::vector<std::pair<size_t,double>> siAverages;
 	double spectralIndexSum = 0.0;
-	size_t siAvgCount = 0, nextSICount = 10;
+	size_t siAvgCount = 0;
 	Model brightestSourcesModel;
 	for(std::vector<SourceInfo>::const_iterator i=sources.begin(); i!=sources.end(); ++i)
 	{
@@ -132,19 +164,14 @@ int main(int argc, char* argv[])
 		std::cout << ms.Name() << '\t' << i->modalFlux << '\t' << i->plExponent << '\t' << i->rms << '\n';
 		spectralIndexSum += i->plExponent;
 		++siAvgCount;
-		if(siAvgCount == nextSICount)
-		{
-			siAverages.push_back(std::make_pair(siAvgCount, spectralIndexSum/(long double)(siAvgCount)));
-			nextSICount *= 2;
-		}
 		if(siAvgCount < 20) brightestSourcesModel.AddSource(ms);
 	}
 	brightestSourcesModel.Save("brightest-sources-model.txt");
 	
-	std::cout << "\nN_brightest_sources\tavg_SI\n";
-	for(std::vector<std::pair<size_t,double>>::const_iterator i=siAverages.begin(); i!=siAverages.end(); ++i)
-		std::cout << i->first << '\t' << i->second << '\n';
-	std::cout << siAvgCount << '\t' << (spectralIndexSum/(long double)(siAvgCount)) << '\n';
+	std::cout << "\nN_brightest_sources SI_avg SI_median SI_stddev SI_min SI_max lowestFlux\n";
+	for(size_t n=10; n<sources.size(); n*=2)
+		outputSIStats(sources, n);
+	outputSIStats(sources, sources.size());
 	
 	std::cout << "\nSorting on RMS... " << std::flush;
 	std::sort(sources.rbegin(), sources.rend(), &SourceInfo::hasLowerRMS);
