@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include "model.h"
 #include "rmsynthesis.h"
@@ -92,6 +93,22 @@ void outputSIStats(const std::vector<SourceInfo>& sortedList, size_t n)
 	long double highestSI = sis.back(), lowestSI = sis.front();
 	
 	std::cout << actualN << ' ' << average << ' ' << median << ' ' << stddev << ' ' << lowestSI << ' ' << highestSI <<' ' << lowestFlux << ' ' << '\n';
+	
+	std::vector<size_t> histData(101, 0);
+	for(size_t i=0; i!=actualN; ++i)
+	{
+		long double bindex = ((long double) histData.size())*(sis[i]-lowestSI) / (highestSI-lowestSI);
+		histData[size_t(round(bindex))]++;
+	}
+	
+	std::ostringstream histFilename;
+	histFilename << "histogram-n" << actualN << ".txt";
+	std::ofstream histFile(histFilename.str());
+	for(size_t i=0; i!=histData.size(); ++i)
+	{
+		long double binCentre = ((long double) (i))/histData.size()*(highestSI-lowestSI)+lowestSI;
+		histFile << i << '\t' << binCentre << '\t' << histData[i] << '\n';
+	}
 }
 
 int main(int argc, char* argv[])
