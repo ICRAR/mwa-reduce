@@ -299,7 +299,6 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 		{
 			++timestep;
 			time = timeColumn(row);
-			std::cout << timestep << ' ';
 		}
 		if(selection.IsSelected(fieldId, timestep, a1, a2, uvw))
 			++selectedRowCount;
