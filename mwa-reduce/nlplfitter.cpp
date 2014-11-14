@@ -63,6 +63,53 @@ public:
 		fitting_func_deriv(x, data, J);
 		return GSL_SUCCESS;
 	}
+	
+	static int fitting_2nd_order(const gsl_vector *xvec, void *data, gsl_vector *f)
+	{
+		const NLPLFitterData &fitterData = *reinterpret_cast<NLPLFitterData*>(data);
+		double exponent = gsl_vector_get(xvec, 0);
+		double factor = gsl_vector_get(xvec, 1);
+		
+		for(size_t i=0; i!=fitterData.points.size(); ++i)
+		{
+			double
+				x = fitterData.points[i].first,
+				y = fitterData.points[i].second;
+			
+			gsl_vector_set(f, i, factor * pow(x, exponent) - y);
+		}
+			
+		return GSL_SUCCESS;
+	}
+	
+	static int fitting_2nd_order_deriv(const gsl_vector *xvec, void *data, gsl_matrix *J)
+	{
+		const NLPLFitterData &fitterData = *reinterpret_cast<NLPLFitterData*>(data);
+		double exponent = gsl_vector_get(xvec, 0);
+		double factor = gsl_vector_get(xvec, 1);
+	
+		for(size_t i=0; i!=fitterData.points.size(); ++i)
+		{
+			double
+				x = fitterData.points[i].first;
+			
+			double xToTheE = pow(x, exponent);
+			double dfdexp = factor * log(x) * xToTheE;
+			double dfdfac = xToTheE;
+				
+			gsl_matrix_set(J, i, 0, dfdexp);
+			gsl_matrix_set(J, i, 1, dfdfac);
+		}
+			
+		return GSL_SUCCESS;
+	}
+
+	static int fitting_2nd_order_both(const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J)
+	{
+		fitting_func(x, data, f);
+		fitting_func_deriv(x, data, J);
+		return GSL_SUCCESS;
+	}
 #endif
 };
 

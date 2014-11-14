@@ -79,7 +79,7 @@ set(BEAMFILES "")
 
 add_executable(addimg addimg.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(aegean2model aegean2model.cpp model.cpp)
-add_executable(analysesed analysesed.cpp model.cpp nlplfitter.cpp rmsynthesis.cpp progressbar.cpp)
+add_executable(analysesed analysesed.cpp model.cpp nlplfitter.cpp rmsynthesis.cpp progressbar.cpp subbandpassband.cpp)
 add_executable(apparently apparently.cpp model.cpp fitsiochecker.cpp fitsreader.cpp)
 add_executable(applybeam applybeam.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(applyion applyion.cpp fftconvolver.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp model.cpp modelrenderer.cpp)

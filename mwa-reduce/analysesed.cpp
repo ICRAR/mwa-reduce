@@ -4,13 +4,14 @@
 #include "model.h"
 #include "rmsynthesis.h"
 #include "progressbar.h"
+#include "subbandpassband.h"
 
 struct SourceInfo
 {
 	size_t index, componentCount;
 	long double plExponent, plFactor;
 	long double modalFlux, rms, stokesVFrac, maxError;
-	double rmPeakValue, rmPeakPos, rmZeroValue;
+	double rmPeakValue, rmPeakPos, rmZeroValue, subbandCorrelation;
 	
 	double RMRelValue() const { return rmPeakPos / rmZeroValue; }
 	
@@ -21,6 +22,7 @@ struct SourceInfo
 	static bool hasLowerMaxError(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.maxError < rhs.maxError; }
 	static bool hasLowerRMValue(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.rmPeakValue < rhs.rmPeakValue; }
 	static bool hasLowerRMRelValue(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.RMRelValue() < rhs.RMRelValue(); }
+	static bool hasLowerSubbandCorrelation(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.subbandCorrelation < rhs.subbandCorrelation; }
 };
 
 double SourceRMS(const SpectralEnergyDistribution& sed, long double factor, long double exponent)
@@ -46,14 +48,14 @@ std::string SourceDesc(const SourceInfo& source, const Model& model)
 	std::ostringstream str;
 	const ModelSource& ms = model.Source(source.index);
 	const SpectralEnergyDistribution sed = ms.GetIntegratedSED();
-	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << ", V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << source.maxError << ", RMpeak=" << source.rmPeakValue << " @ " << source.rmPeakPos << " / " << source.rmZeroValue << " @0";
+	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << ", V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << source.maxError << ", RMpeak=" << source.rmPeakValue << " @ " << source.rmPeakPos << " / " << source.rmZeroValue << " @0, SB=" << source.subbandCorrelation;
 	return str.str();
 }
 
 void outputList(const std::vector<SourceInfo>& sortedList, const Model& model, const std::string& name, bool reverse)
 {
 	Model outputModel;
-	for(size_t i=0; i<std::min(size_t(50), sortedList.size()); ++i)
+	for(size_t i=0; i<std::min(size_t(20), sortedList.size()); ++i)
 	{
 		size_t index = reverse ? (sortedList.size()-i-1) : i;
 		const SourceInfo& source = sortedList[index];
@@ -61,6 +63,69 @@ void outputList(const std::vector<SourceInfo>& sortedList, const Model& model, c
 		std::cout << SourceDesc(source, model) << '\n';
 	}
 	outputModel.Save(name + "-sources-model.txt");
+}
+
+
+void makeMeanZero(std::vector<double>& values)
+{
+	size_t count = 0;
+	double avg = 0.0;
+	for(size_t i=0; i!=values.size(); ++i)
+	{
+		if(std::isfinite(values[i]))
+		{
+			avg += values[i];
+			++count;
+		}
+	}
+	avg /= count;
+	for(size_t i=0; i!=values.size(); ++i)
+		values[i] -= avg;
+}
+
+double getSubbandShapeCorrelation(std::vector<double>& measurements, const std::vector<double>& normalizedPassband)
+{
+	makeMeanZero(measurements);
+	if(measurements.size() != normalizedPassband.size())
+		throw std::runtime_error("Number of channels in passband and number of channels in selected part of measurements do not match");
+	double match = 0.0;
+	size_t count = 0;
+	for(size_t i=0; i!=normalizedPassband.size(); ++i)
+	{
+		if(std::isfinite(normalizedPassband[i]) && std::isfinite(measurements[i]))
+		{
+			++count;
+			match += measurements[i] * normalizedPassband[i];
+		}
+	}
+	return match / count;
+}
+
+double getSubbandShapeCorrelation(const SpectralEnergyDistribution& sed)
+{
+	std::vector<double> passband;
+	size_t channelsInPassband = 32;
+	SubbandPassband::GetSubbandPassband(passband, channelsInPassband);
+	makeMeanZero(passband);
+	
+	double bandStart = sed.begin()->second.FrequencyHz();
+	std::vector<double> measurements;
+	double correlationSum = 0.0;
+	size_t correlationCount = 1;
+	for(SpectralEnergyDistribution::const_iterator m = sed.begin(); m!=sed.end(); ++m)
+	{
+		const Measurement& meas = m->second;
+		if(meas.FrequencyHz() - bandStart > 1280000.0 - 640000.0 / (measurements.size()+1))
+		{
+			correlationSum += std::fabs(getSubbandShapeCorrelation(measurements, passband));
+			++correlationCount;
+			measurements.clear();
+			bandStart = meas.FrequencyHz();
+		}
+		measurements.push_back(meas.FluxDensity(Polarization::StokesI));
+	}
+	correlationSum += std::fabs(getSubbandShapeCorrelation(measurements, passband));
+	return correlationSum / correlationCount;
 }
 
 void outputSIStats(const std::vector<SourceInfo>& sortedList, size_t n)
@@ -92,7 +157,7 @@ void outputSIStats(const std::vector<SourceInfo>& sortedList, size_t n)
 		median = sis[actualN/2];
 	long double highestSI = sis.back(), lowestSI = sis.front();
 	
-	std::cout << actualN << ' ' << average << ' ' << median << ' ' << stddev << ' ' << lowestSI << ' ' << highestSI <<' ' << lowestFlux << ' ' << '\n';
+	std::cout << actualN << ' ' << average << ' ' << median << ' ' << stddev << ' ' << lowestSI << ' ' << highestSI << ' ' << lowestFlux << ' ' << '\n';
 	
 	std::vector<size_t> histData(101, 0);
 	for(size_t i=0; i!=actualN; ++i)
@@ -143,6 +208,7 @@ int main(int argc, char* argv[])
 			double err = (m->second.FluxDensity(Polarization::StokesI) - newSource.plFactor * powl(m->first, newSource.plExponent)) / newSource.rms;
 			if(err > newSource.maxError) newSource.maxError = err;
 		}
+		newSource.subbandCorrelation = getSubbandShapeCorrelation(sed);
 		if(source.ComponentCount() == 1) // skip complex sources
 			sources.push_back(newSource);
 	}
@@ -223,4 +289,10 @@ int main(int argc, char* argv[])
 	std::cout << "DONE\n";
 	std::cout << "Relatively high RM values:\n";
 	outputList(sources, model, "highrm", false);
+	
+	std::sort(sources.rbegin(), sources.rend(), &SourceInfo::hasLowerSubbandCorrelation);
+	std::cout << "High sub-band correlation:\n";
+	outputList(sources, model, "highsubbandcorrelation", false);
+	std::cout << "Low sub-band correlation:\n";
+	outputList(sources, model, "lowsubbandcorrelation", true);
 }
