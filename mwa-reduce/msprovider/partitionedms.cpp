@@ -287,8 +287,8 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	
 	// Count selected rows
 	uint64_t selectedRowCount = 0;
-	size_t timestep = 0;
-	double time = timeColumn(0);
+	size_t timestep = selection.HasInterval() ? selection.IntervalStart() : 0;
+	double time = timeColumn(startRow);
 	for(size_t row=startRow; row!=endRow; ++row)
 	{
 		const int
@@ -299,6 +299,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 		{
 			++timestep;
 			time = timeColumn(row);
+			std::cout << timestep << ' ';
 		}
 		if(selection.IsSelected(fieldId, timestep, a1, a2, uvw))
 			++selectedRowCount;
