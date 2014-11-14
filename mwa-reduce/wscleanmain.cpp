@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 			"   Only perform a single prediction for an existing image. Doesn't do any imaging or cleaning.\n"
 			"-nosmallinversion and -smallinversion\n"
 			"   Perform inversion at the Nyquist resolution and upscale the image to the requested image size afterwards.\n"
-			"   This speeds up inversion considerably, but makes aliasing slightly slightly worse. This effect is\n"
+			"   This speeds up inversion considerably, but makes aliasing slightly worse. This effect is\n"
 			"   in most cases <1%. Default: on.\n"
 			"-weight <weightmode>\n"
 			"   Weightmode can be: natural, mwa, uniform, briggs. Default: uniform. When using Briggs' weighting,\n"

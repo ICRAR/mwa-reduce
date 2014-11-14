@@ -200,7 +200,7 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 			_actualPixelSizeY = totalHeight / _actualInversionHeight;
 		}
 		else {
-			std::cout << "Small inversion requested, but inversion resolution already smaller than beam size: not changing.\n";
+			std::cout << "Small inversion enabled, but inversion resolution already smaller than beam size: not using optimization.\n";
 		}
 	}
 	
