@@ -1,3 +1,4 @@
+#include "angle.h"
 #include "wsclean.h"
 #include "wscversion.h"
 
@@ -181,7 +182,7 @@ int main(int argc, char *argv[])
 		else if(param == "scale")
 		{
 			++argi;
-			wsclean.SetPixelScale(atof(argv[argi]) * M_PI / 180.0);
+			wsclean.SetPixelScale(Angle::Parse(argv[argi], "scale parameter"));
 		}
 		else if(param == "nwlayers")
 		{
