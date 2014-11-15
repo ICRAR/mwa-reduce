@@ -9,8 +9,8 @@
 struct SourceInfo
 {
 	size_t index, componentCount;
-	long double plExponent, plFactor;
-	long double modalFlux, rms, stokesVFrac, maxError;
+	long double plExponent, plFactor, pl2ndOrder;
+	long double modalFlux, rms, rms2ndOrder, stokesVFrac, maxError;
 	double rmPeakValue, rmPeakPos, rmZeroValue, subbandCorrelation;
 	
 	double RMRelValue() const { return rmPeakPos / rmZeroValue; }
@@ -23,6 +23,8 @@ struct SourceInfo
 	static bool hasLowerRMValue(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.rmPeakValue < rhs.rmPeakValue; }
 	static bool hasLowerRMRelValue(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.RMRelValue() < rhs.RMRelValue(); }
 	static bool hasLowerSubbandCorrelation(const SourceInfo& lhs, const SourceInfo& rhs) { return lhs.subbandCorrelation < rhs.subbandCorrelation; }
+	static bool hasLower2ndOrder(const SourceInfo& lhs, const SourceInfo& rhs) { return std::fabs(lhs.pl2ndOrder) < std::fabs(rhs.pl2ndOrder); }
+	static bool hasLower2ndRMSDiff(const SourceInfo& lhs, const SourceInfo& rhs) { return std::fabs(lhs.rms - lhs.rms2ndOrder) < std::fabs(rhs.rms - rhs.rms2ndOrder); }
 };
 
 double SourceRMS(const SpectralEnergyDistribution& sed, long double factor, long double exponent)
@@ -43,12 +45,31 @@ double SourceRMS(const SpectralEnergyDistribution& sed, long double factor, long
 	return sqrtl(RMSsum / (long double)(count));
 }
 
+double SourceRMS(const SpectralEnergyDistribution& sed, long double a, long double b, long double c)
+{
+	long double RMSsum = 0.0L;
+	size_t count = 0;
+	for(SpectralEnergyDistribution::const_iterator i=sed.begin(); i!=sed.end(); ++i)
+	{
+		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double x = i->second.FrequencyHz();
+		long double powerLawValue = powl(b*x + c*x*x, a);
+		if(std::isfinite(flux))
+		{
+			long double diff = flux - powerLawValue;
+			++count;
+			RMSsum += diff * diff;
+		}
+	}
+	return sqrtl(RMSsum / (long double)(count));
+}
+
 std::string SourceDesc(const SourceInfo& source, const Model& model)
 {
 	std::ostringstream str;
 	const ModelSource& ms = model.Source(source.index);
 	const SpectralEnergyDistribution sed = ms.GetIntegratedSED();
-	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << ", V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << source.maxError << ", RMpeak=" << source.rmPeakValue << " @ " << source.rmPeakPos << " / " << source.rmZeroValue << " @0, SB=" << source.subbandCorrelation;
+	str << ms.Name() << ", " << source.modalFlux << " Jy, SI=" << source.plExponent << ", RMS=" << source.rms << " (" << source.rms2ndOrder << "), V%=" << round(10000.0*source.stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << source.maxError << ", RMpeak=" << source.rmPeakValue << " @ " << source.rmPeakPos << " / " << source.rmZeroValue << " @0, SB=" << source.subbandCorrelation << ", 2nd=" << source.pl2ndOrder;
 	return str.str();
 }
 
@@ -208,6 +229,10 @@ int main(int argc, char* argv[])
 			double err = (m->second.FluxDensity(Polarization::StokesI) - newSource.plFactor * powl(m->first, newSource.plExponent)) / newSource.rms;
 			if(err > newSource.maxError) newSource.maxError = err;
 		}
+		long double aTemp, bTemp;
+		sed.FitPowerlaw2ndOrder(aTemp, bTemp, newSource.pl2ndOrder, Polarization::StokesI);
+		newSource.rms2ndOrder = SourceRMS(sed, aTemp, bTemp, newSource.pl2ndOrder);
+		std::cout << "First fit=" << newSource.plExponent << ", 2nd=" << aTemp << ", c=" << newSource.pl2ndOrder << '\n';
 		newSource.subbandCorrelation = getSubbandShapeCorrelation(sed);
 		if(source.ComponentCount() == 1) // skip complex sources
 			sources.push_back(newSource);
@@ -295,4 +320,16 @@ int main(int argc, char* argv[])
 	outputList(sources, model, "highsubbandcorrelation", false);
 	std::cout << "Low sub-band correlation:\n";
 	outputList(sources, model, "lowsubbandcorrelation", true);
+	
+	std::sort(sources.rbegin(), sources.rend(), &SourceInfo::hasLower2ndOrder);
+	std::cout << "High 2nd order value:\n";
+	outputList(sources, model, "high2ndorder", false);
+	std::cout << "Low 2nd order value:\n";
+	outputList(sources, model, "low2ndorder", true);
+	
+	std::sort(sources.rbegin(), sources.rend(), &SourceInfo::hasLower2ndRMSDiff);
+	std::cout << "High 2nd order RMS diff:\n";
+	outputList(sources, model, "high2ndrmsdiff", false);
+	std::cout << "Low 2nd order RMS diff:\n";
+	outputList(sources, model, "low2ndrmsdiff", true);
 }

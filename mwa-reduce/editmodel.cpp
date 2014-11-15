@@ -790,17 +790,17 @@ int main(int argc, char *argv[])
 					plot10IStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"" << sourcePtr->Name() << "\",\\\n";
 				
 				const SpectralEnergyDistribution &sed = compPtr->SED();
-				/*long double e, f;
-				sed.FitPowerlaw(f, e, Polarization::StokesI);
-				plotIStream << (f/2.0) << " * (x*1000000)**" << e << " with lines lw 1.0 title \"\"";*/
+				long double a, b, c;
+				sed.FitPowerlaw2ndOrder(a, b, c, Polarization::StokesI);
+				plotIStream << '(' << b << " * (x*1000000) + " << c << " * (x*1000000)**2)**" << a << " with lines lw 1.0 title \"\"";
 				
 				if(compIndex != model.ComponentCount()-1)
 				{
 					plotStream << ",\\";
-					//plotIStream << ",\\";
+					plotIStream << ",\\";
 				}
 				plotStream << "\n";
-				//plotIStream << "\n";
+				plotIStream << "\n";
 				
 				std::vector<Measurement> measurements;
 				sed.GetMeasurements(measurements);

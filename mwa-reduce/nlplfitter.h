@@ -22,6 +22,8 @@ public:
 	
 	void Fit(double& exponent, double& factor);
 	
+	void Fit(double& a, double& b, double& c);
+	
 	void FastFit(double& exponent, double& factor);
 	
 private:
