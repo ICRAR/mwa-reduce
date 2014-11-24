@@ -3,6 +3,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <cmath>
 
 #include <boost/algorithm/string/case_conv.hpp>
 
