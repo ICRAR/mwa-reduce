@@ -33,7 +33,19 @@ void SEDAnalyser::Process()
 		long double aTemp, bTemp;
 		sed.FitPowerlaw2ndOrder(aTemp, bTemp, newSource.pl2ndOrder, Polarization::StokesI);
 		newSource.rms2ndOrder = sourceRMS(sed, aTemp, bTemp, newSource.pl2ndOrder);
-		//std::cout << "First fit=" << newSource.plExponent << ", 2nd=" << aTemp << ", c=" << newSource.pl2ndOrder << '\n';
+		std::cout << "First fit=" << newSource.plExponent << ", 2nd=" << aTemp << ", c=" << newSource.pl2ndOrder << '\n';
+		sed.FitLogPolynomial(newSource.terms, 3, Polarization::StokesI);
+		std::cout << newSource.terms[0] << " (" << log(newSource.plFactor) - newSource.plExponent*log(1e-8)<< ")";
+		for(size_t i=1; i!=newSource.terms.size(); ++i)
+			std::cout << ',' << newSource.terms[i];
+		std::cout << '\n';
+		double multiTermRMS = sourceRMS(sed, newSource.terms);
+		newSource.terms.assign(newSource.terms.size(), 0.0);
+		newSource.terms[0] = log(newSource.plFactor) - newSource.plExponent*log(1e-8);
+		newSource.terms[1] = newSource.plExponent;
+		std::cout << "rms=" << newSource.rms << ", " << newSource.rms2ndOrder << ", " << multiTermRMS << " ," <<
+		sourceRMS(sed, newSource.terms) << '\n';
+		
 		newSource.subbandCorrelation = getSubbandShapeCorrelation(sed);
 		if(source.ComponentCount() == 1) // skip complex sources
 			_sources.push_back(newSource);
@@ -159,52 +171,49 @@ void SEDAnalyser::outputList(const std::vector< SEDAnalyser::SourceInfo >& sorte
 
 void SEDAnalyser::outputSIStats(const std::vector< SEDAnalyser::SourceInfo >& sortedList, size_t n)
 {
-
+	size_t actualN = n > sortedList.size() ? sortedList.size() : n;
+	std::vector<long double> sis(actualN);
+	long double sum = 0.0;
+	for(size_t i=0; i!=actualN; ++i)
 	{
-		size_t actualN = n > sortedList.size() ? sortedList.size() : n;
-		std::vector<long double> sis(actualN);
-		long double sum = 0.0;
-		for(size_t i=0; i!=actualN; ++i)
-		{
-			const SourceInfo& source = sortedList[i];
-			sis[i] = source.plExponent;
-			sum += source.plExponent;
-		}
-		long double lowestFlux = sortedList[actualN-1].modalFlux;
-		long double average = sum / actualN;
-		long double squaredDistSum = 0.0;
-		for(size_t i=0; i!=actualN; ++i)
-		{
-			long double dist = sis[i]-average;
-			squaredDistSum += dist*dist;
-		}
-		long double stddev = sqrtl(squaredDistSum/actualN);
-		
-		std::sort(sis.begin(), sis.end());
-		long double median;
-		if(actualN%2 == 0)
-			median = (sis[actualN/2-1] + sis[actualN/2]) * 0.5;
-		else
-			median = sis[actualN/2];
-		long double highestSI = sis.back(), lowestSI = sis.front();
-		
-		std::cout << actualN << ' ' << average << ' ' << median << ' ' << stddev << ' ' << lowestSI << ' ' << highestSI << ' ' << lowestFlux << ' ' << '\n';
-		
-		std::vector<size_t> histData(101, 0);
-		for(size_t i=0; i!=actualN; ++i)
-		{
-			long double bindex = ((long double) histData.size())*(sis[i]-lowestSI) / (highestSI-lowestSI);
-			histData[size_t(round(bindex))]++;
-		}
-		
-		std::ostringstream histFilename;
-		histFilename << "histogram-n" << actualN << ".txt";
-		std::ofstream histFile(histFilename.str());
-		for(size_t i=0; i!=histData.size(); ++i)
-		{
-			long double binCentre = ((long double) (i))/histData.size()*(highestSI-lowestSI)+lowestSI;
-			histFile << i << '\t' << binCentre << '\t' << histData[i] << '\n';
-		}
+		const SourceInfo& source = sortedList[i];
+		sis[i] = source.plExponent;
+		sum += source.plExponent;
+	}
+	long double lowestFlux = sortedList[actualN-1].modalFlux;
+	long double average = sum / actualN;
+	long double squaredDistSum = 0.0;
+	for(size_t i=0; i!=actualN; ++i)
+	{
+		long double dist = sis[i]-average;
+		squaredDistSum += dist*dist;
+	}
+	long double stddev = sqrtl(squaredDistSum/actualN);
+	
+	std::sort(sis.begin(), sis.end());
+	long double median;
+	if(actualN%2 == 0)
+		median = (sis[actualN/2-1] + sis[actualN/2]) * 0.5;
+	else
+		median = sis[actualN/2];
+	long double highestSI = sis.back(), lowestSI = sis.front();
+	
+	std::cout << actualN << ' ' << average << ' ' << median << ' ' << stddev << ' ' << lowestSI << ' ' << highestSI << ' ' << lowestFlux << ' ' << '\n';
+	
+	std::vector<size_t> histData(101, 0);
+	for(size_t i=0; i!=actualN; ++i)
+	{
+		long double bindex = ((long double) histData.size())*(sis[i]-lowestSI) / (highestSI-lowestSI);
+		histData[size_t(round(bindex))]++;
+	}
+	
+	std::ostringstream histFilename;
+	histFilename << "histogram-n" << actualN << ".txt";
+	std::ofstream histFile(histFilename.str());
+	for(size_t i=0; i!=histData.size(); ++i)
+	{
+		long double binCentre = ((long double) (i))/histData.size()*(highestSI-lowestSI)+lowestSI;
+		histFile << i << '\t' << binCentre << '\t' << histData[i] << '\n';
 	}
 }
 
@@ -213,4 +222,60 @@ double SEDAnalyser::BestRMS()
 	std::sort(_sources.begin(), _sources.end(), &SourceInfo::hasLower2ndRMS);
 	const SourceInfo& source = _sources.front();
 	return source.rms2ndOrder;
+}
+
+double SEDAnalyser::sourceRMS(const SpectralEnergyDistribution& sed, long double factor, long double exponent)
+{
+	long double RMSsum = 0.0L;
+	size_t count = 0;
+	for(SpectralEnergyDistribution::const_iterator i=sed.begin(); i!=sed.end(); ++i)
+	{
+		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double powerLawValue = factor * powl(i->second.FrequencyHz(), exponent);
+		if(std::isfinite(flux))
+		{
+			long double diff = flux - powerLawValue;
+			++count;
+			RMSsum += diff * diff;
+		}
+	}
+	return sqrtl(RMSsum / (long double)(count));
+}
+
+double SEDAnalyser::sourceRMS(const SpectralEnergyDistribution& sed, long double a, long double b, long double c)
+{
+	long double RMSsum = 0.0L;
+	size_t count = 0;
+	for(SpectralEnergyDistribution::const_iterator i=sed.begin(); i!=sed.end(); ++i)
+	{
+		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double x = i->second.FrequencyHz();
+		long double powerLawValue = powl(b*x + c*x*x, a);
+		if(std::isfinite(flux))
+		{
+			long double diff = flux - powerLawValue;
+			++count;
+			RMSsum += diff * diff;
+		}
+	}
+	return sqrtl(RMSsum / (long double)(count));
+}
+
+double SEDAnalyser::sourceRMS(const SpectralEnergyDistribution& sed, const std::vector<double>& terms)
+{
+	long double RMSsum = 0.0L;
+	size_t count = 0;
+	for(SpectralEnergyDistribution::const_iterator i=sed.begin(); i!=sed.end(); ++i)
+	{
+		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double x = i->second.FrequencyHz();
+		long double powerLawValue = NonLinearPowerLawFitter::Evaluate(x, terms);
+		if(std::isfinite(flux))
+		{
+			long double diff = flux - powerLawValue;
+			++count;
+			RMSsum += diff * diff;
+		}
+	}
+	return sqrtl(RMSsum / (long double)(count));
 }

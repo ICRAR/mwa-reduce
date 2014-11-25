@@ -53,6 +53,7 @@ private:
 	{
 		size_t index, componentCount;
 		long double plExponent, plFactor, pl2ndOrder;
+		std::vector<double> terms;
 		long double modalFlux, rms, rms2ndOrder, stokesVFrac, maxError, maxErrorFrequency;
 		double rmPeakValue, rmPeakPos, rmZeroValue, subbandCorrelation;
 		
@@ -83,43 +84,12 @@ private:
 	
 	std::vector<SourceInfo> _sources;
 	
-	double sourceRMS(const SpectralEnergyDistribution& sed, long double factor, long double exponent)
-	{
-		long double RMSsum = 0.0L;
-		size_t count = 0;
-		for(SpectralEnergyDistribution::const_iterator i=sed.begin(); i!=sed.end(); ++i)
-		{
-			long double flux = i->second.FluxDensity(Polarization::StokesI);
-			long double powerLawValue = factor * powl(i->second.FrequencyHz(), exponent);
-			if(std::isfinite(flux))
-			{
-				long double diff = flux - powerLawValue;
-				++count;
-				RMSsum += diff * diff;
-			}
-		}
-		return sqrtl(RMSsum / (long double)(count));
-	}
+	double sourceRMS(const SpectralEnergyDistribution& sed, long double factor, long double exponent);
 	
-	double sourceRMS(const SpectralEnergyDistribution& sed, long double a, long double b, long double c)
-	{
-		long double RMSsum = 0.0L;
-		size_t count = 0;
-		for(SpectralEnergyDistribution::const_iterator i=sed.begin(); i!=sed.end(); ++i)
-		{
-			long double flux = i->second.FluxDensity(Polarization::StokesI);
-			long double x = i->second.FrequencyHz();
-			long double powerLawValue = powl(b*x + c*x*x, a);
-			if(std::isfinite(flux))
-			{
-				long double diff = flux - powerLawValue;
-				++count;
-				RMSsum += diff * diff;
-			}
-		}
-		return sqrtl(RMSsum / (long double)(count));
-	}
-
+	double sourceRMS(const SpectralEnergyDistribution& sed, long double a, long double b, long double c);
+	
+	double sourceRMS(const SpectralEnergyDistribution& sed, const std::vector<double>& terms);
+	
 	void makeMeanZero(std::vector<double>& values)
 	{
 		size_t count = 0;

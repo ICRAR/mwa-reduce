@@ -641,6 +641,24 @@ class SpectralEnergyDistribution
 			c = cTemp;
 		}
 		
+		
+		void FitLogPolynomial(std::vector<double>& terms, size_t nTerms, PolarizationEnum polarization) const
+		{
+			NonLinearPowerLawFitter fitter;
+			size_t n = 0;
+			for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
+			{
+				const Measurement &m = i->second;
+				long double flux = m.FluxDensity(polarization);
+				if(std::isfinite(m.FrequencyHz()) && std::isfinite(flux)) {
+					fitter.AddDataPoint(m.FrequencyHz(), flux);
+					++n;
+				}
+			}
+			terms.assign(nTerms, 0.0);
+			fitter.Fit(terms, nTerms);
+		}
+		
 		long double FluxAtLowestFrequency() const
 		{
 			const Measurement &m = _measurements.begin()->second;

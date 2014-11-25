@@ -16,6 +16,7 @@ class NLPLFitterData
 public:
 	typedef std::vector<std::pair<double, double>> PointVec;
 	PointVec points;
+	size_t nTerms;
 #ifdef HAVE_GSL
 	gsl_multifit_fdfsolver *solver;
 	
@@ -123,6 +124,74 @@ public:
 		fitting_2nd_order_deriv(x, data, J);
 		return GSL_SUCCESS;
 	}
+	
+	static int fitting_multi_order(const gsl_vector *xvec, void *data, gsl_vector *f)
+	{
+		const NLPLFitterData &fitterData = *reinterpret_cast<NLPLFitterData*>(data);
+		
+		for(size_t i=0; i!=fitterData.points.size(); ++i)
+		{
+			const double
+				x = fitterData.points[i].first,
+				y = fitterData.points[i].second;
+			
+			const double a_0 = gsl_vector_get(xvec, 0);
+			const double lg = log(x*1e-8);
+			
+			double fity = a_0;
+			for(size_t j=1; j!=fitterData.nTerms; ++j)
+			{
+				const double a_j = gsl_vector_get(xvec, j);
+				fity += double(a_j) * pow(lg, j);
+				//std::cout << a_j << '{' << pow(lg, j) << "{";
+			}
+			//std::cout << x << ':' << fity << " / \n";
+			gsl_vector_set(f, i, exp(fity) - y);
+		}
+			
+		return GSL_SUCCESS;
+	}
+	
+	static int fitting_multi_order_deriv(const gsl_vector *xvec, void *data, gsl_matrix *J)
+	{
+		const NLPLFitterData &fitterData = *reinterpret_cast<NLPLFitterData*>(data);
+	
+		for(size_t i=0; i!=fitterData.points.size(); ++i)
+		{
+			double
+				x = fitterData.points[i].first;
+			
+			const double a_0 = gsl_vector_get(xvec, 0);
+			const double lg = log(x*1e-8);
+				
+			double fity = a_0;
+			for(size_t j=1; j!=fitterData.nTerms; ++j)
+			{
+				const double a_j = gsl_vector_get(xvec, j);
+				fity += double(a_j) * pow(lg, j);
+			}
+			fity = exp(fity);
+			gsl_matrix_set(J, i, 0, fity);
+			for(size_t j=1; j!=fitterData.nTerms; ++j)
+			{
+				const double a_j = gsl_vector_get(xvec, j);
+				const double dfda_j =
+					exp( pow(lg, j) * ( 1.0 - a_j ) );
+				//std::cout << dfda_j << " , ";
+				gsl_matrix_set(J, i, j, fity*dfda_j);
+			}
+		}
+			
+		return GSL_SUCCESS;
+	}
+
+	static int fitting_multi_order_both(const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J)
+	{
+		fitting_multi_order(x, data, f);
+		fitting_multi_order_deriv(x, data, J);
+		return GSL_SUCCESS;
+	}
+	
 #endif
 };
 
@@ -203,10 +272,66 @@ void NonLinearPowerLawFitter::Fit(double& a, double& b, double& c)
 	gsl_multifit_fdfsolver_free(_data->solver);
 }
 
+void NonLinearPowerLawFitter::Fit(std::vector<double>& terms, size_t nTerms)
+{
+	terms.assign(nTerms, 0.0);
+	if(nTerms == 0)
+		return;
+	
+	double a, b;
+	Fit(a, b);
+	terms[0] = log(b) - a*log(1e-8);
+	if(nTerms > 1) terms[1] = a;
+	_data->nTerms = nTerms;
+	
+	const gsl_multifit_fdfsolver_type *T = gsl_multifit_fdfsolver_lmsder;
+	_data->solver = gsl_multifit_fdfsolver_alloc (T, _data->points.size(), nTerms);
+	
+	gsl_multifit_function_fdf fdf;
+	fdf.f = &NLPLFitterData::fitting_multi_order;
+	fdf.df = &NLPLFitterData::fitting_multi_order_deriv;
+	fdf.fdf = &NLPLFitterData::fitting_multi_order_both;
+	fdf.n = _data->points.size();
+	fdf.p = nTerms;
+	fdf.params = &*_data;
+	
+	gsl_vector_view initialVals = gsl_vector_view_array(terms.data(), nTerms);
+	gsl_multifit_fdfsolver_set(_data->solver, &fdf, &initialVals.vector);
+
+	int status;
+	size_t iter = 0;
+	do {
+		iter++;
+		status = gsl_multifit_fdfsolver_iterate (_data->solver);
+		
+		if(status)
+			break;
+		
+		status = gsl_multifit_test_delta(_data->solver->dx, _data->solver->x, 1e-6, 1e-6);
+		
+  } while (status == GSL_CONTINUE && iter < 5000);
+	std::cout << iter << '\n';
+	
+	for(size_t i=0; i!=nTerms; ++i)
+		terms[i] = gsl_vector_get (_data->solver->x, i);
+	
+	gsl_multifit_fdfsolver_free(_data->solver);
+}
+
 #else
 #warning "No GSL found: can not do non-linear power law fitting!"
 
 void NonLinearPowerLawFitter::Fit(double& exponent, double& factor)
+{
+	throw std::runtime_error("Non-linear power law fitter was invoked, but GSL was not found during compilation, and is required for this");
+}
+
+void NonLinearPowerLawFitter::Fit(double& a, double& b, double& c)
+{
+	throw std::runtime_error("Non-linear power law fitter was invoked, but GSL was not found during compilation, and is required for this");
+}
+
+void NonLinearPowerLawFitter::Fit(std::vector<double>& terms, size_t nTerms)
 {
 	throw std::runtime_error("Non-linear power law fitter was invoked, but GSL was not found during compilation, and is required for this");
 }
@@ -270,4 +395,16 @@ void NonLinearPowerLawFitter::FastFit(double& exponent, double& factor)
 			factor = std::exp((sumy - exponent * sumx) / n);
 		}
 	}
+}
+
+double NonLinearPowerLawFitter::Evaluate(double x, const std::vector<double>& terms)
+{
+	if(terms.empty()) return 0.0;
+	double fity = terms[0];
+	const double lg = log(x*1e-8);
+	for(size_t j=1; j!=terms.size(); ++j)
+	{
+		fity += terms[j] * pow(lg, j);
+	}
+	return exp(fity);
 }

@@ -24,7 +24,11 @@ public:
 	
 	void Fit(double& a, double& b, double& c);
 	
+	void Fit(std::vector<double>& terms, size_t nTerms);
+	
 	void FastFit(double& exponent, double& factor);
+	
+	static double Evaluate(double x, const std::vector<double>& terms);
 	
 private:
 	std::unique_ptr<class NLPLFitterData> _data;
