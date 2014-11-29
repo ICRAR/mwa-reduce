@@ -59,7 +59,7 @@ private:
 	casa::ROScalarColumn<int> _antenna1Column, _antenna2Column, _fieldIdColumn, _dataDescIdColumn;
 	casa::ROScalarColumn<double> _timeColumn;
 	casa::ROArrayColumn<double> _uvwColumn;
-	casa::ROArrayColumn<float> _weightColumn;
+	std::unique_ptr<casa::ROArrayColumn<float>> _weightColumn;
 	casa::ROArrayColumn<casa::Complex> _dataColumn;
 	casa::ROArrayColumn<bool> _flagColumn;
 	std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
@@ -91,7 +91,7 @@ private:
 		{
 			_flagColumn.get(_row, _flagArray);
 			if(_msHasWeights)
-				_weightColumn.get(_row, _weightArray);
+				_weightColumn->get(_row, _weightArray);
 			_isWeightRead = true;
 		}
 	}

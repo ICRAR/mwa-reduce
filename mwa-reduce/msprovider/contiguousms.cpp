@@ -14,7 +14,6 @@ ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnNa
 	_dataDescIdColumn(_ms, casa::MS::columnName(casa::MSMainEnums::DATA_DESC_ID)),
 	_timeColumn(_ms, casa::MS::columnName(casa::MSMainEnums::TIME)),
 	_uvwColumn(_ms, casa::MS::columnName(casa::MSMainEnums::UVW)),
-	_weightColumn(_ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM)),
 	_dataColumn(_ms, dataColumnName),
 	_flagColumn(_ms, casa::MS::columnName(casa::MSMainEnums::FLAG))
 {
@@ -28,11 +27,18 @@ ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnNa
 	_flagArray = casa::Array<bool>(shape);
 	_bandData = MultiBandData(_ms.spectralWindow(), _ms.dataDescription());
 	
-	bool isWeightDefined = _weightColumn.isDefined(0);
+	bool isWeightDefined;
+	if(_ms.isColumn(casa::MSMainEnums::WEIGHT_SPECTRUM))
+	{
+		_weightColumn.reset(new casa::ROArrayColumn<float>(_ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM)));
+		isWeightDefined = _weightColumn->isDefined(0);
+	} else {
+		isWeightDefined = false;
+	}
 	_msHasWeights = false;
 	if(isWeightDefined)
 	{
-		casa::IPosition modelShape = _weightColumn.shape(0);
+		casa::IPosition modelShape = _weightColumn->shape(0);
 		_msHasWeights = (modelShape == shape);
 	}
 	if(!_msHasWeights)

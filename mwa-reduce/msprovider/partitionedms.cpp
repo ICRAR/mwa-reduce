@@ -250,7 +250,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	casa::ROScalarColumn<int> fieldIdColumn(ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID));
 	casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
 	casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
-	casa::ROArrayColumn<float> weightColumn(ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
+	std::unique_ptr<casa::ROArrayColumn<float>> weightColumn;
 	casa::ROArrayColumn<casa::Complex> dataColumn(ms, dataColumnName);
 	casa::ROArrayColumn<bool> flagColumn(ms, casa::MS::columnName(casa::MSMainEnums::FLAG));
 	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
@@ -268,12 +268,19 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 		channelStart = 0;
 	}
 	
-	bool isWeightDefined = weightColumn.isDefined(0);
+	bool isWeightDefined;
+	if(ms.isColumn(casa::MSMainEnums::WEIGHT_SPECTRUM))
+	{
+		weightColumn.reset(new casa::ROArrayColumn<float>(ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM)));
+		isWeightDefined = weightColumn->isDefined(0);
+	} else {
+		isWeightDefined = false;
+	}
 	bool msHasWeights = false;
 	casa::Array<float> weightArray(shape);
 	if(isWeightDefined)
 	{
-		casa::IPosition modelShape = weightColumn.shape(0);
+		casa::IPosition modelShape = weightColumn->shape(0);
 		msHasWeights = (modelShape == shape);
 	}
 	if(!msHasWeights)
@@ -354,7 +361,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 				
 			dataColumn.get(row, dataArray);
 			if(msHasWeights)
-				weightColumn.get(row, weightArray);
+				weightColumn->get(row, weightArray);
 			flagColumn.get(row, flagArray);
 			
 			fileIndex = 0;
