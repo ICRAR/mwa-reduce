@@ -1,0 +1,148 @@
+#ifndef GAUSSIAN_FITTER_H
+#define GAUSSIAN_FITTER_H
+
+#include <cmath>
+
+#include "matrix2x2.h"
+
+#include <iostream>
+
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_multifit_nlin.h>
+
+class GaussianFitter
+{
+public:
+	void Fit2DGaussianCentred(const double* image, size_t width, size_t height, double beamEst, double& beamMaj, double& beamMin, double& beamPA)
+	{
+		_width = width;
+		_height = height;
+		_image = image;
+		
+		const gsl_multifit_fdfsolver_type *T = gsl_multifit_fdfsolver_lmsder;
+		gsl_multifit_fdfsolver *solver = gsl_multifit_fdfsolver_alloc (T, _width*_height, 3);
+		
+		gsl_multifit_function_fdf fdf;
+		fdf.f = &fitting_func;
+		fdf.df = &fitting_deriv;
+		fdf.fdf = &fitting_both;
+		fdf.n = _width*_height;
+		fdf.p = 3;
+		fdf.params = this;
+		
+		double initialValsArray[3] = { beamEst, beamEst, 0.0 };
+		gsl_vector_view initialVals = gsl_vector_view_array (initialValsArray, 3);
+		gsl_multifit_fdfsolver_set (solver, &fdf, &initialVals.vector);
+
+		int status;
+		size_t iter = 0;
+		do {
+			iter++;
+			status = gsl_multifit_fdfsolver_iterate (solver);
+			
+			if(status)
+				break;
+			
+			status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
+			
+		} while (status == GSL_CONTINUE && iter < 500);
+		std::cout << "iter=" << iter << '\n';
+		
+		double cov[4];
+		cov[0] = gsl_vector_get (solver->x, 0);
+		cov[1] = gsl_vector_get (solver->x, 1);
+		cov[2] = cov[1];
+		cov[3] = gsl_vector_get (solver->x, 2);
+		std::cout << "cov: \n" << cov[0] << ' ' << cov[1] << '\n' << cov[2] << ' ' << cov[3] << '\n';
+		gsl_multifit_fdfsolver_free(solver);
+		
+		// Using the FWHM formula for a Gaussian:
+		const long double sigmaToBeam = 2.0L * sqrtl(2.0L * logl(2.0L));
+		double e1, e2, vec1[2], vec2[2];
+		Matrix2x2::EigenValuesAndVectors(cov, e1, e2, vec1, vec2);
+		std::cout << "e1,e2: " << e1 << ' ' << e2 << '\n';
+		beamMaj = sqrt(std::fabs(e1)) * sigmaToBeam;
+		beamMin = sqrt(std::fabs(e2)) * sigmaToBeam;
+		beamPA = atan2(vec1[1], vec1[0]);
+	}
+	
+private:
+	const double* _image;
+	size_t _width, _height;
+	
+	static int fitting_func(const gsl_vector *xvec, void *data, gsl_vector *f)
+	{
+		GaussianFitter& fitter=*static_cast<GaussianFitter*>(data);
+		double sx = gsl_vector_get(xvec, 0);
+		double sy = gsl_vector_get(xvec, 1);
+		double beta = gsl_vector_get(xvec, 2);
+		const size_t width = fitter._width, height = fitter._height;
+		int xMid = width/2, yMid = height/2;
+		
+		size_t dataIndex = 0;
+		double errSum = 0.0;
+		for(size_t yi=0; yi!=height; ++yi)
+		{
+			double y = (yi - yMid);
+			for(size_t xi=0; xi!=width; ++xi)
+			{
+				double x = (xi - xMid);
+				double e = err(fitter._image[dataIndex], x, y, sx, sy, beta);
+				errSum += e*e;
+				gsl_vector_set(f, dataIndex, e);
+				++dataIndex;
+			}
+		}
+		std::cout << "sx=" << sx << ", sy=" << sy << ", beta=" << beta << ", err=" << errSum << '\n';
+		return GSL_SUCCESS;
+	}
+	
+	static int fitting_deriv(const gsl_vector *xvec, void *data, gsl_matrix *J)
+	{
+		GaussianFitter& fitter=*static_cast<GaussianFitter*>(data);
+		double sx = gsl_vector_get(xvec, 0);
+		double sy = gsl_vector_get(xvec, 1);
+		double beta = gsl_vector_get(xvec, 2);
+		const size_t width = fitter._width, height = fitter._height;
+		int xMid = width/2, yMid = height/2;
+		
+		size_t dataIndex = 0;
+		for(size_t yi=0; yi!=height; ++yi)
+		{
+			double y = (yi - yMid);
+			for(size_t xi=0; xi!=width; ++xi)
+			{
+				double x = (xi - xMid);
+				gsl_matrix_set(J, dataIndex, 0, dfdsx(x, y, sx, sy, beta));
+				gsl_matrix_set(J, dataIndex, 1, dfdbeta(x, y, sx, sy, beta));
+				gsl_matrix_set(J, dataIndex, 2, dfdsx(y, x, sy, sx, beta));
+				++dataIndex;
+			}
+		}
+		return GSL_SUCCESS;
+	}
+	
+	static int fitting_both(const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J)
+	{
+		fitting_func(x, data, f);
+		fitting_deriv(x, data, J);
+		return GSL_SUCCESS;
+	}
+	
+	static double err(double val, double x, double y, double sx, double sy, double beta)
+	{
+		return exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy)) - val;
+	}
+	static double dfdsx(double x, double y, double sx, double sy, double beta)
+	{
+		// f[x,y,sx,sy,beta]:=exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy));
+		// diff(f[x,y,sx,sy,beta],sx);
+		return (beta*x*y/(sx*sx*sy)+x*x/(sx*sx*sx)) * exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy));
+	}
+	static double dfdbeta(double x, double y, double sx, double sy, double beta)
+	{
+		return x*y/(sx*sy)*(beta*x*y/(sx*sx*sy)+x*x/(sx*sx*sx)) * exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy));
+	}
+};
+
+#endif
