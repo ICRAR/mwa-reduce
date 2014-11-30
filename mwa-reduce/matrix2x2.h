@@ -178,6 +178,46 @@ public:
 		e2 = sqrt((-b - sqrtd) * 0.5);
 	}
 	
+	static void EigenValues(const double* matrix, double &e1, double &e2)
+	{
+		double tr = matrix[0] + matrix[3];
+		double d = matrix[0]*matrix[3] - matrix[1]*matrix[2];
+		double term = sqrt(tr*tr*0.25-d);
+		double trHalf = tr*0.5;
+		e1 = trHalf + term;
+		e2 = trHalf - term;
+	}
+	
+	static void EigenValuesAndVectors(const double* matrix, double &e1, double &e2, double* vec1, double* vec2)
+	{
+		double tr = matrix[0] + matrix[3];
+		double d = matrix[0]*matrix[3] - matrix[1]*matrix[2];
+		double term = sqrt(tr*tr*0.25-d);
+		double trHalf = tr*0.5;
+		e1 = trHalf + term;
+		e2 = trHalf - term;
+		if(matrix[2] != 0.0)
+		{
+			vec1[0] = e1 - matrix[3];
+			vec1[1] = matrix[2];
+			vec2[0] = e2 - matrix[3];
+			vec2[1] = matrix[2];
+		}
+		else if(matrix[1] != 0.0)
+		{
+			vec1[0] = matrix[1];
+			vec1[1] = e1 - matrix[0];
+			vec2[0] = matrix[1];
+			vec2[1] = e2 - matrix[0];
+		}
+		else {
+			vec1[0] = 1.0;
+			vec1[1] = 0.0;
+			vec2[0] = 0.0;
+			vec2[1] = 1.0;
+		}
+	}
+	
 	template<typename T>
 	static T RotationAngle(const std::complex<T>* matrix)
 	{
