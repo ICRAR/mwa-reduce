@@ -18,6 +18,7 @@ public:
 		_width = width;
 		_height = height;
 		_image = image;
+		_scaleFactor = (width + height)/2;
 		
 		const gsl_multifit_fdfsolver_type *T = gsl_multifit_fdfsolver_lmsder;
 		gsl_multifit_fdfsolver *solver = gsl_multifit_fdfsolver_alloc (T, _width*_height, 3);
@@ -30,7 +31,13 @@ public:
 		fdf.p = 3;
 		fdf.params = this;
 		
-		double initialValsArray[3] = { beamEst, beamEst, 0.0 };
+		// Using the FWHM formula for a Gaussian:
+		const long double sigmaToBeam = 2.0L * sqrtl(2.0L * logl(2.0L));
+		double initialValsArray[3] = {
+			beamEst/(_scaleFactor*double(sigmaToBeam)),
+			beamEst/(_scaleFactor*double(sigmaToBeam)),
+			0.0
+		};
 		gsl_vector_view initialVals = gsl_vector_view_array (initialValsArray, 3);
 		gsl_multifit_fdfsolver_set (solver, &fdf, &initialVals.vector);
 
@@ -48,27 +55,35 @@ public:
 		} while (status == GSL_CONTINUE && iter < 500);
 		std::cout << "iter=" << iter << '\n';
 		
+		double
+			sx = gsl_vector_get (solver->x, 0),
+			sy = gsl_vector_get (solver->x, 2),
+			beta = gsl_vector_get (solver->x, 1);
 		double cov[4];
-		cov[0] = gsl_vector_get (solver->x, 0);
-		cov[1] = gsl_vector_get (solver->x, 1);
+		/*cov[0] = 1.0/(sx*sx);
+		cov[1] = beta/(sx*sy);
 		cov[2] = cov[1];
-		cov[3] = gsl_vector_get (solver->x, 2);
+		cov[3] = 1.0/(sy*sy);
+		std::cout << "cov^-1: \n" << cov[0] << ' ' << cov[1] << '\n' << cov[2] << ' ' << cov[3] << '\n';
+		Matrix2x2::Invert(cov);*/
+		cov[0] = sx*sx;
+		cov[1] = beta*beta;
+		cov[2] = cov[1];
+		cov[3] = sy*sy;
 		std::cout << "cov: \n" << cov[0] << ' ' << cov[1] << '\n' << cov[2] << ' ' << cov[3] << '\n';
 		gsl_multifit_fdfsolver_free(solver);
 		
-		// Using the FWHM formula for a Gaussian:
-		const long double sigmaToBeam = 2.0L * sqrtl(2.0L * logl(2.0L));
 		double e1, e2, vec1[2], vec2[2];
 		Matrix2x2::EigenValuesAndVectors(cov, e1, e2, vec1, vec2);
 		std::cout << "e1,e2: " << e1 << ' ' << e2 << '\n';
-		beamMaj = sqrt(std::fabs(e1)) * sigmaToBeam;
-		beamMin = sqrt(std::fabs(e2)) * sigmaToBeam;
+		beamMaj = sqrt(std::fabs(e1)) * sigmaToBeam * _scaleFactor;
+		beamMin = sqrt(std::fabs(e2)) * sigmaToBeam * _scaleFactor;
 		beamPA = atan2(vec1[1], vec1[0]);
 	}
 	
 private:
 	const double* _image;
-	size_t _width, _height;
+	size_t _width, _height, _scaleFactor;
 	
 	static int fitting_func(const gsl_vector *xvec, void *data, gsl_vector *f)
 	{
@@ -78,15 +93,16 @@ private:
 		double beta = gsl_vector_get(xvec, 2);
 		const size_t width = fitter._width, height = fitter._height;
 		int xMid = width/2, yMid = height/2;
+		double scale = 1.0/fitter._scaleFactor;
 		
 		size_t dataIndex = 0;
 		double errSum = 0.0;
 		for(size_t yi=0; yi!=height; ++yi)
 		{
-			double y = (yi - yMid);
+			double y = (yi - yMid) * scale;
 			for(size_t xi=0; xi!=width; ++xi)
 			{
-				double x = (xi - xMid);
+				double x = (xi - xMid) * scale;
 				double e = err(fitter._image[dataIndex], x, y, sx, sy, beta);
 				errSum += e*e;
 				gsl_vector_set(f, dataIndex, e);
@@ -105,17 +121,22 @@ private:
 		double beta = gsl_vector_get(xvec, 2);
 		const size_t width = fitter._width, height = fitter._height;
 		int xMid = width/2, yMid = height/2;
+		double scale = 1.0 / fitter._scaleFactor;
 		
 		size_t dataIndex = 0;
 		for(size_t yi=0; yi!=height; ++yi)
 		{
-			double y = (yi - yMid);
+			double y = (yi - yMid)*scale;
 			for(size_t xi=0; xi!=width; ++xi)
 			{
-				double x = (xi - xMid);
-				gsl_matrix_set(J, dataIndex, 0, dfdsx(x, y, sx, sy, beta));
-				gsl_matrix_set(J, dataIndex, 1, dfdbeta(x, y, sx, sy, beta));
-				gsl_matrix_set(J, dataIndex, 2, dfdsx(y, x, sy, sx, beta));
+				double x = (xi - xMid)*scale;
+				double expTerm = exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy));
+				double dsx = (beta*x*y/(sx*sx*sy)+x*x/(sx*sx*sx)) * expTerm;
+				double dsy = (beta*x*y/(sy*sy*sx)+y*y/(sy*sy*sy)) * expTerm;
+				double dbeta = x*y/(sx*sy)*(beta*x*y/(sx*sx*sy)+x*x/(sx*sx*sx)) * expTerm;
+				gsl_matrix_set(J, dataIndex, 0, dsx);
+				gsl_matrix_set(J, dataIndex, 1, dsy);
+				gsl_matrix_set(J, dataIndex, 2, dbeta);
 				++dataIndex;
 			}
 		}

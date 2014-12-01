@@ -140,8 +140,8 @@ void WSClean::imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex)
 	double bMaj, bMin, bPA;
 	GaussianFitter beamFitter;
 	//TODO
-	//beamFitter.Fit2DGaussianCentred(_inversionAlgorithm->ImageRealResult(), _imgWidth,
-	//	_imgHeight, _inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY), bMaj, bMin, bPA);
+	beamFitter.Fit2DGaussianCentred(_inversionAlgorithm->ImageRealResult(), _imgWidth,
+		_imgHeight, _inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY), bMaj, bMin, bPA);
 	std::cout << "Pixels=" << _inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY) << ", Maj=" << bMaj << ", Min=" << bMin << ", PA=" << bPA << '\n';
 	std::cout << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << '-' <<
 	 bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << " arcmin.\n";
