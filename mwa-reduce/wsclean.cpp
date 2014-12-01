@@ -29,7 +29,10 @@ std::string commandLine;
 WSClean::WSClean() :
 	_imgWidth(2048), _imgHeight(2048), _channelsOut(1),
 	_pixelScaleX(0.01 * M_PI / 180.0), _pixelScaleY(0.01 * M_PI / 180.0),
-	_threshold(0.0), _gain(0.1), _mGain(1.0), _cleanBorderRatio(0.05), _manualBeamSize(0.0), _memFraction(1.0), _absMemLimit(0.0), _wLimit(0.0),
+	_threshold(0.0), _gain(0.1), _mGain(1.0), _cleanBorderRatio(0.05),
+	_manualBeamMajorSize(0.0), _manualBeamMinorSize(0.0),
+	_manualBeamPA(0.0), _fittedBeam(false), _circularBeam(false),
+	_memFraction(1.0), _absMemLimit(0.0), _wLimit(0.0),
 	_multiscaleThresholdBias(0.7), _multiscaleScaleBias(0.6),
 	_nWLayers(0), _nIter(0), _antialiasingKernelSize(7), _overSamplingFactor(63),
 	_threadCount(sysconf(_SC_NPROCESSORS_ONLN)),
@@ -76,12 +79,11 @@ void WSClean::initFitsWriter(FitsWriter& writer)
 	writer.SetPolarization(_inversionAlgorithm->Polarization());
 	writer.SetOrigin("WSClean", "W-stacking imager written by Andre Offringa");
 	writer.AddHistory(commandLine);
-	if(_manualBeamSize != 0.0) {
-		double beamSizeRad = _manualBeamSize * (M_PI / 60.0 / 180.0);
-		writer.SetBeamInfo(beamSizeRad, beamSizeRad, 0.0);
+	if(_manualBeamMajorSize != 0.0) {
+		writer.SetBeamInfo(_manualBeamMajorSize, _manualBeamMinorSize, _manualBeamPA);
 	}
 	else {
-		writer.SetBeamInfo(beamSize);
+		writer.SetBeamInfo(beamSize, beamSize, 0.0);
 	}
 	if(_inversionAlgorithm->HasDenormalPhaseCentre())
 		writer.SetPhaseCentreShift(_inversionAlgorithm->PhaseCentreDL(), _inversionAlgorithm->PhaseCentreDM());
@@ -136,15 +138,36 @@ void WSClean::imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex)
 	_inversionWatch.Pause();
 	
 	_isFirstInversion = false;
-	std::cout << "Beam size is " << _inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
-	double bMaj, bMin, bPA;
-	GaussianFitter beamFitter;
-	//TODO
-	beamFitter.Fit2DGaussianCentred(_inversionAlgorithm->ImageRealResult(), _imgWidth,
-		_imgHeight, _inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY), bMaj, bMin, bPA);
-	std::cout << "Pixels=" << _inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY) << ", Maj=" << bMaj << ", Min=" << bMin << ", PA=" << bPA << '\n';
-	std::cout << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << '-' <<
-	 bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << " arcmin.\n";
+	if(_fittedBeam)
+	{
+		double bMaj, bMin, bPA;
+		GaussianFitter beamFitter;
+		//TODO
+		beamFitter.Fit2DGaussianCentred(
+			_inversionAlgorithm->ImageRealResult(),
+			_imgWidth, _imgHeight,
+			_inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY),
+			bMaj, bMin, bPA);
+		std::cout << "Determined beam from fit, found FWHM: major=" << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', minor=" <<
+		bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', theoretical=" <<
+		_inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI)<< "'.\n";
+		
+		_manualBeamMajorSize = bMaj*0.5*(_pixelScaleX+_pixelScaleY);
+		if(_circularBeam)
+		{
+			_manualBeamMinorSize = _manualBeamMajorSize;
+			_manualBeamPA = 0.0;
+		}
+		else {
+			_manualBeamMinorSize = bMin*0.5*(_pixelScaleX+_pixelScaleY);
+			_manualBeamPA = bPA;
+		}
+		initFitsWriter(_fitsWriter);
+	}
+	else {
+		std::cout << "Beam size is " << _inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI) << " arcmin.\n";
+	}
+		
 	std::cout << "Writing psf image... " << std::flush;
 	const std::string name(getPSFPrefix(currentChannelIndex) + "-psf.fits");
 	_fitsWriter.Write(name, _inversionAlgorithm->ImageRealResult());
@@ -717,8 +740,17 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 						// A model cannot hold instrumental pols (xx/xy/yx/yy), hence always use Stokes I here
 						CleanAlgorithm::GetModelFromImage(model, modelImage, _imgWidth, _imgHeight, _fitsWriter.RA(), _fitsWriter.Dec(), _pixelScaleX, _pixelScaleY, _fitsWriter.PhaseCentreDL(), _fitsWriter.PhaseCentreDM(), 0.0, _fitsWriter.Frequency(), Polarization::StokesI);
 						
-						std::cout << "Rendering " << model.SourceCount() << " sources to restored image... " << std::flush;
-						renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, _fitsWriter.BeamSizeMajorAxis(), freqLow, freqHigh, Polarization::StokesI);
+						double beamMaj = _fitsWriter.BeamSizeMajorAxis();
+						double beamMin = _fitsWriter.BeamSizeMinorAxis();
+						double beamPA = _fitsWriter.BeamPositionAngle();
+						if(beamMaj == beamMin) {
+							std::cout << "Rendering " << model.SourceCount() << " circular sources to restored image... " << std::flush;
+							renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, beamMaj, freqLow, freqHigh, Polarization::StokesI);
+						}
+						else {
+							std::cout << "Rendering " << model.SourceCount() << " elliptical sources to restored image... " << std::flush;
+							renderer.Restore(restoredImage, _imgWidth, _imgHeight, model, beamMaj, beamMin, beamPA, freqLow, freqHigh, Polarization::StokesI);
+						}
 						std::cout << "DONE\n";
 					}
 					std::cout << "Writing restored image... " << std::flush;

@@ -150,7 +150,17 @@ int main(int argc, char *argv[])
 			"  ** RESTORATION OPTIONS **\n"
 			"-beamsize <arcmin>\n"
 			"   Set the FWHM beam size in arcmin for restoring the clean components. Default: longest projected\n"
-			"   baseline defines restoring beam.\n";
+			"   baseline defines restoring beam.\n"
+			"-beamshape <maj in arcmin> <min in arcmin> <position angle in deg>\n"
+			"   Set the FWHM beam shape in arcmin (pa in deg) for restoring the clean components.\n"
+			"-fitbeam\n"
+			"   Determine beam shape by fitting the PSF.\n"
+			"-nofitbeam\n"
+			"   Determine beam shape from longest projected baseline.\n"
+			"-circularbeam\n"
+			"   Force the beam to be circular.\n"
+			"-ellipticalbeam\n"
+			"   Allow the beam to be elliptical.\n";
 		return -1;
 	}
 	
@@ -357,7 +367,32 @@ int main(int argc, char *argv[])
 		else if(param == "beamsize")
 		{
 			++argi;
-			wsclean.SetBeamSize(atof(argv[argi]));
+			double beam = atof(argv[argi]) * (M_PI / 60.0 / 180.0);
+			wsclean.SetBeamSize(beam, beam, 0.0);
+		}
+		else if(param == "beamshape")
+		{
+			double beamMaj = atof(argv[argi+1]) * (M_PI / 60.0 / 180.0);
+			double beamMin = atof(argv[argi+2]) * (M_PI / 60.0 / 180.0);
+			double beamPA = atof(argv[argi+3]) * (M_PI / 180.0);
+			argi+=3;
+			wsclean.SetBeamSize(beamMaj, beamMin, beamPA);
+		}
+		else if(param == "fitbeam")
+		{
+			wsclean.SetFittedBeam(true);
+		}
+		else if(param == "nofitbeam")
+		{
+			wsclean.SetFittedBeam(false);
+		}
+		else if(param == "circularbeam")
+		{
+			wsclean.SetCircularBeam(true);
+		}
+		else if(param == "ellipticalbeam")
+		{
+			wsclean.SetCircularBeam(false);
 		}
 		else if(param == "gkernelsize")
 		{

@@ -12,8 +12,17 @@ class ModelRenderer
 		{
 		}
 		
+		/**
+		 * Restore with circular beam
+		 */
 		template<typename NumType>
 		void Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamSize, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
+		
+		/**
+		 * Restore with elliptical beam
+		 */
+		template<typename NumType>
+		void Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamMaj, long double beamMin, long double beamPA, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 		
 		template<typename NumType>
 		void Restore(NumType* imageData, NumType* modelData, size_t imageWidth, size_t imageHeight, long double beamSize, PolarizationEnum polarization);

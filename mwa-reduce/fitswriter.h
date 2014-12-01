@@ -99,6 +99,8 @@ class FitsWriter : protected FitsIOChecker
 		double Frequency() const { return _frequency; }
 		double Bandwidth() const { return _bandwidth; }
 		double BeamSizeMajorAxis() const { return _beamMajorAxisRad; }
+		double BeamSizeMinorAxis() const { return _beamMinorAxisRad; }
+		double BeamPositionAngle() const { return _beamPositionAngle; }
 		
 		void SetExtraKeyword(const std::string& name, const std::string& value)
 		{

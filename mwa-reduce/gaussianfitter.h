@@ -1,19 +1,67 @@
 #ifndef GAUSSIAN_FITTER_H
 #define GAUSSIAN_FITTER_H
 
-#include <cmath>
-
 #include "matrix2x2.h"
 
+#include <cmath>
+#include <cstring>
 #include <iostream>
 
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multifit_nlin.h>
 
+#include "uvector.h"
+
 class GaussianFitter
 {
 public:
 	void Fit2DGaussianCentred(const double* image, size_t width, size_t height, double beamEst, double& beamMaj, double& beamMin, double& beamPA)
+	{
+		size_t prefSize = std::max<size_t>(10, std::ceil(beamEst*10.0));
+		if(prefSize%2 != 0) ++prefSize;
+		if(prefSize < width || prefSize < height)
+		{
+			size_t boxWidth  = std::min(prefSize, width);
+			size_t boxHeight = std::min(prefSize, height);
+			size_t nIter = 0;
+			bool boxWasLargeEnough;
+			do {
+				fit2DGaussianCentredInBox(image, width, height, beamEst, beamMaj, beamMin, beamPA, boxWidth, boxHeight);
+				
+				boxWasLargeEnough =
+					(beamMaj*4.0 < boxWidth || width>=boxWidth) &&
+					(beamMaj*4.0 < boxHeight || height>=boxHeight);
+				if(!boxWasLargeEnough)
+				{
+					prefSize = std::max<size_t>(10, std::ceil(beamMaj*10.0));
+					if(prefSize%2 != 0) ++prefSize;
+				}
+				++nIter;
+			} while(!boxWasLargeEnough && nIter < 5);
+		}
+		else {
+			fit2DGaussianCentred(image, width, height, beamEst, beamMaj, beamMin, beamPA);
+		}
+	}
+	
+private:
+	const double* _image;
+	size_t _width, _height, _scaleFactor;
+
+	void fit2DGaussianCentredInBox(const double* image, size_t width, size_t height, double beamEst, double& beamMaj, double& beamMin, double& beamPA, size_t boxWidth, size_t boxHeight)
+	{
+		size_t startX = (width-boxWidth)/2;
+		size_t startY = (height-boxHeight)/2;
+		ao::uvector<double> smallImage(boxWidth*boxHeight);
+		for(size_t y=startY; y!=(height+boxHeight)/2; ++y)
+		{
+			memcpy(&smallImage[(y-startY)*boxWidth], &image[y*width + startX], sizeof(double)*boxWidth);
+		}
+		
+		fit2DGaussianCentred(&smallImage[0], boxWidth, boxHeight, beamEst, beamMaj, beamMin, beamPA);
+	}
+	
+	void fit2DGaussianCentred(const double* image, size_t width, size_t height, double beamEst, double& beamMaj, double& beamMin, double& beamPA)
 	{
 		_width = width;
 		_height = height;
@@ -53,37 +101,25 @@ public:
 			status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
 			
 		} while (status == GSL_CONTINUE && iter < 500);
-		std::cout << "iter=" << iter << '\n';
 		
 		double
 			sx = gsl_vector_get (solver->x, 0),
-			sy = gsl_vector_get (solver->x, 2),
-			beta = gsl_vector_get (solver->x, 1);
+			sy = gsl_vector_get (solver->x, 1),
+			beta = gsl_vector_get (solver->x, 2),
+			betaFact = 1.0 - beta*beta;
 		double cov[4];
-		/*cov[0] = 1.0/(sx*sx);
-		cov[1] = beta/(sx*sy);
+		cov[0] = sx*sx / betaFact;
+		cov[1] = beta * sx*sy / betaFact;
 		cov[2] = cov[1];
-		cov[3] = 1.0/(sy*sy);
-		std::cout << "cov^-1: \n" << cov[0] << ' ' << cov[1] << '\n' << cov[2] << ' ' << cov[3] << '\n';
-		Matrix2x2::Invert(cov);*/
-		cov[0] = sx*sx;
-		cov[1] = beta*beta;
-		cov[2] = cov[1];
-		cov[3] = sy*sy;
-		std::cout << "cov: \n" << cov[0] << ' ' << cov[1] << '\n' << cov[2] << ' ' << cov[3] << '\n';
+		cov[3] = sy*sy / betaFact;
 		gsl_multifit_fdfsolver_free(solver);
 		
 		double e1, e2, vec1[2], vec2[2];
 		Matrix2x2::EigenValuesAndVectors(cov, e1, e2, vec1, vec2);
-		std::cout << "e1,e2: " << e1 << ' ' << e2 << '\n';
 		beamMaj = sqrt(std::fabs(e1)) * sigmaToBeam * _scaleFactor;
 		beamMin = sqrt(std::fabs(e2)) * sigmaToBeam * _scaleFactor;
-		beamPA = atan2(vec1[1], vec1[0]);
+		beamPA = atan2(vec1[0], vec1[1]);
 	}
-	
-private:
-	const double* _image;
-	size_t _width, _height, _scaleFactor;
 	
 	static int fitting_func(const gsl_vector *xvec, void *data, gsl_vector *f)
 	{
@@ -109,7 +145,7 @@ private:
 				++dataIndex;
 			}
 		}
-		std::cout << "sx=" << sx << ", sy=" << sy << ", beta=" << beta << ", err=" << errSum << '\n';
+		//std::cout << "sx=" << sx << ", sy=" << sy << ", beta=" << beta << ", err=" << errSum << '\n';
 		return GSL_SUCCESS;
 	}
 	
@@ -133,7 +169,7 @@ private:
 				double expTerm = exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy));
 				double dsx = (beta*x*y/(sx*sx*sy)+x*x/(sx*sx*sx)) * expTerm;
 				double dsy = (beta*x*y/(sy*sy*sx)+y*y/(sy*sy*sy)) * expTerm;
-				double dbeta = x*y/(sx*sy)*(beta*x*y/(sx*sx*sy)+x*x/(sx*sx*sx)) * expTerm;
+				double dbeta = -x*y/(sx*sy) * expTerm;
 				gsl_matrix_set(J, dataIndex, 0, dsx);
 				gsl_matrix_set(J, dataIndex, 1, dsy);
 				gsl_matrix_set(J, dataIndex, 2, dbeta);
@@ -162,7 +198,7 @@ private:
 	}
 	static double dfdbeta(double x, double y, double sx, double sy, double beta)
 	{
-		return x*y/(sx*sy)*(beta*x*y/(sx*sx*sy)+x*x/(sx*sx*sx)) * exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy));
+		return x*y/(sx*sy) * exp(-x*x/(2.0*sx*sx) - beta*x*y/(sx*sy) - y*y/(2.0*sy*sy));
 	}
 };
 

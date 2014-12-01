@@ -63,7 +63,13 @@ public:
 		_weightMode.SetMode(WeightMode::Briggs(robustness));
 	}
 	void SetSuperWeight(double superWeight) { _weightMode.SetSuperWeight(superWeight); }
-	void SetBeamSize(double beamSize) { _manualBeamSize = beamSize; }
+	void SetBeamSize(double major, double minor, double positionAngle) {
+		_manualBeamMajorSize = major;
+		_manualBeamMinorSize = minor;
+		_manualBeamPA = positionAngle;
+	}
+	void SetFittedBeam(bool fittedBeam) { _fittedBeam = fittedBeam; }
+	void SetCircularBeam(bool circularBeam) { _circularBeam = circularBeam; }
 	void SetAntialiasingKernelSize(size_t kernelSize) { _antialiasingKernelSize = kernelSize; }
 	void SetOversamplingFactor(size_t oversampling) { _overSamplingFactor = oversampling; }
 	void SetThreadCount(size_t threadCount) { _threadCount = threadCount; }
@@ -177,7 +183,10 @@ private:
 	}
 	
 	size_t _imgWidth, _imgHeight, _channelsOut;
-	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio, _manualBeamSize, _memFraction, _absMemLimit, _wLimit, _multiscaleThresholdBias, _multiscaleScaleBias;
+	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio;
+	double _manualBeamMajorSize, _manualBeamMinorSize, _manualBeamPA;
+	bool _fittedBeam, _circularBeam;
+	double _memFraction, _absMemLimit, _wLimit, _multiscaleThresholdBias, _multiscaleScaleBias;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor, _threadCount;
 	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _cleanAreasFilename;
