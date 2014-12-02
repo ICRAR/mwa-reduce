@@ -149,7 +149,7 @@ void WSClean::imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex)
 			_inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY),
 			bMaj, bMin, bPA);
 		std::cout << "Determined beam from fit, found FWHM: major=" << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', minor=" <<
-		bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', PA=" << bPA*(180.0/M_PI) << ", theoretical=" <<
+		bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', PA=" << round(bPA*(180.0/M_PI)) << " deg, theoretical=" <<
 		_inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI)<< "'.\n";
 		
 		_manualBeamMajorSize = bMaj*0.5*(_pixelScaleX+_pixelScaleY);
@@ -363,24 +363,15 @@ void WSClean::initializeCleanAlgorithm()
 			{
 				if(fourPol)
 				{
-					MultiScaleClean<clean_algorithms::MultiImageSet
-					<clean_algorithms::PolarizedImageSet<4>>>* msc =
+					_cleanAlgorithms[0] =
 					new MultiScaleClean
 					<clean_algorithms::MultiImageSet
 					<clean_algorithms::PolarizedImageSet<4>>>(beamSize, _pixelScaleX, _pixelScaleY);
-					msc->SetScaleBias(_multiscaleScaleBias);
-					msc->SetThresholdBias(_multiscaleThresholdBias);
-					_cleanAlgorithms[0] = msc;
 				}
 				else {
-					MultiScaleClean
-					<clean_algorithms::MultiImageSet
-					<clean_algorithms::PolarizedImageSet<2>>>* msc =
+					_cleanAlgorithms[0] =
 					new MultiScaleClean
 					<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>(beamSize, _pixelScaleX, _pixelScaleY);
-					msc->SetScaleBias(_multiscaleScaleBias);
-					msc->SetThresholdBias(_multiscaleThresholdBias);
-					_cleanAlgorithms[0] = msc;
 				}
 			}
 			else {
@@ -430,6 +421,8 @@ void WSClean::initializeCleanAlgorithm()
 		_cleanAlgorithms[p]->SetStopOnNegativeComponents(_stopOnNegative);
 		_cleanAlgorithms[p]->SetResizePSF(_smallPSF);
 		_cleanAlgorithms[p]->SetThreadCount(_threadCount);
+		_cleanAlgorithms[p]->SetMultiscaleScaleBias(_multiscaleScaleBias);
+		_cleanAlgorithms[p]->SetMultiscaleThresholdBias(_multiscaleThresholdBias);
 		if(!_cleanAreasFilename.empty())
 		{
 			_cleanAreas.reset(new AreaSet());
@@ -732,7 +725,7 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 					if(_multiscale)
 					{
 						std::cout << "Rendering sources to restored image... " << std::flush;
-						renderer.Restore(restoredImage, modelImage, _imgWidth, _imgHeight, _fitsWriter.BeamSizeMajorAxis(), Polarization::StokesI);
+						renderer.Restore(restoredImage, modelImage, _imgWidth, _imgHeight, _fitsWriter.BeamSizeMajorAxis(), _fitsWriter.BeamSizeMinorAxis(), _fitsWriter.BeamPositionAngle(), Polarization::StokesI);
 						std::cout << "DONE\n";
 					}
 					else {

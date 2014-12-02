@@ -69,10 +69,20 @@ public:
 		_stopOnNegativeComponent = source._stopOnNegativeComponent;
 		_resizePSF = source._resizePSF;
 	}
+	
+	void SetMultiscaleThresholdBias(double bias)
+	{
+		_multiscaleThresholdBias = bias;
+	}
+	void SetMultiscaleScaleBias(double bias)
+	{
+		_multiscaleScaleBias = bias;
+	}
 protected:
 	CleanAlgorithm();
 	
 	double _threshold, _subtractionGain, _stopGain, _cleanBorderRatio;
+	double _multiscaleThresholdBias, _multiscaleScaleBias;
 	size_t _maxIter, _iterationNumber, _threadCount;
 	bool _allowNegativeComponents, _stopOnNegativeComponent, _resizePSF;
 	const class AreaSet *_cleanAreas;
@@ -87,6 +97,8 @@ public:
 	virtual ~TypedCleanAlgorithm() { }
 	
 	virtual void ExecuteMajorIteration(ImageSetType& dataImage, ImageSetType& modelImage, std::vector<double*> psfImages, size_t width, size_t height, bool& reachedStopGain) = 0;
+	
+private:
 };
 
 #endif

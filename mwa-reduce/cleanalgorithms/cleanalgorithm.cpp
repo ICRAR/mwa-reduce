@@ -11,6 +11,8 @@ CleanAlgorithm::CleanAlgorithm() :
 	_subtractionGain(0.1),
 	_stopGain(1.0),
 	_cleanBorderRatio(0.05),
+	_multiscaleThresholdBias(0.7),
+	_multiscaleScaleBias(0.6),
 	_maxIter(500),
 	_iterationNumber(0),
 	_threadCount(sysconf(_SC_NPROCESSORS_ONLN)),

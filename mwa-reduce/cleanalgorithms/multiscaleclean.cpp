@@ -83,7 +83,7 @@ void MultiScaleClean<ImageSetType>::executeMajorIterationForScale(double current
 	canCleanFurther = true;
 	size_t cpuCount = this->_threadCount;
 	
-	double thresholdBias = pow(_thresholdBiasLevel, log2(currentScale));
+	double thresholdBias = pow(this->_multiscaleThresholdBias, log2(currentScale));
 	std::cout << "Threshold bias: " << thresholdBias << '\n';
 	double oldSubtractionGain = this->_subtractionGain;
 	this->_subtractionGain *= sqrt(thresholdBias);
