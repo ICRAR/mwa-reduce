@@ -29,7 +29,6 @@ public:
 	
 	explicit MSPredicter(casa::MeasurementSet &ms, size_t threadCount) :
 		_ms(ms),
-		_beamEvaluator(ms, false),
 		_applyBeam(false),
 		_useModelColumn(true),
 		_model(),
@@ -44,7 +43,6 @@ public:
 	
 	MSPredicter(casa::MeasurementSet &ms, size_t threadCount, const Model &model, const std::string solutionFile = "") :
 		_ms(ms),
-		_beamEvaluator(ms, false),
 		_applyBeam(true),
 		_useModelColumn(false),
 		_model(model),
@@ -82,7 +80,7 @@ private:
 	void clearBuffers();
 	
 	casa::MeasurementSet &_ms;
-	BeamEvaluator _beamEvaluator;
+	std::unique_ptr<BeamEvaluator> _beamEvaluator;
 	size_t _channelCount;
 	bool _applyBeam, _useModelColumn;
 	

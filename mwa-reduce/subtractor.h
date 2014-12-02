@@ -49,8 +49,6 @@ public:
 		
 		std::cout << "DONE\n";
 		
-		BeamEvaluator beamEvaluator(ms);
-		
 		MSPredicter predicter(ms, _threadCount, model);
 		predicter.SetApplyBeam(_applyBeam);
 		predicter.Start(true);

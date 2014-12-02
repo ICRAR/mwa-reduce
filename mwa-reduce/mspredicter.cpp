@@ -43,10 +43,13 @@ void MSPredicter::Start(bool reportSources)
 	{
 		casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
 		casa::MEpoch startTime = timeColumn(_startRow);
-		_beamEvaluator.SetTime(startTime);
 		_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
 		if(_applyBeam)
-			_predicter->Initialize(_model, _solutionFile, &_beamEvaluator);
+		{
+			_beamEvaluator.reset(new BeamEvaluator(_ms, false));
+			_beamEvaluator->SetTime(startTime);
+			_predicter->Initialize(_model, _solutionFile, &*_beamEvaluator);
+		}
 		else
 			_predicter->Initialize(_model, _solutionFile);
 		if(reportSources)
@@ -117,14 +120,14 @@ void MSPredicter::ReadThreadFunc()
 				modelColumn->get(rowIndex, modelData);
 			lock.unlock();
 			
-			if(!_useModelColumn && _beamEvaluator.Time().getValue() != time.getValue())
+			if(!_useModelColumn && _applyBeam && _beamEvaluator->Time().getValue() != time.getValue())
 			{
 				// Stop all threads, then update beam values, then restart threads.
 				_workLane.write_end();
 				_workThreadGroup->join_all();
 				
 				_workLane.clear();
-				_beamEvaluator.SetTime(time);
+				_beamEvaluator->SetTime(time);
 				_predicter->UpdateBeam(_model);
 				_workThreadGroup.reset(new boost::thread_group());
 				for(size_t i=0; i!=actualThreadCount; ++i)
