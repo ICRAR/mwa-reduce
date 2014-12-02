@@ -25,8 +25,11 @@ class ModelRenderer
 		void Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamMaj, long double beamMin, long double beamPA, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 		
 		template<typename NumType>
-		void Restore(NumType* imageData, NumType* modelData, size_t imageWidth, size_t imageHeight, long double beamSize, PolarizationEnum polarization);
+		void Restore(NumType* imageData, NumType* modelData, size_t imageWidth, size_t imageHeight, long double beamMaj, long double beamMin, long double beamPA, PolarizationEnum polarization);
 
+		/**
+		 * Render each point-source as one pixel
+		 */
 		template<typename NumType>
 		void RenderModel(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 	private:
