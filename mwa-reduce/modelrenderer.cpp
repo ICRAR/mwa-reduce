@@ -88,14 +88,15 @@ void ModelRenderer::Restore(NumType* imageData, size_t imageWidth, size_t imageH
 	
 	// Make rotation matrix
 	long double transf[4];
-	sincosl(beamPA, &transf[2], &transf[0]);
+	// Position angle is angle from North: 
+	sincosl(beamPA+0.5*M_PI, &transf[2], &transf[0]);
 	transf[1] = -transf[2];
 	transf[3] = transf[0];
 	double sigmaMax = std::max(std::fabs(sigmaMaj * transf[0]), std::fabs(sigmaMaj * transf[1]));
 	// Multiple with scaling matrix to make variance 1.
 	transf[0] = transf[0] / sigmaMaj;
-	transf[1] = transf[1] / sigmaMin;
-	transf[2] = transf[2] / sigmaMaj;
+	transf[1] = transf[1] / sigmaMaj;
+	transf[2] = transf[2] / sigmaMin;
 	transf[3] = transf[3] / sigmaMin;
 	
 	int boundingBoxSize = ceil(sigmaMax * 20.0 / std::min(_pixelScaleL, _pixelScaleM));

@@ -149,7 +149,7 @@ void WSClean::imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex)
 			_inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY),
 			bMaj, bMin, bPA);
 		std::cout << "Determined beam from fit, found FWHM: major=" << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', minor=" <<
-		bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', theoretical=" <<
+		bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', PA=" << bPA*(180.0/M_PI) << ", theoretical=" <<
 		_inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI)<< "'.\n";
 		
 		_manualBeamMajorSize = bMaj*0.5*(_pixelScaleX+_pixelScaleY);
