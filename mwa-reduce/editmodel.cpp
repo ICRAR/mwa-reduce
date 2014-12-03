@@ -60,13 +60,13 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, outputRMPlot = false, outputCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false;
+	bool outputPlot = false, outputRMPlot = false, outputCsv = false, outputSedCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0;
-	std::string outputModel, collectName, appThresholdMS, appSortMS, csvFilename, plotTitle;
+	std::string outputModel, collectName, appThresholdMS, appSortMS, csvFilename, sedCsvFilename, plotTitle;
 	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false, doAppSort = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
@@ -91,6 +91,10 @@ int main(int argc, char *argv[])
 			++argi;
 			outputCsv = true;
 			csvFilename = argv[argi];
+		} else if(option == "sedcsv") {
+			++argi;
+			outputSedCsv = true;
+			sedCsvFilename = argv[argi];
 		} else if(option == "near")
 		{
 			++argi;
@@ -667,6 +671,36 @@ int main(int argc, char *argv[])
 						<< i << ',' << q << ',' << u << ',' << v << '\n';
 				}
 			}
+		}
+	}
+	
+	if(outputSedCsv)
+	{
+		std::ofstream csvFile(sedCsvFilename);
+		csvFile << "sourcename,ra,dec";
+		const SpectralEnergyDistribution &sedExample = model.begin()->begin()->SED();
+		for(SpectralEnergyDistribution::const_iterator i=sedExample.begin(); i!=sedExample.end(); ++i)
+			csvFile << ',' << (unsigned long)(i->second.FrequencyHz());
+		csvFile << '\n';
+		std::cout << "Writing " << sedExample.MeasurementCount() << " channels to SED CSV file...\n";
+		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
+		{
+			const ModelSource& source = *s;
+			if(source.ComponentCount() != 1)
+				std::cout << "Warning: first source has multiple components; only outputting first component.\n";
+			const SpectralEnergyDistribution &sed = source.begin()->SED();
+
+			std::vector<Measurement> measurements;
+			sed.GetMeasurements(measurements);
+			csvFile << source.Name() << ',' << RaDecCoord::RAToString(source.MeanRA()) << ',' << RaDecCoord::DecToString(source.MeanDec());
+			for(SpectralEnergyDistribution::const_iterator iter=sed.begin(); iter!=sed.end(); ++iter)
+			{
+				const Measurement& m = iter->second;
+				long double
+					i = m.FluxDensity(Polarization::StokesI);
+				csvFile << ',' << i;
+			}
+			csvFile << '\n';
 		}
 	}
 	
