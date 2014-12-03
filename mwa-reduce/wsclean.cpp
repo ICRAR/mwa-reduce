@@ -142,13 +142,13 @@ void WSClean::imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex)
 	{
 		double bMaj, bMin, bPA;
 		GaussianFitter beamFitter;
-		//TODO
+		std::cout << "Fitting beam... " << std::flush;
 		beamFitter.Fit2DGaussianCentred(
 			_inversionAlgorithm->ImageRealResult(),
 			_imgWidth, _imgHeight,
 			_inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY),
 			bMaj, bMin, bPA);
-		std::cout << "Determined beam from fit, found FWHM: major=" << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', minor=" <<
+		std::cout << "major=" << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', minor=" <<
 		bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', PA=" << round(bPA*(180.0/M_PI)) << " deg, theoretical=" <<
 		_inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI)<< "'.\n";
 		
