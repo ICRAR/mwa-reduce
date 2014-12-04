@@ -64,7 +64,10 @@ int main(int argc, char* argv[])
 	
 		size_t width = 4096, height = 4096;
 		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
-		double beamSize = 2.0*(M_PI/180.0/60.0);
+		double
+			beamMaj = 2.0*(M_PI/180.0/60.0),
+			beamMin = 2.0*(M_PI/180.0/60.0),
+			beamPA = 0.0;
 		
 		std::unique_ptr<FitsWriter> writer;
 		std::unique_ptr<FitsReader> reader;
@@ -85,7 +88,11 @@ int main(int argc, char* argv[])
 			dateObs = reader->DateObs();
 			frequency = reader->Frequency();
 			if(reader->HasBeam())
-				beamSize = reader->BeamMajorAxisRad();
+			{
+				beamMaj = reader->BeamMajorAxisRad();
+				beamMin = reader->BeamMinorAxisRad();
+				beamPA = reader->BeamPositionAngle();
+			}
 			if(addToTemplate)
 				reader->Read(&image[0]);
 			
@@ -101,7 +108,7 @@ int main(int argc, char* argv[])
 			ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY, dl, dm);
 			if(restore)
 			{
-				renderer.Restore(&image[0], width, height, model, beamSize, frequency-bandwidth*0.5, frequency+bandwidth*0.5, Polarization::StokesI);
+				renderer.Restore(&image[0], width, height, model, beamMaj, beamMin, beamPA, frequency-bandwidth*0.5, frequency+bandwidth*0.5, Polarization::StokesI);
 			}
 			else {
 				renderer.RenderModel(&image[0], width, height, model, frequency-bandwidth*0.5, frequency+bandwidth*0.5, Polarization::StokesI);
