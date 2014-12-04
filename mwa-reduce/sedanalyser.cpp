@@ -34,17 +34,16 @@ void SEDAnalyser::Process()
 		sed.FitPowerlaw2ndOrder(aTemp, bTemp, newSource.pl2ndOrder, Polarization::StokesI);
 		newSource.rms2ndOrder = sourceRMS(sed, aTemp, bTemp, newSource.pl2ndOrder);
 		std::cout << "First fit=" << newSource.plExponent << ", 2nd=" << aTemp << ", c=" << newSource.pl2ndOrder << '\n';
-		sed.FitLogPolynomial(newSource.terms, 3, Polarization::StokesI);
-		std::cout << newSource.terms[0] << " (" << log(newSource.plFactor) - newSource.plExponent*log(1e-8)<< ")";
-		for(size_t i=1; i!=newSource.terms.size(); ++i)
-			std::cout << ',' << newSource.terms[i];
-		std::cout << '\n';
-		double multiTermRMS = sourceRMS(sed, newSource.terms);
-		newSource.terms.assign(newSource.terms.size(), 0.0);
-		newSource.terms[0] = log(newSource.plFactor) - newSource.plExponent*log(1e-8);
-		newSource.terms[1] = newSource.plExponent;
-		std::cout << "rms=" << newSource.rms << ", " << newSource.rms2ndOrder << ", " << multiTermRMS << " ," <<
-		sourceRMS(sed, newSource.terms) << '\n';
+		//sed.FitLogPolynomial(newSource.terms, 3, Polarization::StokesI);
+		//std::cout << newSource.terms[0] << " (" << log(newSource.plFactor) - newSource.plExponent*log(1e-8)<< ")";
+		//for(size_t i=1; i!=newSource.terms.size(); ++i)
+		//	std::cout << ',' << newSource.terms[i];
+		//std::cout << '\n';
+		//double multiTermRMS = sourceRMS(sed, newSource.terms);
+		//newSource.terms.assign(newSource.terms.size(), 0.0);
+		//newSource.terms[0] = log(newSource.plFactor) - newSource.plExponent*log(1e-8);
+		//newSource.terms[1] = newSource.plExponent;
+		//std::cout << "rms=" << newSource.rms << ", " << newSource.rms2ndOrder << ", " << multiTermRMS << " ," << sourceRMS(sed, newSource.terms) << '\n';
 		
 		newSource.subbandCorrelation = getSubbandShapeCorrelation(sed);
 		if(source.ComponentCount() == 1) // skip complex sources
