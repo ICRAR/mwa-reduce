@@ -22,7 +22,7 @@ class Subtractor
 public:
 	Subtractor(size_t threadCount) :
 		_revert(false), _setToModel(false), _addNoise(false), _applyBeam(false),
-		_noiseSigma(1.0), _threadCount(threadCount)
+		_noiseSigma(1.0), _threadCount(threadCount), _dataColumn("DATA")
 	{
 	}
 	
@@ -31,6 +31,7 @@ public:
 	void SetAddNoise(bool addNoise) { _addNoise = addNoise; }
 	void SetApplyBeam(bool applyBeam) { _applyBeam = applyBeam; }
 	void SetNoiseSigma(double noiseSigma) { _noiseSigma = noiseSigma; }
+	void SetDataColumn(const std::string& dataColumn) { _dataColumn = dataColumn; }
 	
 	void Subtract(casa::MeasurementSet& ms, const Model& model)
 	{
@@ -42,7 +43,7 @@ public:
 		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
-		casa::ArrayColumn<complex_t> dataColumn(ms, ms.columnName(casa::MSMainEnums::DATA));
+		casa::ArrayColumn<complex_t> dataColumn(ms, _dataColumn);
 		
 		casa::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
@@ -130,6 +131,7 @@ private:
 	bool _revert, _setToModel, _addNoise, _applyBeam;
 	double _noiseSigma;
 	size_t _threadCount;
+	std::string _dataColumn;
 };
 
 #endif

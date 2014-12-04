@@ -20,12 +20,15 @@ int main(int argc, char **argv)
 		double noiseSigma = 1.0;
 		size_t argi = 1;
 		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+		std::string dataColumn = "DATA";
+		
 		while(argv[argi][0] == '-')
 		{
 			if(strcmp(argv[argi], "-r") == 0) { revert=true; }
 			else if(strcmp(argv[argi], "-s") == 0) { setvis=true; }
 			else if(strcmp(argv[argi], "-n") == 0) { addNoise=true; ++argi; noiseSigma = atof(argv[argi]); }
 			else if(strcmp(argv[argi], "-applybeam") == 0) { applyBeam=true; }
+			else if(strcmp(argv[argi], "-datacolumn") == 0) { ++argi; dataColumn=argv[argi]; }
 			else throw std::runtime_error("Invalid param");
 			++argi;
 		}
@@ -43,6 +46,7 @@ int main(int argc, char **argv)
 		subtractor.SetAddNoise(addNoise);
 		subtractor.SetApplyBeam(applyBeam);
 		subtractor.SetNoiseSigma(noiseSigma);
+		subtractor.SetDataColumn(dataColumn);
 		subtractor.Subtract(ms, model);
 	}
 }
