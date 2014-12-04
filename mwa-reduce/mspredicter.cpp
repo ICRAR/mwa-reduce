@@ -103,6 +103,8 @@ void MSPredicter::ReadThreadFunc()
 		modelData = casa::Array<casa::Complex>(modelColumn->shape(0));
 	}
 
+	size_t timeIndex = 0;
+	casa::MEpoch previousTime = timeColumn(_startRow);
 	for(size_t rowIndex=_startRow; rowIndex!=_endRow; ++rowIndex)
 	{
 		size_t
@@ -120,6 +122,11 @@ void MSPredicter::ReadThreadFunc()
 				modelColumn->get(rowIndex, modelData);
 			lock.unlock();
 			
+			if(time.getValue() != previousTime.getValue())
+			{
+				++timeIndex;
+				previousTime = time;
+			}
 			if(!_useModelColumn && _applyBeam && _beamEvaluator->Time().getValue() != time.getValue())
 			{
 				// Stop all threads, then update beam values, then restart threads.
@@ -141,6 +148,7 @@ void MSPredicter::ReadThreadFunc()
 			rowData.rowIndex = rowIndex;
 			rowData.a1 = a1;
 			rowData.a2 = a2;
+			rowData.timeIndex = timeIndex;
 			if(_useModelColumn)
 			{
 				std::complex<double> *outptr = rowData.modelData;

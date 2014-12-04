@@ -104,6 +104,13 @@ void Calibrator::Perform()
 	else
 		_solutionFile.OpenForWriting(_solutionFilename.c_str());
 
+	long int
+		pageCount = sysconf(_SC_PHYS_PAGES),
+		pageSize = sysconf(_SC_PAGE_SIZE);
+	int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
+	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
+	size_t nBaselines = antennaCount * (antennaCount-1) / 2;
+	
 	for(size_t intervalIndex=0; intervalIndex!=intervalCount; ++intervalIndex)
 	{
 		std::cout << " >>> INTERVAL " << (intervalIndex+1) << " / " << intervalCount << " <<<\n";
@@ -113,13 +120,7 @@ void Calibrator::Perform()
 			intervalRowStart = timestepRows[intervalTimestepStart],
 			intervalRowEnd = timestepRows[intervalTimestepEnd],
 			timestepsInInterval = intervalTimestepEnd - intervalTimestepStart;
-		long int
-			pageCount = sysconf(_SC_PHYS_PAGES),
-			pageSize = sysconf(_SC_PAGE_SIZE);
-		int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
-		double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
-
-		size_t nBaselines = antennaCount * (antennaCount-1) / 2;
+			
 		size_t samplesPerChannel = nBaselines * timestepsInInterval * 4;
 		// 2 for complex data, 2 for complex model, 1 for weights
 		double memPerChannel = samplesPerChannel * 5 * sizeof(double);
@@ -204,30 +205,25 @@ void Calibrator::Perform()
 			casa::Array<complex_t> data(dataShape);
 			casa::Array<float> weights(dataShape);
 			casa::Array<bool> flags(dataShape);
-			size_t timeIndex = 0;
 			time = timeColumn(intervalRowStart);
-			size_t selectedCount = 0, notSelected = 0;
+			size_t selectedCount = 0, notSelected = 0, previousTime = 0;
 			MSPredicter::RowData rowData;
 			
 			predicter->Start(_verbose);
 			while(predicter->GetNextRow(rowData))
 			{
 				size_t rowIndex = rowData.rowIndex;
-				boost::mutex::scoped_lock lock(predicter->IOMutex());
-				if(timeColumn(rowIndex) != time)
+				// Cross correlation?
+				size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
+				if(previousTime < rowData.timeIndex)
 				{
-					++timeIndex;
-					time = timeColumn(rowIndex);
+					previousTime = rowData.timeIndex;
 					if(_verbose)
 						std::cout << '.' << std::flush;
 				}
-				// Cross correlation?
-				size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
-				if(antenna1 == antenna2)
+				if(antenna1 != antenna2)
 				{
-					lock.unlock();
-				}
-				else {
+					boost::mutex::scoped_lock lock(predicter->IOMutex());
 					dataColumn.get(rowIndex, data);
 					weightColumn.get(rowIndex, weights);
 					flagColumn.get(rowIndex, flags);
@@ -264,10 +260,10 @@ void Calibrator::Perform()
 								doubleData[4] = {dataPtr[chIndex],dataPtr[chIndex+1],dataPtr[chIndex+2],dataPtr[chIndex+3]};
 							Matrix2x2::ATimesB(tempResult, &beamValues[ch*4], doubleData);
 							Matrix2x2::ATimesHermB(doubleData, tempResult, &beamValues[ch*4]);
-							calMethods[ch]->AddData(doubleData, &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
+							calMethods[ch]->AddData(doubleData, &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
 						}
 						else {
-							calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, timeIndex);
+							calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
 						}
 					}
 				}

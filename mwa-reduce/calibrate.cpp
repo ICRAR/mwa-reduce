@@ -10,14 +10,14 @@ int main(int argc, char *argv[])
 	if(argc < 3)
 	{
 		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] <measurementset.ms> <solutions.bin>\n\n"
+			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] [-quiet] <measurementset.ms> <solutions.bin>\n\n"
 			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
 	} else {
 		int argi = 1;
 		// bool saveCrossTermsPlotFile = false, saveFaradayPlotFiles = false;
 		bool
 			savePlotFiles = false, beamOnSource = false, applyBeam = false,
-			onlyScalar = false, onlyDiag = false, onlyRotation = false;
+			onlyScalar = false, onlyDiag = false, onlyRotation = false, doQuiet = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile, rhsSolutionFile;
 		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 0;
 		std::string dataColumnName = "DATA";
@@ -115,6 +115,11 @@ int main(int argc, char *argv[])
 				onlyRotation = true;
 				argi++;
 			}
+			else if(param == "quiet")
+			{
+				doQuiet = true;
+				++argi;
+			}
 			else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 		}
 		
@@ -137,7 +142,7 @@ int main(int argc, char *argv[])
 		calibrator.SetRHSSolutionFile(rhsSolutionFile);
 		calibrator.SetOnlyRotation(onlyRotation);
 		calibrator.SetSolutionOutputFilename(outName);
-		calibrator.SetVerbose(true);
+		calibrator.SetVerbose(!doQuiet);
 		calibrator.SetSavePlotFiles(savePlotFiles);
 		calibrator.SetDataColumnName(dataColumnName);
 		if(savePlotFiles)

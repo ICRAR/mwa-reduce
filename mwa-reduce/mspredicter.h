@@ -23,7 +23,7 @@ public:
 		{	}
 		
 		std::complex<double> *modelData;
-		size_t rowIndex, a1, a2;
+		size_t rowIndex, timeIndex, a1, a2;
 		double u, v, w;
 	};
 	

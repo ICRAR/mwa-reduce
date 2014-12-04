@@ -2,6 +2,7 @@
 #define VISIBILITY_ARRAY_H
 
 #include <stdexcept>
+#include <sstream>
 
 #include "uvector.h"
 
@@ -20,10 +21,20 @@ public:
 	
 	T *ValuePtr(size_t antenna1, size_t antenna2, size_t timeIndex)
 	{
-		if(antenna1 == antenna2)
-			throw std::runtime_error("Requested an auto-correlation");
-		if(antenna1 >= _nAntenna || antenna2 >= _nAntenna || timeIndex >= _nTimesteps)
-			throw std::runtime_error("Requested index value out of bounds");
+		if(antenna1 == antenna2 || antenna1 >= _nAntenna || antenna2 >=_nAntenna || timeIndex >= _nTimesteps)
+		{
+			std::ostringstream errMsg;
+			errMsg << "Call: ValuePtr(antenna1=" << antenna1 << ", antenna2=" << antenna2 << ", timeIndex=" << timeIndex << " - ";
+			std::string s = errMsg.str();
+			if(antenna1 == antenna2)
+				throw std::runtime_error(s+"Requested an auto-correlation");
+			if(antenna1 >= _nAntenna)
+				throw std::runtime_error(s+"Requested index value for antenna1 out of bounds");
+			if(antenna2 >= _nAntenna)
+				throw std::runtime_error(s+"Requested index value for antenna2 out of bounds");
+			if(timeIndex >= _nTimesteps)
+				throw std::runtime_error(s+"Requested index value for time index out of bounds");
+		}
 		if(antenna1 > antenna2)
 			std::swap(antenna1, antenna2);
 		return &_values[NPol * _nChannels * (BaselineIndex(antenna1, antenna2) + timeIndex * _nBaselines)];
