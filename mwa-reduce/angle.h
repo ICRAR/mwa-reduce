@@ -2,6 +2,7 @@
 #define ANGLE_H
 
 #include <string>
+#include <sstream>
 #include <stdexcept>
 #include <cmath>
 
@@ -16,11 +17,41 @@ public:
 	 */
 	static double Parse(const std::string& s, const std::string& valueDescription);
 	
+	static std::string ToNiceString(double angleRad);
+	
 private:
 	static size_t findNumberEnd(const std::string& s);
 	static bool isDigit(const char c) { return c>='0' && c<='9'; }
 	static bool isWhitespace(const char c) { return c==' ' || c=='\t'; }
 };
+
+inline std::string Angle::ToNiceString(double angleRad)
+{
+	std::ostringstream str;
+	double degAngle = angleRad * 180.0 / M_PI;
+	if(degAngle >= 2.0)
+	{
+		str << round(degAngle*100.0)/100.0 << " deg";
+	}
+	else {
+		double minAngle = angleRad * 180.0 * 60.0 / M_PI;
+		if(minAngle >= 2.0)
+		{
+			str << round(minAngle*100.0)/100.0 << "'";
+		}
+		else {
+			double secAngle = angleRad * 180.0 * 60.0 * 60.0 / M_PI;
+			if(secAngle >= 1.0)
+			{
+				str << round(secAngle*100.0)/100.0 << "''";
+			}
+			else {
+				str << round (secAngle*100.0*1000.0)/100.0 << " masec";
+			}
+		}
+	}
+	return str.str();
+}
 
 inline double Angle::Parse(const std::string& s, const std::string& valueDescription)
 {
