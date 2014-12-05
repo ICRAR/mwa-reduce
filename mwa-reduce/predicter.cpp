@@ -15,6 +15,30 @@ void Predicter::initialize(ModelComponent& component)
 	parameters->brightness = new CNumType[_channelCount*4];
 	parameters->beamValues = new CNumType[_channelCount*4];
 	parameters->appBrightness = new CNumType[_channelCount*4];
+	
+	if(component.Type() == ModelComponent::GaussianSource)
+	{
+		// Using the FWHM formula for a Gaussian:
+		double sigmaMaj = component.MajorAxis() / (2.0L * sqrtl(2.0L * logl(2.0L)));
+		double sigmaMin = component.MinorAxis() / (2.0L * sqrtl(2.0L * logl(2.0L)));
+		// Position angle is angle from North:
+		double paSin, paCos;
+		sincos(component.PositionAngle()+0.5*M_PI, &paSin, &paCos);
+		// Make rotation matrix
+		long double transf[4];
+		transf[0] = paCos;
+		transf[1] = -paSin;
+		transf[2] = paSin;
+		transf[3] = paCos;
+		// Multiply with scaling matrix to make variance 1.
+		// sigmamaj/min are multiplications and include pi^2 factor, because the sigma
+		// of the Fourier transform of a Gaus is 1/sigma of the normal Gaus and has a pi^2 factor.
+		parameters->gausTransf[0] = transf[0] * sigmaMaj * M_PI * M_PI * sqrt(2.0);
+		parameters->gausTransf[1] = transf[1] * sigmaMaj * M_PI * M_PI * sqrt(2.0);
+		parameters->gausTransf[2] = transf[2] * sigmaMin * M_PI * M_PI * sqrt(2.0);
+		parameters->gausTransf[3] = transf[3] * sigmaMin * M_PI * M_PI * sqrt(2.0);
+	}
+	
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
 		NumType stokesValues[4];
@@ -113,6 +137,7 @@ void Predicter::predict4(CNumType *dest, const ModelComponent& component, NumTyp
 	switch(component.Type())
 	{
 		case ModelComponent::PointSource:
+		case ModelComponent::GaussianSource:
 		{
 			SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
 			NumType l = parameters->l, m = parameters->m;
@@ -141,6 +166,18 @@ void Predicter::predict4(CNumType *dest, const ModelComponent& component, NumTyp
 				}
 			}
 		}
+	}
+	if(component.Type() == ModelComponent::GaussianSource)
+	{
+		SourceParameters& parameters = *reinterpret_cast<SourceParameters*>(component.UserData());
+		
+		NumType
+			uTransf = u*parameters.gausTransf[0] + v*parameters.gausTransf[1],
+			vTransf = u*parameters.gausTransf[2] + v*parameters.gausTransf[3];
+		//std::cout << uTransf << ',' << vTransf << '\n';
+		NumType g = exp(-uTransf*uTransf - vTransf*vTransf);
+		for(size_t p=0; p!=4; ++p)
+			dest[p] *= g;
 	}
 	
 	if(!_rhsSolutions.empty())

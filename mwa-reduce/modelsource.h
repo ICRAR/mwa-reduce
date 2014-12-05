@@ -14,26 +14,10 @@
 class ModelComponent
 {
 	public:
-		enum Type { PointSource };
+		enum Type { PointSource, GaussianSource };
 		
-		ModelComponent() : _type(PointSource), _posRA(0.0), _posDec(0.0), _sed(), _l(0.0), _m(0.0), _userdata(0)
+		ModelComponent() : _type(PointSource), _posRA(0.0), _posDec(0.0), _sed(), _l(0.0), _m(0.0), _positionAngle(0.0), _majorAxis(0.0), _minorAxis(0.0), _userdata(0)
 		{
-		}
-		
-		ModelComponent(const ModelComponent& source) : _type(source._type), _posRA(source._posRA), _posDec(source._posDec), _sed(source._sed), _l(source._l), _m(source._m), _userdata(source._userdata)
-		{
-		}
-		
-		ModelComponent& operator=(const ModelComponent &source)
-		{
-			_type = source._type;
-			_posRA = source._posRA;
-			_posDec = source._posDec;
-			_sed = source._sed;
-			_l = source._l;
-			_m = source._m;
-			_userdata = source._userdata;
-			return *this;
 		}
 		
 		enum Type Type() const { return _type; }
@@ -42,6 +26,10 @@ class ModelComponent
 		const SpectralEnergyDistribution &SED() const { return _sed; }
 		long double L() const { return _l; }
 		long double M() const { return _m; }
+		long double PositionAngle() const { return _positionAngle; }
+		long double MajorAxis() const { return _majorAxis; }
+		long double MinorAxis() const { return _minorAxis; }
+		
 		void* UserData() const { return _userdata; }
 		
 		void SetType(enum Type type) { _type = type; }
@@ -53,6 +41,9 @@ class ModelComponent
 		}
 		void SetL(long double l) { _l = l; }
 		void SetM(long double m) { _m = m; }
+		void SetPositionAngle(long double pa) { _positionAngle = pa; }
+		void SetMajorAxis(long double majorAxis) { _majorAxis = majorAxis; }
+		void SetMinorAxis(long double minorAxis) { _minorAxis = minorAxis; }
 		void SetUserData(void *userData) { _userdata = userData; }
 		
 		std::string ToString() const
@@ -81,6 +72,7 @@ class ModelComponent
 		long double _posRA, _posDec;
 		SpectralEnergyDistribution _sed;
 		long double _l, _m;
+		long double _positionAngle, _majorAxis, _minorAxis;
 		void *_userdata;
 };
 

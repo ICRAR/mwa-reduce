@@ -43,6 +43,7 @@ class Predicter
 		{
 			NumType l, m, lmsqrt;
 			CNumType *brightness, *beamValues, *appBrightness;
+			NumType gausTransf[4];
 		};
 		void readSolutions(const std::string& solutionFile);
 		

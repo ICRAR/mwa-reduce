@@ -91,7 +91,11 @@ class ModelParser : private Tokenizer
 			{
 				if(token == "type") {
 					getToken(token);
-					if(token != "point")
+					if(token == "point")
+						component.SetType(ModelComponent::PointSource);
+					else if(token == "gaussian")
+						component.SetType(ModelComponent::GaussianSource);
+					else
 						throw std::runtime_error("Unsupported component type");
 				}
 				else if(token == "position")
@@ -106,6 +110,27 @@ class ModelParser : private Tokenizer
 					parseMeasurement(measurement);
 					component.SED().AddMeasurement(measurement);
 				}
+				else if(token == "shape") {
+					getToken(token);
+					component.SetMajorAxis(atof(token.c_str()) * M_PI / 60.0/60.0/180.0);
+					getToken(token);
+					component.SetMinorAxis(atof(token.c_str()) * M_PI / 60.0/60.0/180.0);
+					getToken(token);
+					component.SetPositionAngle(atof(token.c_str()) * M_PI / 180.0);
+				}
+				else if(token == "major-axis") {
+					getToken(token);
+					component.SetMajorAxis(atof(token.c_str()) * M_PI / 60.0/60.0/180.0);
+				}
+				else if(token == "minor-axis") {
+					getToken(token);
+					component.SetMinorAxis(atof(token.c_str()) * M_PI / 60.0/60.0/180.0);
+				}
+				else if(token == "position-angle") {
+					getToken(token);
+					component.SetPositionAngle(atof(token.c_str()) * 180.0/M_PI);
+				}
+				else throw std::runtime_error("Unknown keyname in component");
 			}
 		}
 		void parseMeasurement(Measurement &measurement)
