@@ -180,7 +180,19 @@ private:
 	{
 		_buffers.push_back(Buffer());
 		Buffer* buffer = &_buffers.back();
-		posix_memalign(reinterpret_cast<void**>(&buffer->ptr), sizeof(NumType)*2, size * sizeof(NumType) * 2);
+		int errVal = posix_memalign(reinterpret_cast<void**>(&buffer->ptr), sizeof(NumType)*2, size * sizeof(NumType) * 2);
+		if(errVal != 0)
+		{
+			switch(errVal)
+			{
+				case EINVAL:
+					throw std::runtime_error("posix_memalign() failed: the alignment argument was not a power of two, or was not a multiple of sizeof(void *)");
+				case ENOMEM:
+					throw std::runtime_error("posix_memalign() failed: there was insufficient memory to fulfill the allocation request.");
+				default:
+					throw std::runtime_error("posix_memalign() failed but returned unknown error value");
+			}
+		}
 		buffer->size = size;
 		buffer->isFirstHalfUsed = false;
 		buffer->isSecondHalfUsed = false;
