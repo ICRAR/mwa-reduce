@@ -32,11 +32,11 @@ void Predicter::initialize(ModelComponent& component)
 		transf[3] = paCos;
 		// Multiply with scaling matrix to make variance 1.
 		// sigmamaj/min are multiplications and include pi^2 factor, because the sigma
-		// of the Fourier transform of a Gaus is 1/sigma of the normal Gaus and has a pi^2 factor.
-		parameters->gausTransf[0] = transf[0] * sigmaMaj * M_PI * M_PI * sqrt(2.0);
-		parameters->gausTransf[1] = transf[1] * sigmaMaj * M_PI * M_PI * sqrt(2.0);
-		parameters->gausTransf[2] = transf[2] * sigmaMin * M_PI * M_PI * sqrt(2.0);
-		parameters->gausTransf[3] = transf[3] * sigmaMin * M_PI * M_PI * sqrt(2.0);
+		// of the Fourier transform of a Gaus is 1/sigma of the normal Gaus and has a sqrt(2 pi^2) factor.
+		parameters->gausTransf[0] = transf[0] * sigmaMaj * M_PI * sqrt(2.0);
+		parameters->gausTransf[1] = transf[1] * sigmaMaj * M_PI * sqrt(2.0);
+		parameters->gausTransf[2] = transf[2] * sigmaMin * M_PI * sqrt(2.0);
+		parameters->gausTransf[3] = transf[3] * sigmaMin * M_PI * sqrt(2.0);
 	}
 	
 	for(size_t ch=0;ch!=_channelCount;++ch)
