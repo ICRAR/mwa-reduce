@@ -8,22 +8,27 @@
 #include "model.h"
 #include "modelrenderer.h"
 #include "banddata.h"
+#include "angle.h"
 
 void meanPos(const std::vector<ModelSource*>& sources, double& ra, double& dec);
 
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r] [-a] [-centre <ra> <dec>] <model>\n";
+		std::cout << "syntax: render [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r [-beam <maj> <min> <pa>]] [-a] [-centre <ra> <dec>] <model>\n";
 	else {
 		std::string templateFits;
 		std::string outputFitsName;
 		std::string ionOutPrefix;
 		const char* ionSolutionFilename = 0;
-		bool restore = false, addToTemplate = false, ionospheric = false;
+		bool restore = false, addToTemplate = false, ionospheric = false, hasManualBeam = false;
 		int argi = 1;
 		double ra = 0.0, dec = 0.0, dl = 0.0, dm = 0.0;
 		double pixelSizeX = 0.012*(M_PI/180.0), pixelSizeY = 0.012*(M_PI/180.0);
+		double
+			beamMaj = 2.0*(M_PI/180.0/60.0),
+			beamMin = 2.0*(M_PI/180.0/60.0),
+			beamPA = 0.0;
 		while(argi < argc && argv[argi][0] == '-')
 		{
 			std::string param(&argv[argi][1]);
@@ -33,6 +38,15 @@ int main(int argc, char* argv[])
 			}
 			else if(param == "r") {
 				restore = true;
+			}
+			else if(param == "beam") {
+				hasManualBeam = true;
+				++argi;
+				beamMaj = Angle::Parse(argv[argi], "beam major axis", Angle::Arcseconds);
+				++argi;
+				beamMin = Angle::Parse(argv[argi], "beam minor axis", Angle::Arcseconds);
+				++argi;
+				beamPA = Angle::Parse(argv[argi], "beam position angle", Angle::Degrees);
 			}
 			else if(param == "a") {
 				addToTemplate = true;
@@ -64,10 +78,6 @@ int main(int argc, char* argv[])
 	
 		size_t width = 4096, height = 4096;
 		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
-		double
-			beamMaj = 2.0*(M_PI/180.0/60.0),
-			beamMin = 2.0*(M_PI/180.0/60.0),
-			beamPA = 0.0;
 		
 		std::unique_ptr<FitsWriter> writer;
 		std::unique_ptr<FitsReader> reader;
@@ -87,7 +97,7 @@ int main(int argc, char* argv[])
 			bandwidth = reader->Bandwidth();
 			dateObs = reader->DateObs();
 			frequency = reader->Frequency();
-			if(reader->HasBeam())
+			if(reader->HasBeam() && !hasManualBeam)
 			{
 				beamMaj = reader->BeamMajorAxisRad();
 				beamMin = reader->BeamMinorAxisRad();
