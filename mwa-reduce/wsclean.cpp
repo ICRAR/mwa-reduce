@@ -20,6 +20,7 @@
 
 #include "uvector.h"
 #include "gaussianfitter.h"
+#include "angle.h"
 
 #include <iostream>
 #include <memory>
@@ -148,18 +149,22 @@ void WSClean::imagePSF(size_t currentChannelIndex, size_t joinedChannelIndex)
 			_imgWidth, _imgHeight,
 			_inversionAlgorithm->BeamSize()*2.0/(_pixelScaleX+_pixelScaleY),
 			bMaj, bMin, bPA);
-		std::cout << "major=" << bMaj*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', minor=" <<
-		bMin*(180.0*60.0/M_PI)*0.5*(_pixelScaleX+_pixelScaleY) << "', PA=" << round(bPA*(180.0/M_PI)) << " deg, theoretical=" <<
-		_inversionAlgorithm->BeamSize()*(180.0*60.0/M_PI)<< "'.\n";
+		if(bMaj < 1.0) bMaj = 1.0;
+		if(bMin < 1.0) bMin = 1.0;
+		bMaj = bMaj*0.5*(_pixelScaleX+_pixelScaleY);
+		bMin = bMin*0.5*(_pixelScaleX+_pixelScaleY);
+		std::cout << "major=" << Angle::ToNiceString(bMaj) << ", minor=" <<
+		Angle::ToNiceString(bMin) << ", PA=" << Angle::ToNiceString(bPA) << ", theoretical=" <<
+		Angle::ToNiceString(_inversionAlgorithm->BeamSize())<< ".\n";
 		
-		_manualBeamMajorSize = bMaj*0.5*(_pixelScaleX+_pixelScaleY);
+		_manualBeamMajorSize = bMaj;
 		if(_circularBeam)
 		{
 			_manualBeamMinorSize = _manualBeamMajorSize;
 			_manualBeamPA = 0.0;
 		}
 		else {
-			_manualBeamMinorSize = bMin*0.5*(_pixelScaleX+_pixelScaleY);
+			_manualBeamMinorSize = bMin;
 			_manualBeamPA = bPA;
 		}
 		initFitsWriter(_fitsWriter);

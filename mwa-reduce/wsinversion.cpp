@@ -5,6 +5,7 @@
 #include "msprovider/msprovider.h"
 #include "fftresampler.h"
 #include "imagebufferallocator.h"
+#include "angle.h"
 
 #include <ms/MeasurementSets/MeasurementSet.h>
 #include <measures/Measures/MDirection.h>
@@ -124,7 +125,7 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 	if(_denormalPhaseCentre)
 		std::cout << "Set has denormal phase centre: dl=" << _phaseCentreDL << ", dm=" << _phaseCentreDM << '\n';
 	
-	std::cout << "Determining min and max w & beam size... " << std::flush;
+	std::cout << "Determining min and max w & theoretical beam size... " << std::flush;
 	msData.maxW = 0.0;
 	msData.minW = 1e100;
 	double maxBaseline = 0.0;
@@ -172,7 +173,7 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		msData.maxW = 0.0;
 	}
 	_beamSize = 1.0 / maxBaseline;
-	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas)\n";
+	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas, beam=" << Angle::ToNiceString(_beamSize) << ")\n";
 	if(HasWLimit()) {
 		msData.maxW *= (1.0 - WLimit());
 		if(msData.maxW < msData.minW) msData.maxW = msData.minW;
