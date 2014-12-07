@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 			"-size <width> <height>\n"
 			"   Default: 2048 x 2048\n"
 			"-scale <pixel-scale>\n"
-			"   Scale of a pixel in degrees, e.g. 0.012. Default: 0.01\n"
+			"   Scale of a pixel. Default unit is degrees, but can be specificied, e.g. -scale 20asec. Default: 0.01deg.\n"
 			"-nwlayers <nwlayers>\n"
 			"   Number of w-layers to use. Default: minimum suggested #w-layers for first MS.\n"
 			"-channelsout <count>\n"
@@ -151,8 +151,9 @@ int main(int argc, char *argv[])
 			"-beamsize <arcmin>\n"
 			"   Set the FWHM beam size in arcmin for restoring the clean components. Default: longest projected\n"
 			"   baseline defines restoring beam.\n"
-			"-beamshape <maj in arcmin> <min in arcmin> <position angle in deg>\n"
-			"   Set the FWHM beam shape in arcmin (pa in deg) for restoring the clean components.\n"
+			"-beamshape <maj in arcsec> <min in arcsec> <position angle in deg>\n"
+			"   Set the FWHM beam shape for restoring the clean components. Defaults units for maj and min are arcsec, and\n"
+			"   degrees for PA. Can be overriden, e.g. '-beamshape 1amin 1amin 3deg'.\n"
 			"-fitbeam\n"
 			"   Determine beam shape by fitting the PSF.\n"
 			"-nofitbeam\n"
@@ -372,9 +373,9 @@ int main(int argc, char *argv[])
 		}
 		else if(param == "beamshape")
 		{
-			double beamMaj = atof(argv[argi+1]) * (M_PI / 60.0 / 180.0);
-			double beamMin = atof(argv[argi+2]) * (M_PI / 60.0 / 180.0);
-			double beamPA = atof(argv[argi+3]) * (M_PI / 180.0);
+			double beamMaj = Angle::Parse(argv[argi+1], "beam shape, major axis", Angle::Arcseconds);
+			double beamMin = Angle::Parse(argv[argi+2], "beam shape, minor axis", Angle::Arcseconds);
+			double beamPA = Angle::Parse(argv[argi+3], "beam shape, position angle", Angle::Degrees);
 			argi+=3;
 			wsclean.SetBeamSize(beamMaj, beamMin, beamPA);
 		}
