@@ -169,6 +169,13 @@ class InversionAlgorithm
 		virtual double StartTime() const = 0;
 		virtual double ImageWeight() const = 0;
 		
+		/**
+		 * Deallocate any data that is no longer necessary, but all methods
+		 * will still return results from the imaging, with the exception of
+		 * except ImageReal/ImagResult() and GetGriddingCorrectionImage().
+		 */
+		virtual void FreeImagingData() {	}
+		
 		virtual bool HasGriddingCorrectionImage() const = 0;
 		virtual void GetGriddingCorrectionImage(double *image) const = 0;
 		

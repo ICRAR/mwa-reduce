@@ -685,6 +685,7 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 		std::cout << _majorIterationNr << " major iterations were performed.\n";
 	}
 	
+	_inversionAlgorithm->FreeImagingData();
 	
 	// Restore model to residuals and save all images
 	for(size_t ch=0; ch!=joinedChannelsOut; ++ch)

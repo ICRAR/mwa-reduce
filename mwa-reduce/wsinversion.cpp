@@ -562,6 +562,7 @@ void WSInversion::Invert()
 			_inversionWorkLane->write_end();
 			thread.join();
 		}
+		_inversionWorkLane.reset();
 		
 		std::cout << "Fourier transforms...\n";
 		_imager->FinishInversionPass();

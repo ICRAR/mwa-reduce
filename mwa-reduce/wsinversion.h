@@ -56,6 +56,11 @@ class WSInversion : public InversionAlgorithm
 		
 		size_t ActualInversionWidth() const { return _actualInversionWidth; }
 		size_t ActualInversionHeight() const { return _actualInversionHeight; }
+		
+		virtual void FreeImagingData()
+		{
+			_imager.reset();
+		}
 	private:
 		struct InversionWorkItem
 		{

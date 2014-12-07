@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 		else if(param == "scale")
 		{
 			++argi;
-			wsclean.SetPixelScale(Angle::Parse(argv[argi], "scale parameter"));
+			wsclean.SetPixelScale(Angle::Parse(argv[argi], "scale parameter", Angle::Degrees));
 		}
 		else if(param == "nwlayers")
 		{
