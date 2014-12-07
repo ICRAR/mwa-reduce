@@ -284,11 +284,13 @@ void ImageWeights::SetMinUVRange(double minUVInLambda)
 {
 	ao::uvector<double>::iterator i = _grid.begin();
 	const double minSq = minUVInLambda*minUVInLambda;
+	int halfWidth = _imageWidth/2;
 	for(size_t y=0; y!=_imageHeight/2; ++y)
 	{
 		for(size_t x=0; x!=_imageWidth; ++x)
 		{
-			double u = double(x-_imageWidth/2) / (_imageWidth*_pixelScaleX);
+			int xi = int(x)-halfWidth;
+			double u = double(xi) / (_imageWidth*_pixelScaleX);
 			double v = double(y) / (_imageHeight*_pixelScaleY);
 			if(u*u + v*v < minSq)
 				*i = 0.0;
@@ -301,11 +303,13 @@ void ImageWeights::SetMaxUVRange(double maxUVInLambda)
 {
 	ao::uvector<double>::iterator i = _grid.begin();
 	const double maxSq = maxUVInLambda*maxUVInLambda;
+	int halfWidth = _imageWidth/2;
 	for(size_t y=0; y!=_imageHeight/2; ++y)
 	{
 		for(size_t x=0; x!=_imageWidth; ++x)
 		{
-			double u = double(x-_imageWidth/2) / (_imageWidth*_pixelScaleX);
+			int xi = int(x)-halfWidth;
+			double u = double(xi) / (_imageWidth*_pixelScaleX);
 			double v = double(y) / (_imageHeight*_pixelScaleY);
 			if(u*u + v*v > maxSq)
 				*i = 0.0;
