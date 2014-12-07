@@ -102,9 +102,12 @@ int main(int argc, char *argv[])
 			"   saves the imaginary part instead of the real part; only sensible for xy/yx. Not the default.\n"
 			"-datacolumn <columnname>\n"
 			"   Default: CORRECTED_DATA if it exists, otherwise DATA will be used.\n"
-			"-maxuvw <meters>\n"
-			"-minuvw <meters>\n"
+			"-maxuvw-m <meters>\n"
+			"-minuvw-m <meters>\n"
 			"   Set the min/max baseline distance in meters.\n"
+			"-maxuv-l <lambda>\n"
+			"-minuv-l <lambda>\n"
+			"   Set the min/max uv distance in lambda.\n"
 			"-maxw <percentage>\n"
 			"   Do not grid visibilities with a w-value higher than the given percentage of the max w, to save speed.\n"
 			"   Default: grid everything\n"
@@ -430,15 +433,25 @@ int main(int argc, char *argv[])
 			++argi;
 			wsclean.SetMemAbsLimit(atof(argv[argi]));
 		}
-		else if(param == "minuvw")
+		else if(param == "maxuvw-m")
 		{
 			++argi;
-			wsclean.SetMinUVW(atof(argv[argi]));
+			wsclean.SetMaxUVWInM(atof(argv[argi]));
 		}
-		else if(param == "maxuvw")
+		else if(param == "minuvw-m")
 		{
 			++argi;
-			wsclean.SetMaxUVW(atof(argv[argi]));
+			wsclean.SetMinUVWInM(atof(argv[argi]));
+		}
+		else if(param == "maxuv-l")
+		{
+			++argi;
+			wsclean.SetMaxUVInLambda(atof(argv[argi]));
+		}
+		else if(param == "minuv-l")
+		{
+			++argi;
+			wsclean.SetMinUVInLambda(atof(argv[argi]));
 		}
 		else if(param == "maxw")
 		{

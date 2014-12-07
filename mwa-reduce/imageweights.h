@@ -37,14 +37,7 @@ class ImageWeights
 		
 		double GetWeight(double u, double v) const
 		{
-			switch(_weightMode.Mode())
-			{
-				case WeightMode::UniformWeighted:
-				case WeightMode::BriggsWeighted: return sampleGridValue(u, v);
-				case WeightMode::DistanceWeighted: return GetInverseTaperedWeight(u, v);
-				default:
-				case WeightMode::NaturalWeighted: return GetNaturalWeight(u, v);
-			}
+			return sampleGridValue(u, v);
 		}
 
 		void Grid(casa::MeasurementSet& ms, const MSSelection& selection);
@@ -55,7 +48,9 @@ class ImageWeights
 		double ApplyWeights(std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
 
 		void Grid(const std::complex<float> *data, const bool *flags, double uTimesLambda, double vTimesLambda, size_t channelCount, double lowestFrequency, double frequencyStep);
-
+		
+		void SetMaxUVRange(double maxUVInLambda);
+		void SetMinUVRange(double minUVInLambda);
 	private:
 		ImageWeights(const ImageWeights&) :
 			_weightMode(WeightMode::NaturalWeighted),

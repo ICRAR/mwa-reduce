@@ -153,46 +153,49 @@ void ImageWeights::Grid(MSProvider& msProvider, const MSSelection& selection)
 {
 	if(_isGriddingFinished)
 		throw std::runtime_error("Grid() called after a call to FinishGridding()");
-	const MultiBandData bandData(msProvider.MS().spectralWindow(), msProvider.MS().dataDescription());
-	MultiBandData selectedBand;
-	if(selection.HasChannelRange())
-		selectedBand = MultiBandData(bandData, selection.ChannelRangeStart(), selection.ChannelRangeEnd());
-	else
-		selectedBand = bandData;
-	std::vector<float> weightBuffer(selectedBand.MaxChannels());
-	
-	msProvider.Reset();
-	do
+	if(_weightMode.RequiresGridding())
 	{
-		double uInM, vInM, wInM;
-		size_t dataDescId;
-		msProvider.ReadMeta(uInM, vInM, wInM, dataDescId);
-		msProvider.ReadWeights(weightBuffer.data());
-		const BandData& curBand = selectedBand[dataDescId];
-		if(vInM < 0.0)
-		{
-			uInM = -uInM;
-			vInM = -vInM;
-		}
+		const MultiBandData bandData(msProvider.MS().spectralWindow(), msProvider.MS().dataDescription());
+		MultiBandData selectedBand;
+		if(selection.HasChannelRange())
+			selectedBand = MultiBandData(bandData, selection.ChannelRangeStart(), selection.ChannelRangeEnd());
+		else
+			selectedBand = bandData;
+		std::vector<float> weightBuffer(selectedBand.MaxChannels());
 		
-		const float* weightIter = weightBuffer.data();
-		for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
+		msProvider.Reset();
+		do
 		{
-			double
-				u = uInM / curBand.ChannelWavelength(ch),
-				v = vInM / curBand.ChannelWavelength(ch);
-			double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
-			double y = round(v*_imageHeight*_pixelScaleY);
-				
-			if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
+			double uInM, vInM, wInM;
+			size_t dataDescId;
+			msProvider.ReadMeta(uInM, vInM, wInM, dataDescId);
+			msProvider.ReadWeights(weightBuffer.data());
+			const BandData& curBand = selectedBand[dataDescId];
+			if(vInM < 0.0)
 			{
-				size_t index = (size_t) x + (size_t) y*_imageWidth;
-				_grid[index] += *weightIter;
-				_totalSum += *weightIter;
+				uInM = -uInM;
+				vInM = -vInM;
 			}
-			++weightIter;
-		}
-	} while(msProvider.NextRow());
+			
+			const float* weightIter = weightBuffer.data();
+			for(size_t ch=0; ch!=curBand.ChannelCount(); ++ch)
+			{
+				double
+					u = uInM / curBand.ChannelWavelength(ch),
+					v = vInM / curBand.ChannelWavelength(ch);
+				double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
+				double y = round(v*_imageHeight*_pixelScaleY);
+					
+				if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
+				{
+					size_t index = (size_t) x + (size_t) y*_imageWidth;
+					_grid[index] += *weightIter;
+					_totalSum += *weightIter;
+				}
+				++weightIter;
+			}
+		} while(msProvider.NextRow());
+	}
 }
 
 void ImageWeights::FinishGridding()
@@ -201,28 +204,53 @@ void ImageWeights::FinishGridding()
 		throw std::runtime_error("FinishGridding() called twice");
 	_isGriddingFinished = true;
 	
-	if(_weightMode.IsBriggs())
+	switch(_weightMode.Mode())
 	{
-		double avgW = 0.0;
-		for(ao::uvector<double>::const_iterator i=_grid.begin(); i!=_grid.end(); ++i)
-			avgW += *i * *i;
-		avgW /= _totalSum;
-		double numeratorSqrt = 5.0 * exp10(-_weightMode.BriggsRobustness());
-		double sSq = numeratorSqrt*numeratorSqrt / avgW;
-		for(ao::uvector<double>::iterator i=_grid.begin(); i!=_grid.end(); ++i)
+		case WeightMode::BriggsWeighted:
 		{
-			*i = 1.0 / (1.0 + *i * sSq);
+			double avgW = 0.0;
+			for(ao::uvector<double>::const_iterator i=_grid.begin(); i!=_grid.end(); ++i)
+				avgW += *i * *i;
+			avgW /= _totalSum;
+			double numeratorSqrt = 5.0 * exp10(-_weightMode.BriggsRobustness());
+			double sSq = numeratorSqrt*numeratorSqrt / avgW;
+			for(ao::uvector<double>::iterator i=_grid.begin(); i!=_grid.end(); ++i)
+			{
+				*i = 1.0 / (1.0 + *i * sSq);
+			}
 		}
-	}
-	else if(_weightMode.IsUniform())
-	{
-		for(ao::uvector<double>::iterator i=_grid.begin(); i!=_grid.end(); ++i)
+		break;
+		case WeightMode::UniformWeighted:
 		{
-			if(*i != 0.0)
-				*i = 1.0 / *i;
-			else
-				*i = 0.0;
+			for(ao::uvector<double>::iterator i=_grid.begin(); i!=_grid.end(); ++i)
+			{
+				if(*i != 0.0)
+					*i = 1.0 / *i;
+				else
+					*i = 0.0;
+			}
 		}
+		break;
+		case WeightMode::NaturalWeighted:
+		{
+			_grid.assign(_imageWidth*_imageHeight/2, 1.0);
+		}
+		break;
+		case WeightMode::DistanceWeighted:
+		{
+			ao::uvector<double>::iterator i = _grid.begin();
+			for(size_t y=0; y!=_imageHeight/2; ++y)
+			{
+				for(size_t x=0; x!=_imageWidth; ++x)
+				{
+					double u = double(x-_imageWidth/2) / (_imageWidth*_pixelScaleX);
+					double v = double(y) / (_imageHeight*_pixelScaleY);
+					*i = GetInverseTaperedWeight(u, v);
+					++i;
+				}
+			}
+		}
+		break;
 	}
 }
 
@@ -248,6 +276,40 @@ void ImageWeights::Grid(const std::complex<float> *data, const bool *flags, doub
 				size_t index = (size_t) x + (size_t) y*_imageWidth;
 				_grid[index] += 1.0;
 			}
+		}
+	}
+}
+
+void ImageWeights::SetMinUVRange(double minUVInLambda)
+{
+	ao::uvector<double>::iterator i = _grid.begin();
+	const double minSq = minUVInLambda*minUVInLambda;
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double u = double(x-_imageWidth/2) / (_imageWidth*_pixelScaleX);
+			double v = double(y) / (_imageHeight*_pixelScaleY);
+			if(u*u + v*v < minSq)
+				*i = 0.0;
+			++i;
+		}
+	}
+}
+
+void ImageWeights::SetMaxUVRange(double maxUVInLambda)
+{
+	ao::uvector<double>::iterator i = _grid.begin();
+	const double maxSq = maxUVInLambda*maxUVInLambda;
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double u = double(x-_imageWidth/2) / (_imageWidth*_pixelScaleX);
+			double v = double(y) / (_imageHeight*_pixelScaleY);
+			if(u*u + v*v > maxSq)
+				*i = 0.0;
+			++i;
 		}
 	}
 }

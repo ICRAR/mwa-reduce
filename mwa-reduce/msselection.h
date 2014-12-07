@@ -11,15 +11,15 @@ public:
 		_fieldId(0),
 		_startChannel(0), _endChannel(0),
 		_startTimestep(0), _endTimestep(0),
-		_minUVW(0.0), _maxUVW(0.0),
+		_minUVWInM(0.0), _maxUVWInM(0.0),
 		_autoCorrelations(false)
 	{
 	}
 	
 	bool HasChannelRange() const { return _endChannel != 0; }
 	bool HasInterval() const { return _endTimestep != 0; }
-	bool HasMinUVW() const { return _minUVW != 0.0; }
-	bool HasMaxUVW() const { return _maxUVW != 0.0; }
+	bool HasMinUVWInM() const { return _minUVWInM != 0.0; }
+	bool HasMaxUVWInM() const { return _maxUVWInM != 0.0; }
 	
 	size_t ChannelRangeStart() const { return _startChannel; }
 	size_t ChannelRangeEnd() const { return _endChannel; }
@@ -31,7 +31,7 @@ public:
 	
 	bool IsSelected(size_t fieldId, size_t timestep, size_t antenna1, size_t antenna2, const casa::Vector<double>& uvw) const
 	{
-		if(HasMinUVW() || HasMaxUVW())
+		if(HasMinUVWInM() || HasMaxUVWInM())
 		{
 			double u = uvw(0), v = uvw(1), w = uvw(2);
 			return IsSelected(fieldId, timestep, antenna1, antenna2, sqrt(u*u + v*v + w*w));
@@ -41,7 +41,7 @@ public:
 		}
 	}
 	
-	bool IsSelected(size_t fieldId, size_t timestep, size_t antenna1, size_t antenna2, double uvw) const
+	bool IsSelected(size_t fieldId, size_t timestep, size_t antenna1, size_t antenna2, double uvwInMeters) const
 	{
 		if(fieldId != _fieldId)
 			return false;
@@ -49,9 +49,9 @@ public:
 			return false;
 		else if(!_autoCorrelations && (antenna1 == antenna2))
 			return false;
-		else if(HasMinUVW() && uvw < _minUVW)
+		else if(HasMinUVWInM() && uvwInMeters < _minUVWInM)
 			return false;
-		else if(HasMaxUVW() && uvw > _maxUVW)
+		else if(HasMaxUVWInM() && uvwInMeters > _maxUVWInM)
 			return false;
 		else
 			return true;
@@ -79,20 +79,20 @@ public:
 		_startTimestep = startTimestep;
 		_endTimestep = endTimestep;
 	}
-	void SetMinUVW(double minUVW)
+	void SetMinUVWInM(double minUVW)
 	{
-		_minUVW = minUVW;
+		_minUVWInM = minUVW;
 	}
-	void SetMaxUVW(double maxUVW)
+	void SetMaxUVWInM(double maxUVW)
 	{
-		_maxUVW = maxUVW;
+		_maxUVWInM = maxUVW;
 	}
 	static MSSelection Everything() { return MSSelection(); }
 private:
 	size_t _fieldId;
 	size_t _startChannel, _endChannel;
 	size_t _startTimestep, _endTimestep;
-	double _minUVW, _maxUVW;
+	double _minUVWInM, _maxUVWInM;
 	bool _autoCorrelations;
 };
 

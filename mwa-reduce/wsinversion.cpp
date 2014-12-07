@@ -154,13 +154,17 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 						uInL = uInM/wavelength, vInL = vInM/wavelength,
 						wInL = wInM/wavelength,
 						x = uInL * PixelSizeX() * ImageWidth(),
-						y = vInL * PixelSizeY() * ImageHeight();
-					if(floor(x) > -halfWidth  && ceil(x) < halfWidth &&
-						 floor(y) > -halfHeight && ceil(y) < halfHeight)
+						y = vInL * PixelSizeY() * ImageHeight(),
+						imagingWeight = this->PrecalculatedWeightInfo()->GetWeight(uInL, vInL);
+					if(imagingWeight != 0.0)
 					{
-						msData.maxW = std::max(msData.maxW, fabs(wInL));
-						msData.minW = std::min(msData.minW, fabs(wInL));
-						maxBaseline = std::max(maxBaseline, baselineInM / wavelength);
+						if(floor(x) > -halfWidth  && ceil(x) < halfWidth &&
+							floor(y) > -halfHeight && ceil(y) < halfHeight)
+						{
+							msData.maxW = std::max(msData.maxW, fabs(wInL));
+							msData.minW = std::min(msData.minW, fabs(wInL));
+							maxBaseline = std::max(maxBaseline, baselineInM / wavelength);
+						}
 					}
 				}
 				++weightPtr;
@@ -173,7 +177,7 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		msData.maxW = 0.0;
 	}
 	_beamSize = 1.0 / maxBaseline;
-	std::cout << "DONE (w=[" << msData.minW << " -- " << msData.maxW << "] lambdas, beam=" << Angle::ToNiceString(_beamSize) << ")\n";
+	std::cout << "DONE (w=[" << msData.minW << ":" << msData.maxW << "] lambdas, maxuvw=" << maxBaseline << " lambda, beam=" << Angle::ToNiceString(_beamSize) << ")\n";
 	if(HasWLimit()) {
 		msData.maxW *= (1.0 - WLimit());
 		if(msData.maxW < msData.minW) msData.maxW = msData.minW;

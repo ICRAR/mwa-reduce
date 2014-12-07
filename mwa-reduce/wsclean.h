@@ -77,8 +77,10 @@ public:
 	void SetForceNoReorder(bool forceNoReorder) { _forceNoReorder = forceNoReorder; }
 	void SetMemFraction(double memFraction) { _memFraction = memFraction; }
 	void SetMemAbsLimit(double absMemLimit) { _absMemLimit = absMemLimit; }
-	void SetMinUVW(double minUVW) { _globalSelection.SetMinUVW(minUVW); }
-	void SetMaxUVW(double maxUVW) { _globalSelection.SetMaxUVW(maxUVW); }
+	void SetMinUVWInM(double minUVW) { _globalSelection.SetMinUVWInM(minUVW); }
+	void SetMaxUVWInM(double maxUVW) { _globalSelection.SetMaxUVWInM(maxUVW); }
+	void SetMinUVInLambda(double lambda) { _minUVInLambda = lambda; }
+	void SetMaxUVInLambda(double lambda) { _maxUVInLambda = lambda; }
 	void SetWLimit(double wLimit) { _wLimit = wLimit; }
 	void SetCommandLine(const std::string& cmdLine) { _commandLine = cmdLine; }
 	
@@ -108,6 +110,7 @@ private:
 	void initFitsWriter(class FitsWriter& writer);
 	void setCleanParameters(class FitsWriter& writer, const class CleanAlgorithm& clean);
 	void updateCleanParameters(class FitsWriter& writer, size_t minorIterationNr, size_t majorIterationNr);
+	void initializeWeightTapers();
 	void initializeImageWeights(const MSSelection& partSelection);
 	void initializeMFSImageWeights();
 	void initializeCleanAlgorithm();
@@ -186,7 +189,7 @@ private:
 	double _pixelScaleX, _pixelScaleY, _threshold, _gain, _mGain, _cleanBorderRatio;
 	double _manualBeamMajorSize, _manualBeamMinorSize, _manualBeamPA;
 	bool _fittedBeam, _circularBeam;
-	double _memFraction, _absMemLimit, _wLimit, _multiscaleThresholdBias, _multiscaleScaleBias;
+	double _memFraction, _absMemLimit, _minUVInLambda, _maxUVInLambda, _wLimit, _multiscaleThresholdBias, _multiscaleScaleBias;
 	size_t _nWLayers, _nIter, _antialiasingKernelSize, _overSamplingFactor, _threadCount;
 	MSSelection _globalSelection, _currentPartSelection;
 	std::string _columnName, _cleanAreasFilename;
