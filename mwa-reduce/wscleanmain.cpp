@@ -377,7 +377,7 @@ int main(int argc, char *argv[])
 		else if(param == "beamsize")
 		{
 			++argi;
-			double beam = atof(argv[argi]) * (M_PI / 60.0 / 180.0);
+			double beam = Angle::Parse(argv[argi], "beam size", Angle::Arcseconds);
 			wsclean.SetBeamSize(beam, beam, 0.0);
 		}
 		else if(param == "beamshape")
