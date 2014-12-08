@@ -83,6 +83,7 @@ public:
 	void SetMaxUVInLambda(double lambda) { _maxUVInLambda = lambda; }
 	void SetWLimit(double wLimit) { _wLimit = wLimit; }
 	void SetCommandLine(const std::string& cmdLine) { _commandLine = cmdLine; }
+	void SetSaveGriddingImage(bool isGriddingImageSaved) { _isGriddingImageSaved = isGriddingImageSaved; }
 	
 	void AddInputMS(const std::string& msPath) { _filenames.push_back(msPath); }
 	
@@ -196,7 +197,7 @@ private:
 	std::set<PolarizationEnum> _polarizations;
 	WeightMode _weightMode;
 	std::string _prefixName;
-	bool _allowNegative, _smallPSF, _smallInversion, _stopOnNegative, _makePSF;
+	bool _allowNegative, _smallPSF, _smallInversion, _stopOnNegative, _makePSF, _isGriddingImageSaved;
 	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning, _mfsWeighting, _multiscale;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;

@@ -43,7 +43,7 @@ WSClean::WSClean() :
 	_polarizations(),
 	_weightMode(WeightMode::UniformWeighted),
 	_prefixName("wsclean"),
-	_allowNegative(true), _smallPSF(false), _smallInversion(true), _stopOnNegative(false), _makePSF(false),
+	_allowNegative(true), _smallPSF(false), _smallInversion(true), _stopOnNegative(false), _makePSF(false), _isGriddingImageSaved(false),
 	_forceReorder(false), _forceNoReorder(false), _joinedPolarizationCleaning(false), _joinedFrequencyCleaning(false),
 	_mfsWeighting(false), _multiscale(false),
 	_gridMode(LayeredImager::KaiserBessel),
@@ -877,7 +877,7 @@ void WSClean::runFirstInversion(size_t currentChannelIndex, PolarizationEnum pol
 	
 	_weightPerChannel[currentChannelIndex] = _inversionAlgorithm->ImageWeight();
 	
-	if(firstBeforePSF && _inversionAlgorithm->HasGriddingCorrectionImage())
+	if(_isGriddingImageSaved && firstBeforePSF && _inversionAlgorithm->HasGriddingCorrectionImage())
 		imageGridding();
 	
 	_isFirstInversion = false;

@@ -72,6 +72,8 @@ int main(int argc, char *argv[])
 			"   Default: only reorder when in channel imaging mode.\n"
 			"-makepsf\n"
 			"   Always make the psf, even when no cleaning is performed.\n"
+			"-savegridding\n"
+			"   Save the gridding correction image. This shows the effect of the antialiasing filter. Default: not saved.\n"
 			"-j <threads>\n"
 			"   Specify number of computing threads to use, i.e., number of cpu cores that will be used.\n"
 			"   Default: use all cpu cores.\n"
@@ -164,7 +166,7 @@ int main(int argc, char *argv[])
 			"-circularbeam\n"
 			"   Force the beam to be circular.\n"
 			"-ellipticalbeam\n"
-			"   Allow the beam to be elliptical.\n";
+			"   Allow the beam to be elliptical. Default when -fitbeam is specified.\n";
 		return -1;
 	}
 	
@@ -252,6 +254,10 @@ int main(int argc, char *argv[])
 		else if(param == "makepsf")
 		{
 			wsclean.SetMakePSF(true);
+		}
+		else if(param == "savegridding")
+		{
+			wsclean.SetSaveGriddingImage(true);
 		}
 		else if(param == "cleanareas")
 		{
