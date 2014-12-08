@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: subtrmodel [-r / -s] [-n <σ>] <model> <ms>\n"
+		std::cout << "Usage: subtrmodel [-datacolumn <COLUMN>] [-applybeam] [-r / -s] [-n <σ>] <model> <ms>\n"
 			"Subtracts the model from the visibilities. This 'peels' the\n"
 			"sources out. Only affects cross-correlations. -r to revert or -s to set.\n";
 	} else {
