@@ -1,4 +1,6 @@
 #include "contiguousms.h"
+#include <measures/Measures/MEpoch.h>
+#include <measures/TableMeasures/ScalarMeasColumn.h>
 
 ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnName, MSSelection selection, PolarizationEnum polOut, bool includeModel) :
 	_timestep(0),
@@ -88,6 +90,11 @@ bool ContiguousMS::NextRow()
 	_isModelRead = false;
 	
 	return true;
+}
+
+double ContiguousMS::StartTime()
+{
+	return casa::MEpoch::ROScalarColumn(_ms, casa::MS::columnName(casa::MS::TIME))(_startRow).getValue().get();
 }
 
 void ContiguousMS::ReadMeta(double& u, double& v, double& w, size_t& dataDescId)

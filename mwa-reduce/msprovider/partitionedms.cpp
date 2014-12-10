@@ -12,6 +12,11 @@
 #include <fstream>
 #include <sstream>
 #include <memory>
+
+#include <measures/Measures/MEpoch.h>
+
+#include <measures/TableMeasures/ScalarMeasColumn.h>
+
 // #define REDUNDANT_VALIDATION 1
 
 PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex, PolarizationEnum polarization) :
@@ -249,6 +254,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
 	casa::ROScalarColumn<int> fieldIdColumn(ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID));
 	casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
+	casa::MEpoch::ROScalarColumn timeEpochColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
 	casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
 	std::unique_ptr<casa::ROArrayColumn<float>> weightColumn;
 	casa::ROArrayColumn<casa::Complex> dataColumn(ms, dataColumnName);
@@ -319,7 +325,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	memset(&metaHeader, 0, sizeof(MetaHeader));
 	metaHeader.selectedRowCount = selectedRowCount;
 	metaHeader.filenameLength = msPath.size();
-	metaHeader.fill = 0;
+	metaHeader.startTime = timeEpochColumn(startRow).getValue().get();
 	metaFile.write(reinterpret_cast<char*>(&metaHeader), sizeof(metaHeader));
 	metaFile.write(msPath.c_str(), msPath.size());
 	

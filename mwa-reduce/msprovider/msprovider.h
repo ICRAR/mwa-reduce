@@ -39,6 +39,8 @@ public:
 	
 	virtual void ReopenRW() = 0;
 	
+	virtual double StartTime() = 0;
+	
 	static std::vector<PolarizationEnum> GetMSPolarizations(casa::MeasurementSet& ms);
 protected:
 	static void copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);

@@ -94,13 +94,13 @@ void WSInversion::initializeMeasurementSet(MSProvider& msProvider, WSInversion::
 		_freqHigh = std::max(_freqHigh, selectedBand.HighestFrequency());
 		_bandStart = std::min(_bandStart, selectedBand.BandStart());
 		_bandEnd = std::max(_bandEnd, selectedBand.BandEnd());
-		_startTime = std::min(_startTime, timeColumn(0).getValue().get());
+		_startTime = std::min(_startTime, msProvider.StartTime());
 	} else {
 		_freqLow = selectedBand.LowestFrequency();
 		_freqHigh = selectedBand.HighestFrequency();
 		_bandStart = selectedBand.BandStart();
 		_bandEnd = selectedBand.BandEnd();
-		_startTime = timeColumn(0).getValue().get();
+		_startTime = msProvider.StartTime();
 		_hasFrequencies = true;
 	}
 	

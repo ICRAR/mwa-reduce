@@ -41,6 +41,8 @@ public:
 	{
 		_ms.reopenRW();
 	}
+	
+	virtual double StartTime();
 private:
 	size_t _row;
 	size_t _timestep;

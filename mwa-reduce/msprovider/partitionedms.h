@@ -44,6 +44,8 @@ public:
 	
 	virtual void ReopenRW() { }
 	
+	virtual double StartTime() { return _metaHeader.startTime; }
+	
 	static Handle Partition(const string& msPath, size_t channelParts, class MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::set<PolarizationEnum>& polsOut);
 	
 	class Handle {
@@ -99,7 +101,7 @@ private:
 	{
 		uint64_t selectedRowCount;
 		uint32_t filenameLength;
-		uint32_t fill;
+		double startTime;
 	} _metaHeader;
 	struct MetaRecord
 	{
