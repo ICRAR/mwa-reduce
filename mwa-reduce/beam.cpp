@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 		if(!haveTime) {
 			time = casa::MEpoch(casa::MVEpoch(reader.DateObs())); //casa::Quantity(reader.DateObs(), "s")));
 			std::cout << "Using time from Fits file: " << time << '\n';
-			std::cout << "WARNING: Fits file records START of observation instead of (as is normally the case) the MIDDLE of the observation.\n";
+			std::cout << "WARNING: Fits file records START of observation instead of (as preferred) the MIDDLE of the observation.\n";
 			std::cout << "WARNING: Suggest using -ms to get more accurate timing.\n";
 		}
 		if(!hasDelays) {
