@@ -73,6 +73,7 @@ public:
 	void SetAntialiasingKernelSize(size_t kernelSize) { _antialiasingKernelSize = kernelSize; }
 	void SetOversamplingFactor(size_t oversampling) { _overSamplingFactor = oversampling; }
 	void SetThreadCount(size_t threadCount) { _threadCount = threadCount; }
+	void SetTemporaryDirectory(const std::string& tempDir) { _temporaryDirectory = tempDir; }
 	void SetForceReorder(bool forceReorder) { _forceReorder = forceReorder; }
 	void SetForceNoReorder(bool forceNoReorder) { _forceNoReorder = forceNoReorder; }
 	void SetMemFraction(double memFraction) { _memFraction = memFraction; }
@@ -198,6 +199,7 @@ private:
 	WeightMode _weightMode;
 	std::string _prefixName;
 	bool _allowNegative, _smallPSF, _smallInversion, _stopOnNegative, _makePSF, _isGriddingImageSaved;
+	std::string _temporaryDirectory;
 	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning, _mfsWeighting, _multiscale;
 	enum LayeredImager::GridModeEnum _gridMode;
 	std::vector<std::string> _filenames;

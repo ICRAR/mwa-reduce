@@ -44,6 +44,7 @@ WSClean::WSClean() :
 	_weightMode(WeightMode::UniformWeighted),
 	_prefixName("wsclean"),
 	_allowNegative(true), _smallPSF(false), _smallInversion(true), _stopOnNegative(false), _makePSF(false), _isGriddingImageSaved(false),
+	_temporaryDirectory(),
 	_forceReorder(false), _forceNoReorder(false), _joinedPolarizationCleaning(false), _joinedFrequencyCleaning(false),
 	_mfsWeighting(false), _multiscale(false),
 	_gridMode(LayeredImager::KaiserBessel),
@@ -493,7 +494,7 @@ void WSClean::performReordering(bool isPredictMode)
 {
 	for(std::vector<std::string>::const_iterator i=_filenames.begin(); i != _filenames.end(); ++i)
 	{
-		_partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0 || isPredictMode, _polarizations));
+		_partitionedMSHandles.push_back(PartitionedMS::Partition(*i, _channelsOut, _globalSelection, _columnName, true, _mGain != 1.0 || isPredictMode, _polarizations, _temporaryDirectory));
 	}
 }
 

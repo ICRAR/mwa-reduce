@@ -46,7 +46,7 @@ public:
 	
 	virtual double StartTime() { return _metaHeader.startTime; }
 	
-	static Handle Partition(const string& msPath, size_t channelParts, class MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::set<PolarizationEnum>& polsOut);
+	static Handle Partition(const string& msPath, size_t channelParts, class MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::set<PolarizationEnum>& polsOut, const std::string& temporaryDirectory);
 	
 	class Handle {
 	public:
@@ -69,10 +69,10 @@ public:
 	private:
 		struct HandleData
 		{
-			HandleData(const std::string& metaFile, const std::string& msPath, const string& dataColumnName, size_t channelParts, const std::set<PolarizationEnum>& polarizations, const MSSelection& selection) :
-			_metaFile(metaFile), _msPath(msPath), _dataColumnName(dataColumnName), _channelParts(channelParts), _polarizations(polarizations), _selection(selection), _referenceCount(1) { }
+			HandleData(const std::string& metaFile, const std::string& msPath, const string& dataColumnName, const std::string& temporaryDirectory, size_t channelParts, const std::set<PolarizationEnum>& polarizations, const MSSelection& selection) :
+			_metaFile(metaFile), _msPath(msPath), _dataColumnName(dataColumnName), _temporaryDirectory(temporaryDirectory), _channelParts(channelParts), _polarizations(polarizations), _selection(selection), _referenceCount(1) { }
 			
-			std::string _metaFile, _msPath, _dataColumnName;
+			std::string _metaFile, _msPath, _dataColumnName, _temporaryDirectory;
 			size_t _channelParts;
 			std::set<PolarizationEnum> _polarizations;
 			MSSelection _selection;
@@ -80,8 +80,8 @@ public:
 		} *_data;
 		
 		void decrease();
-		Handle(const std::string& metaFile, const std::string& msPath, const string& dataColumnName, size_t channelParts, const std::set<PolarizationEnum>& polarizations, const MSSelection& selection) :
-			_data(new HandleData(metaFile, msPath, dataColumnName, channelParts, polarizations, selection))
+		Handle(const std::string& metaFile, const std::string& msPath, const string& dataColumnName, const std::string& temporaryDirectory, size_t channelParts, const std::set<PolarizationEnum>& polarizations, const MSSelection& selection) :
+			_data(new HandleData(metaFile, msPath, dataColumnName, temporaryDirectory, channelParts, polarizations, selection))
 		{
 		}
 	}; 
@@ -115,7 +115,7 @@ private:
 		bool hasModel, hasWeights;
 	} _partHeader;
 	
-	static std::string getPartPrefix(const std::string& msPath, size_t partIndex, PolarizationEnum pol);
+	static std::string getPartPrefix(const std::string& msPath, size_t partIndex, PolarizationEnum pol, const std::string& tempDir);
 	static std::string getMetaFilename(const std::string& msPath);
 };
 

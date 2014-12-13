@@ -27,6 +27,21 @@ int main(int argc, char *argv[])
 			"  ** GENERAL OPTIONS **\n"
 			"-version\n"
 			"   Print WSClean's version and exit.\n"
+			"-j <threads>\n"
+			"   Specify number of computing threads to use, i.e., number of cpu cores that will be used.\n"
+			"   Default: use all cpu cores.\n"
+			"-mem <percentage>\n"
+			"   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
+			"   Default: 100.\n"
+			"-absmem <memory limit>\n"
+			"   Like -mem, but this specifies a fixed amount of memory in gigabytes.\n"
+			"-reorder\n"
+			"-no-reorder\n"
+			"   Force or disable reordering of Measurement Set. This can be faster when the measurement set needs to\n"
+			"   be iterated several times, such as with many major iterations or in channel imaging mode.\n"
+			"   Default: only reorder when in channel imaging mode.\n"
+			"-tempdir <directory>\n"
+			"   Set the temporary direectory used when reordering files. Default: same directory as input measurement set.\n"
 			"\n"
 			"  ** INVERSION OPTIONS **\n"
 			"-name <image-prefix>\n"
@@ -65,23 +80,10 @@ int main(int argc, char *argv[])
 			"   Gridding antialiasing kernel size. Default: 7.\n"
 			"-oversampling <factor>\n"
 			"   Oversampling factor used during gridding. Default: 63.\n"
-			"-reorder\n"
-			"-no-reorder\n"
-			"   Force or disable reordering of Measurement Set. This can be faster when the measurement set needs to\n"
-			"   be iterated several times, such as with many major iterations or in channel imaging mode.\n"
-			"   Default: only reorder when in channel imaging mode.\n"
 			"-makepsf\n"
 			"   Always make the psf, even when no cleaning is performed.\n"
 			"-savegridding\n"
 			"   Save the gridding correction image. This shows the effect of the antialiasing filter. Default: not saved.\n"
-			"-j <threads>\n"
-			"   Specify number of computing threads to use, i.e., number of cpu cores that will be used.\n"
-			"   Default: use all cpu cores.\n"
-			"-mem <percentage>\n"
-			"   Limit memory usage to the given fraction of the total system memory. This is an approximate value.\n"
-			"   Default: 100.\n"
-			"-absmem <memory limit>\n"
-			"   Like -mem, but this specifies a fixed amount of memory in gigabytes.\n"
 			"\n"
 			"  ** DATA SELECTION OPTIONS **\n"
 			"-pol <list>\n"
@@ -180,6 +182,11 @@ int main(int argc, char *argv[])
 		{
 			// version already printed: just exit
 			return 0;
+		}
+		else if(param == "tempdir")
+		{
+			++argi;
+			wsclean.SetTemporaryDirectory(argv[argi]);
 		}
 		else if(param == "predict")
 		{
