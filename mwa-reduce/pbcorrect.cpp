@@ -36,32 +36,44 @@ int main(int argc, char *argv[])
 	if(argc < 5)
 	{
 		std::cout << "Syntax:\n"
-			"pbcorrect [-uncorrect] <image-prefix> <image-postfix> <beam-prefix> <out-prefix>\nFor example:\n\tpbcorrect wsclean image.fits beam stokes\n"
+			"pbcorrect [-from-stokes] [-uncorrect] <image-prefix> <image-postfix> <beam-prefix> <out-prefix>\nFor example:\n\tpbcorrect wsclean image.fits beam stokes\n"
 			"will use images like wsclean-XX-image.fits, beam-xxr.fits and save to stokes-i.fits, ...\n"
 			"Uncorrect will do the inverse operation, so it will read the images indicated by out-prefix,\n"
 			"and write the linear images indicated by the image pre- & postfixes.\n";
 		return -1;
 	}
 	
-	bool doUncorrect = false;
+	bool doUncorrect = false, fromStokes = false;
 	size_t argi = 1;
 	while(argv[argi][0] == '-')
 	{
 		const std::string param(&argv[argi][1]);
 		if(param == "uncorrect")
 			doUncorrect = true;
+		else if(param == "from-stokes")
+			fromStokes = true;
 		else
 			throw std::runtime_error("Invalid command line parameter: "+param);
 		++argi;
 	}
 	const std::string imagePrefix = argv[argi], imagePostfix = argv[argi+1], beamPrefix = argv[argi+2], outPrefix = argv[argi+3];
 	
+	std::string linFilenames[4];
+	if(fromStokes)
+	{
+		linFilenames[0] = imagePrefix + "-I-" + imagePostfix;
+		linFilenames[1] = imagePrefix + "-Q-" + imagePostfix;
+		linFilenames[2] = imagePrefix + "-U-" + imagePostfix;
+		linFilenames[3] = imagePrefix + "-V-" + imagePostfix;
+	}
+	else {
+		linFilenames[0] = imagePrefix + "-XX-" + imagePostfix;
+		linFilenames[1] = imagePrefix + "-XY-" + imagePostfix;
+		linFilenames[2] = imagePrefix + "-XYi-" + imagePostfix;
+		linFilenames[3] = imagePrefix + "-YY-" + imagePostfix;
+	}
+	
 	std::string
-		linFilenames[4] =
-			{ 
-				imagePrefix + "-XX-" + imagePostfix, imagePrefix + "-XY-" + imagePostfix,
-				imagePrefix + "-XYi-" + imagePostfix, imagePrefix + "-YY-" + imagePostfix
-			},
 		beamFilename[8] =
 			{
 				beamPrefix+"-xxr.fits", beamPrefix+"-xxi.fits", beamPrefix+"-xyr.fits", beamPrefix+"-xyi.fits",
@@ -83,6 +95,7 @@ int main(int argc, char *argv[])
 		width = firstImage.ImageWidth(),
 		height = firstImage.ImageHeight(),
 		imgSize = width * height;
+		
 	for(size_t i=0; i!=imgSize; ++i)
 	{
 		std::complex<double> beamValues[4];
@@ -112,16 +125,29 @@ int main(int argc, char *argv[])
 		}
 		else {
 			std::complex<double> imgValues[4];
-			imgValues[0] = inputData[0][i];
-			imgValues[1] = std::complex<double>(inputData[1][i], inputData[2][i]);
-			imgValues[2] = std::conj(imgValues[1]);
-			imgValues[3] = inputData[3][i];
+			
+			if(fromStokes)
+			{
+				double temp[4];
+				temp[0] = inputData[0][i];
+				temp[1] = inputData[1][i];
+				temp[2] = inputData[2][i];
+				temp[3] = inputData[3][i];
+				Polarization::StokesToLinear(temp, imgValues);
+			}
+			else {
+				imgValues[0] = inputData[0][i];
+				imgValues[1] = std::complex<double>(inputData[1][i], inputData[2][i]);
+				imgValues[2] = std::conj(imgValues[1]);
+				imgValues[3] = inputData[3][i];
+			}
 			
 			if(Matrix2x2::Invert(beamValues))
 			{
 				std::complex<double> tempValues[4];
 				Matrix2x2::ATimesB(tempValues, beamValues, imgValues);
 				Matrix2x2::ATimesHermB(imgValues, tempValues, beamValues);
+				
 				double outputValues[4];
 				Polarization::LinearToStokes(imgValues, outputValues);
 				for(size_t p=0; p!=4; ++p)
