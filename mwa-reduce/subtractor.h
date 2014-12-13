@@ -48,8 +48,6 @@ public:
 		casa::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		
-		std::cout << "DONE\n";
-		
 		MSPredicter predicter(ms, _threadCount, model);
 		predicter.SetApplyBeam(_applyBeam);
 		predicter.Start(true);
