@@ -52,6 +52,13 @@ class FitsWriter : protected FitsIOChecker
 			_beamMinorAxisRad = minorAxisRad;
 			_beamPositionAngle = positionAngleRad;
 		}
+		void SetNoBeamInfo()
+		{
+			_hasBeam = false;
+			_beamMajorAxisRad = 0.0;
+			_beamMinorAxisRad = 0.0;
+			_beamPositionAngle = 0.0;
+		}
 		void SetImageDimensions(size_t width, size_t height)
 		{
 			_width = width;
@@ -114,6 +121,13 @@ class FitsWriter : protected FitsIOChecker
 				_extraNumKeywords.erase(name);
 			_extraNumKeywords.insert(std::make_pair(name, value));
 		}
+		void RemoveExtraKeyword(const std::string& name)
+		{
+			if(_extraNumKeywords.count(name) != 0)
+				_extraNumKeywords.erase(name);
+			if(_extraStringKeywords.count(name) != 0)
+				_extraStringKeywords.erase(name);
+		}
 		void SetExtraStringKeywords(const std::map<std::string, std::string>& keywords)
 		{
 			_extraStringKeywords = keywords;
@@ -131,6 +145,9 @@ class FitsWriter : protected FitsIOChecker
 		size_t Height() const { return _height; }
 		double PhaseCentreDL() const { return _phaseCentreDL; }
 		double PhaseCentreDM() const { return _phaseCentreDM; }
+		
+		void CopyDoubleKeywordIfExists(class FitsReader& reader, const char* keywordName);
+		void CopyStringKeywordIfExists(class FitsReader& reader, const char* keywordName);
 	private:
 		template<typename T>
 		static T setNotFiniteToZero(T num)

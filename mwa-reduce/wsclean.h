@@ -110,6 +110,8 @@ private:
 	void performReordering(bool isPredictMode);
 	
 	void initFitsWriter(class FitsWriter& writer);
+	void copyWSCleanKeywords(FitsReader& reader, FitsWriter& writer);
+	void copyDoubleKeywordIfExists(FitsReader& reader, FitsWriter& writer, const char* keywordName);
 	void setCleanParameters(class FitsWriter& writer, const class CleanAlgorithm& clean);
 	void updateCleanParameters(class FitsWriter& writer, size_t minorIterationNr, size_t majorIterationNr);
 	void initializeWeightTapers();

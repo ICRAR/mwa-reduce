@@ -87,7 +87,7 @@ double FitsReader::readDoubleKey(const char *key)
 	return value;
 }
 
-bool FitsReader::readFloatKeyIfExists(const char *key, float &dest)
+bool FitsReader::ReadFloatKeyIfExists(const char *key, float &dest)
 {
 	int status = 0;
 	float floatValue;
@@ -97,7 +97,7 @@ bool FitsReader::readFloatKeyIfExists(const char *key, float &dest)
 	return status == 0;
 }
 
-bool FitsReader::readDoubleKeyIfExists(const char *key, double &dest)
+bool FitsReader::ReadDoubleKeyIfExists(const char *key, double &dest)
 {
 	int status = 0;
 	double doubleValue;
@@ -129,7 +129,7 @@ std::string FitsReader::readStringKey(const char *key)
 	return std::string(keyStr);
 }
 
-bool FitsReader::readStringKeyIfExists(const char *key, std::string& value, std::string& comment)
+bool FitsReader::ReadStringKeyIfExists(const char *key, std::string& value, std::string& comment)
 {
 	int status = 0;
 	char valueStr[256], commentStr[256];
@@ -168,9 +168,9 @@ void FitsReader::initialize()
 	_imgHeight = naxes[1];
 	
 	double bScale = 1.0, bZero = 0.0, equinox = 2000.0;
-	readDoubleKeyIfExists("BSCALE", bScale);
-	readDoubleKeyIfExists("BZERO", bZero);
-	readDoubleKeyIfExists("EQUINOX", equinox);
+	ReadDoubleKeyIfExists("BSCALE", bScale);
+	ReadDoubleKeyIfExists("BZERO", bZero);
+	ReadDoubleKeyIfExists("EQUINOX", equinox);
 	if(bScale != 1.0)
 		throw std::runtime_error("Invalid value for BSCALE");
 	if(bZero != 0.0)
@@ -232,7 +232,7 @@ void FitsReader::initialize()
 		}
 	}
 	double bMaj=0.0, bMin=0.0, bPa=0.0;
-	if(readDoubleKeyIfExists("BMAJ", bMaj) && readDoubleKeyIfExists("BMIN", bMin) && readDoubleKeyIfExists("BPA", bPa))
+	if(ReadDoubleKeyIfExists("BMAJ", bMaj) && ReadDoubleKeyIfExists("BMIN", bMin) && ReadDoubleKeyIfExists("BPA", bPa))
 	{
 		_hasBeam = true;
 		_beamMajorAxisRad = bMaj * (M_PI / 180.0);
@@ -245,7 +245,7 @@ void FitsReader::initialize()
 		_beamMinorAxisRad = 0.0;
 		_beamPositionAngle = 0.0;
 	}
-	readStringKeyIfExists("ORIGIN", _origin, _originComment);
+	ReadStringKeyIfExists("ORIGIN", _origin, _originComment);
 	readHistory();
 }
 

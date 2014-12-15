@@ -109,6 +109,23 @@ void WSClean::initFitsWriter(FitsWriter& writer)
 	writer.SetExtraKeyword("WSCFIELD", _inversionAlgorithm->Selection().FieldId());
 }
 
+void WSClean::copyWSCleanKeywords(FitsReader& reader, FitsWriter& writer)
+{
+	const size_t
+		N_STRKEYWORDS=2, N_DBLKEYWORDS=17;
+	const char* strKeywords[N_STRKEYWORDS] =
+		{ "WSCDATAC", "WSCWEIGH" };
+	const char* dblKeywords[N_DBLKEYWORDS] =
+		{ "WSCIMGWG", "WSCNWLAY", "WSCGKRNL", "WSCCHANS", "WSCCHANE", "WSCTIMES", "WSCTIMEE", "WSCFIELD",
+			"WSCNITER", "WSCTHRES", "WSCGAIN", "WSCMGAIN", "WSCNEGCM", "WSCNEGST", "WSCSMPSF",
+			"WSCMINOR", "WSCMAJOR"
+		};
+	for(size_t i=0; i!=N_STRKEYWORDS; ++i)
+		writer.CopyStringKeywordIfExists(reader, strKeywords[i]);
+	for(size_t i=0; i!=N_DBLKEYWORDS; ++i)
+		writer.CopyDoubleKeywordIfExists(reader, dblKeywords[i]);
+}
+
 void WSClean::setCleanParameters(FitsWriter& writer, const CleanAlgorithm& clean)
 {
 	writer.SetExtraKeyword("WSCNITER", clean.MaxNIter());
@@ -1154,6 +1171,7 @@ void WSClean::makeMFSImage(const string& suffix, PolarizationEnum pol, bool isIm
 		if(ch == 0)
 		{
 			writer = FitsWriter(reader);
+			copyWSCleanKeywords(reader, writer);
 			lowestFreq = reader.Frequency() - reader.Bandwidth()*0.5;
 			highestFreq = reader.Frequency() + reader.Bandwidth()*0.5;
 		}
@@ -1177,7 +1195,10 @@ void WSClean::makeMFSImage(const string& suffix, PolarizationEnum pol, bool isIm
 	for(size_t i=0; i!=size; ++i)
 		mfsImage[i] /= weightImage[i];
 	writer.SetFrequency((lowestFreq+highestFreq)*0.5, highestFreq-lowestFreq);
+	writer.SetNoBeamInfo();
 	writer.SetExtraKeyword("WSCIMGWG", weightSum);
+	writer.RemoveExtraKeyword("WSCCHANS");
+	writer.RemoveExtraKeyword("WSCCHANE");
 	writer.Write(getMFSPrefix(pol, isImaginary) + '-' + suffix, mfsImage.data());
 }
 

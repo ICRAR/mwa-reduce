@@ -207,3 +207,17 @@ void FitsWriter::mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int
 	seconds = int(fmod(mjd*3600.0 * 24.0, 60.0));
 	deciSec = int(fmod(mjd*36000.0 * 24.0, 10.0));
 }
+
+void FitsWriter::CopyDoubleKeywordIfExists(FitsReader& reader, const char* keywordName)
+{
+	double v;
+	if(reader.ReadDoubleKeyIfExists(keywordName, v))
+		SetExtraKeyword(keywordName, v);
+}
+
+void FitsWriter::CopyStringKeywordIfExists(FitsReader& reader, const char* keywordName)
+{
+	std::string v;
+	if(reader.ReadStringKeyIfExists(keywordName, v))
+		SetExtraKeyword(keywordName, v);
+}
