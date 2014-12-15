@@ -116,7 +116,7 @@ private:
 	} _partHeader;
 	
 	static std::string getPartPrefix(const std::string& msPath, size_t partIndex, PolarizationEnum pol, const std::string& tempDir);
-	static std::string getMetaFilename(const std::string& msPath);
+	static std::string getMetaFilename(const std::string& msPath, const std::string& tempDir);
 };
 
 #endif

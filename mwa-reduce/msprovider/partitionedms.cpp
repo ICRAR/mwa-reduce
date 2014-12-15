@@ -217,9 +217,16 @@ std::string PartitionedMS::getPartPrefix(const std::string& msPathStr, size_t pa
 	return partPrefix.str();
 }
 
-string PartitionedMS::getMetaFilename(const string& msPath)
+string PartitionedMS::getMetaFilename(const string& msPathStr, const std::string& tempDir)
 {
-	std::string prefix(msPath);
+	boost::filesystem::path
+		msPath(msPathStr),
+		prefixPath;
+	if(tempDir.empty())
+		prefixPath = msPath;
+	else
+		prefixPath = boost::filesystem::path(tempDir) / msPath.filename();
+	std::string prefix(prefixPath.string());
 	while(!prefix.empty() && *prefix.rbegin() == '/')
 		prefix.resize(prefix.size()-1);
 	return prefix + "-parted-meta.tmp";
@@ -330,7 +337,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	std::cout << "Reordering " << selectedRowCount << " selected rows into " << channelParts << " x " << polsOut.size() << " parts.\n";
 
 	// Write header of meta file
-	std::string metaFilename = getMetaFilename(msPath);
+	std::string metaFilename = getMetaFilename(msPath, temporaryDirectory);
 	std::ofstream metaFile(metaFilename);
 	MetaHeader metaHeader;
 	memset(&metaHeader, 0, sizeof(MetaHeader));
