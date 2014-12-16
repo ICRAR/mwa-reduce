@@ -375,11 +375,11 @@ void WSClean::initializeCleanAlgorithm()
 	double beamSize = _inversionAlgorithm->BeamSize();
 	if(_joinedPolarizationCleaning)
 	{
-		bool fourPol;
+		size_t polCount;
 		if(Polarization::HasFullPolarization(_polarizations))
-			fourPol = true;
+			polCount = 4;
 		else if(Polarization::HasDualLinearPolarization(_polarizations))
-			fourPol = false;
+			polCount = 2;
 		else
 			throw std::runtime_error("Joined polarization cleaning was requested, but can't find a compatible set of 2 or 4 pols to clean");
 			
@@ -388,7 +388,7 @@ void WSClean::initializeCleanAlgorithm()
 		{
 			if(_multiscale)
 			{
-				if(fourPol)
+				if(polCount == 4)
 				{
 					_cleanAlgorithms[0] =
 					new MultiScaleClean
@@ -402,7 +402,7 @@ void WSClean::initializeCleanAlgorithm()
 				}
 			}
 			else {
-				if(fourPol)
+				if(polCount == 4)
 					_cleanAlgorithms[0] = new JoinedClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<4>>>();
 				else
 					_cleanAlgorithms[0] = new JoinedClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>();
@@ -411,14 +411,14 @@ void WSClean::initializeCleanAlgorithm()
 		else {
 			if(_multiscale)
 			{
-				if(fourPol)
+				if(polCount == 4)
 					_cleanAlgorithms[0] = new MultiScaleClean<clean_algorithms::PolarizedImageSet<4>>(beamSize, _pixelScaleX, _pixelScaleY);
 				else
 					_cleanAlgorithms[0] = new MultiScaleClean<clean_algorithms::PolarizedImageSet<2>>(beamSize, _pixelScaleX, _pixelScaleY);
 			}
 			else
 			{
-				if(fourPol)
+				if(polCount == 4)
 					_cleanAlgorithms[0] = new JoinedClean<clean_algorithms::PolarizedImageSet<4>>();
 				else
 					_cleanAlgorithms[0] = new JoinedClean<clean_algorithms::PolarizedImageSet<2>>();
@@ -430,10 +430,19 @@ void WSClean::initializeCleanAlgorithm()
 		_cleanAlgorithms.resize(_polarizations.size());
 		for(size_t p=0; p!=_polarizations.size(); ++p)
 		{
-			if(_multiscale)
-				_cleanAlgorithms[p] = new MultiScaleClean<clean_algorithms::SingleImageSet>(beamSize, _pixelScaleX, _pixelScaleY);
-			else
-				_cleanAlgorithms[p] = new SimpleClean();
+			if(_joinedFrequencyCleaning)
+			{
+				if(_multiscale)
+					_cleanAlgorithms[p] = new MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::SingleImageSet>>(beamSize, _pixelScaleX, _pixelScaleY);
+				else
+					_cleanAlgorithms[p] = new JoinedClean<clean_algorithms::MultiImageSet<clean_algorithms::SingleImageSet>>();
+			}
+			else {
+				if(_multiscale)
+					_cleanAlgorithms[p] = new MultiScaleClean<clean_algorithms::SingleImageSet>(beamSize, _pixelScaleX, _pixelScaleY);
+				else
+					_cleanAlgorithms[p] = new SimpleClean();
+			}
 		}
 		count = _polarizations.size();
 	}
@@ -947,8 +956,12 @@ void WSClean::performClean(size_t currentChannelIndex, bool& reachedMajorThresho
 				performJoinedPolFreqClean<2>(reachedMajorThreshold, majorIterationNr);
 			else throw std::runtime_error("Incompatible polarization combination for joined polarization cleaning");
 		}
-		else
-			throw std::runtime_error("Can only joinedly clean frequencies when cleaning all polarizations simultaneously. Image at least two polarizations and provide the '-joinpolarizations' option to enable this.");
+		else {
+			if(_polarizations.size() == 1)
+				performJoinedPolFreqClean<1>(reachedMajorThreshold, majorIterationNr);
+			else
+				throw std::runtime_error("Can only joinedly clean frequencies when cleaning the imaged polarizations simultaneously as well. Either provide the '-joinpolarizations' option to enable this, or image each polarization separately with separate WSClean commands.");
+		}
 	}
 	else if(_joinedPolarizationCleaning) {
 		if(Polarization::HasFullPolarization(_polarizations))
@@ -1095,7 +1108,12 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 		_psfImages.Load(psfImage, *_polarizations.begin(), ch, false);
 		psfImages.push_back(psfImage);
 		
-		if(hasStokesPols)
+		if(PolCount==1)
+		{
+			modelSet.Load(_modelImages, *_polarizations.begin(), ch);
+			residualSet.Load(_residualImages, *_polarizations.begin(), ch);
+		}
+		else if(hasStokesPols)
 		{
 			modelSet.LoadStokes(_modelImages, ch);
 			residualSet.LoadStokes(_residualImages, ch);
@@ -1113,7 +1131,12 @@ void WSClean::performJoinedPolFreqClean(bool& reachedMajorThreshold, size_t majo
 	for(size_t ch=0; ch!=_channelsOut; ++ch)
 	{
 		_imageAllocator.Free(psfImages[ch]);
-		if(hasStokesPols)
+		if(PolCount == 1)
+		{
+			modelSet.Store(_modelImages, *_polarizations.begin(), ch);
+			residualSet.Store(_residualImages, *_polarizations.begin(), ch);
+		}
+		else if(hasStokesPols)
 		{
 			modelSet.StoreStokes(_modelImages, ch);
 			residualSet.StoreStokes(_residualImages, ch);

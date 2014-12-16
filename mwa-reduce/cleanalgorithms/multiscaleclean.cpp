@@ -347,8 +347,10 @@ std::string MultiScaleClean<ImageSetType>::peakDescription(const ImageSetType& i
 	return str.str();
 }
 
+template class MultiScaleClean<clean_algorithms::SingleImageSet>;
 template class MultiScaleClean<clean_algorithms::PolarizedImageSet<2>>;
 template class MultiScaleClean<clean_algorithms::PolarizedImageSet<4>>;
+
+template class MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::SingleImageSet>>;
 template class MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<2>>>;
 template class MultiScaleClean<clean_algorithms::MultiImageSet<clean_algorithms::PolarizedImageSet<4>>>;
-template class MultiScaleClean<clean_algorithms::SingleImageSet>;

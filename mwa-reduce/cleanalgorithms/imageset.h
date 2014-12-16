@@ -134,6 +134,11 @@ namespace clean_algorithms {
 				_allocator->Free(images[i]);
 		}
 		
+		void Load(CachedImageSet& set, PolarizationEnum polarization, size_t freqIndex)
+		{
+			set.Load(images[0], polarization, freqIndex, false);
+		}
+		
 		void LoadLinear(CachedImageSet& set, size_t freqIndex)
 		{
 			if(PolCount == 2)
@@ -162,6 +167,11 @@ namespace clean_algorithms {
 			else {
 				throw std::runtime_error("Can only joinedly clean 4 stokes images at once");
 			}
+		}
+		
+		void Store(CachedImageSet& set, PolarizationEnum polarization, size_t freqIndex)
+		{
+			set.Store(images[0], polarization, freqIndex, false);
 		}
 		
 		void StoreLinear(CachedImageSet& set, size_t freqIndex) const
@@ -307,9 +317,19 @@ namespace clean_algorithms {
 			}
 		}
 		
+		void Load(CachedImageSet& set, PolarizationEnum polarization, size_t freqIndex)
+		{
+			_sets[freqIndex]->Load(set, polarization, freqIndex);
+		}
+		
 		void LoadLinear(CachedImageSet& set, size_t i)
 		{
 			_sets[i]->LoadLinear(set, i);
+		}
+		
+		void Store(CachedImageSet& set, PolarizationEnum polarization, size_t freqIndex)
+		{
+			_sets[freqIndex]->Store(set, polarization, freqIndex);
 		}
 		
 		void StoreLinear(CachedImageSet& set, size_t i) const
