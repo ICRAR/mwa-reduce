@@ -15,6 +15,40 @@ template<typename NumType>
 class ImageBufferAllocator
 {
 public:
+	class Ptr
+	{
+	public:
+		friend class ImageBufferAllocator<NumType>;
+		Ptr()
+			: _data(0) { }
+		Ptr(NumType* data, ImageBufferAllocator<NumType>& allocator) 
+			: _data(data), _allocator(&allocator) { }
+		~Ptr()
+		{
+			reset();
+		}
+		NumType* data() const { return _data; }
+		NumType& operator*() const { return *_data; }
+		void reset()
+		{
+			if(_data != 0) _allocator->Free(_data);
+			_data = 0;
+		}
+		void reset(NumType* data, ImageBufferAllocator<NumType>& allocator)
+		{
+			reset();
+			_data = data;
+			_allocator = &allocator;
+		}
+		NumType& operator[](size_t index) const { return _data[index]; }
+	private:
+		Ptr(const Ptr&) { }
+		void operator=(const Ptr&) { }
+		
+		NumType* _data;
+		ImageBufferAllocator<NumType>* _allocator;
+	};
+	
 	ImageBufferAllocator() : _buffers(), _nReal(0), _nComplex(0), _nRealMax(0), _nComplexMax(0), _previousSize(0)
 	{ }
 	
@@ -54,6 +88,11 @@ public:
 			"         max alloc'd images = " << _nRealMax << " real + " << _nComplexMax << " complex\n"
 			"       max allocated chunks = " << _buffers.size() << "\n"
 			"      current allocated mem = " << round(totalSize/1e8)/10.0 << " GB \n";
+	}
+	
+	void Allocate(size_t size, Ptr& ptr)
+	{
+		ptr.reset(Allocate(size), *this);
 	}
 	
 	NumType* Allocate(size_t size)
