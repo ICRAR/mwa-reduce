@@ -85,6 +85,7 @@ public:
 	void SetWLimit(double wLimit) { _wLimit = wLimit; }
 	void SetCommandLine(const std::string& cmdLine) { _commandLine = cmdLine; }
 	void SetSaveGriddingImage(bool isGriddingImageSaved) { _isGriddingImageSaved = isGriddingImageSaved; }
+	void SetDFTPrediction(bool dftPrediction) { _dftPrediction = dftPrediction; }
 	
 	void AddInputMS(const std::string& msPath) { _filenames.push_back(msPath); }
 	
@@ -129,6 +130,7 @@ private:
 	void imageMainFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
 	void imageMainNonFirst(PolarizationEnum polarization, size_t joinedChannelIndex);
 	void predict(PolarizationEnum polarization, size_t joinedChannelIndex);
+	void dftPredict(size_t joinedChannelIndex);
 	
 	void makeMFSImage(const string& suffix, PolarizationEnum pol, bool isImaginary);
 	void writeFits(const string& suffix, const double* image, PolarizationEnum pol, size_t channelIndex, bool isImaginary);
@@ -200,7 +202,7 @@ private:
 	std::set<PolarizationEnum> _polarizations;
 	WeightMode _weightMode;
 	std::string _prefixName;
-	bool _allowNegative, _smallPSF, _smallInversion, _stopOnNegative, _makePSF, _isGriddingImageSaved;
+	bool _allowNegative, _smallPSF, _smallInversion, _stopOnNegative, _makePSF, _isGriddingImageSaved, _dftPrediction;
 	std::string _temporaryDirectory;
 	bool _forceReorder, _forceNoReorder, _joinedPolarizationCleaning, _joinedFrequencyCleaning, _mfsWeighting, _multiscale;
 	enum LayeredImager::GridModeEnum _gridMode;

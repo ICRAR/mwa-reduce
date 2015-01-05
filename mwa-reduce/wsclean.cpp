@@ -21,6 +21,7 @@
 #include "uvector.h"
 #include "gaussianfitter.h"
 #include "angle.h"
+#include "dftpredictionalgorithm.h"
 
 #include <iostream>
 #include <memory>
@@ -44,6 +45,7 @@ WSClean::WSClean() :
 	_weightMode(WeightMode::UniformWeighted),
 	_prefixName("wsclean"),
 	_allowNegative(true), _smallPSF(false), _smallInversion(true), _stopOnNegative(false), _makePSF(false), _isGriddingImageSaved(false),
+	_dftPrediction(false),
 	_temporaryDirectory(),
 	_forceReorder(false), _forceNoReorder(false), _joinedPolarizationCleaning(false), _joinedFrequencyCleaning(false),
 	_mfsWeighting(false), _multiscale(false),
@@ -303,6 +305,55 @@ void WSClean::predict(PolarizationEnum polarization, size_t joinedChannelIndex)
 	_predictingWatch.Pause();
 	_imageAllocator.Free(modelImageReal);
 	_imageAllocator.Free(modelImageImaginary);
+}
+
+void WSClean::dftPredict(size_t joinedChannelIndex)
+{
+	std::cout << std::flush << " == Predicting visibilities ==\n";
+	const size_t size = _imgWidth*_imgHeight;
+	double
+		*modelImageReal = _imageAllocator.Allocate(size),
+		*modelImageImaginary = 0;
+		
+	std::unique_ptr<DFTPredictionImage> image(new DFTPredictionImage(_imgWidth, _imgHeight, _imageAllocator));
+		
+	for(PolarizationEnum curPol : _polarizations)
+	{
+		if(curPol == Polarization::YX)
+		{
+			_modelImages.Load(modelImageReal, Polarization::XY, joinedChannelIndex, false);
+			modelImageImaginary = _imageAllocator.Allocate(size);
+			_modelImages.Load(modelImageImaginary, Polarization::XY, joinedChannelIndex, true);
+			for(size_t i=0; i!=size; ++i)
+				modelImageImaginary[i] = -modelImageImaginary[i];
+			image->Add(curPol, modelImageReal, modelImageImaginary);
+			_imageAllocator.Free(modelImageReal);
+		}
+		else {
+			_modelImages.Load(modelImageReal, curPol, joinedChannelIndex, false);
+			if(Polarization::IsComplex(curPol))
+			{
+				modelImageImaginary = _imageAllocator.Allocate(size);
+				_modelImages.Load(modelImageImaginary, curPol, joinedChannelIndex, true);
+				image->Add(curPol, modelImageReal, modelImageImaginary);
+				_imageAllocator.Free(modelImageReal);
+			}
+			else {
+				image->Add(curPol, modelImageReal);
+			}
+		}
+	}
+	
+	DFTPredictionInput input;
+	image->FindComponents(input, _inversionAlgorithm->PhaseCentreRA(), _inversionAlgorithm->PhaseCentreDec(), _pixelScaleX, _pixelScaleY, _inversionAlgorithm->PhaseCentreDL(), _inversionAlgorithm->PhaseCentreDM());
+	// Free the input model images
+	image.reset();
+	std::cout << "Number of components to be predicted: " << input.ComponentCount() << '\n';
+	
+	_predictingWatch.Start();
+	// ...
+	_predictingWatch.Pause();
+	_imageAllocator.Free(modelImageReal);
 }
 
 void WSClean::initializeImageWeights(const MSSelection& partSelection)
@@ -697,19 +748,35 @@ void WSClean::runIndependentChannel(size_t outChannelIndex)
 					else {
 						currentChannelIndex = outChannelIndex;
 					}
-					for(std::set<PolarizationEnum>::const_iterator curPol=_polarizations.begin(); curPol!=_polarizations.end(); ++curPol)
+					if(_dftPrediction)
 					{
-						prepareInversionAlgorithm(*curPol);
-						
-						initializeCurMSProviders(currentChannelIndex, *curPol);
-						if(*curPol == *_polarizations.begin())
-							initializeImageWeights(_currentPartSelection);
-	
-						predict(*curPol, ch);
-						
-						imageMainNonFirst(*curPol, ch);
-						clearCurMSProviders();
-					} // end of polarization loop
+						dftPredict(ch);
+						for(std::set<PolarizationEnum>::const_iterator curPol=_polarizations.begin(); curPol!=_polarizations.end(); ++curPol)
+						{
+							prepareInversionAlgorithm(*curPol);
+							initializeCurMSProviders(currentChannelIndex, *curPol);
+							if(*curPol == *_polarizations.begin())
+								initializeImageWeights(_currentPartSelection);
+		
+							imageMainNonFirst(*curPol, ch);
+							clearCurMSProviders();
+						}
+					}
+					else {
+						for(std::set<PolarizationEnum>::const_iterator curPol=_polarizations.begin(); curPol!=_polarizations.end(); ++curPol)
+						{
+							prepareInversionAlgorithm(*curPol);
+							
+							initializeCurMSProviders(currentChannelIndex, *curPol);
+							if(*curPol == *_polarizations.begin())
+								initializeImageWeights(_currentPartSelection);
+		
+							predict(*curPol, ch);
+							
+							imageMainNonFirst(*curPol, ch);
+							clearCurMSProviders();
+						} // end of polarization loop
+					}
 					_currentPartSelection = selectionBefore;
 				} // end of joined channels loop
 				

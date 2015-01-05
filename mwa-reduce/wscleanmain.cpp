@@ -84,6 +84,9 @@ int main(int argc, char *argv[])
 			"   Always make the psf, even when no cleaning is performed.\n"
 			"-savegridding\n"
 			"   Save the gridding correction image. This shows the effect of the antialiasing filter. Default: not saved.\n"
+			"-dft-prediction\n"
+			"   Predict via a direct Fourier transform. This is slow, but can account for direction-dependent effects. This has\n"
+			"   only effect when -mgain is set or -predict is given.\n"
 			"\n"
 			"  ** DATA SELECTION OPTIONS **\n"
 			"-pol <list>\n"
@@ -265,6 +268,10 @@ int main(int argc, char *argv[])
 		else if(param == "savegridding")
 		{
 			wsclean.SetSaveGriddingImage(true);
+		}
+		else if(param == "dft-prediction")
+		{
+			wsclean.SetDFTPrediction(true);
 		}
 		else if(param == "cleanareas")
 		{

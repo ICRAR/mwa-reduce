@@ -141,7 +141,7 @@ else(LIBXML2_FOUND)
   message("Libxml2 NOT found: will NOT build vo2model and scaleimage")
 endif(LIBXML2_FOUND)
 
-add_executable(wsclean wscleanmain.cpp wsclean.cpp fftconvolver.cpp fftresampler.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp layeredimager.cpp model.cpp modelrenderer.cpp progressbar.cpp stopwatch.cpp wsinversion.cpp cleanalgorithms/cleanalgorithm.cpp cleanalgorithms/joinedclean.cpp cleanalgorithms/multiscaleclean.cpp cleanalgorithms/simpleclean.cpp msprovider/contiguousms.cpp msprovider/msprovider.cpp msprovider/partitionedms.cpp ${BEAMFILES})
+add_executable(wsclean wscleanmain.cpp wsclean.cpp dftpredictionalgorithm.cpp fftconvolver.cpp fftresampler.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp layeredimager.cpp model.cpp modelrenderer.cpp progressbar.cpp stopwatch.cpp wsinversion.cpp cleanalgorithms/cleanalgorithm.cpp cleanalgorithms/joinedclean.cpp cleanalgorithms/multiscaleclean.cpp cleanalgorithms/simpleclean.cpp msprovider/contiguousms.cpp msprovider/msprovider.cpp msprovider/partitionedms.cpp ${BEAMFILES})
 add_executable(wsctests wsctests.cpp cleanalgorithms/cleanalgorithm.cpp cleanalgorithms/simpleclean.cpp aocommon/stopwatch.cpp)
 add_executable(aoimage aoimage.cpp btpimager.cpp fftconvolver.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp model.cpp modelrenderer.cpp)
 

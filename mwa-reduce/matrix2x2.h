@@ -267,4 +267,45 @@ public:
 	}
 };
 
+class MC2x2
+{
+public:
+	MC2x2() { }
+	MC2x2(const MC2x2& source) : _values(source._values) { }
+	MC2x2(const double source[4]) { Matrix2x2::Assign(_values, source); } 
+	MC2x2& operator=(const MC2x2 &source)
+	{
+		Matrix2x2::Assign(_values, source._values);
+		return *this;
+	}
+	std::complex<double>* Data() { return _values; }
+	const std::complex<double>* Data() const { return _values; }
+	MC2x2 Multiply(const MC2x2& rhs) const
+	{
+		MC2x2 dest;
+		Matrix2x2::ATimesB(dest._values, _values, rhs._values);
+		return dest;
+	}
+	MC2x2 MultiplyHerm(const MC2x2& rhs) const
+	{
+		MC2x2 dest;
+		Matrix2x2::ATimesHermB(dest._values, _values, rhs._values);
+		return dest;
+	}
+	MC2x2 HermThenMultiply(const MC2x2& rhs) const
+	{
+		MC2x2 dest;
+		Matrix2x2::HermATimesB(dest._values, _values, rhs._values);
+		return dest;
+	}
+	MC2x2 HermThenMultiplyHerm(const MC2x2& rhs) const
+	{
+		MC2x2 dest;
+		Matrix2x2::HermATimesHermB(dest._values, _values, rhs._values);
+		return dest;
+	}
+private:
+	std::complex<double> _values[4];
+};
+
 #endif
