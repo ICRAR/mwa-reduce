@@ -5,17 +5,14 @@
 #include <sstream>
 #include <vector>
 
-#include <fitsio.h>
 #include <cmath>
 #include <cstdio>
 #include <limits>
 #include <iostream>
 
-template<typename NumType>
-void FitsWriter::Write(const std::string& filename, const NumType* image) const
+void FitsWriter::writeHeaders(fitsfile*& fptr, const std::string& filename, size_t nFreq, size_t nPol) const
 {
 	int status = 0;
-	fitsfile *fptr;
 	fits_create_file(&fptr, (std::string("!") + filename).c_str(), &status);
 	checkStatus(status, filename);
 	
@@ -24,8 +21,8 @@ void FitsWriter::Write(const std::string& filename, const NumType* image) const
 	long naxes[4];
 	naxes[0] = _width;
 	naxes[1] = _height;
-	naxes[2] = 1;
-	naxes[3] = 1;
+	naxes[2] = nFreq;
+	naxes[3] = nPol;
 	fits_create_img(fptr, bitPixInt, 4, naxes, &status);
 	checkStatus(status, filename);
 	float zero = 0, one = 1, equinox = 2000.0;
@@ -126,29 +123,52 @@ void FitsWriter::Write(const std::string& filename, const NumType* image) const
 		fits_write_history(fptr, i->c_str(), &status);
 		checkStatus(status, filename);
 	}
-	
+}
+
+void FitsWriter::writeImage(fitsfile* fptr, const std::string& filename, const double* image) const
+{
 	long firstpixel[4];
 	for(int i=0;i < 4;i++) firstpixel[i] = 1;
-	if(sizeof(NumType)==8)
-	{
-		double nullValue = std::numeric_limits<double>::max();
-		fits_write_pixnull(fptr, TDOUBLE, firstpixel, _width*_height, const_cast<double*>(reinterpret_cast<const double*>(image)), &nullValue, &status);
-	}
-	else if(sizeof(NumType)==4)
-	{
-		float nullValue = std::numeric_limits<float>::max();
-		fits_write_pixnull(fptr, TFLOAT, firstpixel, _width*_height, const_cast<float*>(reinterpret_cast<const float*>(image)), &nullValue, &status);
-	}
-	else
-	{
-		double nullValue = std::numeric_limits<double>::max();
-		size_t totalSize = _width*_height;
-		std::vector<double> copy(totalSize);
-		for(size_t i=0;i!=totalSize;++i) copy[i] = image[i];
-		fits_write_pixnull(fptr, TDOUBLE, firstpixel, totalSize, &copy[0], &nullValue, &status);
-	}
+	double nullValue = std::numeric_limits<double>::max();
+	int status = 0;
+	fits_write_pixnull(fptr, TDOUBLE, firstpixel, _width*_height, const_cast<double*>(image), &nullValue, &status);
 	checkStatus(status, filename);
+}
+
+void FitsWriter::writeImage(fitsfile* fptr, const std::string& filename, const float* image) const
+{
+	long firstpixel[4];
+	for(int i=0;i < 4;i++) firstpixel[i] = 1;
+	float nullValue = std::numeric_limits<float>::max();
+	int status = 0;
+	fits_write_pixnull(fptr, TFLOAT, firstpixel, _width*_height, const_cast<float*>(image), &nullValue, &status);
+	checkStatus(status, filename);
+}
+
+template<typename NumType>
+void FitsWriter::writeImage(fitsfile* fptr, const std::string& filename, const NumType* image) const
+{
+	long firstpixel[4];
+	for(int i=0;i < 4;i++) firstpixel[i] = 1;
+	double nullValue = std::numeric_limits<double>::max();
+	int status = 0;
+	size_t totalSize = _width*_height;
+	std::vector<double> copy(totalSize);
+	for(size_t i=0;i!=totalSize;++i) copy[i] = image[i];
+	fits_write_pixnull(fptr, TDOUBLE, firstpixel, totalSize, &copy[0], &nullValue, &status);
+	checkStatus(status, filename);
+}
+
+template<typename NumType>
+void FitsWriter::Write(const std::string& filename, const NumType* image) const
+{
+	fitsfile *fptr;
+
+	writeHeaders(fptr, filename, 1, 1);
 	
+	writeImage(fptr, filename, image);
+	
+	int status = 0;
 	fits_close_file(fptr, &status);
 	checkStatus(status, filename);
 }
@@ -156,6 +176,22 @@ void FitsWriter::Write(const std::string& filename, const NumType* image) const
 template void FitsWriter::Write<long double>(const std::string& filename, const long double* image) const;
 template void FitsWriter::Write<double>(const std::string& filename, const double* image) const;
 template void FitsWriter::Write<float>(const std::string& filename, const float* image) const;
+
+void FitsWriter::StartMulti(const std::string& filename, size_t nPol, size_t nFreq)
+{
+	if(_multiFPtr != 0)
+		throw std::runtime_error("StartMulti() called twice without calling FinishMulti()");
+	_multiFilename = filename;
+	writeHeaders(_multiFPtr, _multiFilename, 1, 1);
+}
+
+void FitsWriter::FinishMulti()
+{
+	int status = 0;
+	fits_close_file(_multiFPtr, &status);
+	checkStatus(status, _multiFilename);
+	_multiFPtr = 0;
+}
 
 void FitsWriter::SetMetadata(const FitsReader& reader)
 {

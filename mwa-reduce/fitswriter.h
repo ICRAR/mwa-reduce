@@ -1,6 +1,8 @@
 #ifndef FITSWRITER_H
 #define FITSWRITER_H
 
+#include <fitsio.h>
+
 #include <string>
 #include <vector>
 #include <map>
@@ -21,7 +23,8 @@ class FitsWriter : protected FitsIOChecker
 			_hasBeam(false),
 			_beamMajorAxisRad(0.0), _beamMinorAxisRad(0.0), _beamPositionAngle(0.0),
 			_polarization(Polarization::StokesI),
-			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa")
+			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa"),
+			_multiFPtr(0)
 		{
 		}
 		
@@ -34,12 +37,30 @@ class FitsWriter : protected FitsIOChecker
 			_hasBeam(false),
 			_beamMajorAxisRad(0.0), _beamMinorAxisRad(0.0), _beamPositionAngle(0.0),
 			_polarization(Polarization::StokesI),
-			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa")
+			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa"),
+			_multiFPtr(0)
 		{
 			SetMetadata(reader);
 		}
 		
+		~FitsWriter()
+		{
+			if(_multiFPtr != 0)
+				FinishMulti();
+		}
+		
 		template<typename NumType> void Write(const std::string& filename, const NumType* image) const;
+		
+		void StartMulti(const std::string& filename, size_t nPol, size_t nFreq);
+		
+		template<typename NumType> void AddToMulti(const NumType* image)
+		{
+			if(_multiFPtr == 0)
+				throw std::runtime_error("AddToMulti() called before StartMulti()");
+			writeImage(_multiFPtr, _multiFilename, image);
+		}
+		
+		void FinishMulti();
 		
 		void SetBeamInfo(double widthRad)
 		{
@@ -169,6 +190,14 @@ class FitsWriter : protected FitsIOChecker
 		
 		void julianDateToYMD(double jd, int &year, int &month, int &day) const;
 		void mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec) const;
+		void writeHeaders(fitsfile*& fptr, const std::string& filename, size_t nFreq, size_t nPol) const;
+		void writeImage(fitsfile* fptr, const std::string& filename, const double* image) const;
+		void writeImage(fitsfile* fptr, const std::string& filename, const float* image) const;
+		template<typename NumType>
+		void writeImage(fitsfile* fptr, const std::string& filename, const NumType* image) const;
+		
+		std::string _multiFilename;
+		fitsfile *_multiFPtr;
 };
 
 #endif
