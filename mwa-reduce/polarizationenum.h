@@ -330,6 +330,15 @@ public:
 		linear[2] = std::complex<NumType>(stokes[2], stokes[3]);
 		linear[3] = stokes[0] + stokes[1];
 	}
+	
+	template<typename NumType>
+	static void CircularToStokes(const std::complex<NumType>* circular, NumType* stokes)
+	{
+		stokes[0] = (circular[0] + circular[3]).real()*0.5;
+		stokes[1] = (circular[1] + circular[2]).real()*0.5;
+		stokes[2] = (circular[1] - circular[2]).imag()*0.5;
+		stokes[3] = (circular[0] - circular[3]).real()*0.5;
+	}
 };
 
 typedef Polarization::PolarizationEnum PolarizationEnum;
