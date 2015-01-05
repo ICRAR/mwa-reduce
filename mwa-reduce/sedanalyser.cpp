@@ -45,7 +45,10 @@ void SEDAnalyser::Process()
 		//newSource.terms[1] = newSource.plExponent;
 		//std::cout << "rms=" << newSource.rms << ", " << newSource.rms2ndOrder << ", " << multiTermRMS << " ," << sourceRMS(sed, newSource.terms) << '\n';
 		
-		newSource.subbandCorrelation = getSubbandShapeCorrelation(sed);
+		if(_analysePassband)
+			newSource.subbandCorrelation = getSubbandShapeCorrelation(sed);
+		else
+			newSource.subbandCorrelation = 0.0;
 		if(source.ComponentCount() == 1) // skip complex sources
 			_sources.push_back(newSource);
 		
@@ -73,7 +76,6 @@ void SEDAnalyser::ProcessRM()
 
 void SEDAnalyser::SaveResults()
 {
-
 	{
 		std::cout << "Sorting... " << std::flush;
 		std::sort(_sources.rbegin(), _sources.rend());

@@ -12,6 +12,8 @@
 class SEDAnalyser
 {
 public:
+	SEDAnalyser() : _analysePassband(false) { }
+	
 	void Read(const char* filename)
 	{
 		_model.reset(new Model(filename));
@@ -45,9 +47,12 @@ public:
 	
 	double BestRMS();
 	
+	void SetAnalysePassband(bool analysePassband) { _analysePassband = analysePassband; }
+	
 private:
 	std::unique_ptr<Model> _model;
 	Model _brightestSourcesModel;
+	bool _analysePassband;
 	
 	struct SourceInfo
 	{
