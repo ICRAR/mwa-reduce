@@ -719,6 +719,28 @@ class SpectralEnergyDistribution
 			}
 		}
 		
+		void TrimLowestChannels(size_t n)
+		{
+			if(_measurements.size() < n)
+				_measurements.clear();
+			else {
+				for(size_t i=0; i!=n; ++i)
+					_measurements.erase(_measurements.begin());
+			}
+		}
+		
+		void TrimHighestChannels(size_t n)
+		{
+			if(_measurements.size() < n)
+				_measurements.clear();
+			else {
+				for(size_t i=0; i!=n; ++i)
+				{
+					_measurements.erase(std::prev(_measurements.end()));
+				}
+			}
+		}
+		
 		//iterator begin() { return boost::adaptors::values(_measurements).begin(); }
 		iterator begin() { return _measurements.begin(); }
 		const_iterator begin() const { return _measurements.begin(); }

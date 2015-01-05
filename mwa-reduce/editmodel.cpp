@@ -56,12 +56,13 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]] [-delnans]\n";
+		"\tsdf [-p] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]] [-delnans] [-trim <lownch> <highnch>]\n";
 		return 0;
 	}
 	int argi = 1;
 	bool outputPlot = false, outputRMPlot = false, outputCsv = false, outputSedCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false;
 	bool setPolarization[4] = {false, false, false, false};
+	size_t trimLoCh = 0, trimHiCh = 0;
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
@@ -226,6 +227,12 @@ int main(int argc, char *argv[])
 		} else if(option == "delnans")
 		{
 			delNaNs = true;
+		} else if(option == "trim")
+		{
+			++argi;
+			trimLoCh = atoi(argv[argi]);
+			++argi;
+			trimHiCh = atoi(argv[argi]);
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
@@ -566,6 +573,19 @@ int main(int argc, char *argv[])
 		model.SetUnpolarized();
 	}
 	
+	if(trimHiCh!=0 || trimLoCh!=0)
+	{
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			{
+				SpectralEnergyDistribution& sed = compPtr->SED();
+				sed.TrimLowestChannels(trimLoCh);
+				sed.TrimHighestChannels(trimHiCh);
+			}
+		}
+	}
+	
 	if(sourceStats)
 	{
 		const size_t n = model.SourceCount();
@@ -828,6 +848,17 @@ int main(int argc, char *argv[])
 				sed.FitPowerlaw2ndOrder(a, b, c, Polarization::StokesI);
 				plotIStream << '(' << b << " * (x*1000000) + " << c << " * (x*1000000)**2)**" << a << " with lines lw 1.0 title \"\"";
 				
+				std::ofstream diffPlotStream(dataStreamName.str() + ".plt");
+				diffPlotStream <<
+					"set terminal postscript enhanced color\n"
+					"set output \"" << dataStreamName.str() << ".ps\"\n"
+					"set xlabel \"Frequency (MHz)\"\n"
+					"set ylabel \"Flux (Jy, baseline subtracted)\"\n";
+				if(!plotTitle.empty())
+					diffPlotStream << "set title \"" << plotTitle << " (differential)\"\n";
+				diffPlotStream <<
+					"plot \"" << dataStreamName.str() << "\" using 1:(column(2)-(" << b << " * (column(1)*1000000) + " << c << " * (column(1)*1000000)**2)**" << a << ") with lines lw 1.0 title \"\"\n";
+			
 				if(compIndex != model.ComponentCount()-1)
 				{
 					plotStream << ",\\";
