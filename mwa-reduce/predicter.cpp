@@ -92,7 +92,7 @@ void Predicter::updateBeam(ModelComponent& component)
 	{
 		if(_beamEvaluator != 0)
 		{
-			double chCentreFreq = _startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1);
+			double chCentreFreq = (_channelCount>1) ? (_startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1)) : _startFrequency;
 			_beamEvaluator->EvaluateAbsToApparentGain(posInfo, chCentreFreq, &parameters->beamValues[ch*4]);
 			CNumType temp[4];
 			Matrix2x2::ATimesB(temp, &parameters->beamValues[ch*4], &parameters->brightness[ch*4]);
