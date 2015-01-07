@@ -23,6 +23,9 @@
 #include "angle.h"
 #include "dftpredictionalgorithm.h"
 
+#include "lofar/lmspredicter.h"
+#include "progressbar.h"
+
 #include <iostream>
 #include <memory>
 
@@ -343,6 +346,7 @@ void WSClean::dftPredict(size_t joinedChannelIndex)
 			}
 		}
 	}
+	_imageAllocator.Free(modelImageReal);
 	
 	DFTPredictionInput input;
 	image->FindComponents(input, _inversionAlgorithm->PhaseCentreRA(), _inversionAlgorithm->PhaseCentreDec(), _pixelScaleX, _pixelScaleY, _inversionAlgorithm->PhaseCentreDL(), _inversionAlgorithm->PhaseCentreDM());
@@ -351,9 +355,36 @@ void WSClean::dftPredict(size_t joinedChannelIndex)
 	std::cout << "Number of components to be predicted: " << input.ComponentCount() << '\n';
 	
 	_predictingWatch.Start();
-	// ...
+	
+	for(size_t filenameIndex=0; filenameIndex!=_filenames.size(); ++filenameIndex)
+	{
+		const std::string& msName = _filenames[filenameIndex];
+		ProgressBar progress("Predicting for " + msName);
+		
+		size_t polIndex = 0;
+		std::vector<MSProvider*> msProviders;
+		for(PolarizationEnum pol : _polarizations)
+		{
+			msProviders[polIndex] = initializeMSProvider(filenameIndex, joinedChannelIndex, pol);
+			++polIndex;
+		}
+		casa::MeasurementSet ms(msName);
+		size_t nRow = ms.nrow();
+		LMSPredicter predicter(ms, _threadCount, input);
+		predicter.Start();
+		LMSPredicter::RowData row;
+		while(predicter.GetNextRow(row))
+		{
+			predicter.FinishRow(row);
+			// TODO write to MS provider
+			
+			progress.SetProgress(row.rowIndex+1, nRow);
+		}
+		for(MSProvider* provider : msProviders)
+			delete provider;
+	}
+	
 	_predictingWatch.Pause();
-	_imageAllocator.Free(modelImageReal);
 }
 
 void WSClean::initializeImageWeights(const MSSelection& partSelection)
@@ -927,16 +958,20 @@ void WSClean::predictChannel(size_t outChannelIndex)
 	_inversionAlgorithm.reset();
 }
 
+MSProvider* WSClean::initializeMSProvider(size_t filenameIndex, size_t currentChannelIndex, PolarizationEnum polarization)
+{
+	if(_doReorder)
+		return new PartitionedMS(_partitionedMSHandles[filenameIndex], currentChannelIndex, polarization);
+	else
+		return new ContiguousMS(_filenames[filenameIndex], _columnName, _currentPartSelection, polarization, _mGain != 1.0);
+}
+
 void WSClean::initializeCurMSProviders(size_t currentChannelIndex, PolarizationEnum polarization)
 {
 	_inversionAlgorithm->ClearMeasurementSetList();
 	for(size_t i=0; i != _filenames.size(); ++i)
 	{
-		MSProvider* msProvider;
-		if(_doReorder)
-			msProvider = new PartitionedMS(_partitionedMSHandles[i], currentChannelIndex, polarization);
-		else
-			msProvider = new ContiguousMS(_filenames[i], _columnName, _currentPartSelection, polarization, _mGain != 1.0);
+		MSProvider* msProvider = initializeMSProvider(i, currentChannelIndex, polarization);
 		_inversionAlgorithm->AddMeasurementSet(msProvider);
 		_currentPolMSes.push_back(msProvider);
 	}

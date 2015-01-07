@@ -272,11 +272,38 @@ class MC2x2
 public:
 	MC2x2() { }
 	MC2x2(const MC2x2& source) : _values(source._values) { }
-	MC2x2(const double source[4]) { Matrix2x2::Assign(_values, source); } 
-	MC2x2& operator=(const MC2x2 &source)
+	MC2x2(const double source[4]) { Matrix2x2::Assign(_values, source); }
+	MC2x2(double m00, double m01, double m10, double m11) {
+		_values[0] = m00; _values[1] = m01;
+		_values[2] = m10; _values[3] = m11;
+	}
+	MC2x2& operator=(const MC2x2& source)
 	{
 		Matrix2x2::Assign(_values, source._values);
 		return *this;
+	}
+	MC2x2& operator+=(const MC2x2& rhs)
+	{
+		Matrix2x2::Add(_values, rhs._values);
+		return *this;
+	}
+	MC2x2& operator*=(double rhs)
+	{
+		Matrix2x2::ScalarMultiply(_values, rhs);
+		return *this;
+	}
+	MC2x2& operator/=(double rhs)
+	{
+		Matrix2x2::ScalarMultiply(_values, 1.0/rhs);
+		return *this;
+	}
+	static MC2x2 Zero()
+	{
+		return MC2x2(0.0, 0.0, 0.0, 0.0);
+	}
+	static MC2x2 Unity()
+	{
+		return MC2x2(1.0, 0.0, 0.0, 1.0);
 	}
 	std::complex<double>* Data() { return _values; }
 	const std::complex<double>* Data() const { return _values; }
@@ -303,6 +330,22 @@ public:
 		MC2x2 dest;
 		Matrix2x2::HermATimesHermB(dest._values, _values, rhs._values);
 		return dest;
+	}
+	static void ATimesB(MC2x2& dest, const MC2x2& lhs, const MC2x2& rhs)
+	{
+		Matrix2x2::ATimesB(dest._values, lhs._values, rhs._values);
+	}
+	static void ATimesHermB(MC2x2& dest, const MC2x2& lhs, const MC2x2& rhs)
+	{
+		Matrix2x2::ATimesHermB(dest._values, lhs._values, rhs._values);
+	}
+	static void HermATimesB(MC2x2& dest, const MC2x2& lhs, const MC2x2& rhs)
+	{
+		Matrix2x2::HermATimesB(dest._values, lhs._values, rhs._values);
+	}
+	static void HermATimesHermB(MC2x2& dest, const MC2x2& lhs, const MC2x2& rhs)
+	{
+		Matrix2x2::HermATimesHermB(dest._values, lhs._values, rhs._values);
 	}
 private:
 	std::complex<double> _values[4];

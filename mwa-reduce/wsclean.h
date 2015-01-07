@@ -120,6 +120,7 @@ private:
 	void initializeMFSImageWeights();
 	void initializeCleanAlgorithm();
 	void freeCleanAlgorithms();
+	MSProvider* initializeMSProvider(size_t filenameIndex, size_t currentChannelIndex, PolarizationEnum polarization);
 	void initializeCurMSProviders(size_t currentChannelIndex, PolarizationEnum polarization);
 	void clearCurMSProviders();
 	void storeAndCombineXYandYX(CachedImageSet& dest, PolarizationEnum polarization, size_t joinedChannelIndex, bool isImaginary, const double* image);

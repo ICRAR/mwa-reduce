@@ -143,18 +143,17 @@ void DFTPredictionImage::FindComponents(DFTPredictionInput& destination, double 
 	}
 }
 
-void DFTPredictionAlgorithm::Predict(std::complex<double>* dest, double u, double v, double w, size_t channelIndex, size_t a1, size_t a2)
+void DFTPredictionAlgorithm::Predict(MC2x2& dest, double u, double v, double w, size_t channelIndex, size_t a1, size_t a2)
 {
-	std::complex<double> single[4];
+	MC2x2 single;
 	for(DFTPredictionComponent c : _input)
 	{
 		predict(single, u, v, w, channelIndex, a1, a2, c);
-		dest[0] += single[0]; dest[1] += single[1];
-		dest[2] += single[2]; dest[3] += single[3];
+		dest += single;
 	}
 }
 
-void DFTPredictionAlgorithm::predict(std::complex<double>* dest, double u, double v, double w, size_t channelIndex, size_t a1, size_t a2, DFTPredictionComponent& component)
+void DFTPredictionAlgorithm::predict(MC2x2& dest, double u, double v, double w, size_t channelIndex, size_t a1, size_t a2, DFTPredictionComponent& component)
 {
 	double l = component.L(), m = component.M(), lmsqrt = component.LMSqrt();
 	double angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
@@ -162,25 +161,24 @@ void DFTPredictionAlgorithm::predict(std::complex<double>* dest, double u, doubl
 	sincos(angle, &sinangleOverLMS, &cosangleOverLMS);
 	sinangleOverLMS /= lmsqrt;
 	cosangleOverLMS /= lmsqrt;
-	MC2x2 appFlux =
-		component.AntennaInfo(a1).BeamValue(channelIndex)
-		.Multiply(component.LinearFlux())
-		.MultiplyHerm(component.AntennaInfo(a2).BeamValue(channelIndex));
+	MC2x2 temp, appFlux;
+	MC2x2::ATimesB(temp, component.AntennaInfo(a1).BeamValue(channelIndex), component.LinearFlux());
+	MC2x2::ATimesHermB(appFlux, temp, component.AntennaInfo(a2).BeamValue(channelIndex));
 	for(size_t p=0; p!=4; ++p)
 	{
 		std::complex<double> val = appFlux.Data()[p];
-		dest[p] = std::complex<double>(
+		dest.Data()[p] = std::complex<double>(
 			val.real() * cosangleOverLMS - val.imag() * sinangleOverLMS,
 			val.real() * sinangleOverLMS + val.imag() * cosangleOverLMS);
 	}
 }
 
-void DFTPredictionAlgorithm::UpdateBeam()
+void DFTPredictionAlgorithm::UpdateBeam(LBeamEvaluator& beamEvaluator)
 {
 	for(DFTPredictionComponent& component : _input)
 	{
 		LBeamEvaluator::PrecalcPosInfo posInfo;
-		_beamEvaluator->PrecalculatePositionInfo(posInfo, component.RA(), component.Dec());
+		beamEvaluator.PrecalculatePositionInfo(posInfo, component.RA(), component.Dec());
 		
 		for(size_t antenna=0; antenna!=component.AntennaCount(); ++antenna)
 		{
@@ -189,7 +187,7 @@ void DFTPredictionAlgorithm::UpdateBeam()
 			for(size_t channel=0; channel!=antennaInfo.ChannelCount(); ++channel)
 			{
 				double freq = _band.ChannelFrequency(channel);
-				_beamEvaluator->Evaluate(posInfo, freq, antenna, antennaInfo.BeamValue(channel));
+				beamEvaluator.Evaluate(posInfo, freq, antenna, antennaInfo.BeamValue(channel));
 			}
 		}
 	}

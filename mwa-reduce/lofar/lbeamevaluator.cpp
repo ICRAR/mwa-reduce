@@ -79,6 +79,20 @@ void LBeamEvaluator::Evaluate(const LBeamEvaluator::PrecalcPosInfo& posInfo, dou
 	beamValues.Data()[3] = gainMatrix[1][1];
 }
 
+void LBeamEvaluator::EvaluateFullArray(const LBeamEvaluator::PrecalcPosInfo& posInfo, double frequency, MC2x2& beamValues)
+{
+	beamValues = MC2x2::Zero();
+	for(Station::Ptr s : _stations)
+	{
+		matrix22c_t gainMatrix = s->response(_timeAsDouble, frequency, posInfo.itrfDirection, _subbandFrequency, _station0, _tile0);
+		beamValues.Data()[0] += gainMatrix[0][0];
+		beamValues.Data()[1] += gainMatrix[0][1];
+		beamValues.Data()[2] += gainMatrix[1][0];
+		beamValues.Data()[3] += gainMatrix[1][1];
+	}
+	beamValues /= double(_stations.size());
+}
+
 void LBeamEvaluator::PrecalculatePositionInfo(LBeamEvaluator::PrecalcPosInfo& posInfo, double raRad, double decRad)
 {
 	static const casa::Unit radUnit("rad");
