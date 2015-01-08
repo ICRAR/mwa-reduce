@@ -362,7 +362,7 @@ void WSClean::dftPredict(size_t joinedChannelIndex)
 		ProgressBar progress("Predicting for " + msName);
 		
 		size_t polIndex = 0;
-		std::vector<MSProvider*> msProviders;
+		std::vector<MSProvider*> msProviders(_polarizations.size());
 		for(PolarizationEnum pol : _polarizations)
 		{
 			msProviders[polIndex] = initializeMSProvider(filenameIndex, joinedChannelIndex, pol);
@@ -370,13 +370,50 @@ void WSClean::dftPredict(size_t joinedChannelIndex)
 		}
 		casa::MeasurementSet ms(msName);
 		size_t nRow = ms.nrow();
+		BandData band(ms.spectralWindow());
 		LMSPredicter predicter(ms, _threadCount, input);
 		predicter.Start();
 		LMSPredicter::RowData row;
+		ao::uvector<std::complex<float>> buffer(band.ChannelCount(), std::complex<float>(0.0));
 		while(predicter.GetNextRow(row))
 		{
-			predicter.FinishRow(row);
-			// TODO write to MS provider
+			// Write to MS provider(s)
+			polIndex = 0;
+			for(PolarizationEnum pol : _polarizations)
+			{
+				MSProvider* p = msProviders[polIndex];
+				for(size_t ch=0; ch!=band.ChannelCount(); ++ch)
+				{
+					switch(pol)
+					{
+						case Polarization::XX:
+							buffer[ch] = row.modelData[ch].Data()[0];
+							break;
+						case Polarization::XY:
+							buffer[ch] = row.modelData[ch].Data()[1];
+							break;
+						case Polarization::YX:
+							buffer[ch] = row.modelData[ch].Data()[2];
+							break;
+						case Polarization::YY:
+							buffer[ch] = row.modelData[ch].Data()[3];
+							break;
+						case Polarization::StokesI:
+							buffer[ch] =
+								(row.modelData[ch].Data()[0] +
+								row.modelData[ch].Data()[3])*0.5;
+							break;
+						default:
+							throw std::runtime_error("Can't predict for this polarization at the moment");
+					}
+				}
+				boost::mutex::scoped_lock lock(predicter.IOMutex());
+				p->WriteModel(row.rowIndex, buffer.data());
+				lock.unlock();
+				
+				predicter.FinishRow(row);
+				++polIndex;
+			}
 			
 			progress.SetProgress(row.rowIndex+1, nRow);
 		}

@@ -297,6 +297,8 @@ public:
 		Matrix2x2::ScalarMultiply(_values, 1.0/rhs);
 		return *this;
 	}
+	const std::complex<double>& operator[](size_t index) const { return _values[index]; }
+	std::complex<double>& operator[](size_t index) { return _values[index]; }
 	static MC2x2 Zero()
 	{
 		return MC2x2(0.0, 0.0, 0.0, 0.0);

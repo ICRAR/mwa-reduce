@@ -38,8 +38,9 @@ class DFTPredictionComponent
 {
 public:
 	DFTPredictionComponent(double ra, double dec, double l, double m, double fluxLinear[4]) :
-		_ra(ra), _dec(dec), _l(l), _m(m), _lmSqrt(sqrt(1.0 - l*l - m*m)), _flux(fluxLinear)
+		_ra(ra), _dec(dec), _l(l), _m(m), _lmSqrt(sqrt(1.0 - l*l - m*m))
 	{
+		for(size_t p=0; p!=4; ++p) _flux[p] = fluxLinear[p];
 	}
 	double L() const { return _l; }
 	double M() const { return _m; }

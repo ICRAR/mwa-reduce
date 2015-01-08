@@ -188,6 +188,10 @@ void DFTPredictionAlgorithm::UpdateBeam(LBeamEvaluator& beamEvaluator)
 			{
 				double freq = _band.ChannelFrequency(channel);
 				beamEvaluator.Evaluate(posInfo, freq, antenna, antennaInfo.BeamValue(channel));
+				if(antenna == 0 && &component==&*_input.begin() && channel==0)
+				{
+					std::cout << antennaInfo.BeamValue(channel).Data()[0] << ' ';
+				}
 			}
 		}
 	}
