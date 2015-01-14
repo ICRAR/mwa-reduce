@@ -28,7 +28,7 @@ WSInversion::MSData::MSData() : matchingRows(0), totalRowsProcessed(0)
 WSInversion::MSData::~MSData()
 { }
 
-WSInversion::WSInversion(ImageBufferAllocator<double>* imageAllocator, size_t threadCount, double memFraction, double absMemLimit) : InversionAlgorithm(), _phaseCentreRA(0.0), _phaseCentreDec(0.0), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _freqHigh(0.0), _freqLow(0.0), _bandStart(0.0), _bandEnd(0.0), _beamSize(0.0), _totalWeight(0.0), _startTime(0.0), _gridMode(LayeredImager::NearestNeighbour), _cpuCount(threadCount), _laneBufferSize(16), _imageBufferAllocator(imageAllocator)
+WSInversion::WSInversion(ImageBufferAllocator<double>* imageAllocator, size_t threadCount, double memFraction, double absMemLimit) : InversionAlgorithm(), _phaseCentreRA(0.0), _phaseCentreDec(0.0), _phaseCentreDL(0.0), _phaseCentreDM(0.0), _denormalPhaseCentre(false), _hasFrequencies(false), _freqHigh(0.0), _freqLow(0.0), _bandStart(0.0), _bandEnd(0.0), _beamSize(0.0), _totalWeight(0.0), _startTime(0.0), _gridMode(LayeredImager::NearestNeighbour), _cpuCount(threadCount), _laneBufferSize(_cpuCount*2), _imageBufferAllocator(imageAllocator)
 {
 	long int pageCount = sysconf(_SC_PHYS_PAGES), pageSize = sysconf(_SC_PAGE_SIZE);
 	_memSize = (int64_t) pageCount * (int64_t) pageSize;
@@ -440,6 +440,7 @@ void WSInversion::predictMeasurementSet(MSData &msData)
 	size_t rowsProcessed = 0;
 	
 	ao::lane<PredictionWorkItem> calcLane(_laneBufferSize+_cpuCount), writeLane(_laneBufferSize);
+	lane_write_buffer<PredictionWorkItem> bufferedCalcLane(&calcLane, _laneBufferSize);
 	boost::thread writeThread(&WSInversion::predictWriteThread, this, &writeLane, &msData);
 	boost::thread_group calcThreads;
 	for(size_t i=0; i!=_cpuCount; ++i)
@@ -481,12 +482,12 @@ void WSInversion::predictMeasurementSet(MSData &msData)
 		newItem.data = new std::complex<float>[selectedBandData[dataIds[i]].ChannelCount()];
 		newItem.rowId = rowIds[i];
 				
-		calcLane.write(newItem);
+		bufferedCalcLane.write(newItem);
 	}
 	std::cout << "Rows that were required: " << rowsProcessed << '/' << msData.matchingRows << '\n';
 	msData.totalRowsProcessed += rowsProcessed;
 	
-	calcLane.write_end();
+	bufferedCalcLane.write_end();
 	calcThreads.join_all();
 	writeLane.write_end();
 	writeThread.join();
@@ -494,19 +495,22 @@ void WSInversion::predictMeasurementSet(MSData &msData)
 
 void WSInversion::predictCalcThread(ao::lane<PredictionWorkItem>* inputLane, ao::lane<PredictionWorkItem>* outputLane)
 {
+	lane_write_buffer<PredictionWorkItem> writeBuffer(outputLane, _laneBufferSize);
+	
 	PredictionWorkItem item;
 	while(inputLane->read(item))
 	{
 		_imager->SampleData(item.data, item.dataDescId, item.u, item.v, item.w);
 		
-		outputLane->write(item);
+		writeBuffer.write(item);
 	}
 }
 
 void WSInversion::predictWriteThread(ao::lane<PredictionWorkItem>* predictionWorkLane, const MSData* msData)
 {
+	lane_read_buffer<PredictionWorkItem> buffer(predictionWorkLane, std::min(_laneBufferSize, predictionWorkLane->capacity()));
 	PredictionWorkItem workItem;
-	while(predictionWorkLane->read(workItem))
+	while(buffer.read(workItem))
 	{
 		msData->msProvider->WriteModel(workItem.rowId, workItem.data);
 		delete[] workItem.data;

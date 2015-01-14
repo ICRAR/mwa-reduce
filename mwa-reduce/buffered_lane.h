@@ -22,6 +22,7 @@ public:
 	
 	~lane_write_buffer()
 	{
+		flush();
 	}
 	
 	void reset(ao::lane<Tp>* lane, size_type buffer_size)
