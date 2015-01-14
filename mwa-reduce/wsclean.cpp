@@ -348,8 +348,10 @@ void WSClean::dftPredict(size_t joinedChannelIndex)
 	}
 	_imageAllocator.Free(modelImageReal);
 	
+	casa::MeasurementSet firstMS(_filenames.front());
+	BandData firstBand(firstMS.spectralWindow());
 	DFTPredictionInput input;
-	image->FindComponents(input, _inversionAlgorithm->PhaseCentreRA(), _inversionAlgorithm->PhaseCentreDec(), _pixelScaleX, _pixelScaleY, _inversionAlgorithm->PhaseCentreDL(), _inversionAlgorithm->PhaseCentreDM());
+	image->FindComponents(input, _inversionAlgorithm->PhaseCentreRA(), _inversionAlgorithm->PhaseCentreDec(), _pixelScaleX, _pixelScaleY, _inversionAlgorithm->PhaseCentreDL(), _inversionAlgorithm->PhaseCentreDM(), firstBand.ChannelCount());
 	// Free the input model images
 	image.reset();
 	std::cout << "Number of components to be predicted: " << input.ComponentCount() << '\n';

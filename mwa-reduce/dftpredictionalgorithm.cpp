@@ -119,7 +119,7 @@ void DFTPredictionImage::Add(PolarizationEnum polarization, const double* real, 
 	_pols.push_back(polarization);
 }
 
-void DFTPredictionImage::FindComponents(DFTPredictionInput& destination, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double dl, double dm)
+void DFTPredictionImage::FindComponents(DFTPredictionInput& destination, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double dl, double dm, size_t channelCount)
 {
 	size_t index = 0;
 	for(size_t y=0; y!=_height; ++y)
@@ -136,7 +136,7 @@ void DFTPredictionImage::FindComponents(DFTPredictionInput& destination, double 
 				ImageCoordinates::LMToRaDec(l, m, phaseCentreRA, phaseCentreDec, ra, dec);
 				double flux[4] = { _images[0][index], _images[1][index],
 					_images[2][index], _images[3][index] };
-				destination.AddComponent(DFTPredictionComponent(ra, dec, l, m, flux));
+				destination.AddComponent(DFTPredictionComponent(ra, dec, l, m, flux, channelCount));
 			}
 			++index;
 		}
@@ -156,20 +156,40 @@ void DFTPredictionAlgorithm::Predict(MC2x2& dest, double u, double v, double w, 
 void DFTPredictionAlgorithm::predict(MC2x2& dest, double u, double v, double w, size_t channelIndex, size_t a1, size_t a2, DFTPredictionComponent& component)
 {
 	double l = component.L(), m = component.M(), lmsqrt = component.LMSqrt();
+	if(component.IsGaussian())
+	{
+		const double* gausTrans = component.GausTransformationMatrix();
+		double uTemp = u*gausTrans[0] + v*gausTrans[1],
+		v = u*gausTrans[2] + v*gausTrans[3];
+		u = uTemp;
+	}
 	double angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
 	double sinangleOverLMS, cosangleOverLMS;
 	sincos(angle, &sinangleOverLMS, &cosangleOverLMS);
 	sinangleOverLMS /= lmsqrt;
 	cosangleOverLMS /= lmsqrt;
 	MC2x2 temp, appFlux;
-	MC2x2::ATimesB(temp, component.AntennaInfo(a1).BeamValue(channelIndex), component.LinearFlux());
+	MC2x2::ATimesB(temp, component.AntennaInfo(a1).BeamValue(channelIndex), component.LinearFlux(channelIndex));
 	MC2x2::ATimesHermB(appFlux, temp, component.AntennaInfo(a2).BeamValue(channelIndex));
-	for(size_t p=0; p!=4; ++p)
+	if(component.IsGaussian())
 	{
-		std::complex<double> val = appFlux.Data()[p];
-		dest.Data()[p] = std::complex<double>(
-			val.real() * cosangleOverLMS - val.imag() * sinangleOverLMS,
-			val.real() * sinangleOverLMS + val.imag() * cosangleOverLMS);
+		double gaus = exp(-u*u - v*v);
+		for(size_t p=0; p!=4; ++p)
+		{
+			std::complex<double> val = appFlux[p] * gaus;
+			dest[p] = std::complex<double>(
+				val.real() * cosangleOverLMS - val.imag() * sinangleOverLMS,
+				val.real() * sinangleOverLMS + val.imag() * cosangleOverLMS);
+		}
+	}
+	else {
+		for(size_t p=0; p!=4; ++p)
+		{
+			std::complex<double> val = appFlux[p];
+			dest[p] = std::complex<double>(
+				val.real() * cosangleOverLMS - val.imag() * sinangleOverLMS,
+				val.real() * sinangleOverLMS + val.imag() * cosangleOverLMS);
+		}
 	}
 }
 
