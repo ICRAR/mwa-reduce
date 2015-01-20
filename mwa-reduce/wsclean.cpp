@@ -982,6 +982,8 @@ void WSClean::predictChannel(size_t outChannelIndex)
 		prepareInversionAlgorithm(*curPol);
 		
 		initializeCurMSProviders(outChannelIndex, *curPol);
+		if(*curPol == *_polarizations.begin())
+			initializeImageWeights(_currentPartSelection);
 
 		predict(*curPol, 0);
 		
