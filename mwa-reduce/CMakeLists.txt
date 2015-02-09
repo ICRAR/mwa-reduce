@@ -92,7 +92,7 @@ add_library(mwareducebeam fitsiochecker.cpp beam/joneslookupdipole.cpp beam/syst
 set(BEAMFILES "")
 
 add_executable(addimg addimg.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
-add_executable(aegean2model aegean2model.cpp model.cpp)
+add_executable(aegean2model aegean2model.cpp fitsiochecker.cpp fitsreader.cpp model.cpp)
 add_executable(analysesed analysesed.cpp sedanalyser.cpp model.cpp nlplfitter.cpp rmsynthesis.cpp progressbar.cpp subbandpassband.cpp)
 add_executable(apparently apparently.cpp model.cpp fitsiochecker.cpp fitsreader.cpp)
 add_executable(applybeam applybeam.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
@@ -160,6 +160,7 @@ add_executable(wsctests wsctests.cpp cleanalgorithms/cleanalgorithm.cpp cleanalg
 add_executable(aoimage aoimage.cpp btpimager.cpp fftconvolver.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp model.cpp modelrenderer.cpp)
 
 target_link_libraries(addimg ${FITSIO_LIB} ${CASA_LIBS})
+target_link_libraries(aegean2model ${FITSIO_LIB} ${CASA_LIBS})
 target_link_libraries(applybeam ${FITSIO_LIB} ${CASA_LIBS})
 target_link_libraries(apparently ${FITSIO_LIB} ${CASA_LIBS})
 target_link_libraries(areas ${FITSIO_LIB} ${CASA_LIBS})

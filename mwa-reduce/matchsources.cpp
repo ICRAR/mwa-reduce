@@ -28,13 +28,19 @@ int main(int argc, char* argv[])
 	
 	double weight = 0.5;
 	size_t argi = 2;
+	SourceMatcher matcher;
 	while(argv[argi][0] == '-')
 	{
 		std::string p(&argv[argi][1]);
 		if(p == "weight")
 		{
-			weight = atof(argv[argi+1]);
 			++argi;
+			weight = atof(argv[argi]);
+		}
+		else if(p == "append-ambigious")
+		{
+			++argi;
+			matcher.SetAppendAmbigiousFilename(argv[argi]);
 		}
 		else throw std::runtime_error("Invalid parameter");
 		++argi;
@@ -44,6 +50,6 @@ int main(int argc, char* argv[])
 	const std::string restModelFilename(argv[argi+3]);
 	
 	Model baseModel(argv[argi]), addedModel(argv[argi+1]), restModel;
-	SourceMatcher::Match(matchingType, distanceInRad, weight, baseModel, addedModel, restModel);
+	matcher.Match(matchingType, distanceInRad, weight, baseModel, addedModel, restModel);
 	restModel.Save(restModelFilename);
 }

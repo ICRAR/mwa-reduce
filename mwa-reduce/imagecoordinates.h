@@ -84,7 +84,10 @@ class ImageCoordinates
 			T sinDec1, sinDec2, cosDec1, cosDec2;
 			SinCos(dec1, &sinDec1, &cosDec1);
 			SinCos(dec2, &sinDec2, &cosDec2);
-			return std::acos(sinDec1*sinDec2 + cosDec1*cosDec2*std::cos(ra1 - ra2));
+			T cosVal = sinDec1*sinDec2 + cosDec1*cosDec2*std::cos(ra1 - ra2);
+			// Rounding errors sometimes cause cosVal to be slightly larger than 1, which would cause
+			// an NaN return value.
+			return cosVal <= 1.0 ? std::acos(cosVal) : 0.0;
 		}
 		
 		template<typename T>
