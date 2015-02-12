@@ -12,11 +12,12 @@ using namespace std;
 int main(int argc, char* argv[])
 {
 	if(argc < 4) {
-		cout << "Syntax: aegean2model [-fitsfreq <fitsfile>] <aegean-file> <output-model> <src-prefix>\n";
+		cout << "Syntax: aegean2model [-fitsfreq <fitsfile>] [-use-peak] <aegean-file> <output-model> <src-prefix>\n";
 	}
 	else {
 		std::string freqfitsfile;
 		size_t argi = 1;
+		bool usePeak = false;
 		while(argv[argi][0] == '-')
 		{
 			std::string p(&argv[argi][1]);
@@ -24,6 +25,10 @@ int main(int argc, char* argv[])
 			{
 				++argi;
 				freqfitsfile = argv[argi];
+			}
+			else if(p == "use-peak")
+			{
+				usePeak = true;
 			}
 			else {
 				throw std::runtime_error("Unknown parameter");
@@ -54,8 +59,17 @@ int main(int argc, char* argv[])
 				double ra = atof(beg->c_str());
 				++beg; ++beg;
 				double dec = atof(beg->c_str());
-				++beg; ++beg; ++beg; ++beg;
-				double flux = atof(beg->c_str());
+				double flux;
+				if(usePeak)
+				{
+					++beg; ++beg;
+					flux = atof(beg->c_str());
+					++beg; ++beg;
+				}
+				else {
+					++beg; ++beg; ++beg; ++beg;
+					flux = atof(beg->c_str());
+				}
 				ModelComponent component;
 				component.SetPosRA(ra * M_PI / 180.0);
 				component.SetPosDec(dec * M_PI / 180.0);
