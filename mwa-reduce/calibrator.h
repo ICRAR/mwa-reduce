@@ -83,6 +83,11 @@ public:
 		_minUVW = minUVW;
 	}
 	
+	void SetMaxUVW(double maxUVW)
+	{
+		_maxUVW = maxUVW;
+	}
+	
 	void SetSolutionInterval(size_t solutionInterval)
 	{
 		_solutionInterval = solutionInterval;
@@ -127,7 +132,7 @@ private:
 	size_t _nIter, _solutionInterval, _threadCount;
 	bool _onlyScalar, _onlyDiag, _onlyRotation;
 	bool _beamOnSource, _applyBeam;
-	double _minUVW;
+	double _minUVW, _maxUVW;
 	bool _savePlotFiles, _saveFaradayPlotFiles, _saveCrossTermsPlotFile, _verbose;
 	std::string _phasePlotFilename, _gainPlotFilename, _faradayPlotFilename, _crossTermsPlotFilename;
 };

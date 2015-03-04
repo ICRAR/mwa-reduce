@@ -33,6 +33,7 @@ Calibrator::Calibrator(casa::MeasurementSet& ms, size_t threadCount) :
 	_beamOnSource(false),
 	_applyBeam(false),
 	_minUVW(0.0),
+	_maxUVW(5000.0),
 	_savePlotFiles(false),
 	_saveFaradayPlotFiles(false),
 	_saveCrossTermsPlotFile(false),
@@ -238,7 +239,7 @@ void Calibrator::Perform()
 					double w = rowData.w;
 					
 					bool selected = true;
-					if(u*u + v*v + w*w < _minUVW*_minUVW)
+					if((u*u + v*v + w*w < _minUVW*_minUVW)||(u*u + v*v + w*w > _maxUVW*_maxUVW))
 						selected = false;
 					if(selected)
 						selectedCount++;

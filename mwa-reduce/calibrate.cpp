@@ -24,7 +24,8 @@ int main(int argc, char *argv[])
 		double
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
-			minUVW = 0.0;
+			minUVW = 0.0,
+			maxUVW = 5000.0;
 		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 		
 		while(argv[argi][0] == '-')
@@ -85,6 +86,11 @@ int main(int argc, char *argv[])
 				minUVW = atof(argv[argi+1]);
 				argi += 2;
 			}
+			else if(param == "maxuv")
+			{
+				maxUVW = atof(argv[argi+1]);
+				argi += 2;
+			}
 			else if(param == "applybeam")
 			{
 				applyBeam = true;
@@ -135,6 +141,7 @@ int main(int argc, char *argv[])
 		calibrator.SetModelFilename(modelFile);
 		calibrator.SetSolutionInterval(solutionInterval);
 		calibrator.SetMinUVW(minUVW);
+		calibrator.SetMaxUVW(maxUVW);
 		calibrator.SetApplyBeam(applyBeam);
 		calibrator.SetBeamOnSource(beamOnSource);
 		calibrator.SetOnlyScalar(onlyScalar);
