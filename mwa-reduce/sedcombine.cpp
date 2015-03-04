@@ -61,7 +61,8 @@ void processList(std::vector<SEDSet> sets, Model& fullModel, std::ofstream& logF
 			Model addedModel(bandSetIter->filename.c_str()), outputModel;
 			
 			std::cout << "Averaging in " << bandSetIter->shortname << "... (" << bandSetIter->rms << " mJy RMS, " << round(addInWeight*1000.0)/10.0 << "%)\n";
-			SourceMatcher::Match(SourceMatcher::AvgSpectraMatching, distance, addInWeight, bandModel, addedModel, outputModel);
+			SourceMatcher matcher;
+			matcher.Match(SourceMatcher::AvgSpectraMatching, distance, addInWeight, bandModel, addedModel, outputModel);
 			bandModel = outputModel;
 			++bandSetIter;
 			
@@ -76,7 +77,8 @@ void processList(std::vector<SEDSet> sets, Model& fullModel, std::ofstream& logF
 		else {
 			std::cout << "Combining bands...\n";
 			Model outputModel;
-			SourceMatcher::Match(SourceMatcher::AvgSpectraMatching, distance, 0.5, fullModel, bandModel, outputModel);
+			SourceMatcher matcher;
+			matcher.Match(SourceMatcher::AvgSpectraMatching, distance, 0.5, fullModel, bandModel, outputModel);
 			fullModel = outputModel;
 		}
 	}

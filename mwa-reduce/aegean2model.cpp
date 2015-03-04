@@ -3,6 +3,7 @@
 #include <string>
 
 #include "model.h"
+#include "fitsreader.h"
 
 #include <boost/tokenizer.hpp>
 
@@ -10,14 +11,41 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	if(argc != 4) {
-		cout << "Syntax: aegean2model <aegean-file> <output-model> <src-prefix>\n";
+	if(argc < 4) {
+		cout << "Syntax: aegean2model [-fitsfreq <fitsfile>] [-use-peak] <aegean-file> <output-model> <src-prefix>\n";
 	}
 	else {
-		Model model;
-		ifstream aegeanFile(argv[1]);
-		string srcPrefix(argv[3]);
+		std::string freqfitsfile;
+		size_t argi = 1;
+		bool usePeak = false;
+		while(argv[argi][0] == '-')
+		{
+			std::string p(&argv[argi][1]);
+			if(p == "fitsfreq")
+			{
+				++argi;
+				freqfitsfile = argv[argi];
+			}
+			else if(p == "use-peak")
+			{
+				usePeak = true;
+			}
+			else {
+				throw std::runtime_error("Unknown parameter");
+			}
+			++argi;
+		}
+		ifstream aegeanFile(argv[argi]);
+		std::string outputFilename(argv[argi+1]);
+		string srcPrefix(argv[argi+2]);
+		double frequency = 150.0e6;
+		if(!freqfitsfile.empty())
+		{
+			FitsReader reader(freqfitsfile);
+			frequency = reader.Frequency();
+		}
 		boost::char_delimiters_separator<char> sep(false, "", " \t");
+		Model model;
 		size_t srcIndex = 0;
 		while(aegeanFile.good())
 		{
@@ -31,12 +59,21 @@ int main(int argc, char* argv[])
 				double ra = atof(beg->c_str());
 				++beg; ++beg;
 				double dec = atof(beg->c_str());
-				++beg; ++beg; ++beg; ++beg;
-				double flux = atof(beg->c_str());
+				double flux;
+				if(usePeak)
+				{
+					++beg; ++beg;
+					flux = atof(beg->c_str());
+					++beg; ++beg;
+				}
+				else {
+					++beg; ++beg; ++beg; ++beg;
+					flux = atof(beg->c_str());
+				}
 				ModelComponent component;
 				component.SetPosRA(ra * M_PI / 180.0);
 				component.SetPosDec(dec * M_PI / 180.0);
-				component.SetSED(SpectralEnergyDistribution(flux, 150000000.0));
+				component.SetSED(SpectralEnergyDistribution(flux, frequency));
 				ModelSource source;
 				ostringstream srcName;
 				++srcIndex;
@@ -46,6 +83,6 @@ int main(int argc, char* argv[])
 				model.AddSource(source);
 			}
 		}
-		model.Save(argv[2]);
+		model.Save(outputFilename);
 	}
 }
