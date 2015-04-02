@@ -204,7 +204,7 @@ void SEDAnalyser::outputSIStats(const std::vector< SEDAnalyser::SourceInfo >& so
 	std::vector<size_t> histData(101, 0);
 	for(size_t i=0; i!=actualN; ++i)
 	{
-		long double bindex = ((long double) histData.size())*(sis[i]-lowestSI) / (highestSI-lowestSI);
+		long double bindex = ((long double) histData.size()-1)*(sis[i]-lowestSI) / (highestSI-lowestSI);
 		histData[size_t(round(bindex))]++;
 	}
 	
