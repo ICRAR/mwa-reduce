@@ -145,8 +145,6 @@ void Predicter::predict4(CNumType *dest, const ModelComponent& component, NumTyp
 			NumType angle = 2.0*M_PI*(u*l + v*m + w*(lmsqrt-1.0));
 			double sinangleOverLMS, cosangleOverLMS;
 			sincos(angle, &sinangleOverLMS, &cosangleOverLMS);
-			sinangleOverLMS /= lmsqrt;
-			cosangleOverLMS /= lmsqrt;
 			if(_beamEvaluator != 0)
 			{
 				for(size_t p=0; p!=4; ++p)
