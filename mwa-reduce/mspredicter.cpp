@@ -31,7 +31,7 @@ void MSPredicter::Start(bool reportSources)
 	_channelCount = _bandData->ChannelCount();
 	
 	casa::MSField fieldTable = _ms.field();
-	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
+	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::PHASE_DIR));
 	if(refDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
 	casa::Array<double> refDir = refDirColumn(0);
