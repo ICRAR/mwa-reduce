@@ -217,6 +217,7 @@ class lane
 				
 				_buffer[_write_position] = std::move(element);
 				_write_position = (_write_position+1) % _capacity;
+				--_free_write_space;
 				// Now that there is less free write space, there is more free read
 				// space and thus readers can possibly continue.
 				_reading_possible_condition.notify_all();
