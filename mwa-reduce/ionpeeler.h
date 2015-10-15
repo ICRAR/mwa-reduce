@@ -90,7 +90,7 @@ private:
 	void processChannel(size_t channelIndex, PeelingStats& stats);
 	void processingThreadFunction(std::mutex* mutex, std::vector<size_t>* tasks);
 	static bool isfinite(const std::complex<double>& val) { return std::isfinite(val.real()) && std::isfinite(val.imag()); }
-	void initWeighting(casa::MeasurementSet& ms);
+	void initWeighting(casacore::MeasurementSet& ms);
 	
 	void positionFitter(size_t channelIndex, PeelingStats& stats);
 	

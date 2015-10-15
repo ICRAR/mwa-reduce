@@ -5,9 +5,9 @@
 #include <sstream>
 #include <cmath>
 
-#include <fits/FITS/FITSDateUtil.h>
-#include <casa/Quanta/MVTime.h>
-#include <measures/Measures/MeasConvert.h>
+#include <casacore/fits/FITS/FITSDateUtil.h>
+#include <casacore/casa/Quanta/MVTime.h>
+#include <casacore/measures/Measures/MeasConvert.h>
 
 FitsReader::FitsReader(const FitsReader& source) :
 	_filename(source._filename),
@@ -293,11 +293,11 @@ FitsReader::~FitsReader()
 
 double FitsReader::ParseFitsDateToMJD(const char* valueStr)
 {
-	casa::MVTime time;
-	casa::MEpoch::Types systypes;
-	bool parseSuccess = casa::FITSDateUtil::fromFITS(time, systypes, valueStr, "UTC");
+	casacore::MVTime time;
+	casacore::MEpoch::Types systypes;
+	bool parseSuccess = casacore::FITSDateUtil::fromFITS(time, systypes, valueStr, "UTC");
 	if(!parseSuccess)
 		throw std::runtime_error(std::string("Could not parse FITS date: ") + valueStr);
-	casa::MEpoch epoch(time.get(), systypes);
+	casacore::MEpoch epoch(time.get(), systypes);
 	return epoch.getValue().get();
 }

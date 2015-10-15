@@ -5,9 +5,9 @@
 #include <iostream>
 #include <memory>
 
-#include <ms/MeasurementSets/MSAntenna.h>
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ArrColDesc.h>
+#include <casacore/ms/MeasurementSets/MSAntenna.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ArrColDesc.h>
 
 #include "banddata.h"
 #include "solutionfile.h"
@@ -17,8 +17,8 @@ class SolutionApplier
 {
 public:
 	SolutionApplier() : _preset(false),
-	_inputColumnName(casa::MeasurementSet::columnName(casa::MSMainEnums::DATA)),
-	_outputColumnName(casa::MeasurementSet::columnName(casa::MSMainEnums::DATA))
+	_inputColumnName(casacore::MeasurementSet::columnName(casacore::MSMainEnums::DATA)),
+	_outputColumnName(casacore::MeasurementSet::columnName(casacore::MSMainEnums::DATA))
 	{
 	}
 	
@@ -41,14 +41,14 @@ public:
 		_outputColumnName = dataColumn;
 	}
 	
-	void Apply(casa::MeasurementSet& ms, SolutionFile& solutionFile)
+	void Apply(casacore::MeasurementSet& ms, SolutionFile& solutionFile)
 	{
 		/**
 		 * Read some meta data from the measurement set
 		 */
 		std::cout << "Opening measurement set..." << std::flush;
 		ms.reopenRW();
-		casa::MSAntenna aTable = ms.antenna();
+		casacore::MSAntenna aTable = ms.antenna();
 		size_t antennaCount = aTable.nrow();
 		
 		BandData bandData(ms.spectralWindow());
@@ -58,14 +58,14 @@ public:
 		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
-		casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-		casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-		casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-		casa::ArrayColumn<complex_t> dataColumn(ms, _inputColumnName);
+		casacore::ROScalarColumn<double> timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
+		casacore::ROScalarColumn<int> ant1Column(ms, ms.columnName(casacore::MSMainEnums::ANTENNA1));
+		casacore::ROScalarColumn<int> ant2Column(ms, ms.columnName(casacore::MSMainEnums::ANTENNA2));
+		casacore::ArrayColumn<complex_t> dataColumn(ms, _inputColumnName);
 		std::cout << "DONE\n";
 		
-		std::unique_ptr<casa::ArrayColumn<complex_t>> copyColumn;
-		casa::ArrayColumn<complex_t> *outputColumn;
+		std::unique_ptr<casacore::ArrayColumn<complex_t>> copyColumn;
+		casacore::ArrayColumn<complex_t> *outputColumn;
 		if(_outputColumnName == _inputColumnName)
 		{
 			outputColumn = &dataColumn;
@@ -73,8 +73,8 @@ public:
 		else {
 			if(!ms.tableDesc().isColumn(_outputColumnName)) {
 				std::cout << "Adding column '" << _outputColumnName << "'... " << std::flush;
-				casa::IPosition shape = dataColumn.shape(0);
-				casa::ArrayColumnDesc<casa::Complex> columnDesc(_outputColumnName, shape);
+				casacore::IPosition shape = dataColumn.shape(0);
+				casacore::ArrayColumnDesc<casacore::Complex> columnDesc(_outputColumnName, shape);
 				try {
 					ms.addColumn(columnDesc, "StandardStMan", true, true);
 				} catch(std::exception& e)
@@ -84,11 +84,11 @@ public:
 				
 				std::cout << "DONE\n";
 			}
-			copyColumn.reset(new casa::ArrayColumn<complex_t>(ms, _outputColumnName));
+			copyColumn.reset(new casacore::ArrayColumn<complex_t>(ms, _outputColumnName));
 			outputColumn = &*copyColumn;
 		}
 		
-		casa::IPosition dataShape = dataColumn.shape(0);
+		casacore::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		if(polarizationCount != 4)
 		  throw std::runtime_error("Should have 4 pols");
@@ -145,7 +145,7 @@ public:
 		 * Apply corrections
 		 */
 		std::cout << "Applying solutions...\n";
-		casa::Array<complex_t> data(dataShape);
+		casacore::Array<complex_t> data(dataShape);
 		for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 		{
 			// Read the solutions for this interval
@@ -173,7 +173,7 @@ public:
 				size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
 				if(a1 != a2) {
 					dataColumn.get(rowIndex, data);
-					casa::Array<complex_t>::contiter dataPtr = data.cbegin();
+					casacore::Array<complex_t>::contiter dataPtr = data.cbegin();
 					for(size_t ch=0; ch!=channelCount; ++ch)
 					{
 						size_t chFileIndex = ch * 4;

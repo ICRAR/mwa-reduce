@@ -1,38 +1,38 @@
 #include <stdexcept>
 
-#include <measures/TableMeasures/ScalarMeasColumn.h>
-#include <measures/Measures/MPosition.h>
-#include <measures/Measures/MEpoch.h>
-#include <measures/Measures/MDirection.h>
-#include <tables/Tables/TableRecord.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/Measures/MPosition.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/Measures/MDirection.h>
+#include <casacore/tables/Tables/TableRecord.h>
 
 #include "beamevaluator.h"
 #include "banddata.h"
 
-BeamEvaluator::BeamEvaluator(casa::MeasurementSet& ms, bool reportDelays)
+BeamEvaluator::BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays)
 {
 	/**
 		* Read some meta data from the measurement set
 		*/
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
-	casa::MSAntenna aTable = ms.antenna();
+	casacore::MSAntenna aTable = ms.antenna();
 	size_t antennaCount = aTable.nrow();
 	if(antennaCount == 0) throw std::runtime_error("No antennae in set");
 	
-	casa::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casa::MSAntennaEnums::POSITION));
+	casacore::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casacore::MSAntennaEnums::POSITION));
 	_ant1Pos = antPosColumn(0);
 	
-	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
+	casacore::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
 	_time = timeColumn(0);
 	
 	BandData band(ms.spectralWindow());
 	_frequency = (band.BandStart()+ band.BandEnd()) * 0.5;
 	
-	casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
-	casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
-	casa::Array<int> delaysArr = delaysCol(0);
-	casa::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
+	casacore::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
+	casacore::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
+	casacore::Array<int> delaysArr = delaysCol(0);
+	casacore::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
 	double delays[16];
 	if(reportDelays)
 		std::cout << "Delays: [";

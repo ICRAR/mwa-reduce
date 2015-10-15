@@ -6,14 +6,14 @@
 #include <cmath>
 #include <fstream>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include "stdint.h"
 
-using namespace casa;
+using namespace casacore;
 
 int main(int argc, char **argv)
 {
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 			applier.SetPresets(xx, xy, yx, yy);
 		applier.SetInputColumn(dataColumnName);
 		if(copyData)
-			applier.SetOutputColumn(casa::MeasurementSet::columnName(casa::MSMainEnums::CORRECTED_DATA));
+			applier.SetOutputColumn(casacore::MeasurementSet::columnName(casacore::MSMainEnums::CORRECTED_DATA));
 		else
 			applier.SetOutputColumn(dataColumnName);
 		applier.Apply(ms, solutionFile);

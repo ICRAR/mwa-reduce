@@ -6,17 +6,17 @@
 #include "model.h"
 #include "modelrenderer.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
-#include <measures/Measures/MDirection.h>
-#include <measures/Measures/MCDirection.h>
-#include <measures/Measures/MEpoch.h>
-#include <measures/Measures/MPosition.h>
-#include <measures/Measures/MCPosition.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/Measures/MDirection.h>
+#include <casacore/measures/Measures/MCDirection.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/Measures/MPosition.h>
+#include <casacore/measures/Measures/MCPosition.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 #include <stdexcept>
 
@@ -24,7 +24,7 @@
 
 #include <boost/thread/thread.hpp>
 
-using namespace casa;
+using namespace casacore;
 
 typedef BTPImager::NumType NumType;
 typedef BTPImager::ImageNum ImageNum;
@@ -71,8 +71,8 @@ struct ImageInfo
 size_t readDataStokesI(size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
 								bool *outFlagPtr,
-								casa::Array<std::complex<float> >::const_iterator inPtr,
-								casa::Array<bool>::const_iterator flagPtr)
+								casacore::Array<std::complex<float> >::const_iterator inPtr,
+								casacore::Array<bool>::const_iterator flagPtr)
 {
 	size_t sampleCount = 0;
 	for(size_t ch=0;ch!=channelCount;++ch)
@@ -142,8 +142,8 @@ size_t readDataStokesI(size_t channelCount, size_t polarizationCount,
 size_t readDataXX(size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
 								bool *outFlagPtr,
-								casa::Array<std::complex<float> >::const_iterator inPtr,
-								casa::Array<bool>::const_iterator flagPtr)
+								casacore::Array<std::complex<float> >::const_iterator inPtr,
+								casacore::Array<bool>::const_iterator flagPtr)
 {
 	size_t sampleCount = 0;
 	for(size_t ch=0;ch!=channelCount;++ch)
@@ -197,8 +197,8 @@ size_t readDataXX(size_t channelCount, size_t polarizationCount,
 size_t readDataYY(size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
 								bool *outFlagPtr,
-								casa::Array<std::complex<float> >::const_iterator inPtr,
-								casa::Array<bool>::const_iterator flagPtr)
+								casacore::Array<std::complex<float> >::const_iterator inPtr,
+								casacore::Array<bool>::const_iterator flagPtr)
 {
 	size_t sampleCount = 0;
 	for(size_t ch=0;ch!=channelCount;++ch)
@@ -254,8 +254,8 @@ size_t readDataYY(size_t channelCount, size_t polarizationCount,
 size_t readDataWeights(size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
 								bool *outFlagPtr,
-								casa::Array<std::complex<float> >::const_iterator inPtr,
-								casa::Array<bool>::const_iterator flagPtr)
+								casacore::Array<std::complex<float> >::const_iterator inPtr,
+								casacore::Array<bool>::const_iterator flagPtr)
 {
 	size_t sampleCount = 0;
 	for(size_t ch=0;ch!=channelCount;++ch)
@@ -300,8 +300,8 @@ size_t readData(PolarizationEnum polarization,
 								size_t channelCount, size_t polarizationCount,
 								std::complex<float> *outPtr,
 								bool *outFlagPtr,
-								casa::Array<std::complex<float> >::const_iterator inPtr,
-								casa::Array<bool>::const_iterator flagPtr)
+								casacore::Array<std::complex<float> >::const_iterator inPtr,
+								casacore::Array<bool>::const_iterator flagPtr)
 {
 	if(psf)
 	{
@@ -382,8 +382,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 		{
 			ao::uvector<std::complex<float>> formattedData(channelCount);
 			ao::uvector<bool> formattedFlags(channelCount);
-			casa::Array<double> uvwArray = uvwColumn(row);
-			casa::Array<double>::const_iterator iter = uvwArray.begin();
+			casacore::Array<double> uvwArray = uvwColumn(row);
+			casacore::Array<double>::const_iterator iter = uvwArray.begin();
 			double u = *iter;
 			++iter;
 			double v = *iter;
@@ -412,9 +412,9 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	MEpoch curtime = timeColumn(0);
 	size_t curTimeIndex = (size_t) (-1);
 	MeasFrame frame(ant1Pos, curtime);
-	MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
+	MDirection::Ref hadecRef(casacore::MDirection::HADEC, frame);
 	MDirection hadec = MDirection::Convert(refDir, hadecRef)();
-	MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
+	MDirection::Ref j2000Ref(casacore::MDirection::J2000, frame);
 	MDirection j2000 = MDirection::Convert(refDir, j2000Ref)();
 	curtime = MEpoch(curtime.getValue() - 1, curtime.getRef()); // trigger calculation of pAngle, etc.
 		
@@ -455,7 +455,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					curtime = timeColumn(row);
 					++curTimeIndex;
 					frame.set(curtime);
-					MDirection::Ref ref(casa::MDirection::HADEC, frame);
+					MDirection::Ref ref(casacore::MDirection::HADEC, frame);
 					hadec = MDirection::Convert(refDir, ref)();
 					//std::cout << refDir << ", HA, DEC of phasedir=" << hadec << ',' << hadec.getValue() << '\n';
 					Vector<Double> hadecVal = hadec.getValue().get();
@@ -469,7 +469,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					pAngle = atan2(cosLat * sinHA, sinLat * cosDec - cosLat * sinDec * cosHA);
 					//std::cout << "HA=" << (ha*180/M_PI) << ", DEC=" << (dec*180/M_PI) << ", zenith dist=acos(" << (sinLat * sinDec + cosLat * cosDec * cosHA) << ")=" << (zenithDistance*180/M_PI) << ", paralactic angle=" << (pAngle*180/M_PI) << '\n';
 					
-					MDirection::Ref ref2(casa::MDirection::AZELGEO, frame);
+					MDirection::Ref ref2(casacore::MDirection::AZELGEO, frame);
 					MDirection azel = MDirection::Convert(refDir, ref2)();
 					Vector<Double> azelVal = azel.getValue().get();
 					//double azimuth = azelVal[0];
@@ -492,8 +492,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 				}
 				
 				ImageWork work;
-				casa::Vector<double> uvw = uvwColumn(row);
-				casa::Vector<double>::const_iterator uvwIter = uvw.begin();
+				casacore::Vector<double> uvw = uvwColumn(row);
+				casacore::Vector<double>::const_iterator uvwIter = uvw.begin();
 				work.uTimesLambda = *uvwIter; ++uvwIter;
 				work.vTimesLambda = *uvwIter; ++uvwIter;
 				work.wTimesLambda = *uvwIter;
@@ -515,8 +515,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					work.paralacticAngle = pAngle;
 					std::complex<float> *outPtr = new std::complex<float>[channelCount];
 					work.data = outPtr;
-					casa::Array<std::complex<float> >::const_iterator inPtr = data.begin();
-					casa::Array<bool>::const_iterator flagPtr = flags.begin();
+					casacore::Array<std::complex<float> >::const_iterator inPtr = data.begin();
+					casacore::Array<bool>::const_iterator flagPtr = flags.begin();
 					
 					readData(info.polarization, info.psf, channelCount, polarizationCount, outPtr, formattedFlags.data(), inPtr, flagPtr);
 					

@@ -3,10 +3,10 @@
 #include <cmath>
 #include <fstream>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include "banddata.h"
 #include "sourcesdf.h"
@@ -15,7 +15,7 @@
 #include "spectrummaker.h"
 #include "weightmode.h"
 
-using namespace casa;
+using namespace casacore;
 
 int main(int argc, char **argv)
 {

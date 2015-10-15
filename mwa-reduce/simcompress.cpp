@@ -1,9 +1,9 @@
 #include "gausencoder.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -11,7 +11,7 @@
 typedef long double num_t;
 typedef std::complex<float> complex_t;
 
-using namespace casa;
+using namespace casacore;
 
 int main(int argc, char *argv[])
 {

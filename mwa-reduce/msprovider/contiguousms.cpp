@@ -1,6 +1,6 @@
 #include "contiguousms.h"
-#include <measures/Measures/MEpoch.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnName, MSSelection selection, PolarizationEnum polOut, bool includeModel) :
 	_timestep(0),
@@ -10,29 +10,29 @@ ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnNa
 	_selection(selection),
 	_polOut(polOut),
 	_ms(msPath),
-	_antenna1Column(_ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1)),
-	_antenna2Column(_ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2)),
-	_fieldIdColumn(_ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID)),
-	_dataDescIdColumn(_ms, casa::MS::columnName(casa::MSMainEnums::DATA_DESC_ID)),
-	_timeColumn(_ms, casa::MS::columnName(casa::MSMainEnums::TIME)),
-	_uvwColumn(_ms, casa::MS::columnName(casa::MSMainEnums::UVW)),
+	_antenna1Column(_ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA1)),
+	_antenna2Column(_ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA2)),
+	_fieldIdColumn(_ms, casacore::MS::columnName(casacore::MSMainEnums::FIELD_ID)),
+	_dataDescIdColumn(_ms, casacore::MS::columnName(casacore::MSMainEnums::DATA_DESC_ID)),
+	_timeColumn(_ms, casacore::MS::columnName(casacore::MSMainEnums::TIME)),
+	_uvwColumn(_ms, casacore::MS::columnName(casacore::MSMainEnums::UVW)),
 	_dataColumn(_ms, dataColumnName),
-	_flagColumn(_ms, casa::MS::columnName(casa::MSMainEnums::FLAG))
+	_flagColumn(_ms, casacore::MS::columnName(casacore::MSMainEnums::FLAG))
 {
 	std::cout << "Opening " << msPath << " with contiguous MS reader.\n";
 	
 	_inputPolarizations = GetMSPolarizations(_ms);
  
-	const casa::IPosition shape(_dataColumn.shape(0));
-	_dataArray = casa::Array<std::complex<float>>(shape);
-	_weightArray = casa::Array<float>(shape);
-	_flagArray = casa::Array<bool>(shape);
+	const casacore::IPosition shape(_dataColumn.shape(0));
+	_dataArray = casacore::Array<std::complex<float>>(shape);
+	_weightArray = casacore::Array<float>(shape);
+	_flagArray = casacore::Array<bool>(shape);
 	_bandData = MultiBandData(_ms.spectralWindow(), _ms.dataDescription());
 	
 	bool isWeightDefined;
-	if(_ms.isColumn(casa::MSMainEnums::WEIGHT_SPECTRUM))
+	if(_ms.isColumn(casacore::MSMainEnums::WEIGHT_SPECTRUM))
 	{
-		_weightColumn.reset(new casa::ROArrayColumn<float>(_ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM)));
+		_weightColumn.reset(new casacore::ROArrayColumn<float>(_ms, casacore::MS::columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM)));
 		isWeightDefined = _weightColumn->isDefined(0);
 	} else {
 		isWeightDefined = false;
@@ -40,7 +40,7 @@ ContiguousMS::ContiguousMS(const string& msPath, const std::string& dataColumnNa
 	_msHasWeights = false;
 	if(isWeightDefined)
 	{
-		casa::IPosition modelShape = _weightColumn->shape(0);
+		casacore::IPosition modelShape = _weightColumn->shape(0);
 		_msHasWeights = (modelShape == shape);
 	}
 	if(!_msHasWeights)
@@ -67,7 +67,7 @@ void ContiguousMS::Reset()
 bool ContiguousMS::NextRow()
 {
 	int fieldId, a1, a2;
-	casa::Vector<double> uvw;
+	casacore::Vector<double> uvw;
 	do {
 		++_row;
 		if(_row >= _endRow)
@@ -94,14 +94,14 @@ bool ContiguousMS::NextRow()
 
 double ContiguousMS::StartTime()
 {
-	return casa::MEpoch::ROScalarColumn(_ms, casa::MS::columnName(casa::MS::TIME))(_startRow).getValue().get();
+	return casacore::MEpoch::ROScalarColumn(_ms, casacore::MS::columnName(casacore::MS::TIME))(_startRow).getValue().get();
 }
 
 void ContiguousMS::ReadMeta(double& u, double& v, double& w, size_t& dataDescId)
 {
 	readMeta();
 	
-	casa::Vector<double> uvwArray = _uvwColumn(_row);
+	casacore::Vector<double> uvwArray = _uvwColumn(_row);
 	u = uvwArray(0);
 	v = uvwArray(1);
 	w = uvwArray(2);
@@ -130,9 +130,9 @@ void ContiguousMS::prepareModelColumn()
 {
 	initializeModelColumn(_ms);
 	
-	_modelColumn.reset(new casa::ArrayColumn<casa::Complex>(_ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA)));
-	const casa::IPosition shape(_modelColumn->shape(0));
-	_modelArray = casa::Array<std::complex<float>>(shape);
+	_modelColumn.reset(new casacore::ArrayColumn<casacore::Complex>(_ms, casacore::MS::columnName(casacore::MSMainEnums::MODEL_DATA)));
+	const casacore::IPosition shape(_modelColumn->shape(0));
+	_modelArray = casacore::Array<std::complex<float>>(shape);
 	_isModelColumnPrepared = true;
 }
 

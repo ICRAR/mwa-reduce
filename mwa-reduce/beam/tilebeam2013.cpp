@@ -31,32 +31,32 @@ TileBeam2013::TileBeam2013(const double *delays, bool /*frequencyInterpolation*/
 }
 
 /*
-void TileBeam::AnalyticGain(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y)
+void TileBeam::AnalyticGain(casacore::MEpoch &time, casacore::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, double &x, double &y)
 {
-	casa::MeasFrame frame(arrayPos, time);
-	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
-	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
-	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
-	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
+	casacore::MeasFrame frame(arrayPos, time);
+	const casacore::MDirection::Ref hadecRef(casacore::MDirection::HADEC, frame);
+	const casacore::MDirection::Ref azelgeoRef(casacore::MDirection::AZELGEO, frame);
+	const casacore::MDirection::Ref j2000Ref(casacore::MDirection::J2000, frame);
+	casacore::MPosition wgs = casacore::MPosition::Convert(arrayPos, casacore::MPosition::WGS84)();
 	double latitude = wgs.getValue().getLat(); // ant1Pos.getValue().getLat();
 	
-	casa::MDirection::Convert
+	casacore::MDirection::Convert
 		j2000ToHaDec(j2000Ref, hadecRef),
 		j2000ToAzelGeo(j2000Ref, azelgeoRef);
 		
 	AnalyticGain(raRad, decRad, j2000Ref, j2000ToHaDec, j2000ToAzelGeo, latitude, frequencyHz, x, y);
 }
 
-void TileBeam::AnalyticGain(double raRad, double decRad, const casa::MDirection::Ref &ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double frequencyHz, double &x, double &y)
+void TileBeam::AnalyticGain(double raRad, double decRad, const casacore::MDirection::Ref &ref, casacore::MDirection::Convert &j2000ToHaDec, casacore::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double frequencyHz, double &x, double &y)
 {
-	static const casa::Unit radUnit("rad");
-	casa::MDirection imageDir(casa::MVDirection(
-		casa::Quantity(raRad, radUnit),     // RA
-		casa::Quantity(decRad,radUnit)),  // DEC
+	static const casacore::Unit radUnit("rad");
+	casacore::MDirection imageDir(casacore::MVDirection(
+		casacore::Quantity(raRad, radUnit),     // RA
+		casacore::Quantity(decRad,radUnit)),  // DEC
 		ref);
 	
 	// convert ra, dec to ha
-	casa::MDirection hadec = j2000ToHaDec(imageDir);
+	casacore::MDirection hadec = j2000ToHaDec(imageDir);
 	double ha = hadec.getValue().get()[0];
 	double sinLat, cosLat;
 	sincos(arrLatitude, &sinLat, &cosLat);
@@ -64,7 +64,7 @@ void TileBeam::AnalyticGain(double raRad, double decRad, const casa::MDirection:
 	sincos(decRad, &sinDec, &cosDec);
 	double cosHA = cos(ha);
 	double zenithDistance = acos(sinLat * sinDec + cosLat * cosDec * cosHA);
-	casa::MDirection azel = j2000ToAzelGeo(imageDir);
+	casacore::MDirection azel = j2000ToAzelGeo(imageDir);
 	double azimuth = azel.getValue().get()[0];
 	
 	AnalyticGain(zenithDistance, azimuth, frequencyHz, x, y);

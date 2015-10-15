@@ -1,11 +1,11 @@
 #ifndef ION_SPECTRUM_MAKER_H
 #define ION_SPECTRUM_MAKER_H
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include <boost/thread/thread.hpp>
 
-#include <measures/Measures/MEpoch.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 #include "banddata.h"
 #include "fluxaccumulator.h"
@@ -37,19 +37,19 @@ public:
 	
 	void InitializeForVisibilityAcc(const char* msFilename, const char* ionFilename, const char* modelFilename)
 	{
-		_ms = casa::MeasurementSet(msFilename);
+		_ms = casacore::MeasurementSet(msFilename);
 		_model = Model(modelFilename);
 		_bandData = BandData(_ms.spectralWindow());
 		_ionSolutionFile.OpenForReading(ionFilename);
 		
 		initWeighting();
 		
-		casa::MSField fieldTable = _ms.field();
+		casacore::MSField fieldTable = _ms.field();
 		if(fieldTable.nrow() != 1)
 			throw std::runtime_error("Field table nrow != 1");
-		casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
-		casa::Array<double> refDir = refDirColumn(0);
-		casa::Array<double>::const_iterator refDirIter = refDir.begin();
+		casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
+		casacore::Array<double> refDir = refDirColumn(0);
+		casacore::Array<double>::const_iterator refDirIter = refDir.begin();
 		long double phaseCentreRA = *refDirIter; ++refDirIter;
 		long double phaseCentreDec = *refDirIter;
 
@@ -132,16 +132,16 @@ public:
 			dataColumnName= "DATA";
 		}
 		
-		casa::ROArrayColumn<casa::Complex> dataColumn(_ms, dataColumnName);
-		casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-		casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
-		casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-		casa::ROScalarColumn<double> timeAsDoubleColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-		casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
-		casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
-		casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
+		casacore::ROArrayColumn<casacore::Complex> dataColumn(_ms, dataColumnName);
+		casacore::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM));
+		casacore::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casacore::MSMainEnums::FLAG));
+		casacore::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+		casacore::ROScalarColumn<double> timeAsDoubleColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+		casacore::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA1));
+		casacore::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA2));
+		casacore::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casacore::MSMainEnums::UVW));
 	
-		casa::IPosition dataShape = dataColumn.shape(0);
+		casacore::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		if(polarizationCount != 4) throw std::runtime_error("Need 4 polarizations");
 		
@@ -161,9 +161,9 @@ public:
 		ao::lane<RowData> internalLane(ION_SPECTRUM_ROW_LANE_SIZE);
 		lane_write_buffer<RowData> bufferedLane(&internalLane, ION_SPECTRUM_ROW_BUFFER_SIZE);
 		
-		casa::Array<casa::Complex> dataArray(dataShape);
-		casa::Array<float> weightArray(dataShape);
-		casa::Array<bool> flagArray(dataShape);
+		casacore::Array<casacore::Complex> dataArray(dataShape);
+		casacore::Array<float> weightArray(dataShape);
+		casacore::Array<bool> flagArray(dataShape);
 		
 		_gSolutions.resize(_ionSolutionFile.ChannelBlockCount()),
 		_dlSolutions.resize(_ionSolutionFile.ChannelBlockCount()),
@@ -178,11 +178,11 @@ public:
 			size_t
 				a1 = ant1Column(rowIndex),
 				a2 = ant2Column(rowIndex);
-			casa::MEpoch time = timeColumn(rowIndex);
+			casacore::MEpoch time = timeColumn(rowIndex);
 			if(a1 != a2)
 			{
-				casa::Array<double> uvwArray = uvwColumn(rowIndex);
-				casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
+				casacore::Array<double> uvwArray = uvwColumn(rowIndex);
+				casacore::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 				double u = *uvwI; ++uvwI;
 				double v = *uvwI; ++uvwI;
 				double w = *uvwI;
@@ -333,7 +333,7 @@ private:
 		double weight;
 	};
 
-	void updateBeam(const casa::MEpoch& time, IonSolutionFile& ionSolutionFile, size_t interval)
+	void updateBeam(const casacore::MEpoch& time, IonSolutionFile& ionSolutionFile, size_t interval)
 	{
 		std::cout << "Calculating beam gains...\n";
 		_beamEvaluator->SetTime(time);
@@ -452,7 +452,7 @@ private:
 	static bool isFinite(std::complex<double> v)
 	{ return std::isfinite(v.real()) && std::isfinite(v.imag()); }
 
-	casa::MeasurementSet _ms;
+	casacore::MeasurementSet _ms;
 	IonSolutionFile _ionSolutionFile;
 	Model _model;
 	BandData _bandData;

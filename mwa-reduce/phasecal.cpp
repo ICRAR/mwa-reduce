@@ -2,10 +2,10 @@
 
 #include <string.h>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include <stdexcept>
 
@@ -18,7 +18,7 @@
 #include "uvector.h"
 #include "stdint.h"
 
-using namespace casa;
+using namespace casacore;
 
 typedef std::complex<long double> lcomplex_t;
 typedef std::complex<float> complex_t;
@@ -608,7 +608,7 @@ int main(int argc, char *argv[])
 		if(refDirColumn.nrow() != 1)
 			throw std::runtime_error("Field table nrow != 1");
 		Array<double> refDir = refDirColumn(0);
-		casa::Array<double>::const_iterator refDirIter = refDir.begin();
+		casacore::Array<double>::const_iterator refDirIter = refDir.begin();
 		long double phaseCentreRA = *refDirIter; ++refDirIter;
 		long double phaseCentreDec = *refDirIter;
 		
@@ -730,8 +730,8 @@ int main(int argc, char *argv[])
 			}
 			if(antenna1 != antenna2)
 			{
-				casa::Array<double> uvwArray = uvwColumn(rowIndex);
-				casa::Array<double>::const_iterator i = uvwArray.begin();
+				casacore::Array<double> uvwArray = uvwColumn(rowIndex);
+				casacore::Array<double>::const_iterator i = uvwArray.begin();
 				double u = *i; ++i;
 				double v = *i; ++i;
 				double w = *i;

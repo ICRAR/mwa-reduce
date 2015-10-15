@@ -1,9 +1,9 @@
 #include <iostream>
 #include <set>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include "progressbar.h"
 
@@ -12,7 +12,7 @@ struct Visibility
 	bool operator<(const Visibility& other) const { return amplitudeSq < other.amplitudeSq; }
 	
 	double amplitudeSq;
-	casa::Complex value;
+	casacore::Complex value;
 	size_t timestep;
 	size_t a1, a2;
 	size_t channel;
@@ -21,16 +21,16 @@ struct Visibility
 
 int main(int argc, char* argv[])
 {
-	casa::MeasurementSet ms(argv[1]);
-	casa::ROArrayColumn<casa::Complex> dataCol(ms, casa::MeasurementSet::columnName(casa::MSMainEnums::DATA));
-	casa::ROScalarColumn<int>
-		ant1Col(ms, casa::MeasurementSet::columnName(casa::MSMainEnums::ANTENNA1)),
-		ant2Col(ms, casa::MeasurementSet::columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROScalarColumn<double>
-		timeCol(ms, casa::MeasurementSet::columnName(casa::MSMainEnums::TIME));
+	casacore::MeasurementSet ms(argv[1]);
+	casacore::ROArrayColumn<casacore::Complex> dataCol(ms, casacore::MeasurementSet::columnName(casacore::MSMainEnums::DATA));
+	casacore::ROScalarColumn<int>
+		ant1Col(ms, casacore::MeasurementSet::columnName(casacore::MSMainEnums::ANTENNA1)),
+		ant2Col(ms, casacore::MeasurementSet::columnName(casacore::MSMainEnums::ANTENNA2));
+	casacore::ROScalarColumn<double>
+		timeCol(ms, casacore::MeasurementSet::columnName(casacore::MSMainEnums::TIME));
 	
-	casa::IPosition shape = dataCol.shape(0);
-	casa::Array<casa::Complex> dataArray(shape);
+	casacore::IPosition shape = dataCol.shape(0);
+	casacore::Array<casacore::Complex> dataArray(shape);
 	size_t polarizationCount = shape(0);
 	size_t channelCount = shape(1);
 	ProgressBar progress("Searching");
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 		vis.timestep = timestep;
 		vis.a1 = ant1Col(row);
 		vis.a2 = ant2Col(row);
-		casa::Array<casa::Complex>::const_contiter iter = dataArray.cbegin();
+		casacore::Array<casacore::Complex>::const_contiter iter = dataArray.cbegin();
 		for(size_t ch=0; ch!=channelCount; ++ch)
 		{
 			for(size_t p=0; p!=polarizationCount; ++p)

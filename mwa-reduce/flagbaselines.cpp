@@ -2,14 +2,14 @@
 #include <stdexcept>
 #include <set>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include "banddata.h"
 
-using namespace casa;
+using namespace casacore;
 
 int main(int argc, char **argv)
 {

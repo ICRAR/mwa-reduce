@@ -18,6 +18,7 @@ struct SEDSet
 {
 	std::string bandname, shortname, filename;
 	double rms, integrationTime;
+	Model model;
 	bool operator<(const SEDSet& other) const { return filename < other.filename; }
 };
 

@@ -1,18 +1,18 @@
 #include "msprovider.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
-#include <tables/Tables/ArrColDesc.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrColDesc.h>
 
 #include "../msselection.h"
 
-void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
+void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casacore::Array<std::complex<float>>& data, const casacore::Array<float>& weights, const casacore::Array<bool>& flags, PolarizationEnum polOut)
 {
 	const size_t polCount = polsIn.size();
-	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
-	casa::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
-	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
+	casacore::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
+	casacore::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
+	casacore::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
 	const size_t selectedChannelCount = endChannel - startChannel;
 		
 	size_t polIndex;
@@ -56,7 +56,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 				flagPtr += polIndexA;
 				
 				bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
-				casa::Complex valA = *inPtr * (*weightPtr);
+				casacore::Complex valA = *inPtr * (*weightPtr);
 				
 				weightPtr += polIndexB - polIndexA;
 				inPtr += polIndexB - polIndexA;
@@ -87,7 +87,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					flagPtr += polIndexA;
 					
 					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
-					casa::Complex valA = *inPtr * (*weightPtr);
+					casacore::Complex valA = *inPtr * (*weightPtr);
 					
 					weightPtr += polIndexB - polIndexA;
 					inPtr += polIndexB - polIndexA;
@@ -117,7 +117,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					flagPtr += polIndexA;
 					
 					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
-					casa::Complex valA = *inPtr * (*weightPtr);
+					casacore::Complex valA = *inPtr * (*weightPtr);
 					
 					weightPtr += polIndexB - polIndexA;
 					inPtr += polIndexB - polIndexA;
@@ -151,7 +151,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					flagPtr += polIndexA;
 					
 					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
-					casa::Complex valA = *inPtr * (*weightPtr);
+					casacore::Complex valA = *inPtr * (*weightPtr);
 					
 					weightPtr += polIndexB - polIndexA;
 					inPtr += polIndexB - polIndexA;
@@ -181,7 +181,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					flagPtr += polIndexA;
 					
 					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
-					casa::Complex valA = *inPtr * (*weightPtr);
+					casacore::Complex valA = *inPtr * (*weightPtr);
 					
 					weightPtr += polIndexB - polIndexA;
 					inPtr += polIndexB - polIndexA;
@@ -191,9 +191,9 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					if(flagA || flagB)
 						dest[ch] = 0.0;
 					else {
-						casa::Complex diff = (valA - *inPtr * (*weightPtr));
+						casacore::Complex diff = (valA - *inPtr * (*weightPtr));
 						// U = -i (RL - LR)
-						dest[ch] = casa::Complex(diff.imag(), -diff.real());
+						dest[ch] = casacore::Complex(diff.imag(), -diff.real());
 					}
 					
 					weightPtr += polCount - polIndexB;
@@ -216,7 +216,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					flagPtr += polIndexA;
 					
 					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
-					casa::Complex valA = *inPtr * (*weightPtr);
+					casacore::Complex valA = *inPtr * (*weightPtr);
 					
 					weightPtr += polIndexB - polIndexA;
 					inPtr += polIndexB - polIndexA;
@@ -226,9 +226,9 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					if(flagA || flagB)
 						dest[ch] = 0.0;
 					else {
-						casa::Complex diff = (*inPtr * (*weightPtr) - valA);
+						casacore::Complex diff = (*inPtr * (*weightPtr) - valA);
 						// V = -i(YX - XY)/2
-						dest[ch] = casa::Complex(diff.imag(), -diff.real());
+						dest[ch] = casacore::Complex(diff.imag(), -diff.real());
 					}
 					
 					weightPtr += polCount - polIndexB;
@@ -249,7 +249,7 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 					flagPtr += polIndexA;
 					
 					bool flagA = *flagPtr || !std::isfinite(inPtr->real())|| !std::isfinite(inPtr->imag());
-					casa::Complex valA = *inPtr * (*weightPtr);
+					casacore::Complex valA = *inPtr * (*weightPtr);
 					
 					weightPtr += polIndexB - polIndexA;
 					inPtr += polIndexB - polIndexA;
@@ -276,12 +276,12 @@ void MSProvider::copyWeightedData(std::complex<float>* dest, size_t startChannel
 }
 
 template<typename NumType>
-void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut)
+void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casacore::Array<std::complex<float>>& data, const casacore::Array<float>& weights, const casacore::Array<bool>& flags, PolarizationEnum polOut)
 {
 	const size_t polCount = polsIn.size();
-	casa::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
-	casa::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
-	casa::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
+	casacore::Array<std::complex<float> >::const_contiter inPtr = data.cbegin() + startChannel * polCount;
+	casacore::Array<float>::const_contiter weightPtr = weights.cbegin() + startChannel * polCount;
+	casacore::Array<bool>::const_contiter flagPtr = flags.cbegin() + startChannel * polCount;
 	const size_t selectedChannelCount = endChannel - startChannel;
 		
 	size_t polIndex;
@@ -366,16 +366,16 @@ void MSProvider::copyWeights(NumType* dest, size_t startChannel, size_t endChann
 }
 
 template
-void MSProvider::copyWeights<float>(float* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
+void MSProvider::copyWeights<float>(float* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casacore::Array<std::complex<float>>& data, const casacore::Array<float>& weights, const casacore::Array<bool>& flags, PolarizationEnum polOut);
 
 template
-void MSProvider::copyWeights<std::complex<float>>(std::complex<float>* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, PolarizationEnum polOut);
+void MSProvider::copyWeights<std::complex<float>>(std::complex<float>* dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum>& polsIn, const casacore::Array<std::complex<float>>& data, const casacore::Array<float>& weights, const casacore::Array<bool>& flags, PolarizationEnum polOut);
 
-void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum> &polsDest, const std::complex<float>* source, PolarizationEnum polSource)
+void MSProvider::reverseCopyData(casacore::Array<std::complex<float>>& dest, size_t startChannel, size_t endChannel, const std::vector<PolarizationEnum> &polsDest, const std::complex<float>* source, PolarizationEnum polSource)
 {
 	size_t polCount = polsDest.size();
 	const size_t selectedChannelCount = endChannel - startChannel;
-	casa::Array<std::complex<float>>::contiter dataIter = dest.cbegin() + startChannel * polCount;
+	casacore::Array<std::complex<float>>::contiter dataIter = dest.cbegin() + startChannel * polCount;
 	
 	size_t polIndex;
 	if(Polarization::TypeToIndex(polSource, polsDest, polIndex)) {
@@ -419,7 +419,7 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 					{
 						if(std::isfinite(source[ch].real()))
 						{
-							casa::Complex stokesI = casa::Complex::value_type(0.5) * (*(dataIter + polIndexB) + *(dataIter + polIndexA));
+							casacore::Complex stokesI = casacore::Complex::value_type(0.5) * (*(dataIter + polIndexB) + *(dataIter + polIndexA));
 							*(dataIter + polIndexA) = stokesI - source[ch]; // XX = I - Q
 							*(dataIter + polIndexB) = stokesI + source[ch]; // YY = I + Q
 						}
@@ -468,8 +468,8 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 						if(std::isfinite(source[ch].real()))
 						{
 							// Q = (RL + LR) / 2
-							casa::Complex stokesQ = casa::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
-							casa::Complex iTimesStokesU = casa::Complex(-source[ch].imag(), source[ch].real());
+							casacore::Complex stokesQ = casacore::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
+							casacore::Complex iTimesStokesU = casacore::Complex(-source[ch].imag(), source[ch].real());
 							*(dataIter + polIndexA) = stokesQ + iTimesStokesU; // rl = Q + iU
 							*(dataIter + polIndexB) = stokesQ - iTimesStokesU; // lr = Q - iU
 						}
@@ -490,8 +490,8 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 						if(std::isfinite(source[ch].real()))
 						{
 							// U = (YX + XY)/2
-							casa::Complex stokesU = casa::Complex::value_type(0.5) * (*(dataIter + polIndexB) + *(dataIter + polIndexA));
-							casa::Complex iTimesStokesV = casa::Complex(-source[ch].imag(), source[ch].real());
+							casacore::Complex stokesU = casacore::Complex::value_type(0.5) * (*(dataIter + polIndexB) + *(dataIter + polIndexA));
+							casacore::Complex iTimesStokesV = casacore::Complex(-source[ch].imag(), source[ch].real());
 							*(dataIter + polIndexA) = stokesU - iTimesStokesV; // XY = (U - iV)
 							*(dataIter + polIndexB) = stokesU + iTimesStokesV; // YX = (U + iV)
 						}
@@ -507,7 +507,7 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 						if(std::isfinite(source[ch].real()))
 						{
 							// I = (RR + LL)/2
-							casa::Complex stokesI = casa::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
+							casacore::Complex stokesI = casacore::Complex::value_type(0.5) * (*(dataIter + polIndexA) + *(dataIter + polIndexB));
 							*(dataIter + polIndexA) = stokesI + source[ch]; // RR = I + V
 							*(dataIter + polIndexB) = stokesI - source[ch]; // LL = I - V
 						}
@@ -523,14 +523,14 @@ void MSProvider::reverseCopyData(casa::Array<std::complex<float>>& dest, size_t 
 	}
 }
 
-void MSProvider::getRowRange(casa::MeasurementSet& ms, const MSSelection& selection, size_t& startRow, size_t& endRow)
+void MSProvider::getRowRange(casacore::MeasurementSet& ms, const MSSelection& selection, size_t& startRow, size_t& endRow)
 {
 	startRow = 0;
 	endRow = ms.nrow();
 	if(selection.HasInterval())
 	{
 		std::cout << "Determining first and last row index... " << std::flush;
-		casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
+		casacore::ROScalarColumn<double> timeColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::TIME));
 		double time = timeColumn(0);
 		size_t timestepIndex = 0;
 		for(size_t row = 0; row!=ms.nrow(); ++row)
@@ -552,34 +552,34 @@ void MSProvider::getRowRange(casa::MeasurementSet& ms, const MSSelection& select
 	}
 }
 
-void MSProvider::initializeModelColumn(casa::MeasurementSet& ms)
+void MSProvider::initializeModelColumn(casacore::MeasurementSet& ms)
 {
-	casa::ROArrayColumn<casa::Complex> dataColumn(ms, casa::MS::columnName(casa::MSMainEnums::DATA));
-	if(ms.isColumn(casa::MSMainEnums::MODEL_DATA))
+	casacore::ROArrayColumn<casacore::Complex> dataColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::DATA));
+	if(ms.isColumn(casacore::MSMainEnums::MODEL_DATA))
 	{
-		casa::ArrayColumn<casa::Complex> modelColumn(ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA));
-		casa::IPosition dataShape = dataColumn.shape(0);
+		casacore::ArrayColumn<casacore::Complex> modelColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::MODEL_DATA));
+		casacore::IPosition dataShape = dataColumn.shape(0);
 		bool isDefined = modelColumn.isDefined(0);
 		bool isSameShape = false;
 		if(isDefined)
 		{
-			casa::IPosition modelShape = modelColumn.shape(0);
+			casacore::IPosition modelShape = modelColumn.shape(0);
 			isSameShape = modelShape == dataShape;
 		}
 		if(!isDefined || !isSameShape)
 		{
 			std::cout << "WARNING: Your model column does not have the same shape as your data column: resetting MODEL column.\n";
-			casa::Array<casa::Complex> zeroArray(dataShape);
-			for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
+			casacore::Array<casacore::Complex> zeroArray(dataShape);
+			for(casacore::Array<casacore::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
 				*i = std::complex<float>(0.0, 0.0);
 			for(size_t row=0; row!=ms.nrow(); ++row)
 				modelColumn.put(row, zeroArray);
 		}
 	}
-	else { //if(!_ms.isColumn(casa::MSMainEnums::MODEL_DATA))
+	else { //if(!_ms.isColumn(casacore::MSMainEnums::MODEL_DATA))
 		std::cout << "Adding model data column... " << std::flush;
-		casa::IPosition shape = dataColumn.shape(0);
-		casa::ArrayColumnDesc<casa::Complex> modelColumnDesc(ms.columnName(casa::MSMainEnums::MODEL_DATA), shape);
+		casacore::IPosition shape = dataColumn.shape(0);
+		casacore::ArrayColumnDesc<casacore::Complex> modelColumnDesc(ms.columnName(casacore::MSMainEnums::MODEL_DATA), shape);
 		try {
 			ms.addColumn(modelColumnDesc, "StandardStMan", true, true);
 		} catch(std::exception& e)
@@ -587,11 +587,11 @@ void MSProvider::initializeModelColumn(casa::MeasurementSet& ms)
 			ms.addColumn(modelColumnDesc, "StandardStMan", false, true);
 		}
 		
-		casa::Array<casa::Complex> zeroArray(shape);
-		for(casa::Array<casa::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
+		casacore::Array<casacore::Complex> zeroArray(shape);
+		for(casacore::Array<casacore::Complex>::contiter i=zeroArray.cbegin(); i!=zeroArray.cend(); ++i)
 			*i = std::complex<float>(0.0, 0.0);
 		
-		casa::ArrayColumn<casa::Complex> modelColumn(ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA));
+		casacore::ArrayColumn<casacore::Complex> modelColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::MODEL_DATA));
 		
 		for(size_t row=0; row!=ms.nrow(); ++row)
 			modelColumn.put(row, zeroArray);
@@ -600,13 +600,13 @@ void MSProvider::initializeModelColumn(casa::MeasurementSet& ms)
 	}
 }
 
-vector<PolarizationEnum> MSProvider::GetMSPolarizations(casa::MeasurementSet& ms)
+vector<PolarizationEnum> MSProvider::GetMSPolarizations(casacore::MeasurementSet& ms)
 {
 	std::vector<PolarizationEnum> pols;
-	casa::MSPolarization polTable(ms.polarization());
-	casa::ROArrayColumn<int> corrTypeColumn(polTable, casa::MSPolarization::columnName(casa::MSPolarizationEnums::CORR_TYPE));
-	casa::Array<int> corrTypeVec(corrTypeColumn(0));
-	for(casa::Array<int>::const_contiter p=corrTypeVec.cbegin(); p!=corrTypeVec.cend(); ++p)
+	casacore::MSPolarization polTable(ms.polarization());
+	casacore::ROArrayColumn<int> corrTypeColumn(polTable, casacore::MSPolarization::columnName(casacore::MSPolarizationEnums::CORR_TYPE));
+	casacore::Array<int> corrTypeVec(corrTypeColumn(0));
+	for(casacore::Array<int>::const_contiter p=corrTypeVec.cbegin(); p!=corrTypeVec.cend(); ++p)
 		pols.push_back(Polarization::AipsIndexToEnum(*p));
 	return pols;
 }

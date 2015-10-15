@@ -1,7 +1,7 @@
 #ifndef PEELER_H
 #define PEELER_H
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include <boost/thread/thread.hpp>
 
@@ -13,7 +13,7 @@
 class Peeler
 {
 public:
-	Peeler(casa::MeasurementSet& ms, size_t threadCount);
+	Peeler(casacore::MeasurementSet& ms, size_t threadCount);
 	
 	void Perform();
 	
@@ -100,7 +100,7 @@ private:
 	struct SubtractThreadInfo
 	{
 		size_t rowIndex;
-		casa::Array<casa::Complex> *data;
+		casacore::Array<casacore::Complex> *data;
 		bool readyForWrite;
 		double u, v, w;
 		size_t a1, a2;
@@ -108,7 +108,7 @@ private:
 
 	void calibrateThreadFunction(ThreadData data);
 	
-	casa::MeasurementSet& _ms;
+	casacore::MeasurementSet& _ms;
 	BandData _bandData;
 	
 	bool

@@ -1,7 +1,7 @@
 #include "lmspredicter.h"
 
-#include <measures/Measures/MEpoch.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 LMSPredicter::~LMSPredicter()
 {
@@ -21,8 +21,8 @@ void LMSPredicter::Start()
 	boost::mutex::scoped_lock lock(_mutex);
 	if(_ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
-	casa::ROArrayColumn<casa::Complex> dataColumn(_ms, _ms.columnName(casa::MSMainEnums::DATA));
-	casa::IPosition dataShape = dataColumn.shape(0);
+	casacore::ROArrayColumn<casacore::Complex> dataColumn(_ms, _ms.columnName(casacore::MSMainEnums::DATA));
+	casacore::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	if(polarizationCount != 4)
 		throw std::runtime_error("Expecting MS with 4 polarizations");
@@ -31,8 +31,8 @@ void LMSPredicter::Start()
 	
 	if(!_useModelColumn)
 	{
-		casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-		casa::MEpoch startTime = timeColumn(_startRow);
+		casacore::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+		casacore::MEpoch startTime = timeColumn(_startRow);
 		size_t antennaCount = _ms.antenna().nrow();
 		_dftInput->InitializeBeamBuffers(antennaCount, _bandData.ChannelCount());
 		_predicter.reset(new DFTPredictionAlgorithm(*_dftInput, _bandData));
@@ -75,33 +75,33 @@ void LMSPredicter::ReadThreadFunc()
 	
 	boost::mutex::scoped_lock lock(_mutex);
 
-	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
-	casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-	std::unique_ptr<casa::ROArrayColumn<casa::Complex>> modelColumn;
+	casacore::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA1));
+	casacore::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA2));
+	casacore::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casacore::MSMainEnums::UVW));
+	casacore::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+	std::unique_ptr<casacore::ROArrayColumn<casacore::Complex>> modelColumn;
 	
 	RowData rowData;
 	
-	casa::Array<casa::Complex> modelData;
+	casacore::Array<casacore::Complex> modelData;
 	if(_useModelColumn)
 	{
-		modelColumn.reset(new casa::ROArrayColumn<casa::Complex>(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-		modelData = casa::Array<casa::Complex>(modelColumn->shape(0));
+		modelColumn.reset(new casacore::ROArrayColumn<casacore::Complex>(_ms, _ms.columnName(casacore::MSMainEnums::MODEL_DATA)));
+		modelData = casacore::Array<casacore::Complex>(modelColumn->shape(0));
 	}
 
 	size_t timeIndex = 0;
-	casa::MEpoch previousTime = timeColumn(_startRow);
+	casacore::MEpoch previousTime = timeColumn(_startRow);
 	for(size_t rowIndex=_startRow; rowIndex!=_endRow; ++rowIndex)
 	{
 		size_t
 			a1 = ant1Column(rowIndex),
 			a2 = ant2Column(rowIndex);
-		casa::MEpoch time = timeColumn(rowIndex);
+		casacore::MEpoch time = timeColumn(rowIndex);
 		if(a1 != a2)
 		{
-			casa::Array<double> uvwArray = uvwColumn(rowIndex);
-			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
+			casacore::Array<double> uvwArray = uvwColumn(rowIndex);
+			casacore::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 			double u = *uvwI; ++uvwI;
 			double v = *uvwI; ++uvwI;
 			double w = *uvwI;
@@ -140,7 +140,7 @@ void LMSPredicter::ReadThreadFunc()
 			if(_useModelColumn)
 			{
 				MC2x2 *outptr = rowData.modelData;
-				casa::Complex* inptr = modelData.cbegin();
+				casacore::Complex* inptr = modelData.cbegin();
 				for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 				{
 					for(size_t p=0; p!=4; ++p)

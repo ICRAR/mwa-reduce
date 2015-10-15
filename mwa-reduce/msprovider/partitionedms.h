@@ -4,9 +4,9 @@
 #include <fstream>
 #include <string>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include "../polarizationenum.h"
 #include "../uvector.h"
@@ -22,7 +22,7 @@ public:
 	PartitionedMS(const Handle& handle, size_t partIndex, PolarizationEnum polarization);
 	virtual ~PartitionedMS();
 	
-	virtual casa::MeasurementSet &MS() { return _ms; }
+	virtual casacore::MeasurementSet &MS() { return _ms; }
 	
 	virtual size_t RowId() const { return _currentRow; }
 	
@@ -88,7 +88,7 @@ public:
 private:
 	static void unpartition(const Handle& handle);
 	
-	casa::MeasurementSet _ms;
+	casacore::MeasurementSet _ms;
 	std::ifstream _metaFile, _weightFile, _dataFile;
 	char *_modelFileMap;
 	size_t _currentRow;

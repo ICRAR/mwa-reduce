@@ -2,7 +2,7 @@
 #define MS_SELECTION
 
 #include <cstring>
-#include <casa/Arrays/Vector.h>
+#include <casacore/casa/Arrays/Vector.h>
 
 class MSSelection
 {
@@ -29,7 +29,7 @@ public:
 	
 	size_t FieldId() const { return _fieldId; }
 	
-	bool IsSelected(size_t fieldId, size_t timestep, size_t antenna1, size_t antenna2, const casa::Vector<double>& uvw) const
+	bool IsSelected(size_t fieldId, size_t timestep, size_t antenna1, size_t antenna2, const casacore::Vector<double>& uvw) const
 	{
 		if(HasMinUVWInM() || HasMaxUVWInM())
 		{

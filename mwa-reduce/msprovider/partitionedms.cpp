@@ -14,9 +14,9 @@
 #include <memory>
 #include <boost/filesystem/path.hpp>
 
-#include <measures/Measures/MEpoch.h>
+#include <casacore/measures/Measures/MEpoch.h>
 
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 // #define REDUNDANT_VALIDATION 1
 
@@ -32,7 +32,7 @@ PartitionedMS::PartitionedMS(const Handle& handle, size_t partIndex, Polarizatio
 	std::vector<char> msPath(_metaHeader.filenameLength+1, char(0));
 	_metaFile.read(msPath.data(), _metaHeader.filenameLength);
 	std::cout << "Opening reordered part " << partIndex << " for " << msPath.data() << '\n';
-	_ms = casa::MeasurementSet(msPath.data());
+	_ms = casacore::MeasurementSet(msPath.data());
 	
 	std::string partPrefix = getPartPrefix(msPath.data(), partIndex, polarization, handle._data->_temporaryDirectory);
 	
@@ -249,7 +249,7 @@ string PartitionedMS::getMetaFilename(const string& msPathStr, const std::string
  */
 PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t channelParts, MSSelection& selection, const string& dataColumnName, bool includeWeights, bool includeModel, const std::set<PolarizationEnum>& polsOut, const std::string& temporaryDirectory)
 {
-	casa::MeasurementSet ms(msPath);
+	casacore::MeasurementSet ms(msPath);
 
 	std::vector<std::ofstream*> dataFiles(channelParts*polsOut.size()), weightFiles(channelParts*polsOut.size());
 	size_t fileIndex = 0;
@@ -268,18 +268,18 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	std::vector<PolarizationEnum> msPolarizations = GetMSPolarizations(ms);
 	
 	MultiBandData band(ms.spectralWindow(), ms.dataDescription());
-	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROScalarColumn<int> fieldIdColumn(ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID));
-	casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
-	casa::MEpoch::ROScalarColumn timeEpochColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
-	casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
-	std::unique_ptr<casa::ROArrayColumn<float>> weightColumn;
-	casa::ROArrayColumn<casa::Complex> dataColumn(ms, dataColumnName);
-	casa::ROArrayColumn<bool> flagColumn(ms, casa::MS::columnName(casa::MSMainEnums::FLAG));
-	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
+	casacore::ROScalarColumn<int> antenna1Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA1));
+	casacore::ROScalarColumn<int> antenna2Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA2));
+	casacore::ROScalarColumn<int> fieldIdColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::FIELD_ID));
+	casacore::ROScalarColumn<double> timeColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::TIME));
+	casacore::MEpoch::ROScalarColumn timeEpochColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::TIME));
+	casacore::ROArrayColumn<double> uvwColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::UVW));
+	std::unique_ptr<casacore::ROArrayColumn<float>> weightColumn;
+	casacore::ROArrayColumn<casacore::Complex> dataColumn(ms, dataColumnName);
+	casacore::ROArrayColumn<bool> flagColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::FLAG));
+	casacore::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casacore::MSMainEnums::DATA_DESC_ID));
 	
-	const casa::IPosition shape(dataColumn.shape(0));
+	const casacore::IPosition shape(dataColumn.shape(0));
 	const size_t polarizationCount = shape[0];
 	size_t channelCount, channelStart;
 	if(selection.HasChannelRange())
@@ -293,18 +293,18 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	}
 	
 	bool isWeightDefined;
-	if(ms.isColumn(casa::MSMainEnums::WEIGHT_SPECTRUM))
+	if(ms.isColumn(casacore::MSMainEnums::WEIGHT_SPECTRUM))
 	{
-		weightColumn.reset(new casa::ROArrayColumn<float>(ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM)));
+		weightColumn.reset(new casacore::ROArrayColumn<float>(ms, casacore::MS::columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM)));
 		isWeightDefined = weightColumn->isDefined(0);
 	} else {
 		isWeightDefined = false;
 	}
 	bool msHasWeights = false;
-	casa::Array<float> weightArray(shape);
+	casacore::Array<float> weightArray(shape);
 	if(isWeightDefined)
 	{
-		casa::IPosition modelShape = weightColumn->shape(0);
+		casacore::IPosition modelShape = weightColumn->shape(0);
 		msHasWeights = (modelShape == shape);
 	}
 	if(!msHasWeights)
@@ -325,7 +325,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 		const int
 			a1 = antenna1Column(row), a2 = antenna2Column(row),
 			fieldId = fieldIdColumn(row);
-		casa::Vector<double> uvw = uvwColumn(row);
+		casacore::Vector<double> uvw = uvwColumn(row);
 		if(time != timeColumn(row))
 		{
 			++timestep;
@@ -354,8 +354,8 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 	std::vector<std::complex<float>> dataBuffer(polarizationCount * (1 + channelCount / channelParts));
 	std::vector<float> weightBuffer(polarizationCount * (1 + channelCount / channelParts));
 	
-	casa::Array<std::complex<float>> dataArray(shape);
-	casa::Array<bool> flagArray(shape);
+	casacore::Array<std::complex<float>> dataArray(shape);
+	casacore::Array<bool> flagArray(shape);
 	ProgressBar progress1("Reordering");
 	for(size_t row=0; row!=ms.nrow(); ++row)
 	{
@@ -369,7 +369,7 @@ PartitionedMS::Handle PartitionedMS::Partition(const string& msPath, size_t chan
 			++timestep;
 			time = timeColumn(row);
 		}
-		casa::Vector<double> uvwArray = uvwColumn(row);
+		casacore::Vector<double> uvwArray = uvwColumn(row);
 		if(selection.IsSelected(fieldId, timestep, a1, a2, uvwArray))
 		{
 			size_t dataDescId = dataDescIdColumn(row);
@@ -492,18 +492,18 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 			}
 		}
 		
-		casa::MeasurementSet ms(msPath.data(), casa::Table::Update);
+		casacore::MeasurementSet ms(msPath.data(), casacore::Table::Update);
 		const std::vector<PolarizationEnum> msPolarizations = GetMSPolarizations(ms);
 		initializeModelColumn(ms);
-		casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
-		casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
-		casa::ROScalarColumn<int> fieldIdColumn(ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID));
-		casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
-		casa::ROArrayColumn<casa::Complex> dataColumn(ms, handle._data->_dataColumnName);
-		casa::ArrayColumn<casa::Complex> modelColumn(ms, casa::MS::columnName(casa::MSMainEnums::MODEL_DATA));
-		casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
+		casacore::ROScalarColumn<int> antenna1Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA1));
+		casacore::ROScalarColumn<int> antenna2Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA2));
+		casacore::ROScalarColumn<int> fieldIdColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::FIELD_ID));
+		casacore::ROScalarColumn<double> timeColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::TIME));
+		casacore::ROArrayColumn<casacore::Complex> dataColumn(ms, handle._data->_dataColumnName);
+		casacore::ArrayColumn<casacore::Complex> modelColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::MODEL_DATA));
+		casacore::ROArrayColumn<double> uvwColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::UVW));
 		
-		const casa::IPosition shape(dataColumn.shape(0));
+		const casacore::IPosition shape(dataColumn.shape(0));
 		size_t channelCount, channelStart;
 		if(handle._data->_selection.HasChannelRange())
 		{
@@ -517,7 +517,7 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 		
 		std::vector<std::complex<float>> modelDataBuffer(1 + channelCount / channelParts);
 		std::vector<float> weightBuffer(1 + channelCount / channelParts);
-		casa::Array<std::complex<float>> modelDataArray(shape);
+		casacore::Array<std::complex<float>> modelDataArray(shape);
 	
 		ProgressBar progress(std::string("Writing changed model back to ") + msPath.data());
 		size_t timestep = 0;
@@ -528,7 +528,7 @@ void PartitionedMS::unpartition(const PartitionedMS::Handle& handle)
 			const int
 				a1 = antenna1Column(row), a2 = antenna2Column(row),
 				fieldId = fieldIdColumn(row);
-			casa::Vector<double> uvw = uvwColumn(row);
+			casacore::Vector<double> uvw = uvwColumn(row);
 				
 			if(time != timeColumn(row))
 			{

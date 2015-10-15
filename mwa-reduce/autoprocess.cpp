@@ -118,15 +118,15 @@ int main(int argc, char* argv[])
 	}
 	
 	Model catalogue(argv[argi]);
-	casa::MeasurementSet ms(argv[argi+1]);
+	casacore::MeasurementSet ms(argv[argi+1]);
 	BandData bandData(ms.spectralWindow());
 	
-	casa::MSField fieldTable = ms.field();
-	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
+	casacore::MSField fieldTable = ms.field();
+	casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
 	if(refDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
-	casa::Array<double> refDir = refDirColumn(0);
-	casa::Array<double>::const_iterator refDirIter = refDir.begin();
+	casacore::Array<double> refDir = refDirColumn(0);
+	casacore::Array<double>::const_iterator refDirIter = refDir.begin();
 	long double phaseCentreRA = *refDirIter; ++refDirIter;
 	long double phaseCentreDec = *refDirIter;
 	

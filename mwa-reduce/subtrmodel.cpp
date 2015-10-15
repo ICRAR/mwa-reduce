@@ -1,12 +1,12 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include "model.h"
 #include "subtractor.h"
 
-using namespace casa;
+using namespace casacore;
 
 int main(int argc, char **argv)
 {
@@ -45,17 +45,17 @@ int main(int argc, char **argv)
 		if(useModelCol)
 		{
 			ProgressBar progress("Subtracting model column");
-			casa::ArrayColumn<casa::Complex> dataColumn(ms, dataColumnName);
-			casa::ROArrayColumn<casa::Complex> modelColumn(ms, casa::MeasurementSet::columnName(casa::MeasurementSet::MODEL_DATA));
-			casa::Array<casa::Complex>
+			casacore::ArrayColumn<casacore::Complex> dataColumn(ms, dataColumnName);
+			casacore::ROArrayColumn<casacore::Complex> modelColumn(ms, casacore::MeasurementSet::columnName(casacore::MeasurementSet::MODEL_DATA));
+			casacore::Array<casacore::Complex>
 				dataArr(dataColumn.shape(0)), modelArr(modelColumn.shape(0));
 			for(size_t i=0; i!=ms.nrow(); ++i)
 			{
 				dataColumn.get(i, dataArr);
 				modelColumn.get(i, modelArr);
 				
-				casa::Array<casa::Complex>::contiter d=dataArr.cbegin();
-				for(casa::Array<casa::Complex>::const_contiter m=modelArr.cbegin(); m!=modelArr.cend(); ++m)
+				casacore::Array<casacore::Complex>::contiter d=dataArr.cbegin();
+				for(casacore::Array<casacore::Complex>::const_contiter m=modelArr.cbegin(); m!=modelArr.cend(); ++m)
 				{
 					*d -= *m;
 				}

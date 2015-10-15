@@ -9,7 +9,7 @@
 #include "banddata.h"
 #include "model.h"
 
-namespace casa {
+namespace casacore {
 	class MeasurementSet;
 }
 
@@ -21,7 +21,7 @@ class SpectrumSubtractor
 	private:
 		struct MeasureThreadInfo
 		{
-			casa::Complex *data;
+			casacore::Complex *data;
 			float *weights;
 			bool *flags;
 			size_t sourceIndex;
@@ -31,13 +31,13 @@ class SpectrumSubtractor
 		struct SubtractThreadInfo
 		{
 			size_t rowIndex;
-			casa::Array<casa::Complex> *data;
+			casacore::Array<casacore::Complex> *data;
 			double u, v, w;
 			size_t a1, a2;
 		};
 
 	public:
-		SpectrumSubtractor(casa::MeasurementSet& ms, Model& model);
+		SpectrumSubtractor(casacore::MeasurementSet& ms, Model& model);
 		~SpectrumSubtractor();
 		
 		void Perform();
@@ -49,7 +49,7 @@ class SpectrumSubtractor
 		void initMeasureThreadData();
 		void initPredictors();
 		void initSources();
-		void countTimesteps(casa::ROScalarColumn<double>& timeColumn);
+		void countTimesteps(casacore::ROScalarColumn<double>& timeColumn);
 		
 		void startMeasureThreads();
 		void stopMeasureThreads();
@@ -63,7 +63,7 @@ class SpectrumSubtractor
 		void processWork(SubtractThreadInfo& work);
 		
 		std::unique_ptr<boost::thread_group> _threadGroup;
-		casa::MeasurementSet& _ms;
+		casacore::MeasurementSet& _ms;
 		Model _model;
 		std::vector<ModelSource> _sources;
 		BandData _bandData;
@@ -71,9 +71,9 @@ class SpectrumSubtractor
 		size_t _cpuCount;
 		std::vector<std::unique_ptr<Predicter>> _predicters;
 		
-		std::vector<casa::Array<casa::Complex>*> _dataBuffers;
-		std::vector<casa::Array<float>*> _weightBuffers;
-		std::vector<casa::Array<bool>*> _flagBuffers;
+		std::vector<casacore::Array<casacore::Complex>*> _dataBuffers;
+		std::vector<casacore::Array<float>*> _weightBuffers;
+		std::vector<casacore::Array<bool>*> _flagBuffers;
 	
 		std::vector<double> _spectrumSums, _spectrumWeights;
 
@@ -87,10 +87,10 @@ class SpectrumSubtractor
 		std::vector<double> _totalFluxPerSource, _totalFluxWeightPerSource;
 		bool _applyBeam;
 		
-		std::unique_ptr<casa::ArrayColumn<casa::Complex>> _dataColumn;
-		std::unique_ptr<casa::ROScalarColumn<int>> _antenna1Column;
-		std::unique_ptr<casa::ROScalarColumn<int>> _antenna2Column;
-		std::unique_ptr<casa::ROArrayColumn<double>> _uvwColumn;
+		std::unique_ptr<casacore::ArrayColumn<casacore::Complex>> _dataColumn;
+		std::unique_ptr<casacore::ROScalarColumn<int>> _antenna1Column;
+		std::unique_ptr<casacore::ROScalarColumn<int>> _antenna2Column;
+		std::unique_ptr<casacore::ROArrayColumn<double>> _uvwColumn;
 };
 
 #endif

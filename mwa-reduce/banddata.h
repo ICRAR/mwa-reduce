@@ -3,10 +3,10 @@
 
 #include <stdexcept>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 class BandData
 {
@@ -15,14 +15,14 @@ class BandData
 		{
 		}
 		
-		BandData(casa::MSSpectralWindow &spwTable)
+		BandData(casacore::MSSpectralWindow &spwTable)
 		{
 			if(spwTable.nrow() != 1) throw std::runtime_error("Set should have exactly one spectral window");
 			
 			initFromTable(spwTable, 0);
 		}
 		
-		BandData(casa::MSSpectralWindow& spwTable, size_t bandIndex)
+		BandData(casacore::MSSpectralWindow& spwTable, size_t bandIndex)
 		{
 			initFromTable(spwTable, bandIndex);
 		}
@@ -145,21 +145,21 @@ class BandData
 		}
 		
 	private:
-		void initFromTable(casa::MSSpectralWindow& spwTable, size_t bandIndex)
+		void initFromTable(casacore::MSSpectralWindow& spwTable, size_t bandIndex)
 		{
-			casa::ROScalarColumn<int> numChanCol(spwTable, casa::MSSpectralWindow::columnName(casa::MSSpectralWindowEnums::NUM_CHAN));
+			casacore::ROScalarColumn<int> numChanCol(spwTable, casacore::MSSpectralWindow::columnName(casacore::MSSpectralWindowEnums::NUM_CHAN));
 			int temp;
 			numChanCol.get(bandIndex, temp);
 			_channelCount = temp;
 			if(_channelCount == 0) throw std::runtime_error("No channels in set");
 			
-			casa::ROArrayColumn<double> chanFreqCol(spwTable, casa::MSSpectralWindow::columnName(casa::MSSpectralWindowEnums::CHAN_FREQ));
-			casa::Array<double> channelFrequencies;
+			casacore::ROArrayColumn<double> chanFreqCol(spwTable, casacore::MSSpectralWindow::columnName(casacore::MSSpectralWindowEnums::CHAN_FREQ));
+			casacore::Array<double> channelFrequencies;
 			chanFreqCol.get(bandIndex, channelFrequencies, true);
 			
 			_channelFrequencies = new double[_channelCount];
 			size_t index = 0;
-			for(casa::Array<double>::const_iterator i=channelFrequencies.begin();
+			for(casacore::Array<double>::const_iterator i=channelFrequencies.begin();
 					i != channelFrequencies.end(); ++i)
 			{
 				_channelFrequencies[index] = *i;

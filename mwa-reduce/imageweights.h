@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <complex>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include "uvector.h"
 #include "inversionalgorithm.h"
@@ -40,7 +40,7 @@ class ImageWeights
 			return sampleGridValue(u, v);
 		}
 
-		void Grid(casa::MeasurementSet& ms, const MSSelection& selection);
+		void Grid(casacore::MeasurementSet& ms, const MSSelection& selection);
 		void Grid(class MSProvider& ms, const MSSelection& selection);
 		
 		void FinishGridding();

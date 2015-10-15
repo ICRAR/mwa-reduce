@@ -20,7 +20,7 @@
 #include <iostream>
 
 #include <stdexcept>
-#include <casa/Quanta/MVTime.h>
+#include <casacore/casa/Quanta/MVTime.h>
 
 #include "metafitsfile.h"
 
@@ -67,7 +67,7 @@ MWAHeaderExt::MWAHeaderExt() :
 
 double MWAHeader::GetStartDateMJD() const
 {
-	casa::MVTime time(year, month, day, ((double(refSecond)/60.0 + double(refMinute))/60.0 + double(refHour))/24.0);
+	casacore::MVTime time(year, month, day, ((double(refSecond)/60.0 + double(refMinute))/60.0 + double(refHour))/24.0);
 	return time.day();
 }
 

@@ -1,8 +1,8 @@
 #ifndef TILE_BEAM_BASE_H
 #define TILE_BEAM_BASE_H
 
-#include <measures/Measures/MDirection.h>
-#include <measures/Measures/MCDirection.h>
+#include <casacore/measures/Measures/MDirection.h>
+#include <casacore/measures/Measures/MCDirection.h>
 
 namespace casa
 {
@@ -26,11 +26,11 @@ public:
 		double decAntennaZenith;
 	};
 	
-	void ArrayResponse(casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain);
+	void ArrayResponse(casacore::MEpoch &time, casacore::MPosition &arrayPos, double raRad, double decRad, double frequencyHz, std::complex<double>* gain);
 	
-	void ArrayResponse(double raRad, double decRad, const casa::MDirection::Ref &j2000Ref, casa::MDirection::Convert &j2000ToHaDec, casa::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain);
+	void ArrayResponse(double raRad, double decRad, const casacore::MDirection::Ref &j2000Ref, casacore::MDirection::Convert &j2000ToHaDec, casacore::MDirection::Convert &j2000ToAzelGeo, double arrLatitude, double haZenith, double decZenith, double frequencyHz, std::complex<double>* gain);
 	
-	void PrecalculatePositionInfo(PrecalcPosInfo& posInfo, casa::MEpoch &time, casa::MPosition &arrayPos, double raRad, double decRad);
+	void PrecalculatePositionInfo(PrecalcPosInfo& posInfo, casacore::MEpoch &time, casacore::MPosition &arrayPos, double raRad, double decRad);
 	
 	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
 	{

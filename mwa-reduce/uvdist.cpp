@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include "uvwdistribution.h"
 
 int main(int argc, char* argv[])
@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 		std::cout << "uvdist: Measure distribution of uvw vector magnitude.\nSyntax:\n\tuvdist <measurementset>";
 	}
 	else {
-		casa::MeasurementSet ms(argv[1]);
+		casacore::MeasurementSet ms(argv[1]);
 		UvwDistribution uvwDist(1000);
 		uvwDist.Calculate(ms);
 		

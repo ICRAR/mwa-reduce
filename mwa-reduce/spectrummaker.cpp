@@ -10,13 +10,13 @@
 
 #include <boost/thread/thread.hpp>
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
-#include <measures/Measures/MEpoch.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 #include <limits>
 
@@ -30,7 +30,7 @@ SpectrumMaker::~SpectrumMaker()
 
 void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 {
-	casa::MeasurementSet ms(filename);
+	casacore::MeasurementSet ms(filename);
 	
 	/**
 		* Read some meta data from the measurement set
@@ -38,12 +38,12 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	_bandData = BandData(ms.spectralWindow());
 	size_t channelCount = _bandData.ChannelCount();
 	
-	casa::MSField fieldTable = ms.field();
-	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
+	casacore::MSField fieldTable = ms.field();
+	casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
 	if(refDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
-	casa::Array<double> refDir = refDirColumn(0);
-	casa::Array<double>::const_iterator refDirIter = refDir.begin();
+	casacore::Array<double> refDir = refDirColumn(0);
+	casacore::Array<double>::const_iterator refDirIter = refDir.begin();
 	long double phaseCentreRA = *refDirIter; ++refDirIter;
 	long double phaseCentreDec = *refDirIter;
 	
@@ -59,12 +59,12 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		dataColumnName= "DATA";
 	}
 		
-	casa::ROArrayColumn<casa::Complex> dataColumn(ms, dataColumnName);
-	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
+	casacore::ROArrayColumn<casacore::Complex> dataColumn(ms, dataColumnName);
+	casacore::ROArrayColumn<float> weightColumn(ms, ms.columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM));
+	casacore::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casacore::MSMainEnums::FLAG));
+	casacore::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
 	
-	casa::IPosition dataShape = dataColumn.shape(0);
+	casacore::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	
 	std::vector<std::complex<double>>
@@ -103,15 +103,15 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	}
 	
 	std::vector<std::complex<double>*> dataBuffers(BUFFER_COUNT);
-	std::vector<casa::Array<float>*> weightBuffers(BUFFER_COUNT);
-	std::vector<casa::Array<bool>*> flagBuffers(BUFFER_COUNT);
+	std::vector<casacore::Array<float>*> weightBuffers(BUFFER_COUNT);
+	std::vector<casacore::Array<bool>*> flagBuffers(BUFFER_COUNT);
 	for(size_t i=0; i!=BUFFER_COUNT; ++i)
 	{
 		dataBuffers[i] = new std::complex<double>[channelCount * polarizationCount];
-		weightBuffers[i] = new casa::Array<float>(dataShape);
-		flagBuffers[i] = new casa::Array<bool>(dataShape);
+		weightBuffers[i] = new casacore::Array<float>(dataShape);
+		flagBuffers[i] = new casacore::Array<bool>(dataShape);
 	}
-	casa::Array<casa::Complex> dataArray(dataShape);
+	casacore::Array<casacore::Complex> dataArray(dataShape);
 	
 	modelPredicter.Start();
 	
@@ -135,13 +135,13 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		if(rowData.a1 != rowData.a2)
 		{
 			std::complex<double> *data = dataBuffers[bufferIndex];
-			casa::Array<float> &dataWeights = *weightBuffers[bufferIndex];
-			casa::Array<bool> &flags = *flagBuffers[bufferIndex];
+			casacore::Array<float> &dataWeights = *weightBuffers[bufferIndex];
+			casacore::Array<bool> &flags = *flagBuffers[bufferIndex];
 			
 			dataColumn.get(rowIndex, dataArray);
 			weightColumn.get(rowIndex, dataWeights);
 			flagColumn.get(rowIndex, flags);
-			casa::MEpoch time = timeColumn(rowIndex);
+			casacore::MEpoch time = timeColumn(rowIndex);
 			lock.unlock();
 			
 			if(_applyBeam && time.getValue() != _beamEvaluator->Time().getValue())
@@ -152,7 +152,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 				recalculateBeamWeights(beamWeightIndex);
 			}
 			
-			casa::Array<casa::Complex>::const_contiter dataArrayIter = dataArray.cbegin();
+			casacore::Array<casacore::Complex>::const_contiter dataArrayIter = dataArray.cbegin();
 			for(size_t i=0; i!=4*channelCount; ++i)
 			{
 				data[i] = std::complex<double>(dataArrayIter->real(), dataArrayIter->imag()) - rowData.modelData[i];
@@ -346,7 +346,7 @@ void SpectrumMaker::initWeighting()
 		_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
 		for(std::vector<std::pair<std::string,std::string>>::const_iterator i=_files.begin(); i!=_files.end(); ++i)
 		{
-			casa::MeasurementSet ms(i->first);
+			casacore::MeasurementSet ms(i->first);
 			_imageWeights->Grid(ms, MSSelection::Everything());
 			if(_files.size() > 1)
 				std::cout << ". " << std::flush;

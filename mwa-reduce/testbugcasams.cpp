@@ -1,6 +1,6 @@
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-using namespace casa;
+using namespace casacore;
 
 int main(int argc, char *argv[])
 {

@@ -43,35 +43,35 @@ double ImageWeights::ApplyWeights(std::complex<float> *data, const bool *flags, 
 	return weightSum / channelCount;
 }
 
-void ImageWeights::Grid(casa::MeasurementSet& ms, const MSSelection& selection)
+void ImageWeights::Grid(casacore::MeasurementSet& ms, const MSSelection& selection)
 {
 	if(_isGriddingFinished)
 		throw std::runtime_error("Grid() called after a call to FinishGridding()");
 	const MultiBandData bandData(ms.spectralWindow(), ms.dataDescription());
-	casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROScalarColumn<int> fieldIdColumn(ms, casa::MS::columnName(casa::MSMainEnums::FIELD_ID));
-	casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
-	casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
-	casa::ROArrayColumn<float> weightColumn(ms, casa::MS::columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ROArrayColumn<bool> flagColumn(ms, casa::MS::columnName(casa::MSMainEnums::FLAG));
-	casa::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casa::MSMainEnums::DATA_DESC_ID));
+	casacore::ROScalarColumn<int> antenna1Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA1));
+	casacore::ROScalarColumn<int> antenna2Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA2));
+	casacore::ROScalarColumn<int> fieldIdColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::FIELD_ID));
+	casacore::ROScalarColumn<double> timeColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::TIME));
+	casacore::ROArrayColumn<double> uvwColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::UVW));
+	casacore::ROArrayColumn<float> weightColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM));
+	casacore::ROArrayColumn<bool> flagColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::FLAG));
+	casacore::ROScalarColumn<int> dataDescIdColumn(ms, ms.columnName(casacore::MSMainEnums::DATA_DESC_ID));
 	
-	const casa::IPosition shape(flagColumn.shape(0));
+	const casacore::IPosition shape(flagColumn.shape(0));
 	
 	bool isWeightDefined = weightColumn.isDefined(0);
 	bool hasWeights = false;
 	if(isWeightDefined)
 	{
-		casa::IPosition modelShape = weightColumn.shape(0);
+		casacore::IPosition modelShape = weightColumn.shape(0);
 		hasWeights = (modelShape == shape);
 	}
 		
 	const size_t polarizationCount = shape[0];
 	
-	casa::Array<casa::Complex> dataArr(shape);
-	casa::Array<bool> flagArr(shape);
-	casa::Array<float> weightArr(shape);
+	casacore::Array<casacore::Complex> dataArr(shape);
+	casacore::Array<bool> flagArr(shape);
+	casacore::Array<float> weightArr(shape);
 	size_t timestep = 0;
 	double time = timeColumn(0);
 	
@@ -86,7 +86,7 @@ void ImageWeights::Grid(casa::MeasurementSet& ms, const MSSelection& selection)
 			++timestep;
 			time = timeColumn(row);
 		}
-		const casa::Vector<double> uvw = uvwColumn(row);
+		const casacore::Vector<double> uvw = uvwColumn(row);
 		if(selection.IsSelected(fieldId, timestep, a1, a2, uvw))
 		{
 			flagColumn.get(row, flagArr);

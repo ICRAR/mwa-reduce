@@ -1,7 +1,7 @@
 #ifndef LOFAR_MS_PREDICTER
 #define LOFAR_MS_PREDICTER
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include "../banddata.h"
 #include "../dftpredictionalgorithm.h"
@@ -27,7 +27,7 @@ public:
 		double u, v, w;
 	};
 	
-	explicit LMSPredicter(casa::MeasurementSet &ms, size_t threadCount) :
+	explicit LMSPredicter(casacore::MeasurementSet &ms, size_t threadCount) :
 		_ms(ms),
 		_applyBeam(false),
 		_useModelColumn(true),
@@ -41,7 +41,7 @@ public:
 		_threadCount(threadCount)
 	{ }
 	
-	LMSPredicter(casa::MeasurementSet &ms, size_t threadCount, DFTPredictionInput& dftInput) :
+	LMSPredicter(casacore::MeasurementSet &ms, size_t threadCount, DFTPredictionInput& dftInput) :
 		_ms(ms),
 		_applyBeam(true),
 		_useModelColumn(false),
@@ -79,7 +79,7 @@ private:
 	void PredictThreadFunc();
 	void clearBuffers();
 	
-	casa::MeasurementSet &_ms;
+	casacore::MeasurementSet &_ms;
 	std::unique_ptr<LBeamEvaluator> _beamEvaluator;
 	bool _applyBeam, _useModelColumn;
 	

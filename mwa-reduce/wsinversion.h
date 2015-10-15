@@ -10,10 +10,10 @@
 #include <complex>
 #include <memory>
 
-#include <casa/Arrays/Array.h>
-#include <tables/Tables/ArrayColumn.h>
+#include <casacore/casa/Arrays/Array.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
 
-namespace casa {
+namespace casacore {
 	class MeasurementSet;
 }
 template<typename NumType>
@@ -120,8 +120,8 @@ class WSInversion : public InversionAlgorithm
 		
 		void predictCalcThread(ao::lane<PredictionWorkItem>* inputLane, ao::lane<PredictionWorkItem>* outputLane);
 		void predictWriteThread(ao::lane<PredictionWorkItem>* samplingWorkLane, const MSData* msData);
-//		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float> &weights, const casa::Array<bool> &flags, float rowWeight);
-//		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casa::Array<std::complex<float>>& data, const casa::Array<float>& weights, const casa::Array<bool>& flags, float rowWeight);
+//		void copyWeightedData(std::complex<float> *dest, size_t startChannel, size_t endChannel, size_t polCount, const casacore::Array<std::complex<float>>& data, const casacore::Array<float> &weights, const casacore::Array<bool> &flags, float rowWeight);
+//		void copyWeights(std::complex<float>* dest, size_t startChannel, size_t endChannel, size_t polCount, const casacore::Array<std::complex<float>>& data, const casacore::Array<float>& weights, const casacore::Array<bool>& flags, float rowWeight);
 		static void rotateVisibilities(const BandData &bandData, double shiftFactor, double multFactor, std::complex<float>* dataIter);
 
 		std::unique_ptr<LayeredImager> _imager;

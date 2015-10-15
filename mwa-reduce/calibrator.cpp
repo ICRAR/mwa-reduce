@@ -6,10 +6,10 @@
 #include "matrix2x2.h"
 #include "mspredicter.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include <boost/thread/thread.hpp>
 
@@ -19,7 +19,7 @@
 #include <queue>
 #include <complex>
 
-Calibrator::Calibrator(casa::MeasurementSet& ms, size_t threadCount) :
+Calibrator::Calibrator(casacore::MeasurementSet& ms, size_t threadCount) :
 	_ms(ms),
 	_dataColumnName("DATA"),
 	_minAccuracy(CalibrationMethod::DefaultMinAccuracy()),
@@ -49,7 +49,7 @@ void Calibrator::Perform()
 	/**
 		* Read some meta data from the measurement set
 		*/
-	casa::MSAntenna aTable = _ms.antenna();
+	casacore::MSAntenna aTable = _ms.antenna();
 	size_t antennaCount = aTable.nrow();
 	
 	BandData bandData(_ms.spectralWindow());
@@ -59,12 +59,12 @@ void Calibrator::Perform()
 	
 	typedef float num_t;
 	typedef std::complex<num_t> complex_t;
-	casa::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-	casa::ROArrayColumn<complex_t> dataColumn(_ms, _dataColumnName);
-	casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
+	casacore::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+	casacore::ROArrayColumn<complex_t> dataColumn(_ms, _dataColumnName);
+	casacore::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM));
+	casacore::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casacore::MSMainEnums::FLAG));
 	
-	casa::IPosition dataShape = dataColumn.shape(0);
+	casacore::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	
 	if(polarizationCount != 4)
@@ -203,9 +203,9 @@ void Calibrator::Perform()
 			}
 			
 			std::vector<std::complex<double> > modelValues(4 * channelCount);
-			casa::Array<complex_t> data(dataShape);
-			casa::Array<float> weights(dataShape);
-			casa::Array<bool> flags(dataShape);
+			casacore::Array<complex_t> data(dataShape);
+			casacore::Array<float> weights(dataShape);
+			casacore::Array<bool> flags(dataShape);
 			time = timeColumn(intervalRowStart);
 			size_t selectedCount = 0, notSelected = 0, previousTime = 0;
 			MSPredicter::RowData rowData;

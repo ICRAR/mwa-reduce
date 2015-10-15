@@ -7,17 +7,17 @@
 #include "matrix2x2.h"
 #include "mspredicter.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include <fstream>
 #include <stdexcept>
 #include <memory>
 #include <complex>
 
-Peeler::Peeler(casa::MeasurementSet& ms, size_t threadCount) :
+Peeler::Peeler(casacore::MeasurementSet& ms, size_t threadCount) :
 	_ms(ms),
 	_beamOnSource(false),
 	_applyBeam(false),
@@ -43,7 +43,7 @@ void Peeler::Perform()
 	/**
 		* Read some meta data from the measurement set
 		*/
-	casa::MSAntenna aTable = _ms.antenna();
+	casacore::MSAntenna aTable = _ms.antenna();
 	size_t antennaCount = aTable.nrow();
 	
 	_bandData = BandData(_ms.spectralWindow());
@@ -53,13 +53,13 @@ void Peeler::Perform()
 	
 	typedef float num_t;
 	typedef std::complex<num_t> complex_t;
-	casa::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-	casa::ArrayColumn<complex_t> dataColumn(_ms, _dataColumnName);
-	casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
-	std::unique_ptr<casa::ROArrayColumn<complex_t>> modelColumn;
+	casacore::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+	casacore::ArrayColumn<complex_t> dataColumn(_ms, _dataColumnName);
+	casacore::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM));
+	casacore::ArrayColumn<bool> flagColumn(_ms, _ms.columnName(casacore::MSMainEnums::FLAG));
+	std::unique_ptr<casacore::ROArrayColumn<complex_t>> modelColumn;
 	
-	casa::IPosition dataShape = dataColumn.shape(0);
+	casacore::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	
 	if(polarizationCount != 4)
@@ -119,7 +119,7 @@ void Peeler::Perform()
 		std::vector<std::complex<double>> beamValues;
 		if(_model.Empty()) {
 			std::cout << "Reading data and model column... " << std::flush;
-			modelColumn.reset(new casa::ROArrayColumn<complex_t>(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
+			modelColumn.reset(new casacore::ROArrayColumn<complex_t>(_ms, _ms.columnName(casacore::MSMainEnums::MODEL_DATA)));
 		}
 		else {
 			if(_beamOnSource || _applyBeam)
@@ -149,9 +149,9 @@ void Peeler::Perform()
 		}
 		
 		std::vector<std::complex<double> > modelValues(4 * channelCount);
-		casa::Array<complex_t> data(dataShape), modelData(dataShape);
-		casa::Array<float> weights(dataShape);
-		casa::Array<bool> flags(dataShape);
+		casacore::Array<complex_t> data(dataShape), modelData(dataShape);
+		casacore::Array<float> weights(dataShape);
+		casacore::Array<bool> flags(dataShape);
 		size_t timeIndex = 0;
 		time = timeColumn(startRow);
 		size_t selectedCount = 0, notSelected = 0;
@@ -315,7 +315,7 @@ void Peeler::Perform()
 				dataColumn.get(rowIndex, data);
 				flagColumn.get(rowIndex, flags);
 				lock.unlock();
-				casa::Complex *dataPtr = data.cbegin();
+				casacore::Complex *dataPtr = data.cbegin();
 				bool *flagPtr = flags.cbegin();
 				
 				// Apply solutions to model and subtract from data

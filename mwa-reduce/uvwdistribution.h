@@ -1,8 +1,8 @@
 #ifndef UVW_DISTRIBUTION_H
 #define UVW_DISTRIBUTION_H
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ArrayColumn.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
 
 #include "uvector.h"
 #include "banddata.h"
@@ -17,14 +17,14 @@ public:
 	{
 	}
 	
-	void Calculate(casa::MeasurementSet& ms)
+	void Calculate(casacore::MeasurementSet& ms)
 	{
 		bool skipAutos = true;
 		
-		casa::ROScalarColumn<int> antenna1Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA1));
-		casa::ROScalarColumn<int> antenna2Column(ms, casa::MS::columnName(casa::MSMainEnums::ANTENNA2));
-		casa::ROScalarColumn<double> timeColumn(ms, casa::MS::columnName(casa::MSMainEnums::TIME));
-		casa::ROArrayColumn<double> uvwColumn(ms, casa::MS::columnName(casa::MSMainEnums::UVW));
+		casacore::ROScalarColumn<int> antenna1Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA1));
+		casacore::ROScalarColumn<int> antenna2Column(ms, casacore::MS::columnName(casacore::MSMainEnums::ANTENNA2));
+		casacore::ROScalarColumn<double> timeColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::TIME));
+		casacore::ROArrayColumn<double> uvwColumn(ms, casacore::MS::columnName(casacore::MSMainEnums::UVW));
 		BandData bandData(ms.spectralWindow());
 		
 		bool isFirstValue = true;
@@ -47,7 +47,7 @@ public:
 			
 			if(!skip)
 			{
-				casa::Vector<double> uvwVec = uvwColumn(row);
+				casacore::Vector<double> uvwVec = uvwColumn(row);
 				const double dSq = distSq(uvwVec);
 				if(isFirstValue)
 				{
@@ -87,7 +87,7 @@ public:
 					skip = true;
 			}
 			
-			casa::Vector<double> uvwVec = uvwColumn(row);
+			casacore::Vector<double> uvwVec = uvwColumn(row);
 			const double distInM = sqrt(distSq(uvwVec));
 			if(!skip)
 			{
@@ -189,7 +189,7 @@ private:
 	ao::uvector<std::pair<double, double>> _weightMap;
 	ao::uvector<std::pair<double, double>> _baselineLengthMap;
 	
-	double distSq(casa::Vector<double>& uvwVec)
+	double distSq(casacore::Vector<double>& uvwVec)
 	{
 		double u = uvwVec[0], v = uvwVec[1], w = uvwVec[2];
 		return u*u + v*v + w*w;

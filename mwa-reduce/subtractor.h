@@ -9,10 +9,10 @@
 #include "mspredicter.h"
 #include "progressbar.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include <cmath>
 #include <fstream>
@@ -33,7 +33,7 @@ public:
 	void SetNoiseSigma(double noiseSigma) { _noiseSigma = noiseSigma; }
 	void SetDataColumn(const std::string& dataColumn) { _dataColumn = dataColumn; }
 	
-	void Subtract(casa::MeasurementSet& ms, const Model& model)
+	void Subtract(casacore::MeasurementSet& ms, const Model& model)
 	{
 		/**
 		 * Read some meta data from the measurement set
@@ -43,9 +43,9 @@ public:
 		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
-		casa::ArrayColumn<complex_t> dataColumn(ms, _dataColumn);
+		casacore::ArrayColumn<complex_t> dataColumn(ms, _dataColumn);
 		
-		casa::IPosition dataShape = dataColumn.shape(0);
+		casacore::IPosition dataShape = dataColumn.shape(0);
 		unsigned polarizationCount = dataShape[0];
 		
 		MSPredicter predicter(ms, _threadCount, model);
@@ -68,7 +68,7 @@ public:
 		taskDesc << model.SourceCount() << " sources";
 		ProgressBar progress(taskDesc.str());
 		
-		casa::Array<complex_t> data(dataShape);
+		casacore::Array<complex_t> data(dataShape);
 		MSPredicter::RowData rowData;
 		while(predicter.GetNextRow(rowData))
 		{
@@ -79,7 +79,7 @@ public:
 			dataColumn.get(rowIndex, data);
 			lock.unlock();
 			
-			casa::Array<complex_t>::iterator dataPtr = data.begin();
+			casacore::Array<complex_t>::iterator dataPtr = data.begin();
 			std::complex<double> *modelDataPtr = rowData.modelData;
 			for(size_t ch=0; ch!=channelCount; ++ch)
 			{

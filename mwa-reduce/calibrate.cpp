@@ -1,4 +1,4 @@
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 		
 		const char *msName = argv[argi];
 		const char *outName = argv[argi+1];
-		casa::MeasurementSet ms(msName);
+		casacore::MeasurementSet ms(msName);
 		
 		Calibrator calibrator(ms, threadCount);
 		calibrator.SetNIter(niter);

@@ -1,6 +1,6 @@
 #include <iostream>
-#include <measures/Measures/MEpoch.h>
-#include <measures/Measures/MPosition.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/Measures/MPosition.h>
 
 #include "sourcesdfwithsamples.h"
 #include "radeccoord.h"
@@ -232,9 +232,9 @@ void showBeam(const double *delays, double ra, double dec)
 	dec = dec *(M_PI/180.0);
 	ra = ra *(M_PI/180.0);
 	double frequency = 150000000.0;
-	casa::MEpoch time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
+	casacore::MEpoch time = casacore::MEpoch(casacore::MVEpoch(casacore::Quantity(4.88193e+09, "s")));
 	std::cout << "time=" << time << '\n';
-	casa::MPosition arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
+	casacore::MPosition arrayPos = casacore::MPosition(casacore::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
 	std::cout << "Pos=" << arrayPos << '\n';
 	beam.ArrayResponse(time, arrayPos, ra, dec, frequency, gains);
 	std::cout << "Gains: " << matrixToStr(gains) << '\n';

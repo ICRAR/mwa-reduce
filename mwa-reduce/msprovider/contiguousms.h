@@ -6,9 +6,9 @@
 #include "../msselection.h"
 #include "../multibanddata.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include <memory>
 
@@ -17,7 +17,7 @@ class ContiguousMS : public MSProvider
 public:
 	ContiguousMS(const string& msPath, const std::string& dataColumnName, MSSelection selection, PolarizationEnum polOut, bool includeModel);
 	
-	virtual casa::MeasurementSet &MS() { return _ms; }
+	virtual casacore::MeasurementSet &MS() { return _ms; }
 	
 	virtual size_t RowId() const { return _row; }
 	
@@ -54,21 +54,21 @@ private:
 	std::vector<PolarizationEnum> _inputPolarizations;
 	MSSelection _selection;
 	PolarizationEnum _polOut;
-	casa::MeasurementSet _ms;
+	casacore::MeasurementSet _ms;
 	MultiBandData _bandData;
 	bool _msHasWeights;
 
-	casa::ROScalarColumn<int> _antenna1Column, _antenna2Column, _fieldIdColumn, _dataDescIdColumn;
-	casa::ROScalarColumn<double> _timeColumn;
-	casa::ROArrayColumn<double> _uvwColumn;
-	std::unique_ptr<casa::ROArrayColumn<float>> _weightColumn;
-	casa::ROArrayColumn<casa::Complex> _dataColumn;
-	casa::ROArrayColumn<bool> _flagColumn;
-	std::unique_ptr<casa::ArrayColumn<casa::Complex>> _modelColumn;
+	casacore::ROScalarColumn<int> _antenna1Column, _antenna2Column, _fieldIdColumn, _dataDescIdColumn;
+	casacore::ROScalarColumn<double> _timeColumn;
+	casacore::ROArrayColumn<double> _uvwColumn;
+	std::unique_ptr<casacore::ROArrayColumn<float>> _weightColumn;
+	casacore::ROArrayColumn<casacore::Complex> _dataColumn;
+	casacore::ROArrayColumn<bool> _flagColumn;
+	std::unique_ptr<casacore::ArrayColumn<casacore::Complex>> _modelColumn;
 	
-	casa::Array<std::complex<float>> _dataArray, _modelArray;
-	casa::Array<float> _weightArray;
-	casa::Array<bool> _flagArray;
+	casacore::Array<std::complex<float>> _dataArray, _modelArray;
+	casacore::Array<float> _weightArray;
+	casacore::Array<bool> _flagArray;
 	
 	void prepareModelColumn();
 	void readMeta()

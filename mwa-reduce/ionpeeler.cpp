@@ -10,10 +10,10 @@
 #include "msselection.h"
 #include "imagecoordinates.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ArrayColumn.h>
-#include <measures/Measures/MEpoch.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 #include <boost/thread/thread.hpp>
 
@@ -33,7 +33,7 @@ IonPeeler::IonPeeler(size_t cpuCount) :
 IonPeeler::~IonPeeler()
 { }
 
-void IonPeeler::initWeighting(casa::MeasurementSet& ms)
+void IonPeeler::initWeighting(casacore::MeasurementSet& ms)
 {
 	_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
 	if(_weightMode.RequiresGridding())
@@ -46,7 +46,7 @@ void IonPeeler::initWeighting(casa::MeasurementSet& ms)
 
 void IonPeeler::Peel(const char* msName, const char* modelName, const char* solutionFilename)
 {
-	casa::MeasurementSet ms(msName, casa::MeasurementSet::Update);
+	casacore::MeasurementSet ms(msName, casacore::MeasurementSet::Update);
 	
 	if(_dataColumnName.empty())
 	{
@@ -68,8 +68,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
-	casa::ArrayColumn<casa::Complex> dataColumn(ms, _dataColumnName);
-	casa::IPosition dataShape = dataColumn.shape(0);
+	casacore::ArrayColumn<casacore::Complex> dataColumn(ms, _dataColumnName);
+	casacore::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	if(polarizationCount != 4)
 		throw std::runtime_error("Expecting MS with 4 polarizations");
@@ -78,17 +78,17 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	const size_t channelCount = _bandData.ChannelCount();
 	_antennaCount = ms.antenna().nrow();
 	
-	casa::MSField fieldTable = ms.field();
-	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
+	casacore::MSField fieldTable = ms.field();
+	casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
 	if(refDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
-	casa::Array<double> refDir = refDirColumn(0);
-	casa::Array<double>::const_iterator refDirIter = refDir.begin();
+	casacore::Array<double> refDir = refDirColumn(0);
+	casacore::Array<double>::const_iterator refDirIter = refDir.begin();
 	long double phaseCentreRA = *refDirIter; ++refDirIter;
 	long double phaseCentreDec = *refDirIter;
 	// By setting the time beforehand, we don't waste time calculating a time step we don't need.
-	casa::MEpoch::ROScalarColumn timeMColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-	casa::MEpoch startTime = timeMColumn(startRow);
+	casacore::MEpoch::ROScalarColumn timeMColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
+	casacore::MEpoch startTime = timeMColumn(startRow);
 	BeamEvaluator beamEvaluator(ms);
 	beamEvaluator.SetTime(startTime);
 	
@@ -145,7 +145,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	std::cout << "Counting timesteps...\n";
 	double time = -1.0;
 	ao::uvector<size_t> timestepRows;
-	casa::ROScalarColumn<double> timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
+	casacore::ROScalarColumn<double> timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
 	for(size_t rowIndex=0;rowIndex!=ms.nrow();++rowIndex)
 	{
 		if(timeColumn(rowIndex) != time)
@@ -157,11 +157,11 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	size_t timestepCount = timestepRows.size();
 	timestepRows.push_back(ms.nrow());
 	
-	casa::ROArrayColumn<float> weightColumn(ms, ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casa::MSMainEnums::FLAG));
-	casa::ROScalarColumn<int> ant1Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(ms, ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casa::MSMainEnums::UVW));
+	casacore::ROArrayColumn<float> weightColumn(ms, ms.columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM));
+	casacore::ROArrayColumn<bool> flagColumn(ms, ms.columnName(casacore::MSMainEnums::FLAG));
+	casacore::ROScalarColumn<int> ant1Column(ms, ms.columnName(casacore::MSMainEnums::ANTENNA1));
+	casacore::ROScalarColumn<int> ant2Column(ms, ms.columnName(casacore::MSMainEnums::ANTENNA2));
+	casacore::ROArrayColumn<double> uvwColumn(ms, ms.columnName(casacore::MSMainEnums::UVW));
 	
 	_passCount = (_solutionInterval==0) ? 1 : (timestepCount + _solutionInterval - 1) / _solutionInterval;
 	_channelBlockCount = _bandData.ChannelCount() / _channelBlockSize;
@@ -189,9 +189,9 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		_solutionFile->WriteClusterMetaInfo(clusterNames[clusterIter], sourceNames);
 	}
 	
-	casa::Array<std::complex<float> > data(dataShape);
-	casa::Array<float> weights(dataShape);
-	casa::Array<bool> flags(dataShape);
+	casacore::Array<std::complex<float> > data(dataShape);
+	casacore::Array<float> weights(dataShape);
+	casacore::Array<bool> flags(dataShape);
 	_dataArrays.resize(_channelBlockCount);
 	_weightArrays.resize(_channelBlockCount);
 	for(_pass=0; _pass!=_passCount; ++_pass)
@@ -240,8 +240,8 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 			rowData.timeIndex = timeIndex;
 			if(rowData.a1 != rowData.a2)
 			{
-				casa::Array<double> uvwArray = uvwColumn(rowIndex);
-				casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
+				casacore::Array<double> uvwArray = uvwColumn(rowIndex);
+				casacore::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 				rowData.u = *uvwI; ++uvwI;
 				rowData.v = *uvwI; ++uvwI;
 				rowData.w = *uvwI;

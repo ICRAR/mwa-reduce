@@ -4,7 +4,7 @@
 #include "model.h"
 #include "solutionfile.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include <boost/thread/mutex.hpp>
 
@@ -13,7 +13,7 @@
 class Calibrator
 {
 public:
-	Calibrator(casa::MeasurementSet& ms, size_t threadCount);
+	Calibrator(casacore::MeasurementSet& ms, size_t threadCount);
 	
 	void Perform();
 
@@ -124,7 +124,7 @@ private:
 	
 	void threadFunction(ThreadData data);
 
-	casa::MeasurementSet _ms;
+	casacore::MeasurementSet _ms;
 	SolutionFile _solutionFile;
 	std::string _modelFilename, _solutionFilename, _rhsSolutionFilename, _dataColumnName;
 	Model _model;

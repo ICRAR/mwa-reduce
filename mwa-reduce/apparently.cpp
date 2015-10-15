@@ -3,8 +3,8 @@
 #include <fstream>
 #include <cstring>
 #include <iomanip>
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
 #include "sourcesdf.h"
 #include "model.h"
@@ -60,8 +60,8 @@ int main(int argc, char **argv)
 		std::string setDescription;
 		if(!msFilename.empty())
 		{
-			casa::MeasurementSet ms(msFilename);
-			casa::ROScalarColumn<double> timeCol(ms, ms.columnName(casa::MeasurementSet::TIME));
+			casacore::MeasurementSet ms(msFilename);
+			casacore::ROScalarColumn<double> timeCol(ms, ms.columnName(casacore::MeasurementSet::TIME));
 			double startTime = timeCol(0);
 			double endTime = timeCol(ms.nrow()-1);
 			std::stringstream s;

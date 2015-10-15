@@ -1,9 +1,9 @@
 #ifndef BEAM_EVALUATOR_H
 #define BEAM_EVALUATOR_H
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <measures/Measures/MPosition.h>
-#include <measures/Measures/MEpoch.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/measures/Measures/MPosition.h>
+#include <casacore/measures/Measures/MEpoch.h>
 
 #include <memory>
 
@@ -18,7 +18,7 @@ class BeamEvaluator
 	public:
 		typedef TileBeam::PrecalcPosInfo PrecalcPosInfo;
 		
-		BeamEvaluator(casa::MeasurementSet& ms, bool reportDelays = true);
+		BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays = true);
 		
 		void EvaluateApparentToAbsGain(double ra, double dec, std::complex<double> *gains)
 		{
@@ -105,8 +105,8 @@ class BeamEvaluator
 			pixelValues[2] = input[2].real(); pixelValues[3] = input[3].real();
 		}
 		
-		void SetTime(const casa::MEpoch& time) { _time = time; }
-		const casa::MEpoch& Time() { return _time; }
+		void SetTime(const casacore::MEpoch& time) { _time = time; }
+		const casacore::MEpoch& Time() { return _time; }
 		
 		void PrecalculatePositionInfo(PrecalcPosInfo& posInfo, double raRad, double decRad)
 		{
@@ -126,8 +126,8 @@ class BeamEvaluator
 	
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;
-		casa::MPosition _ant1Pos;
-		casa::MEpoch _time;
+		casacore::MPosition _ant1Pos;
+		casacore::MEpoch _time;
 		double _frequency;
 };
 

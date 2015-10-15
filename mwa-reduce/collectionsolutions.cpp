@@ -4,9 +4,9 @@
 #include "beamevaluator.h"
 #include "banddata.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
-#include <measures/Measures/MEpoch.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 #include <iostream>
 
@@ -54,12 +54,12 @@ void addSolutionFile(Model& model, const char* solutionFilename, const char* msF
 		sourceIndexPerCluster.push_back(sourceIndices);
 	}
 	
-	casa::MeasurementSet ms(msFilename);
-	casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
-	casa::MEpoch
+	casacore::MeasurementSet ms(msFilename);
+	casacore::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
+	casacore::MEpoch
 		firstTime = timeColumn(0),
 		lastTime = timeColumn(ms.nrow()-1),
-		time = casa::MEpoch(casa::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
+		time = casacore::MEpoch(casacore::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
 	BeamEvaluator beamEvaluator(ms, false);
 	beamEvaluator.SetTime(time);
 	BandData bandData(ms.spectralWindow());

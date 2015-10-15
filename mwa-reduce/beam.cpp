@@ -11,28 +11,28 @@
 #include "mwa/metafitsfile.h"
 #include "mwa/mwaconfig.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <tables/Tables/ArrayColumn.h>
-#include <tables/Tables/TableRecord.h>
-#include <tables/Tables/ScalarColumn.h>
+#include <casacore/tables/Tables/ArrayColumn.h>
+#include <casacore/tables/Tables/TableRecord.h>
+#include <casacore/tables/Tables/ScalarColumn.h>
 
-#include <measures/Measures/MDirection.h>
-#include <measures/Measures/MEpoch.h>
-#include <measures/Measures/MPosition.h>
-#include <measures/Measures/MCPosition.h>
+#include <casacore/measures/Measures/MDirection.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/Measures/MPosition.h>
+#include <casacore/measures/Measures/MCPosition.h>
 
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 #include <stdexcept>
 
 template<typename TileImplementation, bool DoSquare>
-void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, double pixelSizeY, double refRA, double refDec, double arrLatitude, double zenithHa, double zenithDec, double centralFrequency, const double* delays, const casa::MeasFrame& frame, double dl, double dm, bool freqInterpolation)
+void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, double pixelSizeY, double refRA, double refDec, double arrLatitude, double zenithHa, double zenithDec, double centralFrequency, const double* delays, const casacore::MeasFrame& frame, double dl, double dm, bool freqInterpolation)
 {
-	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
-	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
-	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
-	casa::MDirection::Convert
+	const casacore::MDirection::Ref hadecRef(casacore::MDirection::HADEC, frame);
+	const casacore::MDirection::Ref azelgeoRef(casacore::MDirection::AZELGEO, frame);
+	const casacore::MDirection::Ref j2000Ref(casacore::MDirection::J2000, frame);
+	casacore::MDirection::Convert
 		j2000ToHaDecRef(j2000Ref, hadecRef),
 		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
 
@@ -148,13 +148,13 @@ int main(int argc, char *argv[])
 		++argi;
 	}
 	
-	casa::MPosition arrayPos;
-	casa::MEpoch time;
+	casacore::MPosition arrayPos;
+	casacore::MEpoch time;
 	double centralFrequency;
 	bool haveTime = false;
 	
 	/** If nothing else is read in, use some sensible values:*/
-	arrayPos = casa::MPosition(casa::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
+	arrayPos = casacore::MPosition(casacore::MVPosition(-2.55952e+06, 5.09585e+06, -2.84899e+06)); // pos of tile 011
 	centralFrequency = 150000000.0;
 		
 	if(metafitsName != 0)
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 		mfFile.ReadHeader(header, headerExt);
 		header.Validate(false);
 		std::cout << "Start=" << header.GetDateFirstScanFromFields() << ", end=" << header.GetDateLastScanMJD() << '\n';
-		time = casa::MEpoch(casa::MVEpoch((header.GetDateFirstScanFromFields() + header.GetDateLastScanMJD()) * 0.5));
+		time = casacore::MEpoch(casacore::MVEpoch((header.GetDateFirstScanFromFields() + header.GetDateLastScanMJD()) * 0.5));
 		centralFrequency = header.centralFrequencyMHz*1e6;
 		haveTime = true;
 		if(!hasDelays) {
@@ -185,26 +185,26 @@ int main(int argc, char *argv[])
 		/**
 			* Read some meta data from the measurement set
 			*/
-		casa::MeasurementSet ms(msName);
+		casacore::MeasurementSet ms(msName);
 		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 		
-		casa::MSAntenna aTable = ms.antenna();
+		casacore::MSAntenna aTable = ms.antenna();
 		if(aTable.nrow() == 0) throw std::runtime_error("No antennae in set");
-		casa::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casa::MSAntennaEnums::POSITION));
+		casacore::MPosition::ROScalarColumn antPosColumn(aTable, aTable.columnName(casacore::MSAntennaEnums::POSITION));
 		arrayPos = antPosColumn(0);
-		casa::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casa::MSMainEnums::TIME));
+		casacore::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
 		// Find the mid time step
-		casa::MEpoch firstTime = timeColumn(0);
-		casa::MEpoch lastTime = timeColumn(ms.nrow()-1);
+		casacore::MEpoch firstTime = timeColumn(0);
+		casacore::MEpoch lastTime = timeColumn(ms.nrow()-1);
 		std::cout << "Start time = " << firstTime << ", end time = " << lastTime << '\n';
-		time = casa::MEpoch(casa::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
+		time = casacore::MEpoch(casacore::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
 		std::cout << "Using mid time = " << time << '\n';
 		haveTime = true;
 		
-		casa::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
-		casa::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
-		casa::Array<int> delaysArr = delaysCol(0);
-		casa::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
+		casacore::Table mwaTilePointing = ms.keywordSet().asTable("MWA_TILE_POINTING");
+		casacore::ROArrayColumn<int> delaysCol(mwaTilePointing, "DELAYS");
+		casacore::Array<int> delaysArr = delaysCol(0);
+		casacore::Array<int>::contiter delaysArrPtr = delaysArr.cbegin();
 		if(!hasDelays)
 		{
 			for(int i=0; i!=16; ++i)
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 		double bandWidth = 1000000.0;
 		
 		if(!haveTime) {
-			time = casa::MEpoch(casa::MVEpoch(casa::Quantity(4.88193e+09, "s")));
+			time = casacore::MEpoch(casacore::MVEpoch(casacore::Quantity(4.88193e+09, "s")));
 			std::cout << "Warning: using random *wrong* start time, because no ms, fits file or metafits file was specified.\n";
 		}
 		
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 		centralFrequency = reader.Frequency();
 		std::cout << "Using frequency from fits file: " << round(centralFrequency*1e-6*10.0)*0.1 << " MHz.\n";
 		if(!haveTime) {
-			time = casa::MEpoch(casa::MVEpoch(reader.DateObs())); //casa::Quantity(reader.DateObs(), "s")));
+			time = casacore::MEpoch(casacore::MVEpoch(reader.DateObs())); //casacore::Quantity(reader.DateObs(), "s")));
 			std::cout << "Using time from Fits file: " << time << '\n';
 			std::cout << "WARNING: Fits file records START of observation instead of (as preferred) the MIDDLE of the observation.\n";
 			std::cout << "WARNING: Suggest using -ms to get more accurate timing.\n";
@@ -278,25 +278,25 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-	casa::MeasFrame frame(arrayPos, time);
-	const casa::MDirection::Ref hadecRef(casa::MDirection::HADEC, frame);
-	const casa::MDirection::Ref azelgeoRef(casa::MDirection::AZELGEO, frame);
-	const casa::MDirection::Ref j2000Ref(casa::MDirection::J2000, frame);
-	casa::MPosition wgs = casa::MPosition::Convert(arrayPos, casa::MPosition::WGS84)();
+	casacore::MeasFrame frame(arrayPos, time);
+	const casacore::MDirection::Ref hadecRef(casacore::MDirection::HADEC, frame);
+	const casacore::MDirection::Ref azelgeoRef(casacore::MDirection::AZELGEO, frame);
+	const casacore::MDirection::Ref j2000Ref(casacore::MDirection::J2000, frame);
+	casacore::MPosition wgs = casacore::MPosition::Convert(arrayPos, casacore::MPosition::WGS84)();
 	double arrLatitude = wgs.getValue().getLat(); // arrayPos.getValue().getLat();
 	
-	casa::MDirection zenith(casa::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
-	casa::MDirection zenithHaDec = casa::MDirection::Convert(zenith, hadecRef)();
+	casacore::MDirection zenith(casacore::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
+	casacore::MDirection zenithHaDec = casacore::MDirection::Convert(zenith, hadecRef)();
 	double zenithHa = zenithHaDec.getAngle().getValue()[0];
 	double zenithDec = zenithHaDec.getAngle().getValue()[1];
 	std::cout << "Zenith: "
-		<< (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0]*180.0/M_PI << " RA, "
+		<< (casacore::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0]*180.0/M_PI << " RA, "
 		<< zenithDec*180.0/M_PI << " dec, "
 		<< zenithHa*180.0/M_PI << " HA.\n";
 		
 	if(inpFitsname == 0)
 	{
-		refRA = (casa::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0];
+		refRA = (casacore::MDirection::Convert(zenith, j2000Ref)()).getAngle().getValue()[0];
 		refDec = zenithDec;
 		writer.SetImageDimensions(width, height, refRA, refDec, pixelSizeX, pixelSizeY);
 	}

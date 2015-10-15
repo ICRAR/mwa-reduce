@@ -1,7 +1,7 @@
 #ifndef MS_PREDICTER_H
 #define MS_PREDICTER_H
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include "lane.h"
 #include "model.h"
@@ -27,7 +27,7 @@ public:
 		double u, v, w;
 	};
 	
-	explicit MSPredicter(casa::MeasurementSet &ms, size_t threadCount) :
+	explicit MSPredicter(casacore::MeasurementSet &ms, size_t threadCount) :
 		_ms(ms),
 		_applyBeam(false),
 		_useModelColumn(true),
@@ -41,7 +41,7 @@ public:
 		_threadCount(threadCount)
 	{ }
 	
-	MSPredicter(casa::MeasurementSet &ms, size_t threadCount, const Model &model, const std::string solutionFile = "") :
+	MSPredicter(casacore::MeasurementSet &ms, size_t threadCount, const Model &model, const std::string solutionFile = "") :
 		_ms(ms),
 		_applyBeam(true),
 		_useModelColumn(false),
@@ -79,7 +79,7 @@ private:
 	void PredictThreadFunc();
 	void clearBuffers();
 	
-	casa::MeasurementSet &_ms;
+	casacore::MeasurementSet &_ms;
 	std::unique_ptr<BeamEvaluator> _beamEvaluator;
 	size_t _channelCount;
 	bool _applyBeam, _useModelColumn;

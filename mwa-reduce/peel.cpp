@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 		const char *msName = argv[argi];
 		//const char *outName = argv[argi+1];
 		
-		casa::MeasurementSet ms(msName);
+		casacore::MeasurementSet ms(msName);
 		Peeler peeler(ms, threadCount);
 		
 		peeler.SetNIter(niter);

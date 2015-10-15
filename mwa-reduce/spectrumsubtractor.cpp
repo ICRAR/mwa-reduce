@@ -5,11 +5,11 @@
 #include "matrix2x2.h"
 #include "beamevaluator.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 const size_t SpectrumSubtractor::BUFFER_COUNT = 64;
 
-SpectrumSubtractor::SpectrumSubtractor(casa::MeasurementSet& ms, Model& model) :
+SpectrumSubtractor::SpectrumSubtractor(casacore::MeasurementSet& ms, Model& model) :
 	_ms(ms),
 	_model(model),
 	_bandData(ms.spectralWindow()),
@@ -30,15 +30,15 @@ SpectrumSubtractor::~SpectrumSubtractor()
 void SpectrumSubtractor::Perform()
 {
 	_ms.reopenRW();
-	_dataColumn.reset(new casa::ArrayColumn<casa::Complex>(_ms, _dataColumnName));
-	_antenna1Column.reset(new casa::ROScalarColumn<int> (_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1)));
-	_antenna2Column.reset(new casa::ROScalarColumn<int> (_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2)));
-	_uvwColumn.reset(new casa::ROArrayColumn<double> (_ms, _ms.columnName(casa::MSMainEnums::UVW)));
-	casa::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casa::MSMainEnums::WEIGHT_SPECTRUM));
-	casa::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casa::MSMainEnums::FLAG));
-	casa::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
+	_dataColumn.reset(new casacore::ArrayColumn<casacore::Complex>(_ms, _dataColumnName));
+	_antenna1Column.reset(new casacore::ROScalarColumn<int> (_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA1)));
+	_antenna2Column.reset(new casacore::ROScalarColumn<int> (_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA2)));
+	_uvwColumn.reset(new casacore::ROArrayColumn<double> (_ms, _ms.columnName(casacore::MSMainEnums::UVW)));
+	casacore::ROArrayColumn<float> weightColumn(_ms, _ms.columnName(casacore::MSMainEnums::WEIGHT_SPECTRUM));
+	casacore::ROArrayColumn<bool> flagColumn(_ms, _ms.columnName(casacore::MSMainEnums::FLAG));
+	casacore::ROScalarColumn<double> timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
 	
-	casa::IPosition dataShape = _dataColumn->shape(0);
+	casacore::IPosition dataShape = _dataColumn->shape(0);
 	unsigned polarizationCount = dataShape[0];
 	if(polarizationCount != 4)
 		throw std::runtime_error("Need 4 polarizations");
@@ -63,9 +63,9 @@ void SpectrumSubtractor::Perform()
 	_flagBuffers.resize(BUFFER_COUNT);
 	for(size_t i=0; i!=BUFFER_COUNT; ++i)
 	{
-		_dataBuffers[i] = new casa::Array<casa::Complex>(dataShape);
-		_weightBuffers[i] = new casa::Array<float>(dataShape);
-		_flagBuffers[i] = new casa::Array<bool>(dataShape);
+		_dataBuffers[i] = new casacore::Array<casacore::Complex>(dataShape);
+		_weightBuffers[i] = new casacore::Array<float>(dataShape);
+		_flagBuffers[i] = new casacore::Array<bool>(dataShape);
 	}
 	
 	initMeasureThreadData();
@@ -97,16 +97,16 @@ void SpectrumSubtractor::Perform()
 				}
 			}
 			
-			casa::Array<casa::Complex> &dataArray = *_dataBuffers[bufferIndex];
-			casa::Array<float> &weightArray = *_weightBuffers[bufferIndex];
-			casa::Array<bool> &flagArray = *_flagBuffers[bufferIndex];
+			casacore::Array<casacore::Complex> &dataArray = *_dataBuffers[bufferIndex];
+			casacore::Array<float> &weightArray = *_weightBuffers[bufferIndex];
+			casacore::Array<bool> &flagArray = *_flagBuffers[bufferIndex];
 				
 			_dataColumn->get(row, dataArray);
 			flagColumn.get(row, flagArray);
 			weightColumn.get(row, weightArray);
 			
-			casa::Array<double> uvwArray = (*_uvwColumn)(row);
-			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
+			casacore::Array<double> uvwArray = (*_uvwColumn)(row);
+			casacore::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 			double u = *uvwI; ++uvwI;
 			double v = *uvwI; ++uvwI;
 			double w = *uvwI;
@@ -189,12 +189,12 @@ void SpectrumSubtractor::initMeasureThreadData()
 
 void SpectrumSubtractor::initPredictors()
 {
-	casa::MSField fieldTable = _ms.field();
-	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::REFERENCE_DIR));
+	casacore::MSField fieldTable = _ms.field();
+	casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
 	if(refDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
-	casa::Array<double> refDir = refDirColumn(0);
-	casa::Array<double>::const_iterator refDirIter = refDir.begin();
+	casacore::Array<double> refDir = refDirColumn(0);
+	casacore::Array<double>::const_iterator refDirIter = refDir.begin();
 	long double phaseCentreRA = *refDirIter; ++refDirIter;
 	long double phaseCentreDec = *refDirIter;
 	
@@ -207,7 +207,7 @@ void SpectrumSubtractor::initPredictors()
 	}
 }
 
-void SpectrumSubtractor::countTimesteps(casa::ROScalarColumn<double>& timeColumn)
+void SpectrumSubtractor::countTimesteps(casacore::ROScalarColumn<double>& timeColumn)
 {
 	double currentTimestep = timeColumn(0);
 	_timestepCount = 1;
@@ -355,8 +355,8 @@ void SpectrumSubtractor::performSubtraction(size_t startRow, size_t endRow)
 			
 			lock.lock();
 			_dataColumn->get(row, *info.data);
-			casa::Array<double> uvwArray = (*_uvwColumn)(row);
-			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
+			casacore::Array<double> uvwArray = (*_uvwColumn)(row);
+			casacore::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 			info.u = *uvwI; ++uvwI;
 			info.v = *uvwI; ++uvwI;
 			info.w = *uvwI;
@@ -395,7 +395,7 @@ void SpectrumSubtractor::stopSubtractionThreads()
 void SpectrumSubtractor::processWork(SubtractThreadInfo& info)
 {
 	const size_t channelCount = _bandData.ChannelCount();
-	casa::Complex *data = info.data->cbegin();
+	casacore::Complex *data = info.data->cbegin();
 	for(size_t ch=0; ch!=channelCount; ++ch)
 	{
 		double lambda = _bandData.ChannelWavelength(ch);
@@ -413,7 +413,7 @@ void SpectrumSubtractor::processWork(SubtractThreadInfo& info)
 			Matrix2x2::Add(predictSum, predicted);
 		}
 		for(size_t p=0; p!=4; ++p)
-			data[ch*4 + p] -= casa::Complex(predictSum[p].real(), predictSum[p].imag());
+			data[ch*4 + p] -= casacore::Complex(predictSum[p].real(), predictSum[p].imag());
 	}
 }
 

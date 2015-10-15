@@ -1,7 +1,7 @@
 #include "mspredicter.h"
 
-#include <measures/Measures/MEpoch.h>
-#include <measures/TableMeasures/ScalarMeasColumn.h>
+#include <casacore/measures/Measures/MEpoch.h>
+#include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
 MSPredicter::~MSPredicter()
 {
@@ -21,8 +21,8 @@ void MSPredicter::Start(bool reportSources)
 	boost::mutex::scoped_lock lock(_mutex);
 	if(_ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
-	casa::ROArrayColumn<casa::Complex> dataColumn(_ms, _ms.columnName(casa::MSMainEnums::DATA));
-	casa::IPosition dataShape = dataColumn.shape(0);
+	casacore::ROArrayColumn<casacore::Complex> dataColumn(_ms, _ms.columnName(casacore::MSMainEnums::DATA));
+	casacore::IPosition dataShape = dataColumn.shape(0);
 	unsigned polarizationCount = dataShape[0];
 	if(polarizationCount != 4)
 		throw std::runtime_error("Expecting MS with 4 polarizations");
@@ -30,19 +30,19 @@ void MSPredicter::Start(bool reportSources)
 	_bandData.reset(new BandData(_ms.spectralWindow()));
 	_channelCount = _bandData->ChannelCount();
 	
-	casa::MSField fieldTable = _ms.field();
-	casa::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casa::MSFieldEnums::PHASE_DIR));
+	casacore::MSField fieldTable = _ms.field();
+	casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::PHASE_DIR));
 	if(refDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
-	casa::Array<double> refDir = refDirColumn(0);
-	casa::Array<double>::const_iterator refDirIter = refDir.begin();
+	casacore::Array<double> refDir = refDirColumn(0);
+	casacore::Array<double>::const_iterator refDirIter = refDir.begin();
 	long double phaseCentreRA = *refDirIter; ++refDirIter;
 	long double phaseCentreDec = *refDirIter;
 	// By setting the time beforehand, we don't waste time calculating a time step we don't need.
 	if(!_useModelColumn)
 	{
-		casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-		casa::MEpoch startTime = timeColumn(_startRow);
+		casacore::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+		casacore::MEpoch startTime = timeColumn(_startRow);
 		_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
 		if(_applyBeam)
 		{
@@ -88,33 +88,33 @@ void MSPredicter::ReadThreadFunc()
 	
 	boost::mutex::scoped_lock lock(_mutex);
 
-	casa::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA1));
-	casa::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casa::MSMainEnums::ANTENNA2));
-	casa::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casa::MSMainEnums::UVW));
-	casa::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casa::MSMainEnums::TIME));
-	std::unique_ptr<casa::ROArrayColumn<casa::Complex>> modelColumn;
+	casacore::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA1));
+	casacore::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA2));
+	casacore::ROArrayColumn<double> uvwColumn(_ms, _ms.columnName(casacore::MSMainEnums::UVW));
+	casacore::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
+	std::unique_ptr<casacore::ROArrayColumn<casacore::Complex>> modelColumn;
 	
 	RowData rowData;
 	
-	casa::Array<casa::Complex> modelData;
+	casacore::Array<casacore::Complex> modelData;
 	if(_useModelColumn)
 	{
-		modelColumn.reset(new casa::ROArrayColumn<casa::Complex>(_ms, _ms.columnName(casa::MSMainEnums::MODEL_DATA)));
-		modelData = casa::Array<casa::Complex>(modelColumn->shape(0));
+		modelColumn.reset(new casacore::ROArrayColumn<casacore::Complex>(_ms, _ms.columnName(casacore::MSMainEnums::MODEL_DATA)));
+		modelData = casacore::Array<casacore::Complex>(modelColumn->shape(0));
 	}
 
 	size_t timeIndex = 0;
-	casa::MEpoch previousTime = timeColumn(_startRow);
+	casacore::MEpoch previousTime = timeColumn(_startRow);
 	for(size_t rowIndex=_startRow; rowIndex!=_endRow; ++rowIndex)
 	{
 		size_t
 			a1 = ant1Column(rowIndex),
 			a2 = ant2Column(rowIndex);
-		casa::MEpoch time = timeColumn(rowIndex);
+		casacore::MEpoch time = timeColumn(rowIndex);
 		if(a1 != a2)
 		{
-			casa::Array<double> uvwArray = uvwColumn(rowIndex);
-			casa::Array<double>::const_contiter uvwI = uvwArray.cbegin();
+			casacore::Array<double> uvwArray = uvwColumn(rowIndex);
+			casacore::Array<double>::const_contiter uvwI = uvwArray.cbegin();
 			double u = *uvwI; ++uvwI;
 			double v = *uvwI; ++uvwI;
 			double w = *uvwI;
@@ -152,7 +152,7 @@ void MSPredicter::ReadThreadFunc()
 			if(_useModelColumn)
 			{
 				std::complex<double> *outptr = rowData.modelData;
-				casa::Complex* inptr = modelData.cbegin();
+				casacore::Complex* inptr = modelData.cbegin();
 				for(size_t ch=0; ch!=_channelCount*4; ++ch)
 				{
 					*outptr = *inptr;

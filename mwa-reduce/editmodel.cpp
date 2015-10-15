@@ -8,7 +8,7 @@
 #include "uvector.h"
 #include "rmsynthesis.h"
 
-#include <ms/MeasurementSets/MeasurementSet.h>
+#include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include <iostream>
 #include <fstream>
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 		model.Sort();
 	if(doAppSort)
 	{
-		casa::MeasurementSet ms(appSortMS);
+		casacore::MeasurementSet ms(appSortMS);
 		BeamEvaluator beam(ms);
 		BandData bandData(ms.spectralWindow());
 		IsApparentLessBright compareFunc;
@@ -349,7 +349,7 @@ int main(int argc, char *argv[])
 	if(applyAppThreshold)
 	{
 		Model temp;
-		casa::MeasurementSet ms(appThresholdMS);
+		casacore::MeasurementSet ms(appThresholdMS);
 		BeamEvaluator beam(ms);
 		BandData bandData(ms.spectralWindow());
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
