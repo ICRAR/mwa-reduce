@@ -646,12 +646,16 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 				{
 					if(status != GSL_SUCCESS)
 					{
-						std::cout << "Warning: GSL fitter reported an error before converging! (niter=" << iter << ", status=" << gsl_strerror(status) << ")\nSomething might be wrong with your data.\n";
+						std::cout << "Warning: GSL fitter (gsl_multifit_fdfsolver_iterate()) reported an error before converging! (niter=" << iter << ", status=" << gsl_strerror(status) << ")\nSomething might be wrong with your data.\n";
 					}
 					break;
 				}
 				
 				status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
+				if(status != GSL_SUCCESS && status != GSL_CONTINUE)
+				{
+					std::cout << "Warning: GSL fitter (gsl_multifit_test_delta()) reported an error before converging! (niter=" << iter << ", status=" << gsl_strerror(status) << ")\nSomething might be wrong with your data.\n";
+				}
 				
 			} while (status == GSL_CONTINUE && iter < 100);
 			
