@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 			" -savemodel <out-filename>\n"
 			"\tSave the model after heuristics have been applied.\n"
 			" -minuv <dist in m>\n"
-			"\tDon't use baselines > dist in the solutions (they will be peeled though).\n"
+			"\tDon't use baselines < dist in the solutions (they will be peeled though).\n"
 			" -j <cpucount>\n"
 			"\tSet number of threads to use.\n"
 			" -v\n"
