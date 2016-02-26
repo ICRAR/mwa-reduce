@@ -643,7 +643,13 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 				status = gsl_multifit_fdfsolver_iterate(solver);
 				
 				if(status)
+				{
+					if(status != GSL_SUCCESS)
+					{
+						std::cout << "Warning: GSL fitter reported an error before converging! (niter=" << iter << ", status=" << gsl_strerror(status) << ")\nSomething might be wrong with your data.\n";
+					}
 					break;
+				}
 				
 				status = gsl_multifit_test_delta(solver->dx, solver->x, 1e-7, 1e-7);
 				
