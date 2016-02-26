@@ -56,7 +56,7 @@ private:
 		IonPeeler* ionPeeler;
 		ao::uvector<std::complex<double>>* modelData;
 		size_t channelBlockIndex, startChannel, endChannel;
-		double lambda;
+		//double lambda;
 	};
 	struct PeelingStats
 	{

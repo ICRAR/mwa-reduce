@@ -532,13 +532,13 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 		modelData.resize((_curEndRow-_curStartRow)*4*curChannelBlockSize);
 	}
 		
-	fInfo.lambda = 0.0;
+	/*fInfo.lambda = 0.0;
 	for(size_t ch=channelIndexStart; ch!=channelIndexEnd; ++ch)
 	{
 		const double lambda = _bandData.ChannelWavelength(ch);
 		fInfo.lambda += lambda;
 	}
-	fInfo.lambda /= curChannelBlockSize;
+	fInfo.lambda /= curChannelBlockSize;*/
 		
 	// Predict model for this source
 	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
@@ -560,7 +560,6 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 			}
 		}
 	}
-	fInfo.lambda /= curChannelBlockSize;
 	
 	for(size_t fitIteration=0; fitIteration!=_fitIterationCount; ++fitIteration)
 	{
@@ -684,7 +683,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 				dl = std::numeric_limits<double>::quiet_NaN();
 				dm = std::numeric_limits<double>::quiet_NaN();
 			}
-			if(sourceIndex <= 4)
+			if(sourceIndex <= 4 && _verbose)
 				std::cout << "Solution " << fitIteration << ", channels " << channelIndexStart << '-' << channelIndexEnd << " for " << _predictionModels[sourceIndex].Source(0).ClusterName() << ": " << g << ',' << dl << ',' << dm << '\n';
 			//std::cout << gsl_strerror(status) << "\n";
 			//std::cout << (status==GSL_CONTINUE ? "CONTINUE " : "X ") << iter << ", g=" << g << ",dl=" << dl << ",dm=-" << dm << '\n';
