@@ -1,0 +1,468 @@
+skymodel fileformat 1.1
+source {
+  name "HydA"
+  component {
+    type point
+    position 09h18m06.3s -12d05m25s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 87.2417 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d04m37s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 18.3616 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d06m14s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 9.895 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d05m50s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 9.40647 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d06m14s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 8.65346 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d04m13s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 7.25453 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d06m38s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 7.0026 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d05m25s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 6.20369 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d07m02s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 5.90572 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m06.3s -12d05m01s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 4.71245 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d01m48s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 3.59781 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d05m01s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 3.32743 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m01.5s -12d05m01s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 3.19681 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m12.7s -12d04m37s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 2.2739 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m09.5s -12d04m13s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 2.25922 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m11.1s -12d06m14s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.97287 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d04m13s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.91418 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m11.1s -12d04m37s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.81322 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m06.3s -12d01m47s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.80404 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h17m59.9s -12d05m49s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.78173 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m12.7s -12d02m36s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.77027 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m09.5s -12d07m02s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.76317 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m01.5s -12d05m25s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.67979 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d04m13s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.64279 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m06.3s -12d04m37s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.52854 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m12.7s -12d05m26s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.51415 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d06m38s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.49612 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d02m12s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.43414 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m12.7s -12d05m50s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.42714 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d02m36s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.40178 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m06.3s -12d01m23s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.27929 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m09.5s -12d00m59s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.16041 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m09.5s -12d04m37s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.12987 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d07m02s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.00737 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h16m10.1s -11d29m20s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 1.00232 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h17m59.9s -12d06m14s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.994718 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m01.5s -12d06m38s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.978758 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d03m48s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.956639 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m11.1s -12d06m38s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.936479 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m11.1s -12d05m01s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.920894 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d01m47s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.850378 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d02m36s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.822184 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m12.7s -12d00m59s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.79341 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m14.3s -12d00m59s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.792708 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m04.7s -12d07m26s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.721029 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m12.7s -12d06m14s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.718634 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m11.1s -12d03m00s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.696024 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m06.3s -12d03m49s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.679448 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d01m47s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.673469 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d03m24s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.617233 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m07.9s -12d07m26s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.587602 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m11.1s -12d04m13s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.564281 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d00m59s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.554736 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m12.7s -12d05m01s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.542748 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d01m23s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.533738 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m11.1s -12d00m59s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.52813 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m03.1s -12d07m26s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.524485 0 0 0
+    }
+  }
+  component {
+    type point
+    position 09h18m09.5s -12d00m35s
+    measurement {
+      frequency 215.675 MHz
+      fluxdensity Jy 0.520444 0 0 0
+    }
+  }
+}

@@ -1,0 +1,17 @@
+skymodel fileformat 1.0
+source {
+  name "HerA"
+  component {
+    type point
+    position 16h51m08.1s 04d59m33s
+    measurement {
+      frequency 80 MHz
+      fluxdensity Jy 838 0 0 838
+    }
+    measurement {
+      frequency 160 MHz
+      fluxdensity Jy 378.0 0 0 378.0
+    }
+  }
+}
+

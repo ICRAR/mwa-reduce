@@ -1,0 +1,124 @@
+skymodel fileformat 1.0
+source {
+  name "3C444"
+  component {
+    type point
+    position -01h45m34.4s -17d01m30s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 37.0557 0 0 37.0557
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 32.5745 0 0 32.5745
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d01m48s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 20.6245 0 0 20.6245
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 18.1307 0 0 18.1307
+    }
+  }
+  component {
+    type point
+    position -01h45m33.2s -17d02m24s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 4.2897 0 0 4.2897
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 3.83596 0 0 3.83596
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d00m36s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 3.23244 0 0 3.23244
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 2.91927 0 0 2.91927
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d00m54s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 2.83226 0 0 2.83226
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 2.49434 0 0 2.49434
+    }
+  }
+  component {
+    type point
+    position -01h45m33.2s -17d02m06s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 2.55524 0 0 2.55524
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 2.2455 0 0 2.2455
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d02m42s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 2.22113 0 0 2.22113
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 2.01781 0 0 2.01781
+    }
+  }
+  component {
+    type point
+    position -01h45m35.7s -17d00m36s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 2.10504 0 0 2.10504
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 1.91829 0 0 1.91829
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d01m12s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 0.915805 0 0 0.915805
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 0.8063 0 0 0.8063
+    }
+  }
+  component {
+    type point
+    position -01h45m33.2s -17d02m42s
+    measurement {
+      frequency 167.355 MHz
+      fluxdensity Jy 0.464643 0 0 0.464643
+    }
+    measurement {
+      frequency 197.435 MHz
+      fluxdensity Jy 0.435724 0 0 0.435724
+    }
+  }
+}
