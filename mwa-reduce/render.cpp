@@ -1,21 +1,23 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <random>
 
 #include "fitsreader.h"
 #include "fitswriter.h"
 #include "ioninterpolator.h"
-#include "model.h"
 #include "modelrenderer.h"
 #include "banddata.h"
 #include "angle.h"
+
+#include "model.h"
 
 void meanPos(const std::vector<ModelSource*>& sources, double& ra, double& dec);
 
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r [-beam <maj> <min> <pa>]] [-a] [-centre <ra> <dec>] <model>\n";
+		std::cout << "syntax: render [-n <noiselevel>] [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r [-beam <maj> <min> <pa>]] [-a] [-centre <ra> <dec>] <model>\n";
 	else {
 		std::string templateFits;
 		std::string outputFitsName;
@@ -25,6 +27,7 @@ int main(int argc, char* argv[])
 		int argi = 1;
 		double ra = 0.0, dec = 0.0, dl = 0.0, dm = 0.0;
 		double pixelSizeX = 0.012*(M_PI/180.0), pixelSizeY = 0.012*(M_PI/180.0);
+		double noise = 0.0;
 		double
 			beamMaj = 2.0*(M_PI/180.0/60.0),
 			beamMin = 2.0*(M_PI/180.0/60.0),
@@ -38,6 +41,10 @@ int main(int argc, char* argv[])
 			}
 			else if(param == "r") {
 				restore = true;
+			}
+			else if(param == "n") {
+				++argi;
+				noise = atof(argv[argi]);
 			}
 			else if(param == "beam") {
 				hasManualBeam = true;
@@ -77,7 +84,7 @@ int main(int argc, char* argv[])
 		Model model(argv[argi]);
 	
 		size_t width = 4096, height = 4096;
-		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
+		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0, wscImgWeight = 0.0;
 		
 		std::unique_ptr<FitsWriter> writer;
 		std::unique_ptr<FitsReader> reader;
@@ -103,10 +110,13 @@ int main(int argc, char* argv[])
 				beamMin = reader->BeamMinorAxisRad();
 				beamPA = reader->BeamPositionAngle();
 			}
+			reader->ReadDoubleKeyIfExists("WSCIMGWG", wscImgWeight);
 			if(addToTemplate)
 				reader->Read(&image[0]);
 			
 			writer.reset(new FitsWriter(*reader));
+			if(wscImgWeight != 0.0)
+				writer->SetExtraKeyword("WSCIMGWG", wscImgWeight);
 		}
 		else {
 			image.resize(width * height);
@@ -116,6 +126,14 @@ int main(int argc, char* argv[])
 		if(!outputFitsName.empty())
 		{
 			ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY, dl, dm);
+			if(noise != 0.0)
+			{
+				std::random_device rd;
+				std::mt19937 rnd(rd());
+				std::normal_distribution<double> dist(0.0, noise);
+				for(size_t i=0; i!=width*height; ++i)
+					image[i] += dist(rnd);
+			}
 			if(restore)
 			{
 				renderer.Restore(&image[0], width, height, model, beamMaj, beamMin, beamPA, frequency-bandwidth*0.5, frequency+bandwidth*0.5, Polarization::StokesI);
