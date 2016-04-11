@@ -118,6 +118,7 @@ class IonSolutionFile
 	
 	void ReadClusterMetaInfo(Model& expectedSources, std::vector<std::vector<ModelSource*>>& sourcesPerDirection)
 	{
+		_clustersInFile = 0;
 		_inputStream->seekg(sizeof(_header), std::ios::beg);
 		sourcesPerDirection.clear();
 		std::map<std::string,size_t> sourceNameToIndex;
@@ -198,7 +199,7 @@ class IonSolutionFile
   void WriteSolution(const Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction)
   {
 		if(_clustersInFile != _header.directionCount)
-			throw std::runtime_error("ReadSolution() called before all cluster meta data were written");
+			throw std::runtime_error("WriteSolution() called before all cluster meta data were written");
 		
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
