@@ -87,6 +87,11 @@ class IonSolutionFile
 		_clustersInFile = 0;
   }
   
+  /**
+	 * Open the file. After this call, ReadClusterMetaInfo() should be
+	 * called to move the read position past the meta info. Once that has been
+	 * done, the solution reading methods can be called.
+	 */
 	void OpenForReading(const char *filename)
 	{
 		delete _inputStream;
@@ -113,6 +118,7 @@ class IonSolutionFile
 	
 	void ReadClusterMetaInfo(Model& expectedSources, std::vector<std::vector<ModelSource*>>& sourcesPerDirection)
 	{
+		_inputStream->seekg(sizeof(_header), std::ios::beg);
 		sourcesPerDirection.clear();
 		std::map<std::string,size_t> sourceNameToIndex;
 		for(size_t s=0; s!=expectedSources.SourceCount(); ++s)
