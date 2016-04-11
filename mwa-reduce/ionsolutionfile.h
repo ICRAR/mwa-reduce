@@ -8,9 +8,10 @@
 #include <stdexcept>
 #include <vector>
 #include <mutex>
+#include <cstdint>
 
-#include <stdint.h>
 #include "uvector.h"
+
 #include "model.h"
 
 class IonSolutionFile
