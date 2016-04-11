@@ -236,6 +236,8 @@ class IonSolutionFile
 		_inputStream->read(reinterpret_cast<char*>(&length), sizeof(uint32_t));
 		ao::uvector<char> buffer(length+1);
 		_inputStream->read(buffer.data(), length);
+		if(!_inputStream->good())
+			throw std::runtime_error("Error reading from solution file");
 		buffer[length] = 0;
 		return std::string(buffer.data());
 	}
