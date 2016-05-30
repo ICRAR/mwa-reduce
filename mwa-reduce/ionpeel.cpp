@@ -20,6 +20,8 @@ int main(int argc, char* argv[])
 			"Options are:\n"
 			" -noapplybeam\n"
 			"\tDon't apply the beam to the model\n"
+			" -t <ntimesteps>\n"
+			"\tSolve in intervals of the given number of timesteps.\n"
 			" -datacolumn <column>\n"
 			"\tPeel from the specific column\n"
 			" -weight <gridsize> <pixelscale> <mode> [robustness]\n"
