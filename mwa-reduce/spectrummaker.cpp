@@ -39,13 +39,13 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	size_t channelCount = _bandData.ChannelCount();
 	
 	casacore::MSField fieldTable = ms.field();
-	casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
-	if(refDirColumn.nrow() != 1)
+	casacore::ROArrayColumn<double> phaseDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::PHASE_DIR));
+	if(phaseDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
-	casacore::Array<double> refDir = refDirColumn(0);
-	casacore::Array<double>::const_iterator refDirIter = refDir.begin();
-	long double phaseCentreRA = *refDirIter; ++refDirIter;
-	long double phaseCentreDec = *refDirIter;
+	casacore::Array<double> phaseDir = phaseDirColumn(0);
+	casacore::Array<double>::const_iterator phaseDirIter = phaseDir.begin();
+	long double phaseCentreRA = *phaseDirIter; ++phaseDirIter;
+	long double phaseCentreDec = *phaseDirIter;
 	
 	if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 
