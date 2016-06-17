@@ -9,9 +9,22 @@ int main(int argc, char *argv[])
 {
 	if(argc < 3)
 	{
-		std::cout
-			<< "Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <min uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] [-quiet] <measurementset.ms> <solutions.bin>\n\n"
-			<< "This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n";
+		std::cout <<
+			"Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <min uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] [-quiet] <measurementset.ms> <solutions.bin>\n\n"
+			"This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n\n"
+			"The official name of this algorithm is the \"Mitchcal\" algorithm. The following is a suggestion for referencing this algorithm in scientific articles:\n"
+			"\" Calibration was performed with the full-Jones Mitchcal algorithm developed for MWA calibration, as described by Offringa et al. (2016) \"\n"
+			"bibtex:\n"
+			"@article{offringa-2016,\n"
+			"  author = {Offringa, A. R. and Trott, C. M. and Hurley-Walker and others},\n"
+			"  title = {Parametrizing Epoch of Reionization foregrounds: a deep survey of low-frequency point-source spectra with the Murchison Widefield Array},\n"
+			"  volume = {458}, \n"
+			"  number = {1}, \n"
+			"  pages = {1057-1070}, \n"
+			"  year = {2016}, \n"
+			"  doi = {10.1093/mnras/stw310}, \n"
+			"  URL = {http://mnras.oxfordjournals.org/content/458/1/1057.abstract}, \n"
+			"  journal = {MNRAS}\n}\n";
 	} else {
 		int argi = 1;
 		// bool saveCrossTermsPlotFile = false, saveFaradayPlotFiles = false;

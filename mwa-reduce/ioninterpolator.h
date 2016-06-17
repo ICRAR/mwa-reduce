@@ -57,6 +57,8 @@ public:
 	 */
 	void Initialize(IonSolutionFile& solutions, size_t startInterval, size_t endInterval, size_t startChannel, size_t endChannel, size_t polarization)
 	{
+		InitializeFile(solutions);
+	
 		_startInterval = startInterval;
 		_endInterval = endInterval;
 		_startChannel = startChannel;

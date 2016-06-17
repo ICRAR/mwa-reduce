@@ -59,9 +59,9 @@ int main(int argc, char* argv[])
 	IonInterpolator interpolator(model, reader);
 	IonSolutionFile solutions;
 	solutions.OpenForReading(solutionsFilename);
-	std::cout << "Model has " << model.ComponentCount() << " components.\n";
+	std::cout << "Model has " << model.ComponentCount() << " components in " << model.ClusterCount() << " clusters.\n";
 	std::cout << "Solutions have " << solutions.DirectionCount() << " directions.\n";
-	if(model.SourceCount() != solutions.DirectionCount())
+	if(model.ClusterCount() != solutions.DirectionCount())
 		throw std::runtime_error("Nr of clusters in model does not match number of solution directions!");
 	interpolator.Initialize(solutions, 0, solutions.IntervalCount(), 0, solutions.ChannelBlockCount(), 0);
 	

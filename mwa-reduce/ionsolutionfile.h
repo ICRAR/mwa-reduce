@@ -8,9 +8,10 @@
 #include <stdexcept>
 #include <vector>
 #include <mutex>
+#include <cstdint>
 
-#include <stdint.h>
 #include "uvector.h"
+
 #include "model.h"
 
 class IonSolutionFile
@@ -87,6 +88,11 @@ class IonSolutionFile
 		_clustersInFile = 0;
   }
   
+  /**
+	 * Open the file. After this call, ReadClusterMetaInfo() should be
+	 * called to move the read position past the meta info. Once that has been
+	 * done, the solution reading methods can be called.
+	 */
 	void OpenForReading(const char *filename)
 	{
 		delete _inputStream;
@@ -113,6 +119,8 @@ class IonSolutionFile
 	
 	void ReadClusterMetaInfo(Model& expectedSources, std::vector<std::vector<ModelSource*>>& sourcesPerDirection)
 	{
+		_clustersInFile = 0;
+		_inputStream->seekg(sizeof(_header), std::ios::beg);
 		sourcesPerDirection.clear();
 		std::map<std::string,size_t> sourceNameToIndex;
 		for(size_t s=0; s!=expectedSources.SourceCount(); ++s)
@@ -192,7 +200,7 @@ class IonSolutionFile
   void WriteSolution(const Solution& solution, size_t interval, size_t channel, size_t polarization, size_t direction)
   {
 		if(_clustersInFile != _header.directionCount)
-			throw std::runtime_error("ReadSolution() called before all cluster meta data were written");
+			throw std::runtime_error("WriteSolution() called before all cluster meta data were written");
 		
 		std::unique_lock<std::mutex> lock(_mutex);
 		size_t index = ((interval * _header.channelBlockCount + channel) * _header.polarizationCount + polarization) * _header.directionCount + direction;
@@ -234,8 +242,12 @@ class IonSolutionFile
 	{
 		uint32_t length;
 		_inputStream->read(reinterpret_cast<char*>(&length), sizeof(uint32_t));
+		if(!_inputStream->good())
+			throw std::runtime_error("Error reading string length from solution file");
 		ao::uvector<char> buffer(length+1);
 		_inputStream->read(buffer.data(), length);
+		if(!_inputStream->good())
+			throw std::runtime_error("Error reading string from solution file");
 		buffer[length] = 0;
 		return std::string(buffer.data());
 	}

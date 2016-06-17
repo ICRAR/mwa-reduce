@@ -24,7 +24,7 @@ public:
 		if(antenna1 == antenna2 || antenna1 >= _nAntenna || antenna2 >=_nAntenna || timeIndex >= _nTimesteps)
 		{
 			std::ostringstream errMsg;
-			errMsg << "Call: ValuePtr(antenna1=" << antenna1 << ", antenna2=" << antenna2 << ", timeIndex=" << timeIndex << " - ";
+			errMsg << "Call: ValuePtr(antenna1=" << antenna1 << ", antenna2=" << antenna2 << ", timeIndex=" << timeIndex << ") - ";
 			std::string s = errMsg.str();
 			if(antenna1 == antenna2)
 				throw std::runtime_error(s+"Requested an auto-correlation");
