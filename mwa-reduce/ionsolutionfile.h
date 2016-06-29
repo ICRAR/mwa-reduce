@@ -86,6 +86,7 @@ class IonSolutionFile
 		_outputStream->write(reinterpret_cast<const char*>(&_header), sizeof(_header));
 		_firstDataPos = _outputStream->tellp();
 		_clustersInFile = 0;
+		_writtenSourceNames.clear();
   }
   
   /**
@@ -124,7 +125,11 @@ class IonSolutionFile
 		sourcesPerDirection.clear();
 		std::map<std::string,size_t> sourceNameToIndex;
 		for(size_t s=0; s!=expectedSources.SourceCount(); ++s)
+		{
+			if(sourceNameToIndex.count(expectedSources.Source(s).Name()))
+				throw std::runtime_error("Model does not have unique source names");
 			sourceNameToIndex.insert(std::make_pair(expectedSources.Source(s).Name(), s));
+		}
 		
 		for(size_t d=0; d!=DirectionCount(); ++d)
 		{
@@ -192,7 +197,12 @@ class IonSolutionFile
 		uint32_t count = sourceNames.size();
 		_outputStream->write(reinterpret_cast<const char*>(&count), sizeof(uint32_t));
 		for(std::vector<std::string>::const_iterator i=sourceNames.begin(); i!=sourceNames.end(); ++i)
+		{
+			if(_writtenSourceNames.count(*i)>0)
+				throw std::runtime_error("All sources in the model should have unique names!");
+			_writtenSourceNames.insert(*i);
 			writeString(*i);
+		}
 		_firstDataPos = _outputStream->tellp();
 		++_clustersInFile;
 	}
@@ -230,6 +240,7 @@ class IonSolutionFile
   std::ifstream *_inputStream;
 	std::mutex _mutex;
 	size_t _firstDataPos, _clustersInFile;
+	std::set<std::string> _writtenSourceNames;
 	
 	void writeString(const std::string& str)
 	{
