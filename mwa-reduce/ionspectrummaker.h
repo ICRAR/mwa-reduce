@@ -47,11 +47,11 @@ public:
 		casacore::MSField fieldTable = _ms.field();
 		if(fieldTable.nrow() != 1)
 			throw std::runtime_error("Field table nrow != 1");
-		casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
-		casacore::Array<double> refDir = refDirColumn(0);
-		casacore::Array<double>::const_iterator refDirIter = refDir.begin();
-		long double phaseCentreRA = *refDirIter; ++refDirIter;
-		long double phaseCentreDec = *refDirIter;
+		casacore::ROArrayColumn<double> phaseDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::PHASE_DIR));
+		casacore::Array<double> phaseDir = phaseDirColumn(0);
+		casacore::Array<double>::const_iterator phaseDirIter = phaseDir.begin();
+		long double phaseCentreRA = *phaseDirIter; ++phaseDirIter;
+		long double phaseCentreDec = *phaseDirIter;
 
 		std::map<std::string, const ModelSource*> sourceMap;
 		for(Model::const_iterator s=_model.begin(); s!=_model.end(); ++s)

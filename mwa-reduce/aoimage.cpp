@@ -347,8 +347,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	std::cout << 'F' << std::flush;
 	MSField fTable(ms.field());
 	if(fTable.nrow() != 1) throw std::runtime_error("Need exactly one field in set");
-	MDirection::ROScalarColumn refDirColumn(fTable, fTable.columnName(MSFieldEnums::REFERENCE_DIR));
-	MDirection refDir = refDirColumn(0);
+	MDirection::ROScalarColumn phaseDirColumn(fTable, fTable.columnName(MSFieldEnums::PHASE_DIR));
+	MDirection phaseDir = phaseDirColumn(0);
 	
 	std::cout << 'C' << std::flush;
 	ROScalarColumn<int> ant1Column(ms, ms.columnName(MSMainEnums::ANTENNA1));
@@ -413,9 +413,9 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	size_t curTimeIndex = (size_t) (-1);
 	MeasFrame frame(ant1Pos, curtime);
 	MDirection::Ref hadecRef(casacore::MDirection::HADEC, frame);
-	MDirection hadec = MDirection::Convert(refDir, hadecRef)();
+	MDirection hadec = MDirection::Convert(phaseDir, hadecRef)();
 	MDirection::Ref j2000Ref(casacore::MDirection::J2000, frame);
-	MDirection j2000 = MDirection::Convert(refDir, j2000Ref)();
+	MDirection j2000 = MDirection::Convert(phaseDir, j2000Ref)();
 	curtime = MEpoch(curtime.getValue() - 1, curtime.getRef()); // trigger calculation of pAngle, etc.
 		
 	if(!info.onlyModel)
@@ -456,7 +456,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					++curTimeIndex;
 					frame.set(curtime);
 					MDirection::Ref ref(casacore::MDirection::HADEC, frame);
-					hadec = MDirection::Convert(refDir, ref)();
+					hadec = MDirection::Convert(phaseDir, ref)();
 					//std::cout << refDir << ", HA, DEC of phasedir=" << hadec << ',' << hadec.getValue() << '\n';
 					Vector<Double> hadecVal = hadec.getValue().get();
 					double ha = hadecVal[0];
@@ -470,7 +470,7 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 					//std::cout << "HA=" << (ha*180/M_PI) << ", DEC=" << (dec*180/M_PI) << ", zenith dist=acos(" << (sinLat * sinDec + cosLat * cosDec * cosHA) << ")=" << (zenithDistance*180/M_PI) << ", paralactic angle=" << (pAngle*180/M_PI) << '\n';
 					
 					MDirection::Ref ref2(casacore::MDirection::AZELGEO, frame);
-					MDirection azel = MDirection::Convert(refDir, ref2)();
+					MDirection azel = MDirection::Convert(phaseDir, ref2)();
 					Vector<Double> azelVal = azel.getValue().get();
 					//double azimuth = azelVal[0];
 					//double zenithDistance2 = asin(cosDec * sinHA / sin(azimuth));

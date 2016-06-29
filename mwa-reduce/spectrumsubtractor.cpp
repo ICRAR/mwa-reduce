@@ -190,13 +190,13 @@ void SpectrumSubtractor::initMeasureThreadData()
 void SpectrumSubtractor::initPredictors()
 {
 	casacore::MSField fieldTable = _ms.field();
-	casacore::ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::REFERENCE_DIR));
-	if(refDirColumn.nrow() != 1)
+	casacore::ROArrayColumn<double> phaseDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::PHASE_DIR));
+	if(phaseDirColumn.nrow() != 1)
 		throw std::runtime_error("Field table nrow != 1");
-	casacore::Array<double> refDir = refDirColumn(0);
-	casacore::Array<double>::const_iterator refDirIter = refDir.begin();
-	long double phaseCentreRA = *refDirIter; ++refDirIter;
-	long double phaseCentreDec = *refDirIter;
+	casacore::Array<double> refDir = phaseDirColumn(0);
+	casacore::Array<double>::const_iterator phaseDirIter = refDir.begin();
+	long double phaseCentreRA = *phaseDirIter; ++phaseDirIter;
+	long double phaseCentreDec = *phaseDirIter;
 	
 	for(std::vector<ModelSource>::iterator sourceIter=_sources.begin();
 			sourceIter!=_sources.end(); ++sourceIter)

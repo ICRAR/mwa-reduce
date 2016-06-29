@@ -604,13 +604,13 @@ int main(int argc, char *argv[])
 		if(avgChannelCount == 0) avgChannelCount = channelCount;
 		
 		MSField fieldTable = ms.field();
-		ROArrayColumn<double> refDirColumn(fieldTable, fieldTable.columnName(MSFieldEnums::REFERENCE_DIR));
-		if(refDirColumn.nrow() != 1)
+		ROArrayColumn<double> phaseDirColumn(fieldTable, fieldTable.columnName(MSFieldEnums::PHASE_DIR));
+		if(phaseDirColumn.nrow() != 1)
 			throw std::runtime_error("Field table nrow != 1");
-		Array<double> refDir = refDirColumn(0);
-		casacore::Array<double>::const_iterator refDirIter = refDir.begin();
-		long double phaseCentreRA = *refDirIter; ++refDirIter;
-		long double phaseCentreDec = *refDirIter;
+		Array<double> phaseDir = phaseDirColumn(0);
+		casacore::Array<double>::const_iterator phaseDirIter = phaseDir.begin();
+		long double phaseCentreRA = *phaseDirIter; ++phaseDirIter;
+		long double phaseCentreDec = *phaseDirIter;
 		
 		typedef float num_t;
 		typedef std::complex<num_t> complex_t;
