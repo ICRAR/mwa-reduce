@@ -92,7 +92,7 @@ bool MRCCatalogue::ReadNext(ModelSource& source)
 		digToVal(entry.fluxDensity[3])*1.0 +
 		digToVal(entry.fluxDensity[5])*0.1 +
 		digToVal(entry.fluxDensity[6])*0.01;
-	component.SetSED(SpectralEnergyDistribution(fluxDensity, 408000000.0));
+	component.SetSED(MeasuredSED(fluxDensity, 408000000.0));
 	
 	char nameStr[11];
 	memcpy(nameStr, entry.name, 10);

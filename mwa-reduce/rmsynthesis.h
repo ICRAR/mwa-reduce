@@ -1,14 +1,14 @@
 #ifndef RM_SYNTHESIS_H
 #define RM_SYNTHESIS_H
 
-#include "model/spectralenergydistribution.h"
+#include "model/measuredsed.h"
 
 #include "uvector.h"
 
 class RMSynthesis
 {
 public:
-	RMSynthesis(const SpectralEnergyDistribution& sed);
+	RMSynthesis(const MeasuredSED& sed);
 	
 	void Synthesize();
 	
@@ -56,7 +56,7 @@ public:
 private:
 	void addSample(double lambdaSq, double q, double u);
 	
-	SpectralEnergyDistribution _sed;
+	MeasuredSED _sed;
 	ao::uvector<double> _fdf;
 	double _maxLSq;
 };

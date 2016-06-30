@@ -34,6 +34,12 @@ FitsReader::FitsReader(const FitsReader& source) :
 	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
 }
 
+FitsReader::~FitsReader()
+{
+	int status = 0;
+	fits_close_file(_fitsPtr, &status);
+}
+
 FitsReader& FitsReader::operator=(const FitsReader& rhs)
 {
 	_filename = rhs._filename;
@@ -58,6 +64,9 @@ FitsReader& FitsReader::operator=(const FitsReader& rhs)
 	_history = rhs._history;
 	
 	int status = 0;
+	fits_close_file(_fitsPtr, &status);
+	checkStatus(status, _filename);
+	
 	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
 	checkStatus(status, _filename);
 	
@@ -178,58 +187,75 @@ void FitsReader::initialize()
 	if(equinox != 2000.0)
 		throw std::runtime_error("Invalid value for EQUINOX: "+readStringKey("EQUINOX"));
 	
-	if(readStringKey("CTYPE1") != "RA---SIN")
+	std::string tmp;
+	if(ReadStringKeyIfExists("CTYPE1", tmp) && tmp != "RA---SIN")
 		throw std::runtime_error("Invalid value for CTYPE1");
-	_phaseCentreRA = readDoubleKey("CRVAL1") * (M_PI / 180.0);
-	_pixelSizeX = readDoubleKey("CDELT1") * (-M_PI / 180.0);
-	if(readStringKey("CUNIT1") != "deg")
-		throw std::runtime_error("Invalid value for CUNIT1");
-	double centrePixelX = readDoubleKey("CRPIX1");
-	_phaseCentreDL = (centrePixelX - ((_imgWidth / 2.0)+1.0)) * _pixelSizeX;
-
-	if(readStringKey("CTYPE2") != "DEC--SIN")
-		throw std::runtime_error("Invalid value for CTYPE2");
-	_phaseCentreDec = readDoubleKey("CRVAL2") * (M_PI / 180.0);
-	_pixelSizeY = readDoubleKey("CDELT2") * (M_PI / 180.0);
-	if(readStringKey("CUNIT2") != "deg")
-		throw std::runtime_error("Invalid value for CUNIT2");
-	double centrePixelY = readDoubleKey("CRPIX2");
-	_phaseCentreDM = ((_imgHeight / 2.0)+1.0 - centrePixelY) * _pixelSizeY;
 	
+	_phaseCentreRA = 0.0;
+	ReadDoubleKeyIfExists("CRVAL1", _phaseCentreRA);
+	_phaseCentreRA *= M_PI / 180.0;
+	_pixelSizeX = 0.0;
+	ReadDoubleKeyIfExists("CDELT1", _pixelSizeX);
+	_pixelSizeX *= -M_PI / 180.0;
+	if(ReadStringKeyIfExists("CUNIT1", tmp) && tmp != "deg")
+		throw std::runtime_error("Invalid value for CUNIT1");
+	double centrePixelX = 0.0;
+	if(ReadDoubleKeyIfExists("CRPIX1", centrePixelX))
+		_phaseCentreDL = (centrePixelX - ((_imgWidth / 2.0)+1.0)) * _pixelSizeX;
+	else
+		_phaseCentreDL = 0.0;
+
+	if(ReadStringKeyIfExists("CTYPE2",tmp) && tmp != "DEC--SIN")
+		throw std::runtime_error("Invalid value for CTYPE2");
+	_phaseCentreDec = 0.0;
+	ReadDoubleKeyIfExists("CRVAL2", _phaseCentreDec);
+	_phaseCentreDec *= M_PI / 180.0;
+	_pixelSizeY = 0.0;
+	ReadDoubleKeyIfExists("CDELT2", _pixelSizeY);
+	_pixelSizeY *= M_PI / 180.0;
+	if(ReadStringKeyIfExists("CUNIT2", tmp) && tmp != "deg")
+		throw std::runtime_error("Invalid value for CUNIT2");
+	double centrePixelY = 0.0;
+	if(ReadDoubleKeyIfExists("CRPIX2", centrePixelY))
+		_phaseCentreDM = ((_imgHeight / 2.0)+1.0 - centrePixelY) * _pixelSizeY;
+	else
+		_phaseCentreDM = 0.0;
+	
+	_dateObs = 0.0;
 	readDateKeyIfExists("DATE-OBS", _dateObs);
-	if(naxis >= 3)
+	
+	if(naxis >= 3 && readStringKey("CTYPE3") == "FREQ")
 	{
-		if(readStringKey("CTYPE3") == "FREQ")
-		{
-			_frequency = readDoubleKey("CRVAL3");
-			_bandwidth = readDoubleKey("CDELT3");
-		}
-	} else {
+		_frequency = readDoubleKey("CRVAL3");
+		_bandwidth = readDoubleKey("CDELT3");
+	}
+	else {
 		_frequency = 0.0;
 		_bandwidth = 0.0;
 	}
-	if(naxis >= 4)
+	
+	if(naxis >= 4 && readStringKey("CTYPE4") == "STOKES")
 	{
-		if(readStringKey("CTYPE4") == "STOKES")
+		double val = readDoubleKey("CRVAL4");
+		switch(int(val))
 		{
-			double val = readDoubleKey("CRVAL4");
-			switch(int(val))
-			{
-				default: throw std::runtime_error("Unknown polarization specified in fits file");
-				case 1: _polarization = Polarization::StokesI; break;
-				case 2: _polarization = Polarization::StokesQ; break;
-				case 3: _polarization = Polarization::StokesU; break;
-				case 4: _polarization = Polarization::StokesV; break;
-				case -1: _polarization = Polarization::RR; break;
-				case -2: _polarization = Polarization::LL; break;
-				case -3: _polarization = Polarization::RL; break;
-				case -4: _polarization = Polarization::LR; break;
-				case -5: _polarization = Polarization::XX; break;
-				case -6: _polarization = Polarization::YY; break;
-				case -7: _polarization = Polarization::XY; break;
-				case -8: _polarization = Polarization::YX; break;
-			}
+			default: throw std::runtime_error("Unknown polarization specified in fits file");
+			case 1: _polarization = Polarization::StokesI; break;
+			case 2: _polarization = Polarization::StokesQ; break;
+			case 3: _polarization = Polarization::StokesU; break;
+			case 4: _polarization = Polarization::StokesV; break;
+			case -1: _polarization = Polarization::RR; break;
+			case -2: _polarization = Polarization::LL; break;
+			case -3: _polarization = Polarization::RL; break;
+			case -4: _polarization = Polarization::LR; break;
+			case -5: _polarization = Polarization::XX; break;
+			case -6: _polarization = Polarization::YY; break;
+			case -7: _polarization = Polarization::XY; break;
+			case -8: _polarization = Polarization::YX; break;
 		}
+	}
+	else {
+		_polarization = Polarization::StokesI;
 	}
 	double bMaj=0.0, bMin=0.0, bPa=0.0;
 	if(ReadDoubleKeyIfExists("BMAJ", bMaj) && ReadDoubleKeyIfExists("BMIN", bMin) && ReadDoubleKeyIfExists("BPA", bPa))
@@ -245,10 +271,16 @@ void FitsReader::initialize()
 		_beamMinorAxisRad = 0.0;
 		_beamPositionAngle = 0.0;
 	}
+	
+	_origin = std::string();
+	_originComment = std::string();
 	ReadStringKeyIfExists("ORIGIN", _origin, _originComment);
+	
+	_history.clear();
 	readHistory();
 }
 
+template void FitsReader::Read(float* image);
 template void FitsReader::Read(double* image);
 
 template<typename NumType>
@@ -263,8 +295,10 @@ void FitsReader::Read(NumType* image)
 	
 	if(sizeof(NumType)==8)
 		fits_read_pix(_fitsPtr, TDOUBLE, &firstPixel[0], _imgWidth*_imgHeight, 0, image, 0, &status);
+	else if(sizeof(NumType)==4)
+		fits_read_pix(_fitsPtr, TFLOAT, &firstPixel[0], _imgWidth*_imgHeight, 0, image, 0, &status);
 	else
-		throw std::runtime_error("sizeof(NumType)!=8 not implemented");
+		throw std::runtime_error("sizeof(NumType)!=8 || 4 not implemented");
 	checkStatus(status, _filename);
 }
 
@@ -283,12 +317,6 @@ void FitsReader::readHistory()
 			_history.push_back(&keyCard[8]);
 		}
 	}
-}
-
-FitsReader::~FitsReader()
-{
-	int status = 0;
-	fits_close_file(_fitsPtr, &status);
 }
 
 double FitsReader::ParseFitsDateToMJD(const char* valueStr)

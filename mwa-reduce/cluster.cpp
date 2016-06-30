@@ -167,8 +167,20 @@ int main(int argc, char* argv[])
 		std::cout << "Syntax: cluster <model-input> <model-output> <clustercount>\n";
 		return -1;
 	}
-	const Model& model(argv[1]);
+	Model model(argv[1]);
 	const size_t clusterCount = atoi(argv[3]);
+	
+	Model prunedModel;
+	for(Model::const_iterator i=model.begin(); i!=model.end(); ++i)
+	{
+		if(i->ComponentCount() != 0)
+			prunedModel.AddSource(*i);
+	}
+	if(model.SourceCount() != prunedModel.SourceCount())
+	{
+		std::cout << "Removed " << model.SourceCount()-prunedModel.SourceCount() << " sources without components.\n";
+	}
+	model = prunedModel;
 	
 	std::vector<Cluster> clusters(clusterCount);
 	size_t clusterIndex = 0;

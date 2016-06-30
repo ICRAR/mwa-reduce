@@ -5,75 +5,7 @@
 #include <string>
 #include <sstream>
 
-#include "../radeccoord.h"
-#include "../imagecoordinates.h"
-
-#include "spectralenergydistribution.h"
-
-class ModelComponent
-{
-	public:
-		enum Type { PointSource, GaussianSource };
-		
-		ModelComponent() : _type(PointSource), _posRA(0.0), _posDec(0.0), _sed(), _l(0.0), _m(0.0), _positionAngle(0.0), _majorAxis(0.0), _minorAxis(0.0), _userdata(0)
-		{
-		}
-		
-		enum Type Type() const { return _type; }
-		long double PosRA() const { return _posRA; }
-		long double PosDec() const { return _posDec; }
-		const SpectralEnergyDistribution &SED() const { return _sed; }
-		long double L() const { return _l; }
-		long double M() const { return _m; }
-		long double PositionAngle() const { return _positionAngle; }
-		long double MajorAxis() const { return _majorAxis; }
-		long double MinorAxis() const { return _minorAxis; }
-		
-		void* UserData() const { return _userdata; }
-		
-		void SetType(enum Type type) { _type = type; }
-		void SetPosRA(long double posRA) { _posRA = posRA; }
-		void SetPosDec(long double posDec) { _posDec = posDec; }
-		SpectralEnergyDistribution &SED() { return _sed; }
-		void SetSED(const SpectralEnergyDistribution &sed) {
-			_sed = sed;
-		}
-		void SetL(long double l) { _l = l; }
-		void SetM(long double m) { _m = m; }
-		void SetPositionAngle(long double pa) { _positionAngle = pa; }
-		void SetMajorAxis(long double majorAxis) { _majorAxis = majorAxis; }
-		void SetMinorAxis(long double minorAxis) { _minorAxis = minorAxis; }
-		void SetUserData(void *userData) { _userdata = userData; }
-		
-		std::string ToString() const
-		{
-			std::stringstream s;
-			s << "  component {\n"
-				"    type point\n"
-				"    position " << RaDecCoord::RAToString(_posRA) << ' ' << RaDecCoord::DecToString(_posDec) << '\n' <<
-				_sed.ToString() << "  }\n";
-			return s.str();
-		}
-		
-		bool HasValidMeasurement() const { return _sed.HasValidMeasurement(); }
-		
-		bool operator<(const ModelComponent& rhs) const
-		{
-			return _sed < rhs._sed;
-		}
-		
-		void operator*=(double factor)
-		{
-			_sed *= factor;
-		}
-	private:
-		enum Type _type;
-		long double _posRA, _posDec;
-		SpectralEnergyDistribution _sed;
-		long double _l, _m;
-		long double _positionAngle, _majorAxis, _minorAxis;
-		void *_userdata;
-};
+#include "modelcomponent.h"
 
 class ModelSource
 {
@@ -117,7 +49,8 @@ class ModelSource
 		
 		bool operator<(const ModelSource &rhs) const
 		{
-			return _components[0] < rhs._components[0];
+			return TotalFlux(Polarization::StokesI)
+				< rhs.TotalFlux(Polarization::StokesI);
 		}
 		
 		void operator+=(const ModelComponent& rhs)
@@ -157,7 +90,7 @@ class ModelSource
 			{
 				if(component.PosDec() == i->PosDec() && component.PosRA() == i->PosRA())
 				{
-					i->SED().CombineMeasurements(component.SED());
+					i->MSED().CombineMeasurements(component.MSED());
 					return;
 				}
 			}
@@ -201,15 +134,25 @@ class ModelSource
 			return flux;
 		}
 		
+		double TotalFlux(PolarizationEnum polarization) const
+		{
+			if(_components.empty())
+				return 0.0;
+			else
+				return TotalFlux(begin()->SED().ReferenceFrequencyHz(), polarization);
+		}
+		
 		size_t ComponentCount() const { return _components.size(); }
+		
+		const class ModelComponent& Component(size_t index) const { return _components[index]; }
 		
 		void *UserData() const { return _userdata; }
 		void SetUserData(void *userData) { _userdata = userData; }
 		
-		void MakeUnitFlux()
+		/*void MakeUnitFlux()
 		{
 			double totalFlux = 0.0;
-			double freq = (Peak().SED().LowestFrequency() + Peak().SED().HighestFrequency()) * 0.5;
+			double freq = (Peak().MSED().LowestFrequency() + Peak().MSED().HighestFrequency()) * 0.5;
 			for(iterator i=begin(); i!=end(); ++i)
 			{
 				totalFlux += TotalFlux(freq, Polarization::StokesI);
@@ -217,9 +160,9 @@ class ModelSource
 			for(iterator i=begin(); i!=end(); ++i)
 			{
 				double thisFlux = i->SED().FluxAtFrequency(freq, Polarization::StokesI);
-				i->SetSED(SpectralEnergyDistribution(thisFlux / totalFlux, freq));
+				i->SetSED(MeasuredSED(thisFlux / totalFlux, freq));
 			}
-		}
+		}*/
 		
 		void SetConstantTotalFlux(double newFlux, double frequency)
 		{
@@ -232,7 +175,7 @@ class ModelSource
 			for(iterator i=begin(); i!=end(); ++i)
 			{
 				double thisFlux = i->SED().FluxAtFrequency(frequency, Polarization::StokesI);
-				i->SetSED(SpectralEnergyDistribution(thisFlux * scaleFactor, frequency));
+				i->SetSED(MeasuredSED(thisFlux * scaleFactor, frequency));
 			}
 		}
 		
@@ -248,7 +191,7 @@ class ModelSource
 					m.SetFrequencyHz(frequency);
 					for(size_t p=0; p!=4; ++p)
 						m.SetFluxDensityFromIndex(p, newFluxes[p] / (double) ComponentCount());
-					SpectralEnergyDistribution sed;
+					MeasuredSED sed;
 					sed.AddMeasurement(m);
 					i->SetSED(sed);
 				}
@@ -269,7 +212,7 @@ class ModelSource
 					{
 						m.SetFluxDensityFromIndex(p, thisFlux * scaleFactor[p]);
 					}
-					SpectralEnergyDistribution sed;
+					MeasuredSED sed;
 					sed.AddMeasurement(m);
 					i->SetSED(sed);
 				}
@@ -305,18 +248,18 @@ class ModelSource
 			return false;
 		}
 		
-		SpectralEnergyDistribution GetIntegratedSED() const
+		MeasuredSED GetIntegratedMSED() const
 		{
 			if(_components.empty())
-				return SpectralEnergyDistribution();
+				return MeasuredSED();
 			const_iterator i=begin();
-			SpectralEnergyDistribution sum(i->SED());
+			MeasuredSED sum(i->MSED());
 			++i;
 			while(i != end())
 			{
-				const SpectralEnergyDistribution& sed = i->SED();
-				SpectralEnergyDistribution::const_iterator sedIter = sed.begin();
-				SpectralEnergyDistribution::iterator sumIter = sum.begin();
+				const MeasuredSED& sed = i->MSED();
+				MeasuredSED::const_iterator sedIter = sed.begin();
+				MeasuredSED::iterator sumIter = sum.begin();
 				while(sedIter != sed.end() && sumIter != sum.end())
 				{
 					double frequency = sumIter->second.FrequencyHz();
@@ -362,6 +305,14 @@ public:
 		size_t SourceCount() const { return _sources.size(); }
 		
 		void AddSource(const ModelSource& source) { _sources.push_back(source); }
+		
+		double TotalFlux(PolarizationEnum polarization) const
+		{
+			double f = 0.0;
+			for(const_iterator s=_sources.begin(); s!=_sources.end(); ++s)
+				f += s->TotalFlux(polarization);
+			return f;
+		}
 		
 		double MeanRA() const
 		{

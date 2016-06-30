@@ -2,8 +2,10 @@
 #define MODEL_PARSER_H
 
 #include "model.h"
+#include "modelsource.h"
 
 #include "tokenizer.h"
+#include "powerlawsed.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -108,7 +110,22 @@ class ModelParser : private Tokenizer
 				else if(token == "measurement") {
 					Measurement measurement;
 					parseMeasurement(measurement);
-					component.SED().AddMeasurement(measurement);
+					if(component.HasMeasuredSED())
+						component.MSED().AddMeasurement(measurement);
+					else if(component.HasSED())
+						throw std::runtime_error("Invalid 'measurement' combined with other brightness specification");
+					else {
+						component.SetSED(MeasuredSED());
+						component.MSED().AddMeasurement(measurement);
+					}
+				}
+				else if(token == "sed") {
+					PowerLawSED plSED;
+					parsePowerLawSED(plSED);
+					if(component.HasSED())
+						throw std::runtime_error("Invalid 'sed' combined with other brightness specification");
+					else 
+						component.SetSED(plSED);
 				}
 				else if(token == "shape") {
 					getToken(token);
@@ -183,6 +200,51 @@ class ModelParser : private Tokenizer
 				}
 				else throw std::runtime_error("Unknown token");
 			}
+		}
+		
+		void parsePowerLawSED(PowerLawSED& sed)
+		{
+			std::string token;
+			getToken(token);
+			if(token != "{")
+				throw std::runtime_error("Expecting {");
+			double refFrequency = 0.0;
+			double brightness[4] = { 0.0, 0.0, 0.0, 0.0 };
+			ao::uvector<double> terms;
+			bool hasFrequency = false, hasBrightness = false;
+			while(getToken(token) && token != "}")
+			{
+				if(token == "frequency") {
+					if(hasFrequency)
+						throw std::runtime_error("Double frequency specification");
+					refFrequency = getTokenAsDouble()*1000000.0;
+					getToken(token); // unit
+					hasFrequency = true;
+				}
+				else if(token == "fluxdensity") {
+					if(hasBrightness)
+						throw std::runtime_error("Double brightness specification");
+					getToken(token); // unit
+					for(size_t p=0; p!=4; ++p)
+						brightness[p] = getTokenAsDouble();
+					hasBrightness = true;
+				}
+				else if(token == "spectral-index") {
+					if(!terms.empty())
+						throw std::runtime_error("Double SI specification");
+					getToken(token);
+					if(token != "{")
+							throw std::runtime_error("Expecting {");
+					while(getToken(token) && token != "}")
+					{
+						terms.push_back(atof(token.c_str()));
+					}
+				}
+				else throw std::runtime_error("Unknown token");
+			}
+			if(!hasFrequency || !hasBrightness || terms.empty())
+				throw std::runtime_error("Incomplete SED specification");
+			sed.SetData(refFrequency, brightness, terms);
 		}
 };
 

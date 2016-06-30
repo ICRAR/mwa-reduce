@@ -1,21 +1,21 @@
 #include "rmsynthesis.h"
 #include "banddata.h"
 
-RMSynthesis::RMSynthesis(const SpectralEnergyDistribution& sed) :
+RMSynthesis::RMSynthesis(const MeasuredSED& sed) :
 	_sed(sed)
 {
 }
 
 void RMSynthesis::Synthesize()
 {
-	SpectralEnergyDistribution::const_reverse_iterator t = _sed.rbegin();
+	MeasuredSED::const_reverse_iterator t = _sed.rbegin();
 	double minLSq = BandData::FrequencyToLambda(t->first) * BandData::FrequencyToLambda(t->first);
 	++t;
 	double nextMinLSq = BandData::FrequencyToLambda(t->first) * BandData::FrequencyToLambda(t->first);
 	_maxLSq = BandData::FrequencyToLambda(_sed.begin()->first) * BandData::FrequencyToLambda(_sed.begin()->first);
 	size_t sampleCount = size_t(ceil(2.0 * _maxLSq / (nextMinLSq - minLSq)));
 	_fdf.assign(sampleCount, 0.0);
-	for(SpectralEnergyDistribution::const_iterator i=_sed.begin(); i!=_sed.end(); ++i)
+	for(MeasuredSED::const_iterator i=_sed.begin(); i!=_sed.end(); ++i)
 	{
 		double
 			lambda = BandData::FrequencyToLambda(i->first),

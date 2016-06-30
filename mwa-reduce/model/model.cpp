@@ -1,7 +1,7 @@
 #include "model.h"
-#include "modelparser.h"
-
 #include "../radeccoord.h"
+
+#include "modelparser.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -9,7 +9,9 @@
 #include <fstream>
 #include <stdexcept>
 
-Model::Model(const char *filename)
+size_t Model::npos = std::numeric_limits<size_t>::max();
+
+void Model::read(const char* filename)
 {
 	ModelParser parser;
 	std::ifstream stream(filename);
@@ -41,12 +43,15 @@ void Model::Optimize()
 
 void Model::add(const ModelSource& source)
 {
-	for(iterator i = begin(); i!=end(); ++i)
+	if(source.ComponentCount()!=0)
 	{
-		if(source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
+		for(iterator i = begin(); i!=end(); ++i)
 		{
-			(*i) += source;
-			return;
+			if(i->ComponentCount()!=0 && source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
+			{
+				(*i) += source;
+				return;
+			}
 		}
 	}
 	_sources.push_back(source);
@@ -54,12 +59,15 @@ void Model::add(const ModelSource& source)
 
 void Model::addOptimized(const ModelSource& source)
 {
-	for(iterator i = begin(); i!=end(); ++i)
+	if(source.ComponentCount()!=0)
 	{
-		if(source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
+		for(iterator i = begin(); i!=end(); ++i)
 		{
-			/* merge */
-			return;
+			if(i->ComponentCount()!=0 && source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
+			{
+				/* merge */
+				return;
+			}
 		}
 	}
 	_sources.push_back(source);
@@ -91,9 +99,4 @@ void Model::Save(std::ostream& stream) const
 	{
 		stream << i->ToString();
 	}
-}
-
-void Model::SortOnBrightness()
-{
-	std::sort(_sources.rbegin(), _sources.rend());
 }

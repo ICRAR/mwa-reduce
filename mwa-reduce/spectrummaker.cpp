@@ -361,7 +361,7 @@ void SpectrumMaker::ToModel(Model& model) const
 {
 	for(size_t sourceIndex = 0; sourceIndex!=_sources.size(); ++sourceIndex)
 	{
-		SpectralEnergyDistribution sed;
+		MeasuredSED sed;
 		std::map<double, StokesValues> spectrum;
 		FluxesPerFrequency(spectrum, sourceIndex);
 		

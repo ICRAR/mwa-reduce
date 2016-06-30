@@ -2,9 +2,8 @@
 #include <fstream>
 #include <string>
 
-#include "fitsreader.h"
-
 #include "model/model.h"
+#include "fitsreader.h"
 
 #include <boost/tokenizer.hpp>
 
@@ -74,7 +73,7 @@ int main(int argc, char* argv[])
 				ModelComponent component;
 				component.SetPosRA(ra * M_PI / 180.0);
 				component.SetPosDec(dec * M_PI / 180.0);
-				component.SetSED(SpectralEnergyDistribution(flux, frequency));
+				component.SetSED(MeasuredSED(flux, frequency));
 				ModelSource source;
 				ostringstream srcName;
 				++srcIndex;

@@ -63,7 +63,7 @@ void startRow()
 void endRow()
 {
 	if(parserData.useConstantSI)
-		source.front().SED().AddMeasurement(flux, parserData.frequency, parserData.constantSI);
+		source.front().MSED().AddMeasurement(flux, parserData.frequency, parserData.constantSI);
 	else if(parserData.useSecondFrequency)
 	{
 		double fluxAlt = secondFlux, freqAlt = parserData.secondFrequency;
@@ -76,14 +76,14 @@ void endRow()
 				freqAlt = parserData.thirdFrequency;
 			}
 		}
-		source.front().SED().AddMeasurement(flux, parserData.frequency);
+		source.front().MSED().AddMeasurement(flux, parserData.frequency);
 		if(std::isfinite(fluxAlt))
-			source.front().SED().AddMeasurement(fluxAlt, freqAlt);
+			source.front().MSED().AddMeasurement(fluxAlt, freqAlt);
 	}
 	else if(!std::isfinite(spectInd))
-		source.front().SED().AddMeasurement(flux, parserData.frequency, spectInd);
+		source.front().MSED().AddMeasurement(flux, parserData.frequency, spectInd);
 	else
-		source.front().SED().AddMeasurement(flux, parserData.frequency);
+		source.front().MSED().AddMeasurement(flux, parserData.frequency);
 	model.AddSource(source);
 }
 

@@ -75,7 +75,8 @@ public:
 		_spectrumPerSource.resize(_sources.size());
 		for(size_t s=0; s!=_sources.size(); ++s)
 		{
-			_sources[s].MakeUnitFlux();
+			ModelSource& source = _sources[s];
+			source.SetConstantTotalFlux(1.0, source.Component(0).SED().ReferenceFrequencyHz());
 			_spectrumPerSource[s].Clear();
 		}
 		

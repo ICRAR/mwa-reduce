@@ -7,7 +7,7 @@
 #include "calibrator.h"
 #include "solutionapplier.h"
 #include "subtractor.h"
-#include "spectrumsubtractor.h"
+//#include "spectrumsubtractor.h"
 #include "calibrationmethod.h"
 
 #include "model/model.h"
@@ -321,7 +321,7 @@ int main(int argc, char* argv[])
 			}
 		}
 		
-		if(!subtractSources.empty() && doSubtract)
+		/*if(!subtractSources.empty() && doSubtract)
 		{
 			std::cout << "Spectrally subtracting " << sourceList(subtractSources) << "...\n";
 			
@@ -351,7 +351,7 @@ int main(int argc, char* argv[])
 			{
 				restorationModel.AddSource(*src);
 			}
-		}
+		}*/
 		
 		restorationModel.Save("model-restore.txt");
 		std::cout << "Restoration model containing " << restorationModel.SourceCount() << " sources written to model-restore.txt .\n";

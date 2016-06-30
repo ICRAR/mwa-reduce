@@ -123,7 +123,7 @@ public:
 	void GetSpectrum(ModelComponent& component) const
 	{
 		component = _component;
-		SpectralEnergyDistribution sed;
+		MeasuredSED sed;
 		for(size_t ch=0; ch!=_bandData->ChannelCount(); ++ch)
 		{
 			Measurement m;

@@ -1,19 +1,61 @@
-#include "banddata.h"
-#include "imagecoordinates.h"
 #include "areaset.h"
-#include "loghistogram.h"
+#include "banddata.h"
 #include "beamevaluator.h"
-#include "uvector.h"
+#include "imagecoordinates.h"
+#include "loghistogram.h"
 #include "rmsynthesis.h"
+#include "uvector.h"
 
-#include "model/model.h"
 #include "model/areaparser.h"
+#include "model/model.h"
+#include "model/powerlawsed.h"
+#include "fitsreader.h"
+#include "matrix2x2.h"
+#include "gnuplot.h"
+#include "spectrumft.h"
+#include "ndppp.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include <iostream>
 #include <fstream>
+#include <random>
 #include <set>
+
+std::string getSagecalSourceName(const ModelSource& s, const ModelComponent& c, size_t compIndex)
+{
+	std::stringstream str;
+	switch(c.Type())
+	{
+		case ModelComponent::PointSource:
+			str << std::string("P_") << s.Name() << "_C" << compIndex;
+			return str.str();
+		case ModelComponent::GaussianSource:
+			str << std::string("G_") << s.Name() << "_C" << compIndex;
+			return str.str();
+		default:
+			throw std::runtime_error("Invalid component type");
+	}
+}
+
+void readImage(ao::uvector<double>& image, FitsReader& templateReader, const std::string& filename)
+{
+	FitsReader reader(filename);
+	size_t
+		width = reader.ImageWidth(),
+		height = reader.ImageHeight();
+	if(width != templateReader.ImageWidth() || height != templateReader.ImageHeight())
+		throw std::runtime_error("Beam images have different sizes");
+	image.resize(width*height);
+	reader.Read(image.data());
+}
+
+bool compareWithBeam(const ModelSource& lhs, const ModelSource& rhs)
+{
+	double lhsVal = *static_cast<double*>(lhs.UserData());
+	double rhsVal = *static_cast<double*>(rhs.UserData());
+	return lhsVal < rhsVal;
+}
 
 class IsApparentLessBright
 {
@@ -56,26 +98,33 @@ int main(int argc, char *argv[])
 	if(argc == 1)
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
-		"spectral density function. Usage:\n"
-		"\tsdf [-p] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tapp <ms> <threshold>] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [<more models>..] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-appsort <ms>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [<model> [<more models...>]] [-delnans] [-trim <lownch> <highnch>]\n";
+		"spectral energy distribution. Usage:\n"
+		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-list] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] <model> [<more models...>]\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, outputRMPlot = false, outputCsv = false, outputSedCsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false;
+	bool outputPlot = false, doFT = false, outputRMPlot = false, outputCsv = false, outputSICsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, applyIndexThreshold = false, applyComponentThreshold = false, applyClusterThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false, outputList = false;
 	bool setPolarization[4] = {false, false, false, false};
-	size_t trimLoCh = 0, trimHiCh = 0;
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
 	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
-	size_t newChannelCount = 0, logNlogSBinCount = 0;
-	std::string outputModel, collectName, appThresholdMS, appSortMS, csvFilename, sedCsvFilename, plotTitle;
-	bool nearFilter = false, scalePeak = false, scaleSource = false, doCollect = false, doSort = false, doAppSort = false;
-	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0;
+	size_t newChannelCount = 0, logNlogSBinCount = 0, sagecalFirstClusterChunkSize = 1;
+	std::string outputModel, collectName, appThresholdMS, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, skyModelFilename, sortBeamPrefix;
+	bool nearFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false;
+	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0, setFrequencyValue = 0.0, powerSumLimit = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
 	bool excludeArea = false, logNlogS = false, sourceStats = false;
 	std::unique_ptr<AreaSet> areaSet;
-	size_t rndN = 0;
+	size_t rndN = 0, minMeasurements = 0, thresholdIndex = 0;
 	double rndRA = 0.0, rndDec = 0.0, rndDist = 0.0;
+	bool doSearch = false;
+	size_t searchCount = 3;
+	double searchRA = 0.0, searchDec = 0.0;
+	size_t simUniformN = 0;
+	double simUniformRa=0.0, simUniformDec=0.0, simUniformDist=0.0, simUniformFlux=0.0;
+	double simPopulationRa=0.0, simPopulationDec=0.0, simPopulationDist=0.0, simPopulationFluxLo=0.0, simPopulationFluxHi=0.0;
+	
+	std::string selectSourceName;
 	while(argi!=argc && argv[argi][0]=='-')
 	{
 		const std::string option(&argv[argi][1]);
@@ -93,10 +142,20 @@ int main(int argc, char *argv[])
 			++argi;
 			outputCsv = true;
 			csvFilename = argv[argi];
-		} else if(option == "sedcsv") {
+		} else if(option == "si-csv") {
 			++argi;
-			outputSedCsv = true;
-			sedCsvFilename = argv[argi];
+			outputSICsv = true;
+			csvFilename = argv[argi];
+		} else if(option == "list") {
+			outputList = true;
+		} else if(option == "search") {
+			++argi;
+			searchCount = atoi(argv[argi]);
+			++argi;
+			searchRA = RaDecCoord::ParseRA(argv[argi]);
+			++argi;
+			searchDec = RaDecCoord::ParseDec(argv[argi]);
+			doSearch = true;
 		} else if(option == "near")
 		{
 			++argi;
@@ -129,16 +188,24 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			scale = atof(argv[argi]);
-		} else if(option == "sp")
+		} else if(option == "sp") // scale w.r.t. peak flux
 		{
 			scalePeak = true;
 			++argi; scalePeakA = atof(argv[argi]);
 			++argi; scaleFreqA = atof(argv[argi]) * 1000000.0;
 			++argi; scalePeakB = atof(argv[argi]);
 			++argi; scaleFreqB = atof(argv[argi]) * 1000000.0;
-		} else if(option == "sc")
+		} else if(option == "sc") // scale w.r.t. whole source flux
 		{
 			scaleSource = true;
+			++argi; scalePeakA = atof(argv[argi]);
+			++argi; scaleFreqA = atof(argv[argi]) * 1000000.0;
+			++argi; scalePeakB = atof(argv[argi]);
+			++argi; scaleFreqB = atof(argv[argi]) * 1000000.0;
+		} else if(option == "sc-si") // scale w.r.t. whole source flux
+		{
+			scaleSource = true;
+			scaleWithSI = true;
 			++argi; scalePeakA = atof(argv[argi]);
 			++argi; scaleFreqA = atof(argv[argi]) * 1000000.0;
 			++argi; scalePeakB = atof(argv[argi]);
@@ -178,6 +245,21 @@ int main(int argc, char *argv[])
 			++argi;
 			appThreshold = atof(argv[argi]);
 			applyAppThreshold = true;
+		} else if(option == "t-index")
+		{
+			++argi;
+			thresholdIndex = atoi(argv[argi]);
+			applyIndexThreshold = true;
+		} else if(option == "tc")
+		{
+			++argi;
+			threshold = atof(argv[argi]);
+			applyComponentThreshold = true;
+		} else if(option == "tcl")
+		{
+			++argi;
+			threshold = atof(argv[argi]);
+			applyClusterThreshold = true;
 		} else if(option == "r")
 		{
 			++argi;
@@ -203,11 +285,10 @@ int main(int argc, char *argv[])
 		} else if(option == "sort")
 		{
 			doSort = true;
-		} else if(option == "appsort")
+		} else if(option == "sortbeam")
 		{
-			doAppSort = true;
 			++argi;
-			appSortMS = argv[argi];
+			sortBeamPrefix = argv[argi];
 		} else if(option == "without" || option == "only")
 		{
 			excludeArea = (option == "without");
@@ -228,12 +309,56 @@ int main(int argc, char *argv[])
 		} else if(option == "delnans")
 		{
 			delNaNs = true;
-		} else if(option == "trim")
+		} else if(option == "plotft")
+		{
+			doFT = true;
+		} else if(option == "setfrequency")
 		{
 			++argi;
-			trimLoCh = atoi(argv[argi]);
+			setFrequency = true;
+			setFrequencyValue = atof(argv[argi]);
+		} else if(option == "min-measurements")
+		{
 			++argi;
-			trimHiCh = atoi(argv[argi]);
+			minMeasurements = atoi(argv[argi]);
+		} else if(option == "sagecal")
+		{
+			++argi;
+			sagecalPrefix = argv[argi];
+			++argi;
+			sagecalFirstClusterChunkSize = atoi(argv[argi]);
+		} else if(option == "skymodel")
+		{
+			++argi;
+			skyModelFilename = argv[argi];
+		} else if(option == "toapp")
+		{
+			++argi;
+			toAppBeamPrefix = argv[argi];
+		} else if(option == "select")
+		{
+			++argi;
+			selectSourceName = argv[argi];
+		} else if(option == "powersum")
+		{
+			++argi;
+			powerSumLimit = atof(argv[argi]);
+		} else if(option == "simuniform")
+		{
+			simUniformN = atoi(argv[argi+1]);
+			simUniformRa = RaDecCoord::ParseRA(argv[argi+2]);
+			simUniformDec = RaDecCoord::ParseDec(argv[argi+3]);
+			simUniformDist = atof(argv[argi+4]) * (M_PI/180.0);
+			simUniformFlux = atof(argv[argi+5]);
+			argi+=5;
+		} else if(option == "simpopulation")
+		{
+			simPopulationRa = RaDecCoord::ParseRA(argv[argi+1]);
+			simPopulationDec = RaDecCoord::ParseDec(argv[argi+2]);
+			simPopulationDist = atof(argv[argi+3]) * (M_PI/180.0);
+			simPopulationFluxLo = atof(argv[argi+4]);
+			simPopulationFluxHi = atof(argv[argi+5]);
+			argi+=5;
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
@@ -263,8 +388,10 @@ int main(int argc, char *argv[])
 		{
 			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 			{
-				SpectralEnergyDistribution &sed = compPtr->SED();
-				for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+				if(!compPtr->HasMeasuredSED())
+					throw std::runtime_error("Not a measured SED");
+				MeasuredSED &sed = compPtr->MSED();
+				for(MeasuredSED::iterator m=sed.begin(); m!=sed.end(); ++m)
 				{
 					for(size_t p=0; p!=4; ++p)
 						m->second.SetFluxDensityFromIndex(p, m->second.FluxDensityFromIndex(p) * fact);
@@ -273,41 +400,176 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+	if(simUniformN != 0 || simPopulationFluxHi != 0.0)
+	{
+		size_t simN;
+		double simRa, simDec, simDist;
+		// According to Franzen et al. (2016) at 154 MHz:
+		// dN / dS = 6998 S^(-154) Jy^-1 / Sr^-1
+		double popExp = -1.54, popFac = 6998.0;
+		bool samplePL;
+		if(simUniformN != 0)
+		{
+			simRa = simUniformRa;
+			simDec = simUniformDec;
+			simDist = simUniformDist;
+			simN = simUniformN;
+			samplePL = false;
+		}
+		else {
+			simRa = simPopulationRa;
+			simDec = simPopulationDec;
+			simDist = simPopulationDist;
+			double area = M_PI * simPopulationDist * simPopulationDist;
+			// integration of dN / dS over [lo, hi] :
+			simN = round(area * popFac / (popExp+1.0) * (pow(simPopulationFluxHi, (popExp+1.0)) - pow(simPopulationFluxLo, (popExp+1.0))));
+			std::cout << "N = " << simN << "\n";
+			samplePL = true;
+		}
+		
+		std::mt19937 rnd;
+		std::uniform_real_distribution<double> dist(0.0, 1.0);
+		for(size_t i=0; i!=simN; ++i)
+		{
+			double ra, dec;
+			do {
+				ra = dist(rnd) * 2.0*M_PI;
+				dec = acos(2.0*dist(rnd) - 1.0);
+				// normalize dec to -90 to 90 deg.
+				if(dec > 0.5*M_PI) {
+					dec = 0.5*M_PI - dec;
+				}
+				else if(dec < -0.5*M_PI) {
+					dec = -0.5*M_PI - dec;
+				}
+			} while(ImageCoordinates::AngularDistance(ra, dec, simRa, simDec) > simDist);
+			ModelComponent comp;
+			comp.SetPosRA(ra);
+			comp.SetPosDec(dec);
+			PowerLawSED sed;
+			
+			double flux;
+			if(samplePL)
+			{
+				double u = dist(rnd);
+				double loTerm = pow(simPopulationFluxLo, popExp+1.0);
+				flux = pow((pow(simPopulationFluxHi, popExp+1.0) - loTerm) * u + loTerm, 1.0/(popExp+1.0));
+				std::cout << ra << "," << dec << ": " << flux << "Jy\n";
+			}
+			else {
+				flux = simUniformFlux;
+				std::cout << ra << "," << dec << "\n";
+			}
+			
+			double b[] = {flux, 0.0, 0.0, 0.0};
+			ao::uvector<double> si(1, -0.7);
+			sed.SetData(150.0e6, b, si);
+			comp.SetSED(sed);
+			ModelSource source;
+			source.AddComponent(comp);
+			std::ostringstream s;
+			s << "sim" << (i+1);
+			source.SetName(s.str());
+			model.AddSource(source);
+		}
+	}
+	
+	if(!selectSourceName.empty())
+	{
+		size_t index = model.FindSourceIndex(selectSourceName);
+		ModelSource source = model.Source(index);
+		Model newModel;
+		newModel.AddSource(source);
+		model = newModel;
+	}
+	
 	if(delNaNs)
 	{
 		for(Model::iterator s=model.begin(); s!=model.end(); ++s)
 		{
 			for(ModelSource::iterator c=s->begin(); c!=s->end(); ++c)
-				c->SED().RemoveInvalidMeasurements();
+			{
+				if(c->HasMeasuredSED())
+					c->MSED().RemoveInvalidMeasurements();
+			}
 		}
 	}
 	if(optimize)
 		model.Optimize();
 	if(doSort)
 		model.Sort();
-	if(doAppSort)
+	if(!sortBeamPrefix.empty())
 	{
-		casacore::MeasurementSet ms(appSortMS);
-		BeamEvaluator beam(ms);
-		BandData bandData(ms.spectralWindow());
-		IsApparentLessBright compareFunc;
-		compareFunc._beam = &beam;
-		compareFunc._frequency = bandData.CentreFrequency();
-		std::vector<ModelSource> temp(model.begin(), model.end());
-		std::sort(temp.rbegin(), temp.rend(), compareFunc);
-		
-		Model tempModel;
-		for(std::vector<ModelSource>::const_iterator s=temp.begin(); s!=temp.end(); ++s)
+		std::vector<ao::uvector<double>> images(8);
+		FitsReader templateReader(sortBeamPrefix+"-xxr.fits");
+		readImage(images[0], templateReader, sortBeamPrefix+"-xxr.fits");
+		readImage(images[1], templateReader, sortBeamPrefix+"-xxi.fits");
+		readImage(images[2], templateReader, sortBeamPrefix+"-xyr.fits"),
+		readImage(images[3], templateReader, sortBeamPrefix+"-xyi.fits"),
+		readImage(images[4], templateReader, sortBeamPrefix+"-yxr.fits"),
+		readImage(images[5], templateReader, sortBeamPrefix+"-yxi.fits"),
+		readImage(images[6], templateReader, sortBeamPrefix+"-yyr.fits"),
+		readImage(images[7], templateReader, sortBeamPrefix+"-yyi.fits");
+		size_t width = templateReader.ImageWidth(), height = templateReader.ImageHeight();
+		double refFreq = templateReader.Frequency();
+		std::vector<double> appFluxes(model.SourceCount());
+		for(size_t i=0; i!=model.SourceCount(); ++i)
 		{
-			std::vector<ModelComponent> components(s->begin(), s->end());
-			std::sort(components.rbegin(), components.rend(), compareFunc);
-			ModelSource sortedSource(*s);
-			sortedSource.ClearComponents();
-			for(std::vector<ModelComponent>::const_iterator c=components.begin(); c!=components.end(); ++c)
-				sortedSource.AddComponent(*c);
-			tempModel.AddSource(sortedSource);
+			double totalAbsFlux = 0.0;
+			for(ModelSource::iterator compPtr = model.Source(i).begin(); compPtr!=model.Source(i).end(); ++compPtr)
+			{
+				const SpectralEnergyDistribution& sed = compPtr->SED();
+				double stokesFlux[4];
+				for(size_t p=0; p!=4; ++p)
+					stokesFlux[p] = sed.FluxAtFrequencyFromIndex(refFreq, p);
+				
+				int x, y;
+				long double l, m;
+				ImageCoordinates::RaDecToLM<long double>(compPtr->PosRA(), compPtr->PosDec(), templateReader.PhaseCentreRA(), templateReader.PhaseCentreDec(), l, m);
+				ImageCoordinates::LMToXY<long double>(l, m, templateReader.PixelSizeX(), templateReader.PixelSizeY(), width, height, x, y);
+				
+				if(x < 0 || y < 0 || x >= int(width) || y >= int(height))
+					throw std::runtime_error("Source in model is outside image!");
+				std::complex<double> beamValues[4];
+				for(size_t p=0; p!=4; ++p)
+				{
+					beamValues[p] = std::complex<double>(
+						images[p*2]  [y*height + x],
+						images[p*2+1][y*height + x]);
+				}
+				std::complex<double> linearFlux[4], tempValues[4];
+				Polarization::StokesToLinear(stokesFlux, linearFlux);
+				Matrix2x2::ATimesB(tempValues, beamValues, linearFlux);
+				Matrix2x2::ATimesHermB(linearFlux, tempValues, beamValues);
+				Polarization::LinearToStokes(linearFlux, stokesFlux);
+				totalAbsFlux += stokesFlux[0];
+			}
+			
+			ModelSource& s = model.Source(i);
+			appFluxes[i] = totalAbsFlux;
+			s.SetUserData(&appFluxes[i]);
 		}
-		model = tempModel;
+		
+		model.Sort(compareWithBeam);
+	}
+	
+	if(doSearch)
+	{
+		std::map<double, const ModelSource*> sortedSources;
+		for(size_t i=0; i!=model.SourceCount(); ++i)
+		{
+			const ModelSource& source = model.Source(i);
+			double ra = source.MeanRA(), dec = source.MeanDec();
+			double dist = ImageCoordinates::AngularDistance(ra, dec, searchRA, searchDec);
+			sortedSources.insert(std::pair<double,const ModelSource*>(dist, &source));
+		}
+		Model newModel;
+		size_t count = 0;
+		for(std::map<double, const ModelSource*>::const_iterator i=sortedSources.begin(); i!=sortedSources.end() && count < searchCount; ++i, ++count)
+		{
+			newModel.AddSource(*i->second);
+		}
+		model = newModel;
 	}
 	
 	if(areaSet != 0)
@@ -325,24 +587,127 @@ int main(int argc, char *argv[])
 			model.RemoveSource(*i);
 	}
 	
+	if(!toAppBeamPrefix.empty())
+	{
+		std::vector<ao::uvector<double>> images(8);
+		FitsReader templateReader(toAppBeamPrefix+"-xxr.fits");
+		readImage(images[0], templateReader, toAppBeamPrefix+"-xxr.fits");
+		readImage(images[1], templateReader, toAppBeamPrefix+"-xxi.fits");
+		readImage(images[2], templateReader, toAppBeamPrefix+"-xyr.fits"),
+		readImage(images[3], templateReader, toAppBeamPrefix+"-xyi.fits"),
+		readImage(images[4], templateReader, toAppBeamPrefix+"-yxr.fits"),
+		readImage(images[5], templateReader, toAppBeamPrefix+"-yxi.fits"),
+		readImage(images[6], templateReader, toAppBeamPrefix+"-yyr.fits"),
+		readImage(images[7], templateReader, toAppBeamPrefix+"-yyi.fits");
+		size_t width = templateReader.ImageWidth(), height = templateReader.ImageHeight();
+		double refFreq = templateReader.Frequency();
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			std::cout << sourcePtr->Name() << ": " << sourcePtr->TotalFlux(refFreq, Polarization::StokesI) << " -> ";
+			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			{
+				const SpectralEnergyDistribution& sed = compPtr->SED();
+				double stokesFlux[4];
+				
+				for(size_t p=0; p!=4; ++p)
+					stokesFlux[p] = sed.FluxAtFrequencyFromIndex(refFreq, p);
+				
+				long double l, m;
+				ImageCoordinates::RaDecToLM<long double>(compPtr->PosRA(), compPtr->PosDec(), templateReader.PhaseCentreRA(), templateReader.PhaseCentreDec(), l, m);
+				
+				int x, y;
+				ImageCoordinates::LMToXY<long double>(l, m, templateReader.PixelSizeX(), templateReader.PixelSizeY(), width, height, x, y);
+				
+				if(x < 0 || y < 0 || x >= int(width) || y >= int(height))
+					throw std::runtime_error("Source in model is outside image!");
+				std::complex<double> beamValues[4];
+				for(size_t p=0; p!=4; ++p)
+				{
+					beamValues[p] = std::complex<double>(
+						images[p*2]  [y*height + x],
+						images[p*2+1][y*height + x]);
+				}
+				
+				std::complex<double> linearFlux[4], tempValues[4];
+				Polarization::StokesToLinear(stokesFlux, linearFlux);
+				Matrix2x2::ATimesB(tempValues, beamValues, linearFlux);
+				Matrix2x2::ATimesHermB(linearFlux, tempValues, beamValues);
+				Polarization::LinearToStokes(linearFlux, stokesFlux);
+				PowerLawSED plSED;
+				ao::uvector<double> siTerms;
+				plSED.SetData(refFreq, stokesFlux, siTerms);
+				compPtr->SetSED(plSED);
+			}
+			std::cout << sourcePtr->TotalFlux(refFreq, Polarization::StokesI) << '\n';
+		}
+	}
+	
+	if(applyIndexThreshold)
+	{
+		size_t index = 0;
+		Model temp;
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			if(index < thresholdIndex)
+			{
+				temp.AddSource(*sourcePtr);
+			}
+			else break;
+			++index;
+		}
+		model = temp;
+	}
+	
 	if(applyThreshold)
 	{
 		Model temp;
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			const SpectralEnergyDistribution& sed = sourcePtr->Peak().SED();
-			double flux = sourcePtr->TotalFlux(sed.LowestFrequency(), sed.HighestFrequency(), Polarization::StokesI);
-			if(!std::isfinite(flux))
-			{
-				long double f, e;
-				sed.FitPowerlaw(f, e, Polarization::StokesI);
-				double lowFlux = f * std::pow(sed.LowestFrequency(), e);
-				double hiFlux = f * std::pow(sed.HighestFrequency(), e);
-				flux = (lowFlux + hiFlux) * 0.5;
-			}
-
-			if(flux >= threshold)
+			double totalFlux = sourcePtr->TotalFlux(Polarization::StokesI);
+			if(totalFlux >= threshold)
 				temp.AddSource(*sourcePtr);
+		}
+		model = temp;
+	}
+	
+	if(applyComponentThreshold)
+	{
+		Model temp;
+		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			ModelSource newSource = *sourcePtr;
+			newSource.ClearComponents();
+			for(ModelSource::const_iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			{
+				if(compPtr->HasSED())
+				{
+					const SpectralEnergyDistribution& sed = compPtr->SED();
+					long double refFreq = sed.ReferenceFrequencyHz();
+					long double flux = sed.FluxAtFrequency(refFreq, Polarization::StokesI);
+					if(std::isfinite(flux) && flux >= threshold)
+						newSource.AddComponent(*compPtr);
+				}
+			}
+			temp.AddSource(newSource);
+		}
+		model = temp;
+	}
+	
+	if(applyClusterThreshold)
+	{
+		Model temp;
+		std::vector<std::string> clusterNames;
+		model.GetClusterNames(clusterNames);
+		for(std::vector<std::string>::const_iterator clName=clusterNames.begin(); clName!=clusterNames.end(); ++clName)
+		{
+			SourceGroup group;
+			model.GetSourcesInCluster(*clName, group);
+			
+			if(group.TotalFlux(Polarization::StokesI) >= threshold)
+			{
+				for(SourceGroup::const_iterator s=group.begin(); s!=group.end(); ++s)
+					temp.AddSource(*s);
+			}
 		}
 		model = temp;
 	}
@@ -358,10 +723,10 @@ int main(int argc, char *argv[])
 			double stokesFlux[4];
 			for(size_t p=0; p!=4; ++p)
 			{
-				const SpectralEnergyDistribution& sed = sourcePtr->Peak().SED();
 				stokesFlux[p] = sourcePtr->TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), Polarization::IndexToStokes(p));
-				if(!std::isfinite(stokesFlux[p]))
+				if(sourcePtr->Peak().HasMeasuredSED() && !std::isfinite(stokesFlux[p]))
 				{
+					const MeasuredSED& sed = sourcePtr->Peak().MSED();
 					long double f, e;
 					sed.FitPowerlaw(f, e, Polarization::IndexToStokes(p));
 					double lowFlux = f * std::pow(bandData.LowestFrequency(), e);
@@ -391,7 +756,7 @@ int main(int argc, char *argv[])
 			ModelComponent component;
 			component.SetPosRA(ra);
 			component.SetPosDec(dec);
-			component.SetSED(SpectralEnergyDistribution(1.0, 150000000.0));
+			component.SetSED(MeasuredSED(1.0, 150000000.0));
 			ModelSource source;
 			source.AddComponent(component);
 			std::ostringstream name;
@@ -405,8 +770,13 @@ int main(int argc, char *argv[])
 		for(size_t i = model.SourceCount(); i>0; --i)
 		{
 			ModelSource& source = model.Source(i-1);
-			double dist = ImageCoordinates::AngularDistance(source.Peak().PosRA(), source.Peak().PosDec(), nearFilterRA, nearFilterDec);
-			if(dist > nearFilterDist)
+			bool isNear = false;
+			if(source.ComponentCount() > 0)
+			{
+				double dist = ImageCoordinates::AngularDistance(source.Peak().PosRA(), source.Peak().PosDec(), nearFilterRA, nearFilterDec);
+				isNear = (dist <= nearFilterDist);
+			}
+			if(!isNear)
 				model.RemoveSource(i-1);
 		}
 	}
@@ -426,66 +796,69 @@ int main(int argc, char *argv[])
 		model.AddSource(newSource);
 	}
 	
-	for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+	if(powerlaw || resample || resampleByAveraging)
 	{
-		for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			const SpectralEnergyDistribution &sed = compPtr->SED();
-			const long double startFreq = sed.LowestFrequency();
-			const long double endFreq = sed.HighestFrequency();
-			if(powerlaw)
+			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 			{
-				long double e, f;
-				SpectralEnergyDistribution newSED;
-				Measurement m1, m2;
-				m1.SetFrequencyHz(startFreq);
-				m2.SetFrequencyHz(endFreq);
-				
-				for(size_t p=0; p!=4; ++p)
+				const MeasuredSED &sed = compPtr->MSED();
+				const long double startFreq = sed.LowestFrequency();
+				const long double endFreq = sed.HighestFrequency();
+				if(powerlaw)
 				{
-					sed.FitPowerlaw(f, e, Polarization::IndexToStokes(p));
-					m1.SetFluxDensityFromIndex(p, f * std::pow(startFreq, e));
-					m2.SetFluxDensityFromIndex(p, f * std::pow(endFreq, e));
-				}
-				newSED.AddMeasurement(m1);
-				newSED.AddMeasurement(m2);
-				compPtr->SetSED(newSED);
-			}
-			else if(resample || resampleByAveraging)
-			{
-				SpectralEnergyDistribution newSED;
-				const long double newBandSize = (endFreq - startFreq) / newChannelCount;
-				for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
-				{
-					long double chStartFreq = startFreq + newBandSize*newChIndex;
-					long double chEndFreq = startFreq + newBandSize*(newChIndex+1.0);
+					long double e, f;
+					MeasuredSED newSED;
+					Measurement m1, m2;
+					m1.SetFrequencyHz(startFreq);
+					m2.SetFrequencyHz(endFreq);
 					
-					Measurement m;
-					m.SetFrequencyHz((chStartFreq+chEndFreq)*0.5);
-					
-					long double flux;
-					if(newChannelCount >= sed.MeasurementCount())
-						flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, Polarization::StokesI);
-					else if(resampleByAveraging)
-						flux = sed.AverageFlux(chStartFreq, chEndFreq, Polarization::StokesI);
-					else 
-						flux = sed.IntegratedFlux(chStartFreq, chEndFreq, Polarization::StokesI);
-					m.SetFluxDensity(Polarization::StokesI, flux);
-					
-					PolarizationEnum pols[3] = { Polarization::StokesQ, Polarization::StokesU, Polarization::StokesV };
-					for(size_t p=0; p!=3; ++p)
+					for(size_t p=0; p!=4; ++p)
 					{
+						sed.FitPowerlaw(f, e, Polarization::IndexToStokes(p));
+						m1.SetFluxDensityFromIndex(p, f * std::pow(startFreq, e));
+						m2.SetFluxDensityFromIndex(p, f * std::pow(endFreq, e));
+					}
+					newSED.AddMeasurement(m1);
+					newSED.AddMeasurement(m2);
+					compPtr->SetSED(newSED);
+				}
+				else if(resample || resampleByAveraging)
+				{
+					MeasuredSED newSED;
+					const long double newBandSize = (endFreq - startFreq) / newChannelCount;
+					for(size_t newChIndex=0; newChIndex!=newChannelCount; ++newChIndex)
+					{
+						long double chStartFreq = startFreq + newBandSize*newChIndex;
+						long double chEndFreq = startFreq + newBandSize*(newChIndex+1.0);
+						
+						Measurement m;
+						m.SetFrequencyHz((chStartFreq+chEndFreq)*0.5);
+						
+						long double flux;
 						if(newChannelCount >= sed.MeasurementCount())
-							flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, pols[p]);
-						else
-							flux = sed.AverageFlux(chStartFreq, chEndFreq, pols[p]);
-						m.SetFluxDensity(pols[p], flux);
+							flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, Polarization::StokesI);
+						else if(resampleByAveraging)
+							flux = sed.AverageFlux(chStartFreq, chEndFreq, Polarization::StokesI);
+						else 
+							flux = sed.IntegratedFlux(chStartFreq, chEndFreq, Polarization::StokesI);
+						m.SetFluxDensity(Polarization::StokesI, flux);
+						
+						PolarizationEnum pols[3] = { Polarization::StokesQ, Polarization::StokesU, Polarization::StokesV };
+						for(size_t p=0; p!=3; ++p)
+						{
+							if(newChannelCount >= sed.MeasurementCount())
+								flux = sed.FluxAtFrequency((chStartFreq+chEndFreq)*0.5, pols[p]);
+							else
+								flux = sed.AverageFlux(chStartFreq, chEndFreq, pols[p]);
+							m.SetFluxDensity(pols[p], flux);
+						}
+						
+						newSED.AddMeasurement(m);
 					}
 					
-					newSED.AddMeasurement(m);
+					compPtr->SetSED(newSED);
 				}
-				
-				compPtr->SetSED(newSED);
 			}
 		}
 	}
@@ -498,8 +871,8 @@ int main(int argc, char *argv[])
 			{
 				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 				{
-					SpectralEnergyDistribution &sed = compPtr->SED();
-					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+					MeasuredSED &sed = compPtr->MSED();
+					for(MeasuredSED::iterator m=sed.begin(); m!=sed.end(); ++m)
 					{
 						m->second.SetFluxDensityFromIndex(p, setPolFlux[p]);
 					}
@@ -512,8 +885,8 @@ int main(int argc, char *argv[])
 			{
 				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 				{
-					SpectralEnergyDistribution &sed = compPtr->SED();
-					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+					MeasuredSED &sed = compPtr->MSED();
+					for(MeasuredSED::iterator m=sed.begin(); m!=sed.end(); ++m)
 					{
 						m->second.SetFluxDensityFromIndex(p, m->second.FluxDensityFromIndex(p) * scale);
 					}
@@ -549,22 +922,53 @@ int main(int argc, char *argv[])
 			std::cout << " - " << factorB[0];
 			for(size_t p=1; p!=4; ++p) std::cout << ',' << factorB[p];
 			std::cout << '\n';
-			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			if(scaleWithSI)
 			{
-				Measurement measA, measB;
-				measA.SetFrequencyHz(scaleFreqA);
-				measB.SetFrequencyHz(scaleFreqB);
-				for(size_t p=0; p!=4; ++p)
+				NonLinearPowerLawFitter fitter;
+				fitter.AddDataPoint(scaleFreqA, scalePeakA);
+				fitter.AddDataPoint(scaleFreqB, scalePeakB);
+				double e, f;
+				fitter.FastFit(e, f);
+				double si = e;
+				std::cout << "Spectral index=" << si << '\n';
+				ao::uvector<double> sis(1, si);
+				double freq = 0.5*(scaleFreqA+scaleFreqB);
+				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 				{
-					long double oldFluxA = compPtr->SED().FluxAtFrequency(scaleFreqA, Polarization::IndexToStokes(p));
-					long double oldFluxB = compPtr->SED().FluxAtFrequency(scaleFreqB, Polarization::IndexToStokes(p));
-					measA.SetFluxDensityFromIndex(p, oldFluxA*factorA[p]);
-					measB.SetFluxDensityFromIndex(p, oldFluxB*factorB[p]);
+					double brightnessVec[4];
+					for(size_t p=0; p!=4; ++p)
+					{
+						long double oldFluxA = compPtr->SED().FluxAtFrequency(scaleFreqA, Polarization::IndexToStokes(p));
+						long double oldFluxB = compPtr->SED().FluxAtFrequency(scaleFreqB, Polarization::IndexToStokes(p));
+						NonLinearPowerLawFitter fitter2;
+						fitter2.AddDataPoint(scaleFreqA, oldFluxA*factorA[p]);
+						fitter2.AddDataPoint(scaleFreqB, oldFluxB*factorB[p]);
+						fitter2.FastFit(e, f);
+						brightnessVec[p] = NonLinearPowerLawFitter::Evaluate(f, e, freq);
+					}
+					PowerLawSED sed;
+					sed.SetData(freq, brightnessVec, sis);
+					compPtr->SetSED(sed);
 				}
-				SpectralEnergyDistribution sed;
-				sed.AddMeasurement(measA);
-				sed.AddMeasurement(measB);
-				compPtr->SetSED(sed);
+			}
+			else {
+				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+				{
+					Measurement measA, measB;
+					measA.SetFrequencyHz(scaleFreqA);
+					measB.SetFrequencyHz(scaleFreqB);
+					for(size_t p=0; p!=4; ++p)
+					{
+						long double oldFluxA = compPtr->SED().FluxAtFrequency(scaleFreqA, Polarization::IndexToStokes(p));
+						long double oldFluxB = compPtr->SED().FluxAtFrequency(scaleFreqB, Polarization::IndexToStokes(p));
+						measA.SetFluxDensityFromIndex(p, oldFluxA*factorA[p]);
+						measB.SetFluxDensityFromIndex(p, oldFluxB*factorB[p]);
+					}
+					MeasuredSED sed;
+					sed.AddMeasurement(measA);
+					sed.AddMeasurement(measB);
+					compPtr->SetSED(sed);
+				}
 			}
 		}
 	}
@@ -574,15 +978,49 @@ int main(int argc, char *argv[])
 		model.SetUnpolarized();
 	}
 	
-	if(trimHiCh!=0 || trimLoCh!=0)
+	if(minMeasurements != 0)
+	{
+		Model newModel;
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			bool isValid = true;
+			size_t measCount = 0;
+			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			{
+				if(!compPtr->HasMeasuredSED())
+					throw std::runtime_error("min-measurements requires measured SEDs");
+				MeasuredSED& sed = compPtr->MSED();
+				if(sed.MeasurementCount() < minMeasurements)
+				{
+					isValid = false;
+					measCount = sed.MeasurementCount();
+				}
+			}
+			if(isValid)
+				newModel.AddSource(*sourcePtr);
+			else {
+				std::cout << "Removing source " << sourcePtr->Name() << ": a component has only " << measCount << " measurements.\n";
+			}
+		}
+		model = newModel;
+	}
+	
+	if(setFrequency)
 	{
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
 			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 			{
-				SpectralEnergyDistribution& sed = compPtr->SED();
-				sed.TrimLowestChannels(trimLoCh);
-				sed.TrimHighestChannels(trimHiCh);
+				if(!compPtr->HasMeasuredSED())
+					throw std::runtime_error("setfrequency requires measured SEDs");
+				MeasuredSED& sed = compPtr->MSED();
+				if(sed.MeasurementCount()!=1)
+					throw std::runtime_error("setfrequency requires one measurement per component");
+				Measurement m = sed.begin()->second;
+				m.SetFrequencyHz(setFrequencyValue*1e6);
+				MeasuredSED newSED;
+				newSED.AddMeasurement(m);
+				compPtr->SetSED(newSED);
 			}
 		}
 	}
@@ -663,6 +1101,128 @@ int main(int argc, char *argv[])
 			"1 with lines lw 2.0 lt 3 title \"Euclidean\"\n";
 	}
 	
+	if(powerSumLimit != 0.0)
+	{
+		double sum = 0.0, powerSum = 0.0;
+		Model sorted(model);
+		sorted.Sort();
+		bool limitReached = false;
+		size_t count = 0;
+		for(const ModelSource& s : sorted)
+		{
+			++count;
+			const SpectralEnergyDistribution& sed = s.Component(0).SED();
+			long double f = sed.FluxAtFrequency(sed.ReferenceFrequencyHz(), Polarization::StokesI);
+			sum += f;
+			powerSum += f*f;
+			if(!limitReached && powerSum >= powerSumLimit)
+			{
+				limitReached = true;
+				std::cout << count << " sources required to reach power sum limit of " << powerSumLimit << " Jy^2.\n";
+			}
+		}
+		std::cout << "Total flux sum = " << sum << " Jy.\n";
+		std::cout << "Total power sum = " << powerSum << " Jy^2.\n";
+	}
+	
+	if(!skyModelFilename.empty())
+	{
+		NDPPP::SaveSkyModel(skyModelFilename, model);
+	}
+	
+	if(!sagecalPrefix.empty())
+	{
+		std::ofstream sagecalSourceFile(sagecalPrefix + "_model.txt");
+		std::map<std::string, std::vector<const ModelSource*>> clusters;
+		sagecalSourceFile << "## name h m s d m s I Q U V si0 si1 si2 RM eX(rad) exY(rad) PA(rad) freq0\n";
+		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
+		{
+			clusters[s->ClusterName()].push_back(&*s);
+
+			for(size_t compIndex=0; compIndex!=s->ComponentCount(); ++compIndex)
+			{
+				const ModelComponent& c = s->Component(compIndex);
+				const PowerLawSED* pl = dynamic_cast<const PowerLawSED*>(&c.SED());
+				if(pl == 0)
+					throw std::runtime_error("Expecting model with power law SEDs");
+				long double ra = c.PosRA(), dec = c.PosDec();
+				// I'm not sure this is necessary for Sagecal, but just for
+				// sure convert negative ra's to positive ones.
+				if(ra < 0.0)
+					ra += 2.0 * M_PI;
+				int raH, raM, decD, decM;
+				double raS, decS;
+				RaDecCoord::RAToHMS(ra, raH, raM, raS);
+				RaDecCoord::DecToDMS(dec, decD, decM, decS);
+				std::string cName = getSagecalSourceName(*s, c, compIndex);
+				// Note that the sagecal axes are in radians, and they're not
+				// the length of the axes, but half of that.
+				// Also, polarization angle is clockwise from North, while normal PA is
+				// anti-clockwise from East.
+				long double
+					axMaj = c.MajorAxis()*0.5,
+					axMin = c.MinorAxis()*0.5,
+					axPA = -0.5*M_PI + c.PositionAngle();
+				double refFreq, iquv[4];
+				std::vector<double> si;
+				pl->GetData(refFreq, iquv, si);
+				if(si.size() > 3)
+					throw std::runtime_error("Expecting 1-3 SI terms in model");
+				while(si.size() < 3)
+					si.push_back(0.0);
+				
+				sagecalSourceFile
+					<< cName << ' '
+					<< raH << ' ' << raM << ' ' << raS << ' '
+					<< decD << ' ' << decM << ' ' << decS << ' '
+					<< iquv[0] << ' ' << iquv[1] << ' '
+					<< iquv[2] << ' ' << iquv[3] << ' '
+					<< si[0] << ' '
+					<< si[1]/M_LN10 << ' '
+					<< si[2]/(M_LN10*M_LN10) << ' '
+					<< 0.0 << ' ' // rm
+					<< axMaj << ' ' << axMin << ' ' << axPA << ' '
+					<< refFreq << '\n';
+			}
+		}
+		std::ofstream sagecalClusterFile(sagecalPrefix + "_clustering.txt");
+		sagecalClusterFile << "## cID chunk_size source1 source2 ...\n";
+		size_t clusterId = 0;
+		bool isFirst = true;
+		// We need to traverse in original cluster order
+		std::set<std::string> clustersAdded;
+		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
+		{
+			std::string cName = s->ClusterName();
+			if(clustersAdded.count(cName) == 0)
+			{
+				clustersAdded.insert(cName);
+				if(cName.empty())
+					sagecalClusterFile << clusters.size()+1;
+				else
+					sagecalClusterFile << clusterId;
+				if(isFirst)
+				{
+					sagecalClusterFile << ' ' << sagecalFirstClusterChunkSize;
+					isFirst = false;
+				}
+				else
+					sagecalClusterFile << " 1";
+				const std::vector<const ModelSource*>& sources = clusters[cName];
+				for(std::vector<const ModelSource*>::const_iterator s=sources.begin(); s!=sources.end(); ++s)
+				{
+					for(size_t compIndex=0; compIndex!=(*s)->ComponentCount(); ++compIndex)
+					{
+						const ModelComponent& c = (*s)->Component(compIndex);
+						sagecalClusterFile << ' ' << getSagecalSourceName(**s, c, compIndex);
+					}
+				}
+				sagecalClusterFile << '\n';
+				++clusterId;
+			}
+		}
+	}
+	
 	if(outputCsv)
 	{
 		std::ofstream csvFile(csvFilename);
@@ -674,54 +1234,52 @@ int main(int argc, char *argv[])
 			const ModelSource& source = *model.begin();
 			if(source.ComponentCount() != 1)
 				std::cout << "Warning: first source has multiple components; only outputting first component.\n";
-			const SpectralEnergyDistribution &sed = source.begin()->SED();
-
-			std::vector<Measurement> measurements;
-			sed.GetMeasurements(measurements);
-			
-			for(SpectralEnergyDistribution::const_iterator iter=sed.begin(); iter!=sed.end(); ++iter)
+			if(source.begin()->HasMeasuredSED())
 			{
-				const Measurement& m = iter->second;
-				long double
-					i = m.FluxDensity(Polarization::StokesI), q = m.FluxDensity(Polarization::StokesQ),
-					u = m.FluxDensity(Polarization::StokesU), v = m.FluxDensity(Polarization::StokesV);
-				if(std::isfinite(i) && std::isfinite(q) && std::isfinite(u) && std::isfinite(v))
+				const MeasuredSED &sed = source.begin()->MSED();
+
+				std::vector<Measurement> measurements;
+				sed.GetMeasurements(measurements);
+				
+				for(MeasuredSED::const_iterator iter=sed.begin(); iter!=sed.end(); ++iter)
 				{
-					csvFile
-						<< m.FrequencyHz()*1e-6 << ','
-						<< i << ',' << q << ',' << u << ',' << v << '\n';
+					const Measurement& m = iter->second;
+					long double
+						i = m.FluxDensity(Polarization::StokesI), q = m.FluxDensity(Polarization::StokesQ),
+						u = m.FluxDensity(Polarization::StokesU), v = m.FluxDensity(Polarization::StokesV);
+					if(std::isfinite(i) && std::isfinite(q) && std::isfinite(u) && std::isfinite(v))
+					{
+						csvFile
+							<< m.FrequencyHz()*1e-6 << ','
+							<< i << ',' << q << ',' << u << ',' << v << '\n';
+					}
 				}
 			}
 		}
 	}
 	
-	if(outputSedCsv)
+	if(outputSICsv)
 	{
-		std::ofstream csvFile(sedCsvFilename);
-		csvFile << "sourcename,ra,dec";
-		const SpectralEnergyDistribution &sedExample = model.begin()->begin()->SED();
-		for(SpectralEnergyDistribution::const_iterator i=sedExample.begin(); i!=sedExample.end(); ++i)
-			csvFile << ',' << (unsigned long)(i->second.FrequencyHz());
-		csvFile << '\n';
-		std::cout << "Writing " << sedExample.MeasurementCount() << " channels to SED CSV file...\n";
-		for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
+		std::ofstream csvFile(csvFilename);
+		csvFile << "RA,Dec,Brightness,SI\n";
+		if(model.SourceCount() != 0)
 		{
-			const ModelSource& source = *s;
-			if(source.ComponentCount() != 1)
-				std::cout << "Warning: first source has multiple components; only outputting first component.\n";
-			const SpectralEnergyDistribution &sed = source.begin()->SED();
-
-			std::vector<Measurement> measurements;
-			sed.GetMeasurements(measurements);
-			csvFile << source.Name() << ',' << RaDecCoord::RAToString(source.MeanRA()) << ',' << RaDecCoord::DecToString(source.MeanDec());
-			for(SpectralEnergyDistribution::const_iterator iter=sed.begin(); iter!=sed.end(); ++iter)
+			for(Model::const_iterator s=model.begin(); s!=model.end(); ++s)
 			{
-				const Measurement& m = iter->second;
-				long double
-					i = m.FluxDensity(Polarization::StokesI);
-				csvFile << ',' << i;
+				const ModelSource& source = *s;
+				if(source.begin()->HasMeasuredSED())
+				{
+					const MeasuredSED &sed = source.GetIntegratedMSED();
+					double flux = sed.AverageFlux(Polarization::StokesI);
+					long double f, si;
+					sed.FitPowerlaw(f, si, Polarization::StokesI);
+
+					csvFile
+						<< source.MeanRA()*180.0/M_PI << ','
+						<< source.MeanDec()*180.0/M_PI << ','
+						<< flux << ',' << si << '\n';
+				}
 			}
-			csvFile << '\n';
 		}
 	}
 	
@@ -756,7 +1314,7 @@ int main(int argc, char *argv[])
 				}
 				plotStream << "\n";
 				
-				const SpectralEnergyDistribution &sed = compPtr->SED();
+				const MeasuredSED &sed = compPtr->MSED();
 				RMSynthesis rmSynth(sed);
 				rmSynth.Synthesize();
 				const ao::uvector<double>& fdf = rmSynth.FDF();
@@ -774,49 +1332,58 @@ int main(int argc, char *argv[])
 	
 	if(outputPlot)
 	{
-		std::ofstream plotStream("spectrum.plt");
-		plotStream <<
-			"set terminal postscript enhanced color\n"
-			"#set logscale xy\n"
-			"#set xrange [0.001:]\n"
-			"#set yrange [-8:2]\n"
-			"set output \"spectrum.ps\"\n"
-			"#set key bottom left\n"
-			"set xlabel \"Frequency (MHz)\"\n"
-			"set ylabel \"Flux (Jy)\"\n";
+		if(!model.Source(0).front().HasMeasuredSED())
+			throw std::runtime_error("Plotting works only with models with measured SEDs");
+		const MeasuredSED& first = model.Source(0).front().MSED();
+		double freqStart = first.LowestFrequency()*1e-6, freqEnd = first.HighestFrequency()*1e-6;
+		
+		GNUPlot plot("spectrum", "Frequency (MHz)", "Flux (Jy)", true, true);
+		plot.SetXRange(freqStart, freqEnd);
 		if(!plotTitle.empty())
-			plotStream << "set title \"" << plotTitle << "\"\n";
-		plotStream <<
-			"plot \\\n";
+			plot.SetTitle(plotTitle);
 
-		std::ofstream plotIStream("spectrum-I.plt");
-		plotIStream <<
-			"set terminal postscript enhanced color\n"
-			"set logscale y\n"
-			"#set xrange [0.001:]\n"
-			"#set yrange [-8:2]\n"
-			"set output \"spectrum-I.ps\"\n"
-			"set key bottom left\n"
-			"set xlabel \"Frequency (MHz)\"\n"
-			"set ylabel \"Flux (Jy)\"\n";
+		GNUPlot plotI("spectrum-I", "Frequency (MHz)", "Flux (Jy)", true, true);
+		plotI.SetXRange(freqStart, freqEnd);
+		plotI.SetKeyBottomLeft();
 		if(!plotTitle.empty())
-			plotIStream << "set title \"" << plotTitle << "\"\n";
-		plotIStream <<
-			"plot \\\n";
-		std::ofstream plot10IStream("spectrum10-I.plt");
-		plot10IStream <<
-			"set terminal postscript enhanced color\n"
-			"set logscale y\n"
-			"#set xrange [0.001:]\n"
-			"#set yrange [-8:2]\n"
-			"set output \"spectrum10-I.ps\"\n"
-			"set key bottom left\n"
-			"set xlabel \"Frequency (MHz)\"\n"
-			"set ylabel \"Flux (Jy)\"\n";
+			plotI.SetTitle(plotTitle);
+			
+		GNUPlot plotIFit("spectrum-I-fit", "Frequency (MHz)", "Flux (Jy)", true, true);
+		plotIFit.SetXRange(freqStart, freqEnd);
+		plotIFit.SetKeyBottomLeft();
 		if(!plotTitle.empty())
-			plot10IStream << "set title \"" << plotTitle << "\"\n";
-		plot10IStream <<
-			"plot \\\n";
+			plotIFit.SetTitle(plotTitle);
+		
+		GNUPlot plot10I("spectrum10-I", "Frequency (MHz)", "Flux (Jy)", true, true);
+		plot10I.SetXRange(freqStart, freqEnd);
+		plot10I.SetKeyBottomLeft();
+		if(!plotTitle.empty())
+			plot10I.SetTitle(plotTitle);
+
+		GNUPlot plotFT("spectrumFT", "k\u2225 (h/Mpc)", "Power (Jy^2)", true, true);
+		GNUPlot plotFTdelay("spectrumFTdelay", "delay ({/Symbol m}sec)", "Power (Jy^2)", true, true);
+		const ModelSource& firstSource = *model.begin();
+		const ModelComponent& firstComponent = *firstSource.begin();
+		double maxX, maxDelay;
+		if(firstComponent.HasMeasuredSED())
+		{
+			const MeasuredSED& firstSED = firstComponent.MSED();
+			SpectrumFT sft(firstSED.MeasurementCount());
+			
+			maxX = SpectrumFT::GetMaxKParallell(firstSED);
+			plotFT.SetXRange(maxX/firstSED.MeasurementCount(), maxX);
+			sft.PreparePSPlot(plotFT, firstSED.HighestFrequency(), false);
+			
+			maxDelay = SpectrumFT::GetMaxDelayInMuSec(firstSED);
+			plotFTdelay.SetXRange(maxDelay/firstSED.MeasurementCount(), maxDelay);
+			sft.PreparePSPlot(plotFTdelay, firstSED.HighestFrequency(), true);
+		} else
+		{
+			maxX = 1.0;
+			maxDelay = 1.0;
+		}
+		if(!plotTitle.empty())
+			plotFT.SetTitle(plotTitle);
 
 		size_t compIndex = 0, sourceIndex = 0;
 		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
@@ -824,70 +1391,84 @@ int main(int argc, char *argv[])
 			for(ModelSource::const_iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 			{
 				std::ostringstream dataStreamName;
-				dataStreamName << "spectrum" << compIndex << ".txt";
-				std::ofstream dataStream(dataStreamName.str().c_str());
-				if(compIndex == 0)
-				{
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"I\",\\\n";
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 1.0 title \"Q\",\\\n";
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 1.0 title \"U\",\\\n";
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 1.0 title \"V\"";
-				}
-				else {
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:2 with points lw 1.0 title \"\",\\\n";
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:3 with points lw 1.0 title \"\",\\\n";
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:4 with points lw 1.0 title \"\",\\\n";
-					plotStream << "\"" << dataStreamName.str() << "\" using 1:5 with points lw 1.0 title \"\"";
-				}
+				dataStreamName << "spectrum" << compIndex;
 				
-				plotIStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"\",\\\n";
+				GNUPlot::Line* lineI = plot.AddLine(dataStreamName.str()+"I.txt", "I");
+				GNUPlot::Line* lineQ = plot.AddLine(dataStreamName.str()+"Q.txt", "Q");
+				GNUPlot::Line* lineU = plot.AddLine(dataStreamName.str()+"U.txt", "U");
+				GNUPlot::Line* lineV = plot.AddLine(dataStreamName.str()+"V.txt", "V");
+				
+				GNUPlot::Line* lineFT = 0;
+				GNUPlot::Line* lineFTdelay = 0;
+				if(doFT) lineFT = plotFT.AddLine(dataStreamName.str()+"FT.txt", "");
+				if(doFT) lineFTdelay = plotFTdelay.AddLine(dataStreamName.str()+"FT-delay.txt", "");
+				
+				plotI.AddLineFromExistingFile(dataStreamName.str()+"I.txt", "");
+				plotIFit.AddLineFromExistingFile(dataStreamName.str()+"I.txt", "");
 				if(sourceIndex < 10 && compPtr == sourcePtr->begin())
-					plot10IStream << "\"" << dataStreamName.str() << "\" using 1:2 with lines lw 1.0 title \"" << sourcePtr->Name() << "\",\\\n";
-				
-				const SpectralEnergyDistribution &sed = compPtr->SED();
-				long double a, b, c;
-				sed.FitPowerlaw2ndOrder(a, b, c, Polarization::StokesI);
-				plotIStream << '(' << b << " * (x*1000000) + " << c << " * (x*1000000)**2)**" << a << " with lines lw 1.0 title \"\"";
-				
-				std::ofstream diffPlotStream(dataStreamName.str() + ".plt");
-				diffPlotStream <<
-					"set terminal postscript enhanced color\n"
-					"set output \"" << dataStreamName.str() << ".ps\"\n"
-					"set xlabel \"Frequency (MHz)\"\n"
-					"set ylabel \"Flux (Jy, baseline subtracted)\"\n";
-				if(!plotTitle.empty())
-					diffPlotStream << "set title \"" << plotTitle << " (differential)\"\n";
-				diffPlotStream <<
-					"plot \"" << dataStreamName.str() << "\" using 1:(column(2)-(" << b << " * (column(1)*1000000) + " << c << " * (column(1)*1000000)**2)**" << a << ") with lines lw 1.0 title \"\"\n";
-			
-				if(compIndex != model.ComponentCount()-1)
 				{
-					plotStream << ",\\";
-					plotIStream << ",\\";
+					plot10I.AddLineFromExistingFile(dataStreamName.str()+"I.txt", sourcePtr->Name());
 				}
-				plotStream << "\n";
-				plotIStream << "\n";
 				
-				std::vector<Measurement> measurements;
-				sed.GetMeasurements(measurements);
-				
-				for(std::vector<Measurement>::const_iterator i=measurements.begin(); i!=measurements.end(); ++i)
+				if(compPtr->HasMeasuredSED())
 				{
-					dataStream
-						<< i->FrequencyHz()/1000000.0 << '\t'
-						<< i->FluxDensity(Polarization::StokesI) << '\t'
-						<< i->FluxDensity(Polarization::StokesQ) << '\t'
-						<< i->FluxDensity(Polarization::StokesU) << '\t'
-						<< i->FluxDensity(Polarization::StokesV) << '\n';
+					const MeasuredSED &sed = compPtr->MSED();
+					
+					long double e, f;
+					sed.FitPowerlaw(f, e, Polarization::StokesI);
+					std::ostringstream funcStr;
+					funcStr << f << " * (x*1000000)**" << e;
+					plotIFit.AddFunction(funcStr.str());
+					ao::uvector<double> terms;
+					sed.FitLogPolynomial(terms, 3, Polarization::StokesI, sed.ReferenceFrequencyHz());
+					std::ostringstream func2Str;
+					func2Str << terms[0] << "* exp(" << terms[1] << "*log(x/" << sed.ReferenceFrequencyHz() << "*1000000) + " << terms[2] << "*log(x/" << sed.ReferenceFrequencyHz() << "*1000000)**2)";
+					plotIFit.AddFunction(func2Str.str()); 
+					
+					if(doFT)
+					{
+						SpectrumFT sft(sed.MeasurementCount());
+						ao::uvector<double> power;
+						sft.GetFTPower(power, sed, 3, false, true);
+						for(size_t i=0; i!=power.size(); ++i)
+						{
+							lineFT->AddPoint((i*(maxX)/power.size()), power[i]);
+							lineFTdelay->AddPoint((i*(maxDelay)/power.size()), power[i]);
+						}
+					}
+					
+					std::vector<Measurement> measurements;
+					sed.GetMeasurements(measurements);
+					
+					for(std::vector<Measurement>::const_iterator i=measurements.begin(); i!=measurements.end(); ++i)
+					{
+						lineI->AddPoint(i->FrequencyHz()/1000000.0, i->FluxDensity(Polarization::StokesI));
+						lineQ->AddPoint(i->FrequencyHz()/1000000.0, i->FluxDensity(Polarization::StokesQ));
+						lineU->AddPoint(i->FrequencyHz()/1000000.0, i->FluxDensity(Polarization::StokesU));
+						lineV->AddPoint(i->FrequencyHz()/1000000.0, i->FluxDensity(Polarization::StokesV));
+					}
+					++compIndex;
 				}
-				++compIndex;
 			}
 			++sourceIndex;
 		}
 	}
 	
+	if(outputList) {
+		for(Model::const_iterator s=model.begin();
+				s!=model.end(); ++s)
+		{
+			const ModelSource& source = *s;
+			std::cout
+				<< source.Name() << " "
+				<< RaDecCoord::RAToString(source.MeanRA()) << " "
+				<< RaDecCoord::DecToString(source.MeanDec()) << " "
+				<< source.TotalFlux(Polarization::StokesI) << '\n';
+		}
+	}
+	
 	if(!outputModel.empty()) {
-		std::cout << "Writing model with " << model.SourceCount() << " sources.\n";
+		std::cout << "Writing model with " << model.SourceCount() << " sources, " << model.ComponentCount() << " components.\n";
 		model.Save(outputModel.c_str());
 	}
 	

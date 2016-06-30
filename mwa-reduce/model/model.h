@@ -24,7 +24,8 @@ class Model
 		{
 		}
 		
-		Model(const char *filename);
+		Model(const char *filename) { read(filename); }
+		Model(const std::string& filename) { read(filename.c_str()); }
 		
 		void operator=(const Model &source)
 		{
@@ -50,9 +51,24 @@ class Model
 		iterator begin() { return _sources.begin(); }
 		iterator end() { return _sources.end(); }
 		
+		static size_t npos;
+		
 		void Optimize();
 		
 		void AddSource(const ModelSource& source) { _sources.push_back(source); }
+		
+		/**
+		 * Returns the index of the source with the given name, or npos if not found.
+		 */
+		size_t FindSourceIndex(const std::string& sourceName) const
+		{
+			for(const_iterator i=begin(); i!=end(); ++i)
+			{
+				if(i->Name() == sourceName)
+					return i - begin();
+			}
+			return npos;
+		}
 		
 		void AddCluster(const ModelCluster& cluster) {
 			bool wasAdded = _clusters.insert(std::make_pair(cluster.Name(), cluster)).second;
@@ -100,9 +116,15 @@ class Model
 		void GetClusterNames(std::vector<std::string>& clusterNames) {
 			clusterNames.clear();
 			clusterNames.reserve(_clusters.size());
-			for(std::map<std::string,ModelCluster>::const_iterator i=_clusters.begin();
-					i!=_clusters.end(); ++i)
-				clusterNames.push_back(i->first);
+			std::set<std::string> clusterWasAdded;
+			for(const_iterator s=begin(); s!=end(); ++s)
+			{
+				if(clusterWasAdded.count(s->ClusterName()) == 0)
+				{
+					clusterNames.push_back(s->ClusterName());
+					clusterWasAdded.insert(s->ClusterName());
+				}
+			}
 		}
 		
 		void RemoveSource(size_t index) { _sources.erase(_sources.begin() + index); }
@@ -131,19 +153,20 @@ class Model
 			return flux;
 		}
 		
-		void SortOnBrightness();
-		
 		void SetUnpolarized()
 		{
 			for(iterator sourcePtr = begin(); sourcePtr!=end(); ++sourcePtr)
 			{
 				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr != sourcePtr->end(); ++compPtr)
 				{
-					SpectralEnergyDistribution &sed = compPtr->SED();
-					for(SpectralEnergyDistribution::iterator m=sed.begin(); m!=sed.end(); ++m)
+					if(compPtr->HasMeasuredSED())
 					{
-						long double totalFlux = m->second.FluxDensity(Polarization::StokesI);
-						m->second.SetZeroExceptSinglePol(Polarization::StokesI, totalFlux);
+						MeasuredSED& sed = compPtr->MSED();
+						for(MeasuredSED::iterator m=sed.begin(); m!=sed.end(); ++m)
+						{
+							long double totalFlux = m->second.FluxDensity(Polarization::StokesI);
+							m->second.SetZeroExceptSinglePol(Polarization::StokesI, totalFlux);
+						}
 					}
 				}
 			}
@@ -169,7 +192,13 @@ class Model
 		void Sort() {
 			std::sort(_sources.rbegin(), _sources.rend());
 		}
+		
+		template<class Compare>
+		void Sort(Compare comp) {
+			std::sort(_sources.rbegin(), _sources.rend(), comp);
+		}
 	private:
+		void read(const char* filename);
 		enum PolarizationType _polarizationType;
 		std::vector<ModelSource> _sources;
 		std::map<std::string, ModelCluster> _clusters;

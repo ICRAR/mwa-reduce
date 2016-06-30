@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 			}
 			else {
 				if(value > 0.0) {
-					source.Peak().SetSED(SpectralEnergyDistribution(value, 1.0));
+					source.Peak().SetSED(MeasuredSED(value, 1.0));
 					std::cout << source.ToString() << '\n';
 				}
 			}
