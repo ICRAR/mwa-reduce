@@ -1,4 +1,4 @@
-#include "parser/areaparser.h"
+#include "model/areaparser.h"
 
 #include "areaset.h"
 #include "fitsreader.h"

@@ -3,7 +3,8 @@
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include "model.h"
+#include "model/model.h"
+
 #include "subtractor.h"
 
 using namespace casacore;

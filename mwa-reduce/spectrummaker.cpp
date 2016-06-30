@@ -4,9 +4,10 @@
 #include "banddata.h"
 #include "beamevaluator.h"
 #include "progressbar.h"
-#include "modelsource.h"
-#include "spectralenergydistribution.h"
 #include "predicter.h"
+
+#include "model/modelsource.h"
+#include "model/spectralenergydistribution.h"
 
 #include <boost/thread/thread.hpp>
 

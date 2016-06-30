@@ -1,7 +1,8 @@
 #ifndef RM_SYNTHESIS_H
 #define RM_SYNTHESIS_H
 
-#include "spectralenergydistribution.h"
+#include "model/spectralenergydistribution.h"
+
 #include "uvector.h"
 
 class RMSynthesis

@@ -10,8 +10,9 @@
 #include "beam/tilebeam.h"
 
 #include "matrix2x2.h"
-#include "modelsource.h"
-#include "model.h"
+
+#include "model/modelsource.h"
+#include "model/model.h"
 
 class BeamEvaluator
 {

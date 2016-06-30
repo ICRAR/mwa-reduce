@@ -5,8 +5,9 @@
 #include "fitswriter.h"
 #include "ioninterpolator.h"
 #include "ionsolutionfile.h"
-#include "model.h"
 #include "modelrenderer.h"
+
+#include "model/model.h"
 
 double sample(const double* image, size_t width, size_t height, double x, double y)
 {

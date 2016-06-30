@@ -5,7 +5,7 @@
 #include "sourcesdf.h"
 #include "imagecoordinates.h"
 #include "mrccatalogue.h"
-#include "model.h"
+#include "model/model.h"
 
 int main(int argc, char **argv)
 {

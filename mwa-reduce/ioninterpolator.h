@@ -4,7 +4,7 @@
 #include "delaunay.h"
 #include "imagecoordinates.h"
 #include "ionsolutionfile.h"
-#include "model.h"
+#include "model/model.h"
 #include "triangleinterpolator.h"
 #include "fitsreader.h"
 #include "uvector.h"

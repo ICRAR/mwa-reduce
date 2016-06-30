@@ -1,6 +1,7 @@
 #include "spectrumsubtractor.h"
 
-#include "model.h"
+#include "model/model.h"
+
 #include "predicter.h"
 #include "matrix2x2.h"
 #include "beamevaluator.h"

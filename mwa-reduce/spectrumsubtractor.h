@@ -7,7 +7,8 @@
 
 #include "lane.h"
 #include "banddata.h"
-#include "model.h"
+
+#include "model/model.h"
 
 namespace casacore {
 	class MeasurementSet;

@@ -11,8 +11,8 @@
 #include <limits>
 #include <stdexcept>
 
-#include "nlplfitter.h"
-#include "polarizationenum.h"
+#include "../nlplfitter.h"
+#include "../polarizationenum.h"
 
 #define EXTRA_ASSERTIONS 1
 

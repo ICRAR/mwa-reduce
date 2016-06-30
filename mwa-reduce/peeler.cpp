@@ -1,11 +1,12 @@
 #include "peeler.h"
 
 #include "calibrationmethod.h"
-#include "model.h"
 #include "solutionfile.h"
 #include "beamevaluator.h"
 #include "matrix2x2.h"
 #include "mspredicter.h"
+
+#include "model/model.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 

@@ -4,7 +4,8 @@
 #include <fstream>
 #include <memory>
 
-#include "model.h"
+#include "model/model.h"
+
 #include "subbandpassband.h"
 #include "progressbar.h"
 #include "rmsynthesis.h"

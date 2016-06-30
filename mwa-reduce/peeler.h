@@ -8,7 +8,8 @@
 #include <queue>
 #include "banddata.h"
 #include "lane.h"
-#include "model.h"
+
+#include "model/model.h"
 
 class Peeler
 {

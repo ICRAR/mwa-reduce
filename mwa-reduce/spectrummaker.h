@@ -2,12 +2,13 @@
 #define SPECTRUM_MAKER_H
 
 #include "lane.h"
-#include "model.h"
 #include "banddata.h"
 #include "matrix2x2.h"
 #include "serializable.h"
 #include "weightmode.h"
 #include "imageweights.h"
+
+#include "model/model.h"
 
 #include <complex>
 #include <vector>

@@ -10,7 +10,7 @@
 #include "banddata.h"
 #include "angle.h"
 
-#include "model.h"
+#include "model/model.h"
 
 void meanPos(const std::vector<ModelSource*>& sources, double& ra, double& dec);
 

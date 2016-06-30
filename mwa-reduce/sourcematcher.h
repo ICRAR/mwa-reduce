@@ -1,7 +1,8 @@
 #ifndef SOURCE_MATCHER_H
 #define SOURCE_MATCHER_H
 
-#include "model.h"
+#include "model/model.h"
+
 #include "progressbar.h"
 #include "angle.h"
 

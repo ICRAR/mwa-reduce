@@ -5,8 +5,9 @@
 
 #include <libxml/xmlreader.h>
 
-#include "modelsource.h"
-#include "model.h"
+#include "model/modelsource.h"
+#include "model/model.h"
+
 #include "parser/votableparser.h"
 
 Model model;

@@ -6,10 +6,10 @@
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include <casacore/tables/Tables/ScalarColumn.h>
 
-#include "sourcesdf.h"
-#include "model.h"
 #include "fitsreader.h"
 #include "imagecoordinates.h"
+
+#include "model/model.h"
 
 int main(int argc, char **argv)
 {

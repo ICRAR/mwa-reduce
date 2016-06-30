@@ -1,6 +1,8 @@
 #include <iostream>
-#include "model.h"
+
 #include "spectrummaker.h"
+
+#include "model/model.h"
 
 int main(int argc, char* argv[])
 {

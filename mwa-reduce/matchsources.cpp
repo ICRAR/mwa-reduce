@@ -1,5 +1,6 @@
-#include "model.h"
 #include "sourcematcher.h"
+
+#include "model/model.h"
 
 int main(int argc, char* argv[])
 {

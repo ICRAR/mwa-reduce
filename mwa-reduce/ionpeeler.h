@@ -2,9 +2,10 @@
 #define IONPEELER_H
 
 #include "banddata.h"
-#include "model.h"
 #include "visibilityarray.h"
 #include "weightmode.h"
+
+#include "model/model.h"
 
 #include <mutex>
 #include <thread>

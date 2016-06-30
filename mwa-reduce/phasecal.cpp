@@ -14,9 +14,10 @@
 
 #include "banddata.h"
 #include "predicter.h"
-#include "model.h"
 #include "uvector.h"
 #include "stdint.h"
+
+#include "model/model.h"
 
 using namespace casacore;
 

@@ -2,10 +2,11 @@
 #include <iostream>
 
 #include "modelrenderer.h"
-#include "model.h"
 #include "imagecoordinates.h"
 #include "uvector.h"
 #include "fftconvolver.h"
+
+#include "model/model.h"
 
 template<typename T>
 T ModelRenderer::gaus(T x, T sigma) const

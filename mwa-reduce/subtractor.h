@@ -3,11 +3,11 @@
 
 #include "beamevaluator.h"
 #include "banddata.h"
-#include "sourcesdf.h"
-#include "model.h"
 #include "predicter.h"
 #include "mspredicter.h"
 #include "progressbar.h"
+
+#include "model/model.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 

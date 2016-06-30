@@ -5,11 +5,10 @@
 #include <string>
 #include <sstream>
 
-#include "sourcesdf.h"
-#include "sourcesdfwithsamples.h"
-#include "radeccoord.h"
+#include "../radeccoord.h"
+#include "../imagecoordinates.h"
+
 #include "spectralenergydistribution.h"
-#include "imagecoordinates.h"
 
 class ModelComponent
 {

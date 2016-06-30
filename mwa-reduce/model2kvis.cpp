@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "model.h"
+#include "model/model.h"
 
 using namespace std;
 

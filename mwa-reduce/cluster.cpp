@@ -1,6 +1,7 @@
-#include "model.h"
 #include "imagecoordinates.h"
 #include "uvector.h"
+
+#include "model/model.h"
 
 #include <iostream>
 #include <fstream>

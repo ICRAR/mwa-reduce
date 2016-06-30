@@ -1,8 +1,9 @@
 #ifndef CALIBRATOR_H
 #define CALIBRATOR_H
 
-#include "model.h"
 #include "solutionfile.h"
+
+#include "model/model.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 

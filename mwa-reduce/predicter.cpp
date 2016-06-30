@@ -1,8 +1,9 @@
 #include "predicter.h"
-#include "model.h"
 #include "imagecoordinates.h"
 #include "beamevaluator.h"
 #include "solutionfile.h"
+
+#include "model/model.h"
 
 void Predicter::initialize(ModelComponent& component)
 {

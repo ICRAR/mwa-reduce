@@ -2,8 +2,9 @@
 #include <fstream>
 #include <string>
 
-#include "model.h"
 #include "fitsreader.h"
+
+#include "model/model.h"
 
 #include <boost/tokenizer.hpp>
 

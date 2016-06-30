@@ -3,8 +3,9 @@
 #include "banddata.h"
 #include "fitswriter.h"
 #include "imageweights.h"
-#include "model.h"
 #include "modelrenderer.h"
+
+#include "model/model.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 

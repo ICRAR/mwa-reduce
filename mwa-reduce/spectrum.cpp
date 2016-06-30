@@ -9,11 +9,11 @@
 #include <casacore/tables/Tables/ScalarColumn.h>
 
 #include "banddata.h"
-#include "sourcesdf.h"
-#include "model.h"
 #include "predicter.h"
 #include "spectrummaker.h"
 #include "weightmode.h"
+
+#include "model/model.h"
 
 using namespace casacore;
 

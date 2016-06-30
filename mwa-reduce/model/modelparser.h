@@ -1,7 +1,7 @@
 #ifndef MODEL_PARSER_H
 #define MODEL_PARSER_H
 
-#include "../model.h"
+#include "model.h"
 
 #include "tokenizer.h"
 

@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "beamevaluator.h"
-#include "model.h"
 #include "banddata.h"
 #include "imagecoordinates.h"
 #include "peeler.h"
@@ -10,6 +9,8 @@
 #include "subtractor.h"
 #include "spectrumsubtractor.h"
 #include "calibrationmethod.h"
+
+#include "model/model.h"
 
 std::string sourceList(const std::vector<ModelSource*>& sources)
 {

@@ -1,12 +1,13 @@
 #include "banddata.h"
-#include "model.h"
 #include "imagecoordinates.h"
 #include "areaset.h"
-#include "parser/areaparser.h"
 #include "loghistogram.h"
 #include "beamevaluator.h"
 #include "uvector.h"
 #include "rmsynthesis.h"
+
+#include "model/model.h"
+#include "model/areaparser.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 

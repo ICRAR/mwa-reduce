@@ -4,10 +4,11 @@
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include "lane.h"
-#include "model.h"
 #include "predicter.h"
 #include "beamevaluator.h"
 #include "banddata.h"
+
+#include "model/model.h"
 
 #include <boost/thread/thread.hpp>
 

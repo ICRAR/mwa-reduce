@@ -4,7 +4,7 @@
 #include <string>
 #include <fstream>
 
-#include "modelsource.h"
+#include "model/modelsource.h"
 
 class MRCCatalogue
 {
