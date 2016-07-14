@@ -70,8 +70,15 @@ public:
 		{
 			double posRA, posDec;
 			GetMeanPosForDirection(direction, posRA, posDec);
+			if(!std::isfinite(posRA) || !std::isfinite(posDec))
+				throw std::runtime_error("One of the directions of the solutions has a non-finite RA or Dec");
 			IonSolutionFile::Solution solution;
 			getAverageSolution(solutions, solution, direction);
+			if(!std::isfinite(solution.dl) || !std::isfinite(solution.dm) || !std::isfinite(solution.gain))
+			{
+				const ModelSource* source = _sourcesPerDirection[direction][0];
+				std::cout << "Warning: direction " << source->ClusterName() << " did not have finite average solution over interval " << _startInterval << " to " << _endInterval << ", channel " << _startChannel << " to " << _endChannel << "!\n";
+			}
 			// Invert the ionospheric corrections: the source in our model
 			//   is observed at position l+dl, m+dm, so if we want to know
 			//   what is really at position l,m, we need to displace
@@ -82,6 +89,8 @@ public:
 			l += solution.dl;
 			m += solution.dm;
 			ImageCoordinates::LMToRaDec(l, m, _phaseCentreRA, _phaseCentreDec, posRA, posDec);
+			if(!std::isfinite(posRA) || !std::isfinite(posDec))
+				throw std::runtime_error("One of the directions in the model is not finite.");
 			_triangulator.AddVertex(posRA, posDec, &_directionIndices[direction]);
 		}
 		_triangulator.Triangulate();
@@ -156,18 +165,22 @@ private:
 		solution.dl = 0.0;
 		solution.dm = 0.0;
 		solution.gain = 0.0;
+		size_t count = 0;
 		for(size_t interval=_startInterval; interval!=_endInterval; ++interval)
 		{
 			for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
 			{
 				IonSolutionFile::Solution s;
 				solutionFile.ReadSolution(s, interval, ch, _polarization, direction);
-				solution.dl += s.dl;
-				solution.dm += s.dm;
-				solution.gain += s.gain;
+				if(std::isfinite(solution.dl) && std::isfinite(solution.dm) && std::isfinite(solution.gain))
+				{
+					solution.dl += s.dl;
+					solution.dm += s.dm;
+					solution.gain += s.gain;
+					++count;
+				}
 			}
 		}
-		double count = (_endChannel-_startChannel) * (_endInterval-_startInterval);
 		solution.dl /= count;
 		solution.dm /= count;
 		solution.gain /= count;
