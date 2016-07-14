@@ -172,7 +172,7 @@ private:
 			{
 				IonSolutionFile::Solution s;
 				solutionFile.ReadSolution(s, interval, ch, _polarization, direction);
-				if(std::isfinite(solution.dl) && std::isfinite(solution.dm) && std::isfinite(solution.gain))
+				if(std::isfinite(s.dl) && std::isfinite(s.dm) && std::isfinite(s.gain))
 				{
 					solution.dl += s.dl;
 					solution.dm += s.dm;
