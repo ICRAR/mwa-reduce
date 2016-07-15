@@ -151,12 +151,18 @@ class IonSolutionFile
 	{
 		Solution solution;
 		ReadSolution(solution, interval, channelBlock, polarization, direction);
-		switch(type)
+		if(!std::isfinite(solution.gain) || !std::isfinite(solution.dl) || !std::isfinite(solution.dm))
 		{
-			default:
-			case GainSolution: return solution.gain;
-			case DlSolution: return solution.dl;
-			case DmSolution: return solution.dm;
+			return std::numeric_limits<double>::quiet_NaN();
+		}
+		else {
+			switch(type)
+			{
+				default:
+				case GainSolution: return solution.gain;
+				case DlSolution: return solution.dl;
+				case DmSolution: return solution.dm;
+			}
 		}
 	}
 	

@@ -188,15 +188,21 @@ private:
 	
 	double getAverageSolution(IonSolutionFile& solutionFile, IonSolutionFile::IonSolutionType stype, size_t direction) const
 	{
+		size_t count = 0;
 		double val = 0.0;
 		for(size_t interval=_startInterval; interval!=_endInterval; ++interval)
 		{
 			for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
 			{
-				val += solutionFile.ReadSolution(stype, interval, ch, _polarization, direction);
+				double s = solutionFile.ReadSolution(stype, interval, ch, _polarization, direction);
+				if(std::isfinite(s))
+				{
+					val += s;
+					++count;
+				}
 			}
 		}
-		return val / double((_endChannel - _startChannel) * (_endInterval - _startInterval));
+		return val / count;
 	}
 	
 	void meanPos(const std::vector<ModelSource*>& sources, double& meanRA, double& meanDec)

@@ -196,31 +196,38 @@ int main(int argc, char* argv[])
 				plotPosFile << "\"" << name.str() << "posoff.txt\" using 2:3 with points title \"\"";
 				plotGainFile << "\"" << name.str() << "gain.txt\" using 2:3 with points title \"\"";
 				double totalDl = 0.0, totalDm = 0.0;
+				size_t totalCount = 0;
 				for(size_t cb=0; cb!=solutionFile.ChannelBlockCount(); ++cb)
 				{
 					double freq = (solutionFile.EndFrequency() - solutionFile.StartFrequency()) *
 						double(cb) / solutionFile.ChannelBlockCount() + solutionFile.StartFrequency();
 					double lambda = BandData::FrequencyToLambda(freq);
 					double sumDl = 0.0, sumDm = 0.0, sumG = 0.0;
+					size_t count = 0;
 					for(size_t interval=0; interval!=solutionFile.IntervalCount(); ++interval)
 					{
 						double
 							dl = solutionFile.ReadSolution(IonSolutionFile::DlSolution, interval, cb, 0, s),
 							dm = solutionFile.ReadSolution(IonSolutionFile::DmSolution, interval, cb, 0, s),
 							g = solutionFile.ReadSolution(IonSolutionFile::GainSolution, interval, cb, 0, s);
-						sumDl += dl; sumDm += dm; sumG += g;
+						if(std::isfinite(dl) && std::isfinite(dm) && std::isfinite(g))
+						{
+							sumDl += dl; sumDm += dm; sumG += g;
+							++count;
+						}
 					}
 					totalDl += sumDl;
 					totalDm += sumDm;
+					totalCount += count;
 					double
-						posOff = sqrt(sumDl*sumDl + sumDm*sumDm) / solutionFile.IntervalCount(),
-						gain = sumG / solutionFile.IntervalCount();
+						posOff = sqrt(sumDl*sumDl + sumDm*sumDm) / count,
+						gain = sumG / count;
 					posOff *= 60.0*180.0/M_PI; // to arcmin
 					direcfile << freq << '\t' << lambda*lambda << '\t' << posOff << '\n';
 					gainfile << freq << '\t' << lambda*lambda << '\t' << gain << '\n';
 				}
-				totalDl *= 100.0/solutionFile.ChannelBlockCount();
-				totalDm *= 100.0/solutionFile.ChannelBlockCount();
+				totalDl *= 100.0/totalCount;
+				totalDm *= 100.0/totalCount;
 				vectorPlot
 					<< "LINE\t"
 					<< meanRA*(180.0/M_PI) << '\t' << meanDec*(180.0/M_PI) << '\t'
