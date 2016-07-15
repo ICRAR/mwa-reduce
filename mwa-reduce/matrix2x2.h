@@ -3,6 +3,7 @@
 
 #include <complex>
 #include <limits>
+#include <sstream>
 
 class Matrix2x2
 {
@@ -22,21 +23,21 @@ public:
 	}
 	
 	template<typename T, typename RHS_T>
-	static void Add(std::complex<T>* dest, RHS_T * rhs)
+	static void Add(std::complex<T>* dest, const RHS_T * rhs)
 	{
 		for(size_t p=0; p!=4; ++p)
 			dest[p] += rhs[p];
 	}
 	
 	template<typename T>
-	static void Subtract(std::complex<T>* dest, std::complex<T>* rhs)
+	static void Subtract(std::complex<T>* dest, const std::complex<T>* rhs)
 	{
 		for(size_t p=0; p!=4; ++p)
 			dest[p] -= rhs[p];
 	}
 	
 	template<typename T>
-	static bool IsFinite(std::complex<T>* matrix)
+	static bool IsFinite(const std::complex<T>* matrix)
 	{
 		return
 			std::isfinite(matrix[0].real()) && std::isfinite(matrix[0].imag()) &&
@@ -196,6 +197,16 @@ public:
 		e2 = trHalf - term;
 	}
 	
+	static void EigenValues(const std::complex<double>* matrix, std::complex<double> &e1, std::complex<double> &e2)
+	{
+		std::complex<double> tr = matrix[0] + matrix[3];
+		std::complex<double> d = matrix[0]*matrix[3] - matrix[1]*matrix[2];
+		std::complex<double> term = sqrt(tr*tr*0.25-d);
+		std::complex<double> trHalf = tr*0.5;
+		e1 = trHalf + term;
+		e2 = trHalf - term;
+	}
+	
 	static void EigenValuesAndVectors(const double* matrix, double &e1, double &e2, double* vec1, double* vec2)
 	{
 		double tr = matrix[0] + matrix[3];
@@ -277,6 +288,10 @@ public:
 		_values[0] = m00; _values[1] = m01;
 		_values[2] = m10; _values[3] = m11;
 	}
+	MC2x2(std::complex<double> m00, std::complex<double> m01, std::complex<double> m10, std::complex<double> m11) {
+		_values[0] = m00; _values[1] = m01;
+		_values[2] = m10; _values[3] = m11;
+	}
 	MC2x2& operator=(const MC2x2& source)
 	{
 		Matrix2x2::Assign(_values, source._values);
@@ -299,6 +314,8 @@ public:
 	}
 	const std::complex<double>& operator[](size_t index) const { return _values[index]; }
 	std::complex<double>& operator[](size_t index) { return _values[index]; }
+	const double& IndexReal(size_t index) const { return reinterpret_cast<const double(&)[2]>(_values[index/2])[index%2]; }
+	double& IndexReal(size_t index) { return reinterpret_cast<double(&)[2]>(_values[index/2])[index%2]; }
 	static MC2x2 Zero()
 	{
 		return MC2x2(0.0, 0.0, 0.0, 0.0);
@@ -306,6 +323,14 @@ public:
 	static MC2x2 Unity()
 	{
 		return MC2x2(1.0, 0.0, 0.0, 1.0);
+	}
+	static MC2x2 NaN()
+	{
+		return MC2x2(
+			std::complex<double>(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()),
+			std::complex<double>(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()),
+			std::complex<double>(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()),
+			std::complex<double>(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()));
 	}
 	std::complex<double>* Data() { return _values; }
 	const std::complex<double>* Data() const { return _values; }
@@ -333,6 +358,14 @@ public:
 		Matrix2x2::HermATimesHermB(dest._values, _values, rhs._values);
 		return dest;
 	}
+	void AddWithFactorAndAssign(const MC2x2& rhs, double factor)
+	{
+		Matrix2x2::MultiplyAdd(_values, rhs._values, factor);
+	}
+	bool Invert()
+	{
+		return Matrix2x2::Invert(_values);
+	}
 	static void ATimesB(MC2x2& dest, const MC2x2& lhs, const MC2x2& rhs)
 	{
 		Matrix2x2::ATimesB(dest._values, lhs._values, rhs._values);
@@ -348,6 +381,21 @@ public:
 	static void HermATimesHermB(MC2x2& dest, const MC2x2& lhs, const MC2x2& rhs)
 	{
 		Matrix2x2::HermATimesHermB(dest._values, lhs._values, rhs._values);
+	}
+	std::string ToString() const
+	{
+		std::stringstream str;
+		str << _values[0] << ", " << _values[1] << "; "
+			<< _values[2] << ", " << _values[3];
+		return str.str();
+	}
+	void CopyValues(std::complex<double>* values) const
+	{
+		Matrix2x2::Assign(values, _values);
+	}
+	void EigenValues(std::complex<double> &e1, std::complex<double> &e2) const
+	{
+		Matrix2x2::EigenValues(_values, e1, e2);
 	}
 private:
 	std::complex<double> _values[4];

@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 {
   if(argc < 3)
     {
-      std::cout << "Usage: applysolutions [-datacolumn <name>] [-gflag <solutions-flag-file.txt>] [-copy/-nocopy] [-s xx xy yx yy] <ms> <gains-bin-file>\n"
+      std::cout << "Usage: applysolutions [-zero] [-datacolumn <name>] [-gflag <solutions-flag-file.txt>] [-copy/-nocopy] [-s xx xy yx yy] <ms> <gains-bin-file>\n"
 				"Will apply the found solution matrices.\n"
 				"Options:\n"
 				"  -copy/-nocopy Don't(/do) alter the original DATA column but store the corrected data in the CORRECTED_DATA (this is std CASA behaviour)\n"
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     } else {
 		size_t argi = 1;
 		double xx=0.0, xy=0.0, yx=0.0, yy=0.0;
-		bool preset = false, copyData = true;
+		bool preset = false, copyData = true, toZero = false;
 		std::string dataColumnName = "DATA";
 		while(argv[argi][0] == '-')
 		{
@@ -41,6 +41,8 @@ int main(int argc, char **argv)
 				argi += 4;
 				preset = true;
 			}
+			else if(p == "zero")
+				toZero = true;
 			else if(p == "datacolumn")
 			{
 				dataColumnName = argv[argi+1];
@@ -58,8 +60,6 @@ int main(int argc, char **argv)
 			++argi;
 		}
 		MeasurementSet ms(argv[argi], Table::Update);
-		SolutionFile solutionFile;
-		solutionFile.OpenForReading(argv[argi+1]);
 		
 		SolutionApplier applier;
 		if(preset)
@@ -69,6 +69,12 @@ int main(int argc, char **argv)
 			applier.SetOutputColumn(casacore::MeasurementSet::columnName(casacore::MSMainEnums::CORRECTED_DATA));
 		else
 			applier.SetOutputColumn(dataColumnName);
-		applier.Apply(ms, solutionFile);
+		if(toZero)
+			applier.SetToZero(ms);
+		else {
+			SolutionFile solutionFile;
+			solutionFile.OpenForReading(argv[argi+1]);
+			applier.Apply(ms, solutionFile);
+		}
 	}
 }

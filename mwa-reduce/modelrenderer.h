@@ -15,23 +15,25 @@ class ModelRenderer
 		/**
 		 * Restore with circular beam
 		 */
-		template<typename NumType>
-		void Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamSize, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
+		void Restore(double* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamSize, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 		
 		/**
 		 * Restore with elliptical beam
 		 */
-		template<typename NumType>
-		void Restore(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamMaj, long double beamMin, long double beamPA, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
+		void Restore(double* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double beamMaj, long double beamMin, long double beamPA, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 		
-		template<typename NumType>
-		void Restore(NumType* imageData, NumType* modelData, size_t imageWidth, size_t imageHeight, long double beamMaj, long double beamMin, long double beamPA, PolarizationEnum polarization);
+		void Restore(double* imageData, double* modelData, size_t imageWidth, size_t imageHeight, long double beamMaj, long double beamMin, long double beamPA);
 
 		/**
 		 * Render each point-source as one pixel
 		 */
-		template<typename NumType>
-		void RenderModel(NumType* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
+		void RenderModel(double* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
+		
+		/**
+		 * This will render a source and sinc-interpolate it so it
+		 * can be on non-integer positions.
+		 */
+		static void RenderInterpolatedSource(double* image, size_t width, size_t height, double flux, double x, double y);
 	private:
 		long double _phaseCentreRA;
 		long double _phaseCentreDec;

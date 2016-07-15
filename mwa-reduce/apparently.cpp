@@ -6,24 +6,26 @@
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include <casacore/tables/Tables/ScalarColumn.h>
 
+#include "model/measuredsed.h"
+#include "model/model.h"
+
 #include "fitsreader.h"
 #include "imagecoordinates.h"
-
-#include "model/model.h"
 
 int main(int argc, char **argv)
 {
 	if(argc < 3)
 	{
-		std::cout << "Usage: apparently [-ms <ms>] [-beam <beamfitsfile>] [-plot] <model> <fitsfile>\n"
+		std::cout << "Usage: apparently [-ms <ms>] [-beam <beamfitsfile>] [-plot] [-save <model>] <model> <fitsfile>\n"
 			"Prints apparent model to stdout, constructed from given model and\n"
 			"image fitsfile.\n"
 			"-ms: read meta data from ms (e.g., time for -plot) will be used.\n"
 			"-plot: don't write as model file, but as gnuplottable text file.\n"
-			"-beam: read the beam and apply it to the found apparent values.\n";
+			"-beam: read the beam and apply it to the found apparent values.\n"
+			"-save: output as model.\n";
 	} else {
 		int argi = 1;
-		std::string msFilename, beamFilename;
+		std::string msFilename, beamFilename, outputFilename;
 		bool asPlot = false;
 		while(argv[argi][0] == '-')
 		{
@@ -41,6 +43,11 @@ int main(int argc, char **argv)
 			else if(strcmp(option, "plot") == 0)
 			{
 				asPlot = true;
+			}
+			else if(strcmp(option, "save") == 0)
+			{
+				++argi;
+				outputFilename = argv[argi];
 			}
 			else
 			{
@@ -83,41 +90,29 @@ int main(int argc, char **argv)
 		{
 			std::cout << setDescription;
 		}
+		const size_t
+			width = fitsReader.ImageWidth(),
+			height = fitsReader.ImageHeight();
 		
-		for(Model::const_iterator s=model.begin();s!=model.end();++s)
+		Model measuredModel;
+		for(Model::iterator s=model.begin();s!=model.end();++s)
 		{
-			ModelSource source = *s;
+			ModelSource& source = *s;
 			long double l, m;
 			ImageCoordinates::RaDecToLM<long double>(source.Peak().PosRA(), source.Peak().PosDec(), fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), l, m);
-			double
-				x = l / fitsReader.PixelSizeX() + fitsReader.ImageWidth()/2,
-				y = m / fitsReader.PixelSizeY() + fitsReader.ImageHeight()/2;
+			int x, y;
+			ImageCoordinates::LMToXY<long double>(l, m, fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), width, height, x, y);
 			double value = 0.0, beamValue = 1.0;
 			//std::cout << x << ',' << y << '\n';
-			if(x > 0.0 && y > 0.0 && x < fitsReader.ImageWidth() && y < fitsReader.ImageHeight())
+			if(x >= 0 && y >= 0 && x < int(width) && y < int(height))
 			{
-				size_t xi = size_t(floor(x)), yi = size_t(floor(y));
-				value = image[yi*fitsReader.ImageWidth() + xi];
-				
-				++xi;
-				if(xi < fitsReader.ImageWidth()) {
-					value = std::max(value, image[yi*fitsReader.ImageWidth() + xi]);
-					
-					++yi;
-					if(yi < fitsReader.ImageHeight())
-						value = std::max(value, image[yi*fitsReader.ImageWidth() + xi]);
-				}
-				
-				--xi;
-				if(yi < fitsReader.ImageHeight())
-					value = std::max(value, image[yi*fitsReader.ImageWidth() + xi]);
+				value = image[y*fitsReader.ImageWidth() + x];
 				
 				if(!beamFilename.empty())
 				{
-					size_t xi = size_t(round(x)), yi = size_t(round(y));
-					if(xi < fitsReader.ImageWidth() && yi < fitsReader.ImageHeight())
+					if(x < int(width) && y < int(height))
 					{
-						beamValue = beamData[yi*fitsReader.ImageWidth() + xi];
+						beamValue = beamData[y*width + x];
 						//beamValue *= beamValue;
 						value /= beamValue;
 					}
@@ -133,8 +128,8 @@ int main(int argc, char **argv)
 			}
 			else {
 				if(value > 0.0) {
-					source.Peak().SetSED(MeasuredSED(value, 1.0));
-					std::cout << source.ToString() << '\n';
+					source.Peak().SetSED(MeasuredSED(value, fitsReader.Frequency()));
+					measuredModel.AddSource(source);
 				}
 			}
 		}
@@ -145,5 +140,8 @@ int main(int argc, char **argv)
 		{
 			std::cout << '\n';
 		}
+		
+		if(!outputFilename.empty())
+			measuredModel.Save(outputFilename);
 	}
 }

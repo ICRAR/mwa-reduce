@@ -44,7 +44,7 @@ endif(GTS_INCLUDE_DIR AND GLIB_INCLUDE_DIR)
 set(CMAKE_REQUIRED_FLAGS "-std=c++0x")
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles(
-"#include \"${CMAKE_CURRENT_SOURCE_DIR}/aocommon/uvector.h\"
+"#include \"${CMAKE_CURRENT_SOURCE_DIR}/aocommon/uvector_11.h\"
 int main(int argc, char* argv[])
 {
 return 0;
@@ -133,10 +133,10 @@ endif(LIBXML2_FOUND)
 target_link_libraries(addimg ${FITSIO_LIB} ${CASA_LIBS})
 target_link_libraries(aegean2model ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(applybeam ${FITSIO_LIB} ${CASA_LIBS})
-target_link_libraries(apparently ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB})
+target_link_libraries(apparently ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB} )
 target_link_libraries(areas ${FITSIO_LIB} ${CASA_LIBS})
 
-target_link_libraries(applyion ${FITSIO_LIB} ${CASA_LIBS} ${FFTW3_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
+target_link_libraries(applyion ${FITSIO_LIB} ${CASA_LIBS} ${FFTW3_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(applysolutions ${CASA_LIBS})
 target_link_libraries(autoprocess ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${CASA_MEASURES_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(beam ${BEAM_LIBS} ${CASA_LIBS} ${CASA_MEASURES_LIB} ${FITSIO_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
@@ -157,7 +157,7 @@ target_link_libraries(pbcorrect ${FITSIO_LIB} ${CASA_LIBS} ${Boost_SYSTEM_LIBRAR
 target_link_libraries(peel ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(phasecal ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(regridimg ${CASA_LIBS} ${FITSIO_LIB})
-target_link_libraries(render ${FITSIO_LIB} ${CASA_LIBS} ${FFTW3_LIB})
+target_link_libraries(render ${FITSIO_LIB} ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(simcompress ${CASA_LIBS})
 #target_link_libraries(spectrum ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(subtrmodel ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})

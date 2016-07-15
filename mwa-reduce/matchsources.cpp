@@ -1,13 +1,13 @@
-#include "sourcematcher.h"
-
 #include "model/model.h"
+
+#include "sourcematcher.h"
 
 int main(int argc, char* argv[])
 {
 	if(argc < 6)
 	{
 		std::cout <<
-			"Syntax: matchsources <type> [options] <base model> <additional model> <arcmin distance> <output model>\n"
+			"Syntax: matchsources <type> [options] <output model> <arcmin distance> <base model> <additional model> [models...]\n"
 			"types:\n"
 			" - findnew    -- Find any sources in additional and not in base\n"
 			" - addspectra -- Match sources and combine frequency info of both catalogues\n"
@@ -24,6 +24,8 @@ int main(int argc, char* argv[])
 		matchingType = SourceMatcher::AddSpectraMatching;
 	else if(matchingTypeStr == "avgspectra")
 		matchingType = SourceMatcher::AvgSpectraMatching;
+	else if(matchingTypeStr == "compare")
+		matchingType = SourceMatcher::CompareMatching;
 	else
 		throw std::runtime_error("Unknown matching type specified");
 	
@@ -43,14 +45,29 @@ int main(int argc, char* argv[])
 			++argi;
 			matcher.SetAppendAmbigiousFilename(argv[argi]);
 		}
+		else if(p == "keep-base")
+		{
+			matcher.SetKeepBaseSources(true);
+		}
 		else throw std::runtime_error("Invalid parameter");
 		++argi;
 	}
 	
-	double distanceInRad = atof(argv[argi+2])*(M_PI/60.0/180.0);
-	const std::string restModelFilename(argv[argi+3]);
+	double distanceInRad = atof(argv[argi+1])*(M_PI/60.0/180.0);
+	const std::string restModelFilename(argv[argi]);
+	std::cout << "Reading " << argv[argi+2] << "...\n";
+	Model baseModel(argv[argi+2]);
+	argi+=3;
+	do {
+		std::string addedModelFilename(argv[argi]);
+		Model restModel;
+		std::cout << "Reading " << addedModelFilename << "...\n";
+		Model addedModel(addedModelFilename);
+		matcher.Match(matchingType, distanceInRad, weight, baseModel, addedModel, restModel);
+		
+		baseModel = restModel;
+		++argi;
+	} while(argi < size_t(argc));
 	
-	Model baseModel(argv[argi]), addedModel(argv[argi+1]), restModel;
-	matcher.Match(matchingType, distanceInRad, weight, baseModel, addedModel, restModel);
-	restModel.Save(restModelFilename);
+	baseModel.Save(restModelFilename);
 }
