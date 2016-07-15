@@ -27,8 +27,6 @@ int main(int argc, char* argv[])
 			std::string weightArg = argv[argi];
 			if(weightArg == "natural")
 				weightMode.SetMode(WeightMode(WeightMode::NaturalWeighted));
-			else if(weightArg == "mwa")
-				weightMode.SetMode(WeightMode(WeightMode::DistanceWeighted));
 			else if(weightArg == "uniform")
 				weightMode.SetMode(WeightMode(WeightMode::UniformWeighted));
 			else if(weightArg == "briggs")

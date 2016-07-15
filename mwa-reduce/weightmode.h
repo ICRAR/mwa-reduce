@@ -7,7 +7,7 @@
 class WeightMode
 {
 public:
-	enum WeightingEnum { NaturalWeighted, DistanceWeighted, UniformWeighted, BriggsWeighted };
+	enum WeightingEnum { NaturalWeighted, UniformWeighted, BriggsWeighted };
 		
 	WeightMode(WeightingEnum mode) : _mode(mode), _briggsRobustness(0.0), _superWeight(1.0)
 	{ }
@@ -43,7 +43,6 @@ public:
 	
 	WeightingEnum Mode() const { return _mode; }
 	bool IsNatural() const { return _mode == NaturalWeighted; }
-	bool IsDistance() const { return _mode == DistanceWeighted; }
 	bool IsUniform() const { return _mode == UniformWeighted; }
 	bool IsBriggs() const { return _mode == BriggsWeighted; }
 	
@@ -60,7 +59,6 @@ public:
 		switch(_mode)
 		{
 			case UniformWeighted: return "uniform";
-			case DistanceWeighted: return "distance";
 			case NaturalWeighted: return "natural";
 			case BriggsWeighted:
 			{

@@ -1,6 +1,8 @@
 #include "fitswriter.h"
 #include "fitsreader.h"
 
+#include "uvector.h"
+
 #include <stdexcept>
 #include <sstream>
 #include <vector>
@@ -25,10 +27,23 @@ void FitsWriter::writeHeaders(fitsfile*& fptr, const std::string& filename, size
 	naxes[3] = nPol;
 	fits_create_img(fptr, bitPixInt, 4, naxes, &status);
 	checkStatus(status, filename);
-	float zero = 0, one = 1, equinox = 2000.0;
-	fits_write_key(fptr, TFLOAT, "BSCALE", (void*) &one, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "BZERO", (void*) &zero, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TSTRING, "BUNIT", (void*) "JY/BEAM", "Units are in Jansky per beam", &status); checkStatus(status, filename);
+	double zero = 0, one = 1, equinox = 2000.0;
+	fits_write_key(fptr, TDOUBLE, "BSCALE", (void*) &one, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "BZERO", (void*) &zero, "", &status); checkStatus(status, filename);
+	
+	switch(_unit)
+	{
+		default:
+		case JanskyPerBeam:
+			fits_write_key(fptr, TSTRING, "BUNIT", (void*) "JY/BEAM", "Units are in Jansky per beam", &status); checkStatus(status, filename);
+			break;
+		case Kelvin:
+			fits_write_key(fptr, TSTRING, "BUNIT", (void*) "K", "Units are in Kelvin", &status); checkStatus(status, filename);
+			break;
+		case MilliKelvin:
+			fits_write_key(fptr, TSTRING, "BUNIT", (void*) "mK", "Units are in milli Kelvin", &status); checkStatus(status, filename);
+			break;
+	}
 	
 	if(_hasBeam)
 	{
@@ -41,34 +56,34 @@ void FitsWriter::writeHeaders(fitsfile*& fptr, const std::string& filename, size
 		fits_write_key(fptr, TDOUBLE, "BPA", (void*) &posAngle, "", &status); checkStatus(status, filename);
 	}
 	
-	fits_write_key(fptr, TFLOAT, "EQUINOX", (void*) &equinox, "J2000", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "EQUINOX", (void*) &equinox, "J2000", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "BTYPE", (void*) "Intensity", "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) _origin.c_str(), _originComment.c_str(), &status); checkStatus(status, filename);
-	float phaseCentreRADeg = (_phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (_phaseCentreDec/M_PI)*180.0;
-	float
+	double phaseCentreRADeg = (_phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (_phaseCentreDec/M_PI)*180.0;
+	double
 		centrePixelX = _pixelSizeX!=0.0 ? ((_width / 2.0)+1.0 + _phaseCentreDL/_pixelSizeX) : (_width / 2.0)+1.0,
 		centrePixelY = _pixelSizeY!=0.0 ? ((_height / 2.0)+1.0 - _phaseCentreDM/_pixelSizeY) : (_height / 2.0)+1.0,
 		stepXDeg = (-_pixelSizeX / M_PI)*180.0,
 		stepYDeg = ( _pixelSizeY / M_PI)*180.0;
 	fits_write_key(fptr, TSTRING, "CTYPE1", (void*) "RA---SIN", "Right ascension angle cosine", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CRVAL1", (void*) &phaseCentreRADeg, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CDELT1", (void*) &stepXDeg, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CRVAL1", (void*) &phaseCentreRADeg, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CDELT1", (void*) &stepXDeg, "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "CUNIT1", (void*) "deg", "", &status); checkStatus(status, filename);
 	
 	fits_write_key(fptr, TSTRING, "CTYPE2", (void*) "DEC--SIN", "Declination angle cosine", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CRPIX2", (void*) &centrePixelY, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CRVAL2", (void*) &phaseCentreDecDeg, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CDELT2", (void*) &stepYDeg, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CRPIX2", (void*) &centrePixelY, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CRVAL2", (void*) &phaseCentreDecDeg, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CDELT2", (void*) &stepYDeg, "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "CUNIT2", (void*) "deg", "", &status); checkStatus(status, filename);
 
 	fits_write_key(fptr, TSTRING, "CTYPE3", (void*) "FREQ", "Central frequency", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CRPIX3", (void*) &one, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CRPIX3", (void*) &one, "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TDOUBLE, "CRVAL3", (void*) &_frequency, "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TDOUBLE, "CDELT3", (void*) &_bandwidth, "", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "CUNIT3", (void*) "Hz", "", &status); checkStatus(status, filename);
 	
-	float pol;
+	double pol;
 	switch(_polarization)
 	{
 		case Polarization::StokesI: pol = 1.0; break;
@@ -83,19 +98,20 @@ void FitsWriter::writeHeaders(fitsfile*& fptr, const std::string& filename, size
 		case Polarization::YY: pol = -6.0; break; //yup, this is really the right value
 		case Polarization::XY: pol = -7.0; break;
 		case Polarization::YX: pol = -8.0; break;
+			throw std::runtime_error("Incorrect polarization given to fits writer");
 	}
 	fits_write_key(fptr, TSTRING, "CTYPE4", (void*) "STOKES", "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CRPIX4", (void*) &one, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CRVAL4", (void*) &pol, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TFLOAT, "CDELT4", (void*) &one, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TSTRING, "CUNIT4", (void*) "Hz", "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CRPIX4", (void*) &one, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CRVAL4", (void*) &pol, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TDOUBLE, "CDELT4", (void*) &one, "", &status); checkStatus(status, filename);
+	fits_write_key(fptr, TSTRING, "CUNIT4", (void*) "", "", &status); checkStatus(status, filename);
 	
 	// RESTFRQ ?
 	fits_write_key(fptr, TSTRING, "SPECSYS", (void*) "TOPOCENT", "", &status); checkStatus(status, filename);
 	
   int year, month, day, hour, min, sec, deciSec;
 	julianDateToYMD(_dateObs + 2400000.5, year, month, day);
-	mjdToHMS(_dateObs, hour, min, sec, deciSec);
+	MJDToHMS(_dateObs, hour, min, sec, deciSec);
 	char dateStr[40];
   std::sprintf(dateStr, "%d-%02d-%02dT%02d:%02d:%02d.%01d", year, month, day, hour, min, sec, deciSec);
 	fits_write_key(fptr, TSTRING, "DATE-OBS", (void*) dateStr, "", &status); checkStatus(status, filename);
@@ -157,6 +173,14 @@ void FitsWriter::writeImage(fitsfile* fptr, const std::string& filename, const N
 	for(size_t i=0;i!=totalSize;++i) copy[i] = image[i];
 	fits_write_pixnull(fptr, TDOUBLE, firstpixel, totalSize, &copy[0], &nullValue, &status);
 	checkStatus(status, filename);
+}
+
+void FitsWriter::WriteMask(const std::string& filename, const bool* mask) const
+{
+	ao::uvector<float> maskAsImage(_width * _height);
+	for(size_t i=0; i!=_width*_height; ++i)
+		maskAsImage[i] = mask[i] ? 1.0 : 0.0;
+	Write(filename, maskAsImage.data());
 }
 
 template<typename NumType>
@@ -236,12 +260,22 @@ void FitsWriter::julianDateToYMD(double jd, int &year, int &month, int &day) con
   year = c-4715-((e-1)>2?1:0);
 }
 
-void FitsWriter::mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec) const
+void FitsWriter::MJDToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec)
 {
-	hour = int(fmod(mjd * 24.0, 24.0));
-	minutes = int(fmod(mjd*60.0 * 24.0, 60.0));
-	seconds = int(fmod(mjd*3600.0 * 24.0, 60.0));
+	// It might seem one can calculate each of these immediately
+	// without adjusting 'mjd', but this way circumvents some
+	// catastrophic rounding problems, where "0:59.9" might end up
+	// as "1:59.9".
 	deciSec = int(fmod(mjd*36000.0 * 24.0, 10.0));
+	mjd -= double(deciSec)/(36000.0 * 24.0);
+	
+	seconds = int(fmod(round(mjd*3600.0 * 24.0), 60.0));
+	mjd -= double(seconds)/(3600.0 * 24.0);
+	
+	minutes = int(fmod(round(mjd*60.0 * 24.0), 60.0));
+	mjd -= double(minutes)/(60.0 * 24.0);
+	
+	hour = int(fmod(round(mjd * 24.0), 24.0));
 }
 
 void FitsWriter::CopyDoubleKeywordIfExists(FitsReader& reader, const char* keywordName)

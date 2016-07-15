@@ -311,6 +311,27 @@ public:
 		}
 	}
 	
+	void GetModelWithWeights(Model& model) const
+	{
+		size_t compIndex = 0;
+		for(size_t s=0; s!=_model.SourceCount(); ++s)
+		{
+			const ModelSource& source = _model.Source(s);
+			ModelSource newSource(source);
+			newSource.ClearComponents();
+			for(size_t c=0; c!=source.ComponentCount(); ++c)
+			{
+				ModelComponent newComponent;
+				_accumulatorPerSource[compIndex]->GetWeightSpectrum(newComponent);
+				newSource.AddComponent(newComponent);
+				
+				++compIndex;
+			}
+			if(newSource.HasValidMeasurement())
+				model.AddSource(newSource);
+		}
+	}
+	
 	const Model& PositionsModel() const
 	{
 		return _model;

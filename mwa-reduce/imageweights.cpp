@@ -236,21 +236,6 @@ void ImageWeights::FinishGridding()
 			_grid.assign(_imageWidth*_imageHeight/2, 1.0);
 		}
 		break;
-		case WeightMode::DistanceWeighted:
-		{
-			ao::uvector<double>::iterator i = _grid.begin();
-			for(size_t y=0; y!=_imageHeight/2; ++y)
-			{
-				for(size_t x=0; x!=_imageWidth; ++x)
-				{
-					double u = double(x-_imageWidth/2) / (_imageWidth*_pixelScaleX);
-					double v = double(y) / (_imageHeight*_pixelScaleY);
-					*i = GetInverseTaperedWeight(u, v);
-					++i;
-				}
-			}
-		}
-		break;
 	}
 }
 

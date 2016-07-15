@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 		else if(param == "delays")
 		{
 			++argi;
-			std::vector<int> list;
+			ao::uvector<int> list;
 			NumberList::ParseIntList(argv[argi], list);
 			if(list.size() != 16) {
 				std::cerr << "Need 16 delays\n";

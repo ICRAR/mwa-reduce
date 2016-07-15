@@ -14,6 +14,11 @@
 class FitsWriter : protected FitsIOChecker
 {
 	public:
+	enum Unit {
+		JanskyPerBeam,
+		Kelvin,
+		MilliKelvin
+	};
 		FitsWriter() :
 			_width(0), _height(0),
 			_phaseCentreRA(0.0), _phaseCentreDec(0.0), _pixelSizeX(0.0), _pixelSizeY(0.0),
@@ -23,12 +28,13 @@ class FitsWriter : protected FitsIOChecker
 			_hasBeam(false),
 			_beamMajorAxisRad(0.0), _beamMinorAxisRad(0.0), _beamPositionAngle(0.0),
 			_polarization(Polarization::StokesI),
+			_unit(JanskyPerBeam),
 			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa"),
 			_multiFPtr(0)
 		{
 		}
 		
-		FitsWriter(const class FitsReader& reader) :
+		explicit FitsWriter(const class FitsReader& reader) :
 			_width(0), _height(0),
 			_phaseCentreRA(0.0), _phaseCentreDec(0.0), _pixelSizeX(0.0), _pixelSizeY(0.0),
 			_phaseCentreDL(0.0), _phaseCentreDM(0.0),
@@ -50,6 +56,8 @@ class FitsWriter : protected FitsIOChecker
 		}
 		
 		template<typename NumType> void Write(const std::string& filename, const NumType* image) const;
+		
+		void WriteMask(const std::string& filename, const bool* mask) const;
 		
 		void StartMulti(const std::string& filename, size_t nPol, size_t nFreq);
 		
@@ -85,6 +93,13 @@ class FitsWriter : protected FitsIOChecker
 			_width = width;
 			_height = height;
 		}
+		void SetImageDimensions(size_t width, size_t height, double pixelSizeX, double pixelSizeY)
+		{
+			_width = width;
+			_height = height;
+			_pixelSizeX = pixelSizeX;
+			_pixelSizeY = pixelSizeY;
+		}
 		void SetImageDimensions(size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY)
 		{
 			_width = width;
@@ -106,6 +121,10 @@ class FitsWriter : protected FitsIOChecker
 		void SetPolarization(PolarizationEnum polarization)
 		{
 			_polarization = polarization;
+		}
+		void SetUnit(Unit unit)
+		{
+			_unit = unit;
 		}
 		void SetOrigin(const std::string& origin, const std::string& comment)
 		{
@@ -169,6 +188,8 @@ class FitsWriter : protected FitsIOChecker
 		
 		void CopyDoubleKeywordIfExists(class FitsReader& reader, const char* keywordName);
 		void CopyStringKeywordIfExists(class FitsReader& reader, const char* keywordName);
+		
+		static void MJDToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec);
 	private:
 		template<typename T>
 		static T setNotFiniteToZero(T num)
@@ -183,13 +204,13 @@ class FitsWriter : protected FitsIOChecker
 		bool _hasBeam;
 		double _beamMajorAxisRad, _beamMinorAxisRad, _beamPositionAngle;
 		PolarizationEnum _polarization;
+		Unit _unit;
 		std::string _origin, _originComment;
 		std::vector<std::string> _history;
 		std::map<std::string, std::string> _extraStringKeywords;
 		std::map<std::string, double> _extraNumKeywords;
 		
 		void julianDateToYMD(double jd, int &year, int &month, int &day) const;
-		void mjdToHMS(double mjd, int& hour, int& minutes, int& seconds, int& deciSec) const;
 		void writeHeaders(fitsfile*& fptr, const std::string& filename, size_t nFreq, size_t nPol) const;
 		void writeImage(fitsfile* fptr, const std::string& filename, const double* image) const;
 		void writeImage(fitsfile* fptr, const std::string& filename, const float* image) const;

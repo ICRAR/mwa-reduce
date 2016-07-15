@@ -41,6 +41,32 @@ public:
 		_outputColumnName = dataColumn;
 	}
 	
+	void SetToZero(casacore::MeasurementSet& ms)
+	{
+		std::cout << "Opening measurement set..." << std::flush;
+		ms.reopenRW();
+		casacore::ArrayColumn<casacore::Complex> dataColumn(ms, _inputColumnName);
+		std::cout << "DONE\n";
+
+		std::unique_ptr<casacore::ArrayColumn<casacore::Complex>> copyColumn;
+		casacore::ArrayColumn<casacore::Complex> *outputColumn;
+		if(_outputColumnName == _inputColumnName)
+		{
+			outputColumn = &dataColumn;
+		}
+		else {
+			createColumnIfNotExist(ms, _outputColumnName);
+			copyColumn.reset(new casacore::ArrayColumn<casacore::Complex>(ms, _outputColumnName));
+			outputColumn = &*copyColumn;
+		}
+		casacore::IPosition dataShape = dataColumn.shape(0);
+		casacore::Array<casa::Complex> data(dataShape);
+		for(casacore::Array<casa::Complex>::iterator i=data.begin(); i!=data.end(); ++i)
+			*i = 0.0;
+		for(size_t row=0; row!=ms.nrow(); ++row)
+			outputColumn->put(row, data);
+	}
+	
 	void Apply(casacore::MeasurementSet& ms, SolutionFile& solutionFile)
 	{
 		/**
@@ -56,8 +82,7 @@ public:
 		if(channelCount == 0) throw std::runtime_error("No channels in set");
 		if(ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 		
-		typedef float num_t;
-		typedef std::complex<num_t> complex_t;
+		typedef std::complex<float> complex_t;
 		casacore::ROScalarColumn<double> timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
 		casacore::ROScalarColumn<int> ant1Column(ms, ms.columnName(casacore::MSMainEnums::ANTENNA1));
 		casacore::ROScalarColumn<int> ant2Column(ms, ms.columnName(casacore::MSMainEnums::ANTENNA2));
@@ -71,19 +96,7 @@ public:
 			outputColumn = &dataColumn;
 		}
 		else {
-			if(!ms.tableDesc().isColumn(_outputColumnName)) {
-				std::cout << "Adding column '" << _outputColumnName << "'... " << std::flush;
-				casacore::IPosition shape = dataColumn.shape(0);
-				casacore::ArrayColumnDesc<casacore::Complex> columnDesc(_outputColumnName, shape);
-				try {
-					ms.addColumn(columnDesc, "StandardStMan", true, true);
-				} catch(std::exception& e)
-				{
-					ms.addColumn(columnDesc, "StandardStMan", false, true);
-				}
-				
-				std::cout << "DONE\n";
-			}
+			createColumnIfNotExist(ms, _outputColumnName);
 			copyColumn.reset(new casacore::ArrayColumn<complex_t>(ms, _outputColumnName));
 			outputColumn = &*copyColumn;
 		}
@@ -166,7 +179,7 @@ public:
 				intervalRowStart = timestepRows[intervalTimestepStart],
 				intervalRowEnd = timestepRows[intervalTimestepEnd];
 			std::cout << "- Interval " << (interval+1) << '/' << solutionFile.IntervalCount() << " (" << intervalRowStart << '-' << intervalRowEnd << ")\n";
-			std::cout << "  Antenna1: " << values[1][72*4] << "\n";
+			std::cout << "  Antenna1: " << values[1][(channelCount/2)*4] << "\n";
 			for(size_t rowIndex=intervalRowStart; rowIndex!=intervalRowEnd; ++rowIndex)
 			{
 				// Cross correlation?
@@ -211,6 +224,24 @@ private:
 		Matrix2x2::ATimesHermB(dataVal, solATimesData, solB);
 	}
 
+	void createColumnIfNotExist(casacore::MeasurementSet& ms, const std::string& columnName)
+	{
+		if(!ms.tableDesc().isColumn(columnName)) {
+			casacore::ArrayColumn<casacore::Complex> dataColumn(ms, _inputColumnName);
+			std::cout << "Adding column '" << columnName << "'... " << std::flush;
+			casacore::IPosition shape = dataColumn.shape(0);
+			casacore::ArrayColumnDesc<casacore::Complex> columnDesc(columnName, shape);
+			try {
+				ms.addColumn(columnDesc, "StandardStMan", true, true);
+			} catch(std::exception& e)
+			{
+				ms.addColumn(columnDesc, "StandardStMan", false, true);
+			}
+			
+			std::cout << "DONE\n";
+		}
+	}
+	
 	bool _preset;
 	std::complex<double> _presetValues[4];
 	std::string _inputColumnName, _outputColumnName;

@@ -5,6 +5,8 @@
 #include "banddata.h"
 #include "imagecoordinates.h"
 
+#include "model/modelsource.h"
+
 #include <vector>
 
 class FluxSpectrumAccumulator : public Serializable
@@ -135,6 +137,31 @@ public:
 			sed.AddMeasurement(m);
 		}
 		component.SetSED(sed);
+	}
+	
+	void GetWeightSpectrum(ModelComponent& component) const
+	{
+		component = _component;
+		MeasuredSED sed;
+		bool hasNonZeroValues = false;
+		for(size_t ch=0; ch!=_bandData->ChannelCount(); ++ch)
+		{
+			Measurement m;
+			m.SetFrequencyHz(_bandData->ChannelFrequency(ch));
+			double stokesValues[4];
+			_accumulators[ch]->GetWeights(stokesValues);
+			for(size_t p=0; p!=4; ++p)
+			{
+				m.SetFluxDensityFromIndex(p, stokesValues[p]);
+				if(std::isfinite(stokesValues[p]) && stokesValues[p] != 0.0)
+					hasNonZeroValues = true;
+			}
+			sed.AddMeasurement(m);
+		}
+		if(hasNonZeroValues)
+			component.SetSED(sed);
+		else
+			component.SetSED(MeasuredSED());
 	}
 private:
 	std::vector<FluxAccumulator*> _accumulators;

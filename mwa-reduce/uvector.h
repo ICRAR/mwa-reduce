@@ -3,7 +3,7 @@
 
 #ifdef HAVE_UVECTOR
 
-#include "aocommon/uvector.h"
+#include "aocommon/uvector_11.h"
 
 #else
 

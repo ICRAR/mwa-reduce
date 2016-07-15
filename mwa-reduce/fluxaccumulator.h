@@ -2,6 +2,8 @@
 #define FLUX_ACCUMULATOR_H
 
 #include "beamevaluator.h"
+
+#include "polarizationenum.h"
 #include "matrix2x2.h"
 #include "serializable.h"
 
@@ -85,6 +87,19 @@ public:
 			Polarization::LinearToStokes(correctedLinear, stokesMatrix);
 		}
 		else {
+			for(size_t p=0; p!=4; ++p)
+				stokesMatrix[p] = std::numeric_limits<double>::quiet_NaN();
+		}
+	}
+	
+	void GetWeights(double* stokesMatrix) const
+	{
+		Polarization::LinearToStokes(_accWeights, stokesMatrix);
+		bool isValid = true;
+		for(size_t p=0; p!=4; ++p)
+			if(!std::isfinite(stokesMatrix[p]) || stokesMatrix[p]==0.0) isValid = false;
+		if(!isValid)
+		{
 			for(size_t p=0; p!=4; ++p)
 				stokesMatrix[p] = std::numeric_limits<double>::quiet_NaN();
 		}
