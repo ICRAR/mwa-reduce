@@ -54,6 +54,7 @@ void startRow()
 {
 	source = ModelSource();
 	source.AddComponent(ModelComponent());
+	source.front().SetSED(MeasuredSED());
 	flux = std::numeric_limits<double>::quiet_NaN();
 	spectInd = std::numeric_limits<double>::quiet_NaN();
 	secondFlux = std::numeric_limits<double>::quiet_NaN();
