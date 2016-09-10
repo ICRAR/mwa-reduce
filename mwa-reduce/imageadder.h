@@ -56,7 +56,7 @@ public:
 		}
 		_count++;
 		
-		ao::uvector<double> inpImage(_width*_height), weightImage(_width*_height);
+		ao::uvector<double> inpImage(_width*_height), beamImage(_width*_height);
 		
 		inpReader.Read<double>(&inpImage[0]);
 		double wscImageWeight;
@@ -74,7 +74,7 @@ public:
 		
 		if(std::string(weightFilename) == "-1")
 		{
-			weightImage.assign(_width*_height, wscImageWeight);
+			beamImage.assign(_width*_height, 1.0);
 		}
 		else if(!imaginaryWeightFilename.empty())
 		{
@@ -90,19 +90,17 @@ public:
 			for(size_t j=0; j!=_width*_height; ++j)
 			{
 				double r = realImage[j], i = imagImage[j];
-				weightImage[j] = (r*r + i*i) * wscImageWeight;
+				beamImage[j] = (r*r + i*i);
 			}
 		}
 		else {
 			FitsReader weightsReader(weightFilename);
 			if(weightsReader.ImageWidth() != _width || weightsReader.ImageHeight() != _height)
 				throw std::runtime_error("Weights and image do not have same size");
-			weightsReader.Read<double>(&weightImage[0]);
-			for(size_t j=0; j!=_width*_height; ++j)
-				weightImage[j] *= wscImageWeight;
+			weightsReader.Read<double>(&beamImage[0]);
 		}
 		
-		double centralWeight = weightImage[_width/2 + (_height/2)*_width];
+		double centralWeight = beamImage[_width/2 + (_height/2)*_width];
 		_normalizationFactorSum += wscNormalizationFactor * wscImageWeight * centralWeight;
 		_normalizationFactorWeightSum += wscImageWeight * centralWeight;
 		_totalImageWeight += wscImageWeight * centralWeight;
@@ -110,14 +108,14 @@ public:
 		
 		// Add the images in
 		double *outImagePtr = _outImage.data(), *outWeightPtr = _outWeights.data();
-		ao::uvector<double>::iterator inpWeightsIter = weightImage.begin();
+		ao::uvector<double>::iterator inpBeamIter = beamImage.begin();
 		for(ao::uvector<double>::iterator i=inpImage.begin(); i!=inpImage.end(); ++i)
 		{
-			double beamVal = *inpWeightsIter;
-			*outImagePtr +=  (*i) * beamVal;
-			*outWeightPtr += beamVal * beamVal;
+			double beamVal = *inpBeamIter;
+			*outImagePtr +=  (*i) * beamVal * wscImageWeight;
+			*outWeightPtr += beamVal * beamVal * wscImageWeight;
 			
-			++inpWeightsIter;
+			++inpBeamIter;
 			++outImagePtr;
 			++outWeightPtr;
 		}
