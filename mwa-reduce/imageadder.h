@@ -18,7 +18,9 @@ public:
 		_width(0), _height(0), _count(0),
 		_outImage(0), _outWeights(0),
 		_imgWriter(),
-		_frequencySum(0.0), _lowestFreq(0.0), _highestFreq(0.0)
+		_frequencySum(0.0), _lowestFreq(0.0), _highestFreq(0.0),
+		_normalizationFactorSum(0.0), _normalizationFactorWeightSum(0.0),
+		_totalImageWeight(0.0), _totalImageWeightWeightSum(0.0)
 	{
 	}
 	
@@ -54,13 +56,25 @@ public:
 		}
 		_count++;
 		
-		ao::uvector<double> inpImage(_width*_height), weightImage(_width*_height);
+		ao::uvector<double> inpImage(_width*_height), beamImage(_width*_height);
 		
 		inpReader.Read<double>(&inpImage[0]);
+		double wscImageWeight;
+		if(!inpReader.ReadDoubleKeyIfExists("WSCIMGWG", wscImageWeight))
+		{
+			std::cerr << "Warning: Keyword WSCIMGWG not found!\n";
+			wscImageWeight = 1.0;
+		}
+		double wscNormalizationFactor;
+		if(!inpReader.ReadDoubleKeyIfExists("WSCNORMF", wscNormalizationFactor))
+		{
+			std::cerr << "Warning: Keyword WSCNORM not found!\n";
+			wscNormalizationFactor = 1.0;
+		}
 		
 		if(std::string(weightFilename) == "-1")
 		{
-			weightImage.assign(_width*_height, 1.0);
+			beamImage.assign(_width*_height, 1.0);
 		}
 		else if(!imaginaryWeightFilename.empty())
 		{
@@ -76,26 +90,32 @@ public:
 			for(size_t j=0; j!=_width*_height; ++j)
 			{
 				double r = realImage[j], i = imagImage[j];
-				weightImage[j] = r*r + i*i;
+				beamImage[j] = (r*r + i*i);
 			}
 		}
 		else {
 			FitsReader weightsReader(weightFilename);
 			if(weightsReader.ImageWidth() != _width || weightsReader.ImageHeight() != _height)
 				throw std::runtime_error("Weights and image do not have same size");
-			weightsReader.Read<double>(&weightImage[0]);
+			weightsReader.Read<double>(&beamImage[0]);
 		}
-			
+		
+		double centralWeight = beamImage[_width/2 + (_height/2)*_width];
+		_normalizationFactorSum += wscNormalizationFactor * wscImageWeight * centralWeight;
+		_normalizationFactorWeightSum += wscImageWeight * centralWeight;
+		_totalImageWeight += wscImageWeight * centralWeight;
+		_totalImageWeightWeightSum += centralWeight;
+		
 		// Add the images in
 		double *outImagePtr = _outImage.data(), *outWeightPtr = _outWeights.data();
-		ao::uvector<double>::iterator inpWeightsIter = weightImage.begin();
+		ao::uvector<double>::iterator inpBeamIter = beamImage.begin();
 		for(ao::uvector<double>::iterator i=inpImage.begin(); i!=inpImage.end(); ++i)
 		{
-			double beamVal = *inpWeightsIter;
-			*outImagePtr +=  (*i) * beamVal;
-			*outWeightPtr += beamVal * beamVal;
+			double beamVal = *inpBeamIter;
+			*outImagePtr +=  (*i) * beamVal * wscImageWeight;
+			*outWeightPtr += beamVal * beamVal * wscImageWeight;
 			
-			++inpWeightsIter;
+			++inpBeamIter;
 			++outImagePtr;
 			++outWeightPtr;
 		}
@@ -117,6 +137,8 @@ public:
 		}
 		
 		_imgWriter->SetFrequency(_frequencySum / _count, (_highestFreq - _lowestFreq));
+		_imgWriter->SetExtraKeyword("WSCNORMF", _normalizationFactorSum / _normalizationFactorWeightSum);
+		_imgWriter->SetExtraKeyword("WSCIMGWG", _totalImageWeight / _totalImageWeightWeightSum);
 		_imgWriter->Write<double>(outputFilename, _outImage.data());
 		
 		if(!outputWeightsFilename.empty() && outputWeightsFilename!="-")
@@ -127,6 +149,8 @@ private:
 	ao::uvector<double> _outImage, _outWeights;
 	std::unique_ptr<FitsWriter> _imgWriter;
 	double _frequencySum, _lowestFreq, _highestFreq;
+	double _normalizationFactorSum, _normalizationFactorWeightSum;
+	double _totalImageWeight, _totalImageWeightWeightSum;
 };
 
 #endif

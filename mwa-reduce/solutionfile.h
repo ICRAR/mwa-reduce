@@ -131,6 +131,8 @@ class SolutionFile
 		double timeStart, timeEnd;
 		_inputStream->read(reinterpret_cast<char*>(&timeStart), sizeof(timeStart));
 		_inputStream->read(reinterpret_cast<char*>(&timeEnd), sizeof(timeEnd)); 
+		if(_inputStream->bad())
+			throw std::runtime_error("Error reading input solutions file");
 	}
 
 	/** Read a complex solution from the file.
