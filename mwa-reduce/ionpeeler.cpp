@@ -1,7 +1,6 @@
 #include "ionpeeler.h"
 
 #include "beamevaluator.h"
-#include "ionpeeler.h"
 #include "ionsolutionfile.h"
 #include "imageweights.h"
 #include "predicter.h"
@@ -544,7 +543,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 	}
 	fInfo.lambda /= curChannelBlockSize;*/
 		
-	// Predict model for this source
+	// Predict model for all directions
 	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 	{
 		ao::uvector<std::complex<double>>& modelData = modelDataPerSource[sourceIndex];
