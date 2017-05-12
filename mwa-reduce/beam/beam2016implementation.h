@@ -134,10 +134,10 @@ protected :
    // then re-use for many different (azim,za) angles:
    
    // function calculating coefficients for X and Y and storing parameters frequency, delays and amplitudes 
-   void CalcModes( int freq_hz, int n_ant, const double* delays, const double* amps );
+   void CalcModes( int freq_hz, size_t n_ant, const double* delays, const double* amps );
    
    // function calculating all coefficients Q1, Q2, N, M and derived MabsM, Nmax for a given polarisation ("X" or "Y") - perhaps enum should be used here 
-   double CalcModes( int freq_hz, int n_ant, const double* delays, const double* amp, char pol,
+   double CalcModes( int freq_hz, size_t n_ant, const double* delays, const double* amp, char pol,
                      std::vector< std::complex<double> >& Q1_accum, std::vector< std::complex<double> >& Q2_accum,
                      std::vector<double>& M_accum, std::vector<double>& N_accum, std::vector<double>& MabsM, std::vector< std::vector<double> >& Cmn  );                                                                              
    // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

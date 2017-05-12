@@ -473,10 +473,10 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
       
       complex<double> Vcplx = amp[a]*phase_factor;
       
-      if( m_VerbLevel>0 ){printf("ANT_%d : Phase = %e , Vcplx = %e + %ej\n",a,phase,Vcplx.real(),Vcplx.imag());}
+      if( m_VerbLevel>0 ){printf("ANT_%d : Phase = %e , Vcplx = %e + %ej\n",int(a),phase,Vcplx.real(),Vcplx.imag());}
       
       char Q_all_name[64];
-      sprintf(Q_all_name,"%c%d_%d",pol,a+1,freq_hz);
+      sprintf(Q_all_name,"%c%d_%d",pol,int(a)+1,freq_hz);
 
       // NO CACHE VERSION :
       vector< vector<double> > Q_all;
@@ -485,7 +485,7 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
       if( m_VerbLevel>0 ){ printf("Read dataaset %s has dimensions %d x %d\n",Q_all_name,(int)(Q_all.size()),(int)(Q_all[0].size())); }
 
       size_t n_ant_coeff = Q_all[0].size();
-      if( m_VerbLevel>0 ){ printf("Number of coefficients for antenna = %d is %d\n",a,int(n_ant_coeff)); }
+      if( m_VerbLevel>0 ){ printf("Number of coefficients for antenna = %d is %d\n",int(a),int(n_ant_coeff)); }
       
       vector<double> Ms1,Ns1,Ms2,Ns2;
       vector<double>&  m_Modes_Type = m_Modes[0];
@@ -1076,7 +1076,7 @@ int Beam2016Implementation::IsCalcModesRequired( int freq_hz, int n_ant, const d
    return 0;
 }
 
-void Beam2016Implementation::CalcModes( int freq_hz, int n_ant, const double* delays, const double* amps )
+void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double* delays, const double* amps )
 {
    if( IsCalcModesRequired(  freq_hz, n_ant, delays, amps )<=0  ){
       // if recalculation of modes is not required -> do not do it 
