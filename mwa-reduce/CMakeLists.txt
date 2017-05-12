@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2.2)
+cmake_minimum_required(VERSION 2.8.8)
 
 project(mwa-reduce)
 
@@ -37,7 +37,7 @@ include_directories(${FITSIO_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 include_directories(${HDF5_INCLUDE_DIRS})
 
-set(BEAM_LIBS mwareducebeam ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${HDF5_C_LIBRARY})
+set(BEAM_LIBS mwareducebeam ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${HDF5_LIBRARIES})
 
 if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   include_directories(${GSL_INCLUDE_DIR})
@@ -80,7 +80,7 @@ IF("${isSystemDir}" STREQUAL "-1")
    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 ENDIF("${isSystemDir}" STREQUAL "-1")
 
-add_library(mwareducebeam fitsiochecker.cpp beam/joneslookupdipole.cpp beam/system.cpp beam/tilebeam.cpp beam/tilebeambase.cpp beam/tilebeam2014.cpp beam/tileimpedance.cpp beam/lnaimpedance.cpp alglib/ap.cpp alglib/alglibinternal.cpp alglib/alglibmisc.cpp alglib/integration.cpp alglib/interpolation.cpp alglib/linalg.cpp alglib/optimization.cpp alglib/solvers.cpp alglib/specialfunctions.cpp)
+add_library(mwareducebeam fitsiochecker.cpp beam/joneslookupdipole.cpp beam/system.cpp beam/tilebeam.cpp beam/tilebeambase.cpp beam/tilebeam2014.cpp beam/get_ff.cpp beam/tileimpedance.cpp beam/lnaimpedance.cpp alglib/ap.cpp alglib/alglibinternal.cpp alglib/alglibmisc.cpp alglib/integration.cpp alglib/interpolation.cpp alglib/linalg.cpp alglib/optimization.cpp alglib/solvers.cpp alglib/specialfunctions.cpp)
 set(BEAMFILES "")
 
 add_executable(addimg addimg.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
