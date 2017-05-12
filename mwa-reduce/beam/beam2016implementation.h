@@ -66,7 +66,7 @@ public :
    //         amps            - amplutudes 
    //         bZenithNorm     - normalise to zenith (>0) or not (<=0)
    // OUTPUT : Jones matrix (normalised or not - depending on the parameter bZenithNorm )
-   JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays=NULL, const double* amps=NULL, int bZenithNorm=1 );
+   JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays=NULL, const double* amps=NULL, bool bZenithNorm=true );
 
    // Calculation of Jones matrix for an image passed in the arrays azimuth and zenith angles maps. 
    // This function calls the single direction one (above) for all pixel in the input image.
@@ -80,8 +80,9 @@ public :
    // OUTPUT :
    //       2D array of JonesMatrix for each pixel 
    void CalcJones( std::vector< std::vector<double> >& azim_arr, std::vector< std::vector<double> >& za_arr, std::vector< std::vector<JonesMatrix> >& jones,
-                   int freq_hz_param, const double* delays=NULL, const double* amps=NULL, int bZenithNorm=1 );
+                   int freq_hz_param, const double* delays=NULL, const double* amps=NULL, bool bZenithNorm=true );
 protected :
+
    // Calculation of Jones matrix for a single pointing direction (internal function):
    // INPUT : (az_rad,za_rad) - azimuth and zenith in [radians]
    JonesMatrix CalcJones( double az_rad, double za_rad );
@@ -152,7 +153,8 @@ protected :
    // Some static/constant variables like : default delays and amps:
    static const double m_DefaultDelays[];  // at zenith {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
    static const double m_DefaultAmps[];    // just {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
-   static const double delayStep;          // MWA beamformer delay step 
+   static const double delayStep;          // delay step in MWA beamformer (in picoseconds)
+      
 
    // parameters:
    static int m_VerbLevel;  // debug level
@@ -199,16 +201,16 @@ protected :
       
    
    // factorial calculation :
-   double factorial_wrapper_base( unsigned n );
-   double factorial_wrapper( unsigned n ); // uses precalculated factorials stored in m_Factorial
-   double factorial_d( unsigned n );
-   long long factorial( unsigned n );
-   void cache_factorial( unsigned max_n );                     
+   double factorial_wrapper_base( int n );
+   double factorial_wrapper( int n ); // uses precalculated factorials stored in m_Factorial
+   double factorial_d( int n );
+   long long factorial( int n );
+   void cache_factorial( int max_n );                     
    // precalculated factorials :
    std::vector<double> m_Factorial;   
                        
 
-   //----------------------------------------------------------------------------------- basic vector operations - TO BE REPLACED BY std calls -----------------------------------------------------------------------------------   
+   //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ----------------------------------------------------------------
    // vector initialisation, printing etc (a bit like numpy functions)   
    void zeros( std::vector< std::complex<double> >& arr, int size );
    void zeros( std::vector< std::vector<double> >& arr, int size );
@@ -223,5 +225,6 @@ protected :
    void merge( std::vector<double>& arr1, std::vector<double>& arr2, std::vector<double>& arr_merged );
 
 };
+
 
 #endif
