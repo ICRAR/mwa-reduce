@@ -212,10 +212,8 @@ protected :
 
    //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ----------------------------------------------------------------
    // vector initialisation, printing etc (a bit like numpy functions)   
-   void zeros( std::vector< std::complex<double> >& arr, int size );
    void zeros( std::vector< std::vector<double> >& arr, int size );
    void zeros( std::vector< std::vector<double> >& arr, int size_x, int size_y );
-   void zeros( std::vector<double>& arr, int size );
    void arrange( std::vector<int>& arr, int size );
    double max( std::vector<double>& arr );
    void print( std::vector<double>& arr, const char* name, int force=0 );

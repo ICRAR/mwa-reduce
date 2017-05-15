@@ -411,7 +411,7 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
    M_accum.clear();
    N_accum.clear();
    MabsM.clear();
-   Cmn.clear();
+   // Cmn.clear();
    
    int modes_size = m_Modes[0].size();
    if( m_VerbLevel>0 ){printf("Size(Modes) = %d\n",modes_size);}
@@ -595,11 +595,12 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
    }
 
    // Moved from CalcSigmas here :
-   vector<double> empty_line;
+   /*vector<double> empty_line;
    zeros(empty_line,N_accum.size());
    for(size_t j=0;j<M_accum.size();j++){
       Cmn.push_back( empty_line );
-   }
+   }*/
+   zeros(Cmn, N_accum.size(), M_accum.size() );
    
    for(size_t i=0;i<N_accum.size();i++){
       double N = N_accum[i];
@@ -685,8 +686,7 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
 
    int size = power_int(nmax,2) + 2*nmax;
    if( m_VerbLevel > 0 ){ printf("P1sin.size = %d\n",size); }
-   p1sin_out.clear();   
-   zeros( p1sin_out , size );
+   p1sin_out.assign(size, 0.0); // WAS : p1sin_out.clear(); zeros( p1sin_out , size );
    p1_out = p1sin_out;
 
 
@@ -700,7 +700,7 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       vector< vector<double> > Pm_sin_flipud;
       vector< vector<double> > Pm_sin_merged;
       vector<int> l;
-      zeros(P,n+1);    
+      P.assign(n+1,0.0);      // was zeros(P,n+1);    
       zeros(Pm_sin,n+1);
       arrange(l, int(n/2)+1);
       if(m_VerbLevel>1){printf("DEBUG(0) : Pm_sin shape = %d x %d vs. shape(P) = %d\n",(int)(Pm_sin[0].size()),(int)(Pm_sin.size()),(int)(P.size()));}
@@ -970,7 +970,7 @@ int Beam2016Implementation::Read()
          printf("File ID = %d\n",(int)file_id);
       }
          
-      /* not sure how to read attribute with the official HDF5 library ... 
+      /* TODO :  not sure how to read attribute with the official HDF5 library ... 
       if( H5Aexists( file_id, "VERSION" ) ){
          char szVersion[128];
          strcpy(szVersion,"TEST");
@@ -1042,12 +1042,6 @@ double Beam2016Implementation::max( vector<double>& arr )
    return max;
 }
                                   
-
-void  Beam2016Implementation::zeros( vector<double>& arr, int size )
-{
-   arr.assign(size, 0.0);
-}
-
 void Beam2016Implementation::zeros( vector< vector<double> >& arr, int size )
 {
    vector<double> zero_vector(1, 0.0);
@@ -1111,11 +1105,6 @@ void Beam2016Implementation::print( vector<int>& arr, const char* name, int forc
    }      
 }
 
-void Beam2016Implementation::zeros( vector< complex<double> >& arr, int size )
-{
-    arr.assign(size, 0.0);
-}
-
 void Beam2016Implementation::arrange( vector<int>& arr, int size )
 {
    arr.clear();
@@ -1126,18 +1115,6 @@ void Beam2016Implementation::arrange( vector<int>& arr, int size )
 
 vector< vector<JonesMatrix> >& JonesMatrix::zeros( vector< vector<JonesMatrix> >& jones, int x_size, int y_size )
 {
-   JonesMatrix jones_zero;
-
-   jones.clear();
-   vector<JonesMatrix> zero_vector;
-   for(int x=0;x<x_size;x++){
-      zero_vector.push_back( jones_zero );
-   }
- 
-   for(int i=0;i<y_size;i++){
-      jones.push_back(zero_vector);
-   }
-   
-   return jones;
-
+   vector<JonesMatrix> zero_vector(x_size, JonesMatrix(0,0,0,0) );
+   jones.assign(y_size, zero_vector);  
 }
