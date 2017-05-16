@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <boost/math/special_functions/legendre.hpp>
+#include <boost/math/special_functions/factorials.hpp>
 
 #include <H5Cpp.h>
 
@@ -82,16 +83,9 @@ int Beam2016Implementation::find_closest_freq(int freq_hz)
 }
 
 
-static int power_int( int val, int n ){
-   double ret=1;
-   for(int i=0;i<n;i++){ 
-      ret = ret*val;
-   }
-   
-   return ret;
-}
-
-static complex<double> power_complex( complex<double> val, int n )
+// local power calculations
+// WARNING : please do not remove - the program works 2x slower when std::pow is used instead !!!  
+complex<double> Beam2016Implementation::power_complex( complex<double> val, int n )
 {
    complex<double> ret=1;
    for(int i=0;i<n;i++){ 
@@ -101,7 +95,7 @@ static complex<double> power_complex( complex<double> val, int n )
    return ret;
 }
 
-Beam2016Implementation:: Beam2016Implementation( const char* h5_file ) : 
+Beam2016Implementation::Beam2016Implementation( const char* h5_file ) : 
   m_CalcModesLastFreqHz(-1),
   m_CalcModesLastDelays(nullptr),
   m_CalcModesLastAmps(nullptr),
@@ -117,7 +111,7 @@ Beam2016Implementation:: Beam2016Implementation( const char* h5_file ) :
    }   
 }
 
- Beam2016Implementation::~ Beam2016Implementation()
+Beam2016Implementation::~Beam2016Implementation()
 {
    delete m_pH5File;
    delete [] m_CalcModesLastDelays;
@@ -296,17 +290,14 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
          printf("DEBUG : Q1[%d] = %e + %ej , Q2[%d] = %e + %ej\n",int(i),Q1_accum[i].real(),Q1_accum[i].imag(),int(i),Q2_accum[i].real(),Q2_accum[i].imag());
       }
                
-      // Equation 4 in the paper to calculate E_theta_mn :
-      //int abs_m = abs(m);
-      //int abs_m1 = abs_m + 1;
             
-      complex<double> j_power_n = power_complex(complex_j,n);                        
+      complex<double> j_power_n = power_complex(complex_j,n); // WARNING : please do not remove - the program works 2x slower when std::pow(complex_j,n) is used instead !!! 
       complex<double> E_theta_mn = j_power_n * ( P1sin_arr[i] * ( fabs(M) * Q2_accum[i]*u - M*Q1_accum[i] ) + Q2_accum[i]*P1_arr[i] );
       if( m_VerbLevel > 0 ){
          printf("E_theta_mn[%d] = %e + %ej = (%e + %ej) * ( %e * ( %e * (%e + %ej) * %e - (%e)*(%e + %ej)) + (%e + %ej) * %e)\n",int(i),E_theta_mn.real(),E_theta_mn.imag(),j_power_n.real(),j_power_n.imag(),P1sin_arr[i],fabs(M),Q2_accum[i].real(),Q2_accum[i].imag(),u,M,Q1_accum[i].real(),Q1_accum[i].imag(),Q2_accum[i].real(),Q2_accum[i].imag(),P1_arr[i]);
       }
             
-      complex<double> j_power_np1 = power_complex(complex_j,n+1);
+      complex<double> j_power_np1 = power_complex(complex_j,n+1); // WARNING : please do not remove - the program works 2x slower when std::pow(complex_j,n+1) is used instead !!!
       complex<double> E_phi_mn = j_power_np1 * ( P1sin_arr[i] * ( M*Q2_accum[i] - fabs(M)*Q1_accum[i]*u) - Q1_accum[i]*P1_arr[i] );
       if( m_VerbLevel > 0 ){
           printf("E_phi_mn[%d] = %e + %ej = (%e + %ej) * ( %e * ( %e (%e + %ej) - %e (%e + %ej) %e ) + (%e + %ej) %e )\n",int(i),E_phi_mn.real(),E_phi_mn.imag(),j_power_np1.real(),j_power_np1.imag(),P1sin_arr[i],M,
@@ -372,7 +363,7 @@ void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double*
       return;
    }
 
-   Nmax_X = CalcModes( freq_hz , n_ant, delays, amps, 'X', Q1_accum_X, Q2_accum_X, M_accum_X, N_accum_X, MabsM_X, Cmn_X );
+   Nmax_X = CalcModes( freq_hz , n_ant, delays, amps, 'X', Q1_accum_X, Q2_accum_X, M_accum_X, N_accum_X, MabsM_X );
    // TODO : perhaps can be uncommented above and removed below :
    /*Nmax_X = max(N_accum_X);
    if( Nmax_X != Nmax_X_test ){
@@ -380,7 +371,7 @@ void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double*
    }
    Nmax_X = Nmax_X_test;*/
    
-   Nmax_Y = CalcModes( freq_hz , n_ant, delays, amps, 'Y', Q1_accum_Y, Q2_accum_Y, M_accum_Y, N_accum_Y, MabsM_Y, Cmn_Y);
+   Nmax_Y = CalcModes( freq_hz , n_ant, delays, amps, 'Y', Q1_accum_Y, Q2_accum_Y, M_accum_Y, N_accum_Y, MabsM_Y );
    // TODO : perhaps can be uncommented above and removed below :
    /*Nmax_Y = max(N_accum_Y);
    if( Nmax_Y != Nmax_Y_test ){
@@ -404,14 +395,13 @@ void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double*
 double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double* delays, const double* amp, char pol, 
                                    vector< complex<double> >& Q1_accum, vector< complex<double> >& Q2_accum,
                                    vector<double>& M_accum, vector<double>& N_accum,
-                                   vector<double>& MabsM, vector< vector<double> >& Cmn  )
+                                   vector<double>& MabsM  )
 {
    vector<double> phases(n_ant);
    double Nmax=0;
    M_accum.clear();
    N_accum.clear();
    MabsM.clear();
-   // Cmn.clear();
    
    int modes_size = m_Modes[0].size();
    if( m_VerbLevel>0 ){printf("Size(Modes) = %d\n",modes_size);}
@@ -600,20 +590,23 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
    for(size_t j=0;j<M_accum.size();j++){
       Cmn.push_back( empty_line );
    }*/
-   zeros(Cmn, N_accum.size(), M_accum.size() );
+   /*zeros(Cmn, N_accum.size(), M_accum.size() );
    
    for(size_t i=0;i<N_accum.size();i++){
       double N = N_accum[i];
          
+      // this loop should only go from -n to +n (see Eq. 3 in the paper) :
       for(size_t j=0;j<M_accum.size();j++){
          double M = M_accum[j];
+       
+         if( fabs(M) <= fabs(N) ){  // only calculate really used coefficients, where m<=n - see eq. 3 in the Sokolowski et al (2016) paper :
+            double c_mn_sqr = (0.5*(2*N+1)*factorial_wrapper(N-abs(M))/factorial_wrapper(N+abs(M)));
+            double c_mn = sqrt( c_mn_sqr );
          
-         double c_mn_sqr = (0.5*(2*N+1)*factorial_wrapper(N-abs(M))/factorial_wrapper(N+abs(M)));
-         double c_mn = sqrt( c_mn_sqr );
-         
-         (Cmn[j])[i] = c_mn;
+            (Cmn[j])[i] = c_mn;
+         }
       }
-   }
+   }*/
 
    
    return Nmax;
@@ -622,40 +615,24 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
 
 //------------------------------------------------------------------------------------------------------ maths functions and wrappers ---------------------------------------------------------------------------------------
 // factorial calculation :
-long long Beam2016Implementation::factorial( int n )
-{
-   long long out=1;
-   for(int i=1;i<=n;i++){
-      out = out * i;
-   }
-
-    return out;
-}
-
-double Beam2016Implementation::factorial_d( int n )
-{
-   double out=1;
-   for(int i=1;i<=n;i++){
-      out = out * i;
-   }
-
-    return out;
-}
-
 double Beam2016Implementation::factorial_wrapper_base( int n )
 {
-   if( n<=20 ){
-      return factorial(n);
-   }
-
-   return factorial_d(n);
+   return boost::math::factorial<double>(n);
 }
 
 // uses precalculated factorials stored in m_Factorial
 double Beam2016Implementation::factorial_wrapper( int n )
 {
    if( m_Factorial.size() == 0 ){ 
-      cache_factorial( 100 ); // pre-calculate maximum possible factorial used in the calculations 
+      cache_factorial( 100 ); // pre-calculate maximum possible factorial used in the calculations, MS checked that 100 should be enough and pratical
+   }
+   if( n < 0 ){
+      printf("WARNING : negative factorial required ??? n=%d\n",n);
+   }   
+   
+   if( n >= m_Factorial.size() ){
+      printf("WARNING : required factorial %d! exceeds initially pre-calculated 100! -> re-calculating now (code optimisation required)\n",n);
+      cache_factorial( n );
    }
    
    if( n < m_Factorial.size() ){
@@ -684,9 +661,9 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
 {
    if(m_VerbLevel>0){printf("DEBUG : theta = %.8f (update)\n",theta);fflush(0);}
 
-   int size = power_int(nmax,2) + 2*nmax;
+   int size = nmax*nmax + 2*nmax;
    if( m_VerbLevel > 0 ){ printf("P1sin.size = %d\n",size); }
-   p1sin_out.assign(size, 0.0); // WAS : p1sin_out.clear(); zeros( p1sin_out , size );
+   p1sin_out.assign(size, 0.0);
    p1_out = p1sin_out;
 
 
@@ -700,7 +677,7 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       vector< vector<double> > Pm_sin_flipud;
       vector< vector<double> > Pm_sin_merged;
       vector<int> l;
-      P.assign(n+1,0.0);      // was zeros(P,n+1);    
+      P.assign(n+1,0.0);
       zeros(Pm_sin,n+1);
       arrange(l, int(n/2)+1);
       if(m_VerbLevel>1){printf("DEBUG(0) : Pm_sin shape = %d x %d vs. shape(P) = %d\n",(int)(Pm_sin[0].size()),(int)(Pm_sin.size()),(int)(P.size()));}
@@ -818,7 +795,7 @@ double Beam2016Implementation::lpmv( int order, int n, double x )
 herr_t Beam2016Implementation::list_obj_iterate(hid_t loc_id, const char *name, const H5O_info_t *info, void *operator_data)
 {
     string szTmp;
-     Beam2016Implementation* pBeamModelPtr = ( Beam2016Implementation*)operator_data;    
+    Beam2016Implementation* pBeamModelPtr = ( Beam2016Implementation*)operator_data;    
     BOOST_ASSERT_MSG( pBeamModelPtr!=NULL, "The pointer to  Beam2016Implementation class in Beam2016Implementation::list_obj_iterate must not be NULL");
 
     if (name[0] == '.'){         /* Root group, do not print '.' */
@@ -987,8 +964,9 @@ int Beam2016Implementation::Read()
          
       m_obj_list.clear();
       m_freq_list.clear();
-                      // TODO validate status:
-      /*herr_t status = */ H5Ovisit (file_id, H5_INDEX_NAME, H5_ITER_NATIVE, list_obj_iterate, this); // NULL -> this
+      herr_t status =  H5Ovisit (file_id, H5_INDEX_NAME, H5_ITER_NATIVE, list_obj_iterate, this);
+      BOOST_ASSERT_MSG( status>=0 , "H5Ovisit returned with negative value which indicates a critical error" );
+      
             
       int max_ant_idx=-1;
       for(size_t i=0;i<m_obj_list.size();i++){
@@ -1010,8 +988,9 @@ int Beam2016Implementation::Read()
        }
        m_AntennaCount = max_ant_idx; // number of antenna is read from the file
        if( m_AntennaCount != N_ANT_COUNT ){
-          printf("ERROR : number of simulated antennae = %d, the code is currently implemented for %d\n",m_AntennaCount,N_ANT_COUNT);
-          exit(-1);
+          char szError[1024];
+          sprintf(szError,"ERROR : number of simulated antennae = %d, the code is currently implemented for %d\n",m_AntennaCount,N_ANT_COUNT);          
+          BOOST_ASSERT_MSG( m_AntennaCount != N_ANT_COUNT, szError );
        }       
        std::sort( m_freq_list.begin(), m_freq_list.end() );
        
@@ -1030,28 +1009,10 @@ int Beam2016Implementation::Read()
 
 
 //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ---------------------------------------------------------------
-double Beam2016Implementation::max( vector<double>& arr )
-{
-   double max=-1e20;
-   for(size_t i=0;i<arr.size();i++){
-      if( arr[i] > max ){
-         max = arr[i];
-      }
-   }
-                               
-   return max;
-}
-                                  
 void Beam2016Implementation::zeros( vector< vector<double> >& arr, int size )
 {
    vector<double> zero_vector(1, 0.0);
    arr.assign(size, zero_vector);       
-}
-
-void Beam2016Implementation::zeros( vector< vector<double> >& arr, int size_x, int size_y )
-{
-   vector<double> zero_vector(size_x, 0.0);
-   arr.assign(size_y, zero_vector);       
 }
 
 void Beam2016Implementation::merge( vector<double>& arr1, vector<double>& arr2, vector<double>& arr_merged )

@@ -112,7 +112,6 @@ protected :
    std::vector<double> N_accum_X;
    std::vector<double> MabsM_X; // precalculated m/abs(m) to make it once for all pointings
    double Nmax_X;          // maximum N coefficient for Y (=max(N_accum_X)) - to avoid relaculations 
-   std::vector< std::vector<double> > Cmn_X; // coefficient under sumation in equation 3 for X pol.
 
    // Y polarisation :
    std::vector< std::complex<double> > Q1_accum_Y;
@@ -121,7 +120,6 @@ protected :
    std::vector<double> N_accum_Y;
    std::vector<double> MabsM_Y; // precalculated m/abs(m) to make it once for all pointings
    double Nmax_Y;          // maximum N coefficient for Y (=max(N_accum_Y)) - to avoid relaculations
-   std::vector< std::vector<double> > Cmn_Y; // coefficient under sumation in equation 3 for Y pol.
    
    // Information on last modes parameters - not to recalculate the same again and again !
    int     m_CalcModesLastFreqHz;
@@ -140,7 +138,7 @@ protected :
    // function calculating all coefficients Q1, Q2, N, M and derived MabsM, Nmax for a given polarisation ("X" or "Y") - perhaps enum should be used here 
    double CalcModes( int freq_hz, size_t n_ant, const double* delays, const double* amp, char pol,
                      std::vector< std::complex<double> >& Q1_accum, std::vector< std::complex<double> >& Q2_accum,
-                     std::vector<double>& M_accum, std::vector<double>& N_accum, std::vector<double>& MabsM, std::vector< std::vector<double> >& Cmn  );                                                                              
+                     std::vector<double>& M_accum, std::vector<double>& N_accum, std::vector<double>& MabsM   );                                                                              
    // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
    // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -191,6 +189,9 @@ protected :
    std::vector< std::vector<double> > m_Modes;  // data in Modes DataSet 
 
    //------------------------------------------------------------------------------------------------------ maths functions and wrappers ---------------------------------------------------------------------------------------
+   // local power calculations
+   // WARNING : please do not remove - the program works 2x slower when std::power is used instead !!!
+   std::complex<double> power_complex( std::complex<double> val, int n );
 
    // Calculations of Legendre polynomials :
    double lpmv( int order, int n, double x );
@@ -203,8 +204,6 @@ protected :
    // factorial calculation :
    double factorial_wrapper_base( int n );
    double factorial_wrapper( int n ); // uses precalculated factorials stored in m_Factorial
-   double factorial_d( int n );
-   long long factorial( int n );
    void cache_factorial( int max_n );                     
    // precalculated factorials :
    std::vector<double> m_Factorial;   
@@ -213,9 +212,9 @@ protected :
    //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ----------------------------------------------------------------
    // vector initialisation, printing etc (a bit like numpy functions)   
    void zeros( std::vector< std::vector<double> >& arr, int size );
-   void zeros( std::vector< std::vector<double> >& arr, int size_x, int size_y );
+   // void zeros( std::vector< std::vector<double> >& arr, int size_x, int size_y );
    void arrange( std::vector<int>& arr, int size );
-   double max( std::vector<double>& arr );
+   // double max( std::vector<double>& arr );
    void print( std::vector<double>& arr, const char* name, int force=0 );
    void print( std::vector<int>& arr, const char* name, int force=0 );
    void print( std::vector< std::vector<double> >& arr, const char* name, int force=0 );
