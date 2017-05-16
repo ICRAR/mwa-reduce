@@ -1,6 +1,7 @@
 #include "tilebeambase.h"
 #include "tilebeam2013.h"
 #include "tilebeam2014.h"
+#include "tilebeam2016.h"
 
 #include <casacore/measures/Measures/MDirection.h>
 #include <casacore/measures/Measures/MEpoch.h>
@@ -103,3 +104,4 @@ template class TileBeamBase<TileBeam2013>;
 
 template class TileBeamBase<TileBeam2014>;
 
+template class TileBeamBase<TileBeam2016>;
