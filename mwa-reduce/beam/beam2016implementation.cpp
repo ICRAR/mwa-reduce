@@ -24,6 +24,11 @@ using namespace H5;
 // constants :
 static const double deg2rad = M_PI/180.00;
 
+// defines for debuging / logging - to be easily turned off on compilation level :
+#define _PRINTF_LEVEL0 if(m_VerbLevel>0)printf
+#define _PRINTF_LEVEL1 if(m_VerbLevel>1)printf
+#define _PRINTF_LEVEL2 if(m_VerbLevel>2)printf
+
 // timing function 
 static time_t get_dttm()
 {
@@ -31,6 +36,8 @@ static time_t get_dttm()
    time( &gm_time );
    return gm_time;
 }
+
+#define nullptr NULL
 
 /*
   Print jones matrix in a format :
@@ -157,8 +164,8 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_rad, double za_rad )
   JonesMatrix jones;
   double phi_rad = M_PI/2.00 - az_rad;
   
-  CalcSigmas( phi_rad, za_rad, Q1_accum_X, Q2_accum_X, M_accum_X, N_accum_X, MabsM_X, Nmax_X, 'X', jones );
-  CalcSigmas( phi_rad, za_rad, Q1_accum_Y, Q2_accum_Y, M_accum_Y, N_accum_Y, MabsM_Y, Nmax_Y, 'Y', jones );
+  CalcSigmas( phi_rad, za_rad, Q1_accum_X, Q2_accum_X, M_accum_X, N_accum_X, MabsM_X, Nmax_X, Cmn_X, 'X', jones );
+  CalcSigmas( phi_rad, za_rad, Q1_accum_Y, Q2_accum_Y, M_accum_Y, N_accum_Y, MabsM_Y, Nmax_Y, Cmn_Y, 'Y', jones );
 
   return jones;  
 }
@@ -241,7 +248,7 @@ void Beam2016Implementation::CalcZenithNormMatrix( int freq_hz )
 //-------------------------------------------------------------------- Calculation of Jones matrix components for given polarisation (eq. 4 and 5 in the Sokolowski et al (2017) paper --------------------------------
 void Beam2016Implementation::CalcSigmas( double phi, double theta, 
                                     vector< complex<double> >& Q1_accum, vector< complex<double> >& Q2_accum, 
-                                    vector<double>& M_accum, vector<double>& N_accum, vector<double>& MabsM, double Nmax,
+                                    vector<double>& M_accum, vector<double>& N_accum, vector<double>& MabsM, double Nmax, vector<double>& Cmn,
                                     char pol,
                                     JonesMatrix& jones_matrix )
 {
@@ -257,18 +264,14 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
    vector<double> P1sin_arr,P1_arr;
          
    P1sin( nmax, theta, P1sin_arr, P1_arr );
-   if( m_VerbLevel > 0  ){
-      printf("DEBUG sizes P1_sin_arr.size = %d , P1_arr.size = %d, N.size = %d, M.size = %d, Q2.size = %d, Q1.size = %d\n",(int)(P1sin_arr.size()),(int)(P1_arr.size()),(int)(N_accum.size()),(int)(M_accum.size()),(int)(Q2_accum.size()),(int)(Q1_accum.size()));
-   }
+   _PRINTF_LEVEL0("DEBUG sizes P1_sin_arr.size = %d , P1_arr.size = %d, N.size = %d, M.size = %d, Q2.size = %d, Q1.size = %d\n",(int)(P1sin_arr.size()),(int)(P1_arr.size()),(int)(N_accum.size()),(int)(M_accum.size()),(int)(Q2_accum.size()),(int)(Q1_accum.size()));
 
 
    if( N_accum.size() != M_accum.size() ){
       printf("ERROR : size of N_accnum != M_accum ( %d != %d)\n",(int)(N_accum.size()),(int)(M_accum.size()));
       BOOST_ASSERT_MSG( (N_accum.size()==M_accum.size()),"Sizes of N_accum and M_accum must be equal");
    }
-   if( m_VerbLevel > 0 ){
-      printf("M x N = %d x %d\n",(int)(M_accum.size()),(int)(N_accum.size()));
-   }
+   _PRINTF_LEVEL0("M x N = %d x %d\n",(int)(M_accum.size()),(int)(N_accum.size()));
          
    complex<double> sigma_P(0,0),sigma_T(0,0);
    for(size_t i=0;i<N_accum.size();i++){
@@ -281,37 +284,40 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
          
       double c_mn_sqr = (0.5*(2*N+1)*factorial_wrapper(N-abs(M))/factorial_wrapper(N+abs(M)));
       double c_mn = sqrt( c_mn_sqr );
+      // Optimisation comment :
+      // Possibly this might be a faster version - but does not seem so, so I live it as it was 
+      // MS tested it (2017-05-17), but does not seem to give a significant speed up, so for now the old version left 
+      // If tested again comment the 2 lines above and uncomment the line below , 
+      // also verify that lines in CalcModes ( after comment "Intialisation of Cmn vector :") are un-commented - FOR NOW THEY ARE COMMENTED OUT NOT TO CALCULATE SOMETHING WHICH IS NOT USED 
+      // double c_mn = Cmn[i];
                
       complex<double> ejm_phi( cos(M*phi), sin(M*phi) );
       complex<double> phi_comp = ( ejm_phi*c_mn ) / ( sqrt(N*(N+1)) ) * m_abs_m;
       // printf("phi_comp[%d] = %e + %ej (c_mn=%.8f)\n",i,phi_comp.real(),phi_comp.imag(),c_mn);
-      if( m_VerbLevel > 0 ){
-         printf("DEBUG : %.2f %.4f %.8f -> phi_comp = %e + %ej\n",M,phi,c_mn,phi_comp.real(),phi_comp.imag());
-         printf("DEBUG : Q1[%d] = %e + %ej , Q2[%d] = %e + %ej\n",int(i),Q1_accum[i].real(),Q1_accum[i].imag(),int(i),Q2_accum[i].real(),Q2_accum[i].imag());
+      _PRINTF_LEVEL0("DEBUG : %.2f %.4f %.8f -> phi_comp = %e + %ej\n",M,phi,c_mn,phi_comp.real(),phi_comp.imag());
+      _PRINTF_LEVEL0("DEBUG : Q1[%d] = %e + %ej , Q2[%d] = %e + %ej\n",int(i),Q1_accum[i].real(),Q1_accum[i].imag(),int(i),Q2_accum[i].real(),Q2_accum[i].imag());
+
+      if( (n+1) >= j_power_cache.size() ){
+         char szError[1024];
+         sprintf(szError,"ERROR : j_power_cache.size() = %d too few values as power %d requested\n",int(j_power_cache.size()),(n+1));
+         BOOST_ASSERT_MSG( false , szError );
       }
-               
             
-      complex<double> j_power_n = power_complex(complex_j,n); // WARNING : please do not remove - the program works 2x slower when std::pow(complex_j,n) is used instead !!! 
+//      complex<double> j_power_n = power_complex(complex_j,n); // WARNING : please do not remove - the program works 2x slower when std::pow(complex_j,n) is used instead !!! 
+      complex<double> j_power_n = j_power_cache[n];
       complex<double> E_theta_mn = j_power_n * ( P1sin_arr[i] * ( fabs(M) * Q2_accum[i]*u - M*Q1_accum[i] ) + Q2_accum[i]*P1_arr[i] );
-      if( m_VerbLevel > 0 ){
-         printf("E_theta_mn[%d] = %e + %ej = (%e + %ej) * ( %e * ( %e * (%e + %ej) * %e - (%e)*(%e + %ej)) + (%e + %ej) * %e)\n",int(i),E_theta_mn.real(),E_theta_mn.imag(),j_power_n.real(),j_power_n.imag(),P1sin_arr[i],fabs(M),Q2_accum[i].real(),Q2_accum[i].imag(),u,M,Q1_accum[i].real(),Q1_accum[i].imag(),Q2_accum[i].real(),Q2_accum[i].imag(),P1_arr[i]);
-      }
+      _PRINTF_LEVEL0("E_theta_mn[%d] = %e + %ej = (%e + %ej) * ( %e * ( %e * (%e + %ej) * %e - (%e)*(%e + %ej)) + (%e + %ej) * %e)\n",int(i),E_theta_mn.real(),E_theta_mn.imag(),j_power_n.real(),j_power_n.imag(),P1sin_arr[i],fabs(M),Q2_accum[i].real(),Q2_accum[i].imag(),u,M,Q1_accum[i].real(),Q1_accum[i].imag(),Q2_accum[i].real(),Q2_accum[i].imag(),P1_arr[i]);
             
-      complex<double> j_power_np1 = power_complex(complex_j,n+1); // WARNING : please do not remove - the program works 2x slower when std::pow(complex_j,n+1) is used instead !!!
+//      complex<double> j_power_np1 = power_complex(complex_j,n+1); // WARNING : please do not remove - the program works 2x slower when std::pow(complex_j,n+1) is used instead !!!
+      complex<double> j_power_np1 = j_power_cache[n+1];
       complex<double> E_phi_mn = j_power_np1 * ( P1sin_arr[i] * ( M*Q2_accum[i] - fabs(M)*Q1_accum[i]*u) - Q1_accum[i]*P1_arr[i] );
-      if( m_VerbLevel > 0 ){
-          printf("E_phi_mn[%d] = %e + %ej = (%e + %ej) * ( %e * ( %e (%e + %ej) - %e (%e + %ej) %e ) + (%e + %ej) %e )\n",int(i),E_phi_mn.real(),E_phi_mn.imag(),j_power_np1.real(),j_power_np1.imag(),P1sin_arr[i],M,
-              Q2_accum[i].real(),Q2_accum[i].imag(),
-              fabs(M),Q2_accum[i].real(),Q2_accum[i].imag(),u,Q1_accum[i].real(),Q1_accum[i].imag(),P1_arr[i]);
-       }
+      _PRINTF_LEVEL0("E_phi_mn[%d] = %e + %ej = (%e + %ej) * ( %e * ( %e (%e + %ej) - %e (%e + %ej) %e ) + (%e + %ej) %e )\n",int(i),E_phi_mn.real(),E_phi_mn.imag(),j_power_np1.real(),j_power_np1.imag(),P1sin_arr[i],M,Q2_accum[i].real(),Q2_accum[i].imag(),fabs(M),Q2_accum[i].real(),Q2_accum[i].imag(),u,Q1_accum[i].real(),Q1_accum[i].imag(),P1_arr[i]);
 
        sigma_P = sigma_P + phi_comp * E_phi_mn;
        sigma_T = sigma_T + phi_comp * E_theta_mn;
             
-       if( m_VerbLevel > 0 ){
-          printf("Sigma_P[%d] := (%.10f + %.10fj) \n",int(i),sigma_P.real(),sigma_P.imag());
-          printf("Sigma_T[%d] := (%.10f + %.10fj) \n",int(i),sigma_T.real(),sigma_T.imag());
-       }            
+       _PRINTF_LEVEL0("Sigma_P[%d] := (%.10f + %.10fj) \n",int(i),sigma_P.real(),sigma_P.imag());
+       _PRINTF_LEVEL0("Sigma_T[%d] := (%.10f + %.10fj) \n",int(i),sigma_T.real(),sigma_T.imag());
    }
          
    if( pol == 'X' ){            
@@ -324,8 +330,6 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
             
    if( m_VerbLevel > 0 ){            
       jones_matrix.Print("Jones");
-      printf("\t%.8f + %.8fj     |     %.8f + %.8fj\n",jones_matrix.j00.real(),jones_matrix.j00.imag(),jones_matrix.j01.real(),jones_matrix.j01.imag());
-      printf("\t%.8f + %.8fj     |     %.8f + %.8fj\n",jones_matrix.j10.real(),jones_matrix.j10.imag(),jones_matrix.j11.real(),jones_matrix.j11.imag());
    }
 }
 
@@ -363,7 +367,7 @@ void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double*
       return;
    }
 
-   Nmax_X = CalcModes( freq_hz , n_ant, delays, amps, 'X', Q1_accum_X, Q2_accum_X, M_accum_X, N_accum_X, MabsM_X );
+   Nmax_X = CalcModes( freq_hz , n_ant, delays, amps, 'X', Q1_accum_X, Q2_accum_X, M_accum_X, N_accum_X, MabsM_X, Cmn_X );
    // TODO : perhaps can be uncommented above and removed below :
    /*Nmax_X = max(N_accum_X);
    if( Nmax_X != Nmax_X_test ){
@@ -371,13 +375,21 @@ void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double*
    }
    Nmax_X = Nmax_X_test;*/
    
-   Nmax_Y = CalcModes( freq_hz , n_ant, delays, amps, 'Y', Q1_accum_Y, Q2_accum_Y, M_accum_Y, N_accum_Y, MabsM_Y );
+   Nmax_Y = CalcModes( freq_hz , n_ant, delays, amps, 'Y', Q1_accum_Y, Q2_accum_Y, M_accum_Y, N_accum_Y, MabsM_Y, Cmn_Y );
    // TODO : perhaps can be uncommented above and removed below :
    /*Nmax_Y = max(N_accum_Y);
    if( Nmax_Y != Nmax_Y_test ){
       printf("ERROR : Nmax_X_test=%.2f != Nmax_X=%.2f\n",Nmax_Y_test,Nmax_Y);
    }
    Nmax_Y = Nmax_Y_test;*/
+   
+   // initialise powers of j 
+   double maxN = std::max(Nmax_X,Nmax_Y);
+   complex<double> complex_j(0,1);
+   j_power_cache.assign( int(maxN) + 20 , 1 );
+   for(int i=1;i<j_power_cache.size();i++){
+      j_power_cache[i] = j_power_cache[i-1] * complex_j;
+   }
 
    m_CalcModesLastFreqHz = freq_hz;
    if( !m_CalcModesLastDelays ){
@@ -395,16 +407,18 @@ void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double*
 double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double* delays, const double* amp, char pol, 
                                    vector< complex<double> >& Q1_accum, vector< complex<double> >& Q2_accum,
                                    vector<double>& M_accum, vector<double>& N_accum,
-                                   vector<double>& MabsM  )
+                                   vector<double>& MabsM, vector<double>& Cmn   )
 {
    vector<double> phases(n_ant);
    double Nmax=0;
    M_accum.clear();
    N_accum.clear();
    MabsM.clear();
+   Cmn.clear();
+   
    
    int modes_size = m_Modes[0].size();
-   if( m_VerbLevel>0 ){printf("Size(Modes) = %d\n",modes_size);}
+   _PRINTF_LEVEL0("Size(Modes) = %d\n",modes_size);
    Q1_accum.assign(modes_size, 0.0);
    Q2_accum.assign(modes_size, 0.0);
       
@@ -420,7 +434,7 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
       
       complex<double> Vcplx = amp[a]*phase_factor;
       
-      if( m_VerbLevel>0 ){printf("ANT_%d : Phase = %e , Vcplx = %e + %ej\n",int(a),phase,Vcplx.real(),Vcplx.imag());}
+      _PRINTF_LEVEL0("ANT_%d : Phase = %e , Vcplx = %e + %ej\n",int(a),phase,Vcplx.real(),Vcplx.imag());
       
       char Q_all_name[64];
       sprintf(Q_all_name,"%c%d_%d",pol,int(a)+1,freq_hz);
@@ -429,10 +443,10 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
       vector< vector<double> > Q_all;
       ReadDataSet( Q_all_name, Q_all );
       
-      if( m_VerbLevel>0 ){ printf("Read dataaset %s has dimensions %d x %d\n",Q_all_name,(int)(Q_all.size()),(int)(Q_all[0].size())); }
+      _PRINTF_LEVEL0("Read dataaset %s has dimensions %d x %d\n",Q_all_name,(int)(Q_all.size()),(int)(Q_all[0].size()));
 
       size_t n_ant_coeff = Q_all[0].size();
-      if( m_VerbLevel>0 ){ printf("Number of coefficients for antenna = %d is %d\n",int(a),int(n_ant_coeff)); }
+      _PRINTF_LEVEL0("Number of coefficients for antenna = %d is %d\n",int(a),int(n_ant_coeff));
       
       vector<double> Ms1,Ns1,Ms2,Ns2;
       vector<double>&  m_Modes_Type = m_Modes[0];
@@ -470,11 +484,11 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
       }
 
       if( s1_list.size() == s2_list.size() && s2_list.size()==(n_ant_coeff/2) ){
-         if( m_VerbLevel > 0 ){
-            printf("DEBUG : correct number of coefficients %d == %d == %d satisfied\n",(int)(s1_list.size()),(int)(s2_list.size()),int(n_ant_coeff/2));
-         }
+         _PRINTF_LEVEL0("DEBUG : correct number of coefficients %d == %d == %d satisfied\n",(int)(s1_list.size()),(int)(s2_list.size()),int(n_ant_coeff/2));
       }else{
-         printf("ERROR : wrong number of coefficients for s1 and s2 condition %d = =%d == %d not satisfied!!!\n",(int)(s1_list.size()),(int)(s2_list.size()),int(n_ant_coeff/2));
+         char szError[1024];
+         sprintf(szError,"ERROR : wrong number of coefficients for s1 and s2 condition %d = =%d == %d not satisfied!!!\n",(int)(s1_list.size()),(int)(s2_list.size()),int(n_ant_coeff/2));
+         BOOST_ASSERT_MSG( s1_list.size() == s2_list.size() && s2_list.size()==(n_ant_coeff/2) , szError );
       }
       
       vector< std::complex<double> > Q1,Q2;
@@ -512,59 +526,12 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
             }
          }
       }
-      if( m_VerbLevel > 0 ){
-         printf("DEBUG Q2.size=%d vs. filled %d elements\n",(int)(Q2_accum.size()),my_len_half);
-      }
-      
-      if( m_VerbLevel > 1 ){
-         printf("Q1 = \n");
-         for(int i=0;i<my_len_half;i++){
-            complex<double>& q1_val = Q1[i];
-            complex<double>& q1_accum_val = Q1_accum[i];
-            
-            printf("\tQ1[%d] = %e + j%e -> Q1_accum[%d] = %e + j%e\n",i,q1_val.real(),q1_val.imag(),i,q1_accum_val.real(),q1_accum_val.imag());
-         }
-         printf("\n\nQ2 = \n");
-         for(int i=0;i<my_len_half;i++){
-            complex<double>& q2_val = Q2[i];
-            complex<double>& q2_accum_val = Q2_accum[i];
-            
-            printf("\tQ2[%d] = %e + j%e -> Q2_accum[%d] = %e + j%e\n",i,q2_val.real(),q2_val.imag(),i,q2_accum_val.real(),q2_accum_val.imag());
-         }
-         
-         printf("\n\n");
-         printf("N_max = %.2f\n",Nmax);
-         printf("N_accum.size = %d , M_accum.size = %d\n",(int)(N_accum.size()),(int)(M_accum.size()));
-         printf("N_accum =\n");
-         for(size_t i=0;i<N_accum.size();i++){
-            printf("\t");
-            printf("%.0f ",N_accum[i]);
-            if( ((i+1)%11)==0  ){
-               printf("\n");
-            }
-         }
-         printf("\n\n\n");fflush(stdout);
-
-         printf("M_accum =\n");
-         for(size_t i=0;i<M_accum.size();i++){
-            printf("\t");
-            printf("%.0f ",M_accum[i]);
-            if( ((i+1)%11)==0  ){
-               printf("\n");
-            }
-         }
-         printf("\n");fflush(stdout);
-         
-      }
+      _PRINTF_LEVEL0("DEBUG Q2.size=%d vs. filled %d elements\n",(int)(Q2_accum.size()),my_len_half);      
+      print( Q1, Q1_accum, Q2, Q2_accum, my_len_half, N_accum, M_accum, Nmax );
    }      
 
-   if( m_VerbLevel > 0 ){   
-      printf("DEBUG CalcModes(%c) : Q1[0] = %e + %ej , Q2[0] = %e + %ej\n",pol,Q1_accum[0].real(),Q1_accum[0].imag(),Q2_accum[0].real(),Q2_accum[0].imag());
-   }
-
-   if( m_VerbLevel > 0 ){
-      printf("DEBUG TEST : Q1[0] = %e + %ej , Q2[0] = %e + %ej\n",Q1_accum[0].real(),Q1_accum[0].imag(),Q2_accum[0].real(),Q2_accum[0].imag());
-   }
+   _PRINTF_LEVEL0("DEBUG CalcModes(%c) : Q1[0] = %e + %ej , Q2[0] = %e + %ej\n",pol,Q1_accum[0].real(),Q1_accum[0].imag(),Q2_accum[0].real(),Q2_accum[0].imag());
+   _PRINTF_LEVEL0("DEBUG TEST : Q1[0] = %e + %ej , Q2[0] = %e + %ej\n",Q1_accum[0].real(),Q1_accum[0].imag(),Q2_accum[0].real(),Q2_accum[0].imag());
 
    // Moved from CalcSigmas here :
    // Same as tragic python code:
@@ -584,27 +551,24 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
       MabsM.push_back( m_abs_m );      
    }
 
-   // Moved from CalcSigmas here :
-   /*vector<double> empty_line;
-   zeros(empty_line,N_accum.size());
-   for(size_t j=0;j<M_accum.size();j++){
-      Cmn.push_back( empty_line );
-   }*/
-   /*zeros(Cmn, N_accum.size(), M_accum.size() );
-   
+
+   // Intialisation of Cmn vector :
+   /*BOOST_ASSERT_MSG( (N_accum.size()==M_accum.size()),"Sizes of N_accum and M_accum must be equal when initialising Cmn vector");
+   Cmn.assign( N_accum.size(), 0.00 );          
    for(size_t i=0;i<N_accum.size();i++){
-      double N = N_accum[i];
-         
-      // this loop should only go from -n to +n (see Eq. 3 in the paper) :
-      for(size_t j=0;j<M_accum.size();j++){
-         double M = M_accum[j];
+      double N = N_accum[i];         
+      double M = M_accum[i];
        
-         if( fabs(M) <= fabs(N) ){  // only calculate really used coefficients, where m<=n - see eq. 3 in the Sokolowski et al (2016) paper :
-            double c_mn_sqr = (0.5*(2*N+1)*factorial_wrapper(N-abs(M))/factorial_wrapper(N+abs(M)));
-            double c_mn = sqrt( c_mn_sqr );
+      if( fabs(M) <= fabs(N) ){  // only calculate really used coefficients, where m<=n - see eq. 3 in the Sokolowski et al (2016) paper :
+         double c_mn_sqr = (0.5*(2*N+1)*factorial_wrapper(N-abs(M))/factorial_wrapper(N+abs(M)));
+         double c_mn = sqrt( c_mn_sqr );
          
-            (Cmn[j])[i] = c_mn;
-         }
+         Cmn[i] = c_mn;
+      }else{
+         char szError[1024];
+         sprintf(szError,"Wrong value of m=%.2f or n=%.2f coefficient fabs(m) must be <= fabs(n)",M,N);
+         printf("%s\n",szError);fflush(stdout);
+         BOOST_ASSERT_MSG( false, szError);
       }
    }*/
 
@@ -615,13 +579,13 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
 
 //------------------------------------------------------------------------------------------------------ maths functions and wrappers ---------------------------------------------------------------------------------------
 // factorial calculation :
-double Beam2016Implementation::factorial_wrapper_base( int n )
+double Beam2016Implementation::factorial_wrapper_base( unsigned n )
 {
    return boost::math::factorial<double>(n);
 }
 
 // uses precalculated factorials stored in m_Factorial
-double Beam2016Implementation::factorial_wrapper( int n )
+double Beam2016Implementation::factorial_wrapper( unsigned n )
 {
    if( m_Factorial.size() == 0 ){ 
       cache_factorial( 100 ); // pre-calculate maximum possible factorial used in the calculations, MS checked that 100 should be enough and pratical
@@ -642,7 +606,7 @@ double Beam2016Implementation::factorial_wrapper( int n )
    return factorial_wrapper_base( n );
 }
 
-void Beam2016Implementation::cache_factorial( int max_n )
+void Beam2016Implementation::cache_factorial( unsigned max_n )
 {
    time_t start_time = get_dttm();
    
@@ -651,18 +615,16 @@ void Beam2016Implementation::cache_factorial( int max_n )
       double fact = factorial_wrapper_base( i );
       m_Factorial.push_back( fact );
    }
-   if( m_VerbLevel > 0 ){
-      printf("Initialisation of factorial %d! took %d seconds\n",max_n,(int)(get_dttm()-start_time));
-   }
+   _PRINTF_LEVEL0("Initialisation of factorial %d! took %d seconds\n",max_n,(int)(get_dttm()-start_time));
 }
 
 // OUTPUT : returns list of Legendre polynomial values calculated up to order nmax :
 int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin_out, vector<double>& p1_out )
 {
-   if(m_VerbLevel>0){printf("DEBUG : theta = %.8f (update)\n",theta);fflush(0);}
+   _PRINTF_LEVEL0("DEBUG : theta = %.8f (update)\n",theta);fflush(0);
 
    int size = nmax*nmax + 2*nmax;
-   if( m_VerbLevel > 0 ){ printf("P1sin.size = %d\n",size); }
+   _PRINTF_LEVEL0("P1sin.size = %d\n",size);
    p1sin_out.assign(size, 0.0);
    p1_out = p1sin_out;
 
@@ -673,14 +635,15 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
    
    for(int n=1;n<=nmax;n++){
       vector<double> P,Pm1,Pm1_merged,Pm1_flipud;
-      vector< vector<double> > Pm_sin;
-      vector< vector<double> > Pm_sin_flipud;
-      vector< vector<double> > Pm_sin_merged;
+      vector<double> Pm_sin;
+      vector<double> Pm_sin_flipud;
+      vector<double> Pm_sin_merged;
       vector<int> l;
       P.assign(n+1,0.0);
-      zeros(Pm_sin,n+1);
+      Pm_sin.assign(n+1,0);
+      
       arrange(l, int(n/2)+1);
-      if(m_VerbLevel>1){printf("DEBUG(0) : Pm_sin shape = %d x %d vs. shape(P) = %d\n",(int)(Pm_sin[0].size()),(int)(Pm_sin.size()),(int)(P.size()));}
+      _PRINTF_LEVEL1("DEBUG(0) : Pm_sin size = %d vs. shape(P) = %d\n",(int)(Pm_sin.size()),(int)(P.size()));
       
       if( m_VerbLevel > 0 ){
          printf("l = ");
@@ -703,18 +666,18 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       
       if( u==1 || u==-1){
          vector<double> Pu_mdelu;
-         if( m_VerbLevel > 0 ){ printf("Special case u=%.2f\n",u); }
+         _PRINTF_LEVEL0("Special case u=%.2f\n",u);
          Pu_mdelu=lpmv(orders,n,u-delu);
          
          // Pm_sin[1,0]=-(P[0]-Pu_mdelu[0])/delu #backward difference         
-         (Pm_sin[1])[0] = -(P[0]-Pu_mdelu[0])/delu;
+         Pm_sin[1] = -(P[0]-Pu_mdelu[0])/delu;
          if( u == -1 ){
-            (Pm_sin[1])[0] = -(Pu_mdelu[0]-P[0])/delu; // #forward difference
+            Pm_sin[1] = -(Pu_mdelu[0]-P[0])/delu; // #forward difference
          }
       }else{
-         if(m_VerbLevel>1){printf("DEBUG(1) : Pm_sin shape = %d x %d vs. shape(P) = %d\n",(int)(Pm_sin[0].size()),(int)(Pm_sin.size()),(int)(P.size()));}
+         _PRINTF_LEVEL1("DEBUG(1) : Pm_sin size = %d vs. shape(P) = %d\n",(int)(Pm_sin.size()),(int)(P.size()));
          for(size_t i=0;i<P.size();i++){
-            (Pm_sin[i])[0] = P[i]/sin_th;
+            Pm_sin[i] = P[i]/sin_th;
          }
       }
       
@@ -743,11 +706,11 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       // P_sin[np.arange(ind_start,ind_stop)]=np.append(np.flipud(Pm_sin[1::,0]),Pm_sin)      
       int modified=0;
       for(int i=ind_start;i<ind_stop;i++){
-         p1sin_out[i] = (Pm_sin_merged[modified])[0];
+         p1sin_out[i] = (Pm_sin_merged[modified]);
       
          modified++;
       }
-      if( m_VerbLevel > 0  ){printf("DEBUG : ind_start=%d , ind_end=%d vs. Pm_sin_merged.size()=%d vs. modified=%d\n",ind_start,ind_stop,(int)(Pm_sin_merged.size()),modified);}
+      _PRINTF_LEVEL0("DEBUG : ind_start=%d , ind_end=%d vs. Pm_sin_merged.size()=%d vs. modified=%d\n",ind_start,ind_stop,(int)(Pm_sin_merged.size()),modified);
       
       // P1[np.arange(ind_start,ind_stop)]=np.append(np.flipud(Pm1[1::,0]),Pm1)
       flipud( Pm1, Pm1_flipud, 1 );
@@ -757,7 +720,7 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
          p1_out[i] = Pm1_merged[modified];
          modified++;
       }
-      if( m_VerbLevel > 0  ){printf("DEBUG : ind_start=%d , ind_end=%d vs. Pm1_merged.size()=%d vs. modified=%d\n",ind_start,ind_stop,(int)(Pm_sin_merged.size()),modified);}
+      _PRINTF_LEVEL0("DEBUG : ind_start=%d , ind_end=%d vs. Pm1_merged.size()=%d vs. modified=%d\n",ind_start,ind_stop,(int)(Pm_sin_merged.size()),modified);
    }      
   
    print( p1sin_out , "P1sin = " );   
@@ -799,32 +762,22 @@ herr_t Beam2016Implementation::list_obj_iterate(hid_t loc_id, const char *name, 
     BOOST_ASSERT_MSG( pBeamModelPtr!=NULL, "The pointer to  Beam2016Implementation class in Beam2016Implementation::list_obj_iterate must not be NULL");
 
     if (name[0] == '.'){         /* Root group, do not print '.' */
-        if( m_VerbLevel > 2 ){
-           printf ("  (Group)\n");
-        }
+        _PRINTF_LEVEL2("  (Group)\n");
     }else
         switch (info->type) {
             case H5O_TYPE_GROUP:
-                if( m_VerbLevel > 2 ){
-                   printf ("%s  (Group)\n", name);
-                }
+                _PRINTF_LEVEL2("%s  (Group)\n", name);
                 break;
             case H5O_TYPE_DATASET:
-                if( m_VerbLevel > 2 ){
-                   printf ("%s  (Dataset)\n", name);
-                }
+                _PRINTF_LEVEL2("%s  (Dataset)\n", name);
                 szTmp = name;
                 pBeamModelPtr->m_obj_list.push_back(szTmp);
                 break;
             case H5O_TYPE_NAMED_DATATYPE:
-                if( m_VerbLevel > 2 ){
-                   printf ("%s  (Datatype)\n", name);
-                }
+                _PRINTF_LEVEL2("%s  (Datatype)\n", name);
                 break;
             default:
-                if( m_VerbLevel > 2 ){
-                   printf ("%s  (Unknown)\n", name);
-                }
+                _PRINTF_LEVEL2("%s  (Unknown)\n", name);
         }
 
     return 0;
@@ -834,9 +787,7 @@ herr_t Beam2016Implementation::list_obj_iterate(hid_t loc_id, const char *name, 
 // Read dataset_name from H5 file
 void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vector<double> >& out_vector )
 {
-   if( m_VerbLevel > 0 ){
-      printf("\n\n\n\n\n\n---------------------------------------------------------------------------------------- Dataset = %s ----------------------------------------------------------------------------------------\n",dataset_name);
-   }
+   _PRINTF_LEVEL0("\n\n\n\n\n\n---------------------------------------------------------------------------------------- Dataset = %s ----------------------------------------------------------------------------------------\n",dataset_name);
 
    DataSet modes = m_pH5File->openDataSet( dataset_name );
    hsize_t size=modes.getStorageSize();
@@ -847,7 +798,7 @@ void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vect
    IntType intype;
    FloatType floattype;
    //H5T_order_t order;
-   if( m_VerbLevel > 0 ){ printf("type_class = %d vs INT=%d, FLOAT=%d\n",type_class,H5T_INTEGER,H5T_FLOAT); }
+   _PRINTF_LEVEL0("type_class = %d vs INT=%d, FLOAT=%d\n",type_class,H5T_INTEGER,H5T_FLOAT);
    out_vector.clear();
             
    switch( type_class ){                           
@@ -873,13 +824,13 @@ void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vect
             break;               
    }
 
-   if( m_VerbLevel > 0 ){ printf("Storage size for modes = %d elements of class = %d (%s) of size %d bytes\n",(int)size,(int)type_class,type_class_str.c_str(),(int)data_size); }
+   _PRINTF_LEVEL0("Storage size for modes = %d elements of class = %d (%s) of size %d bytes\n",(int)size,(int)type_class,type_class_str.c_str(),(int)data_size);
             
    DataSpace modes_dataspace = modes.getSpace();
    int rank = modes_dataspace.getSimpleExtentNdims();            
    hsize_t dims_out[2];
    int ndims = modes_dataspace.getSimpleExtentDims( dims_out, NULL);
-   if( m_VerbLevel > 0 ){ printf("rank of modes = %d : %d x %d\n",(int)(rank),(int)(dims_out[0]),(int)(dims_out[1])); }
+   _PRINTF_LEVEL0("rank of modes = %d : %d x %d\n",(int)(rank),(int)(dims_out[0]),(int)(dims_out[1]));
    modes_dataspace.selectAll();
             
    float* data = new float[dims_out[0]*dims_out[1]];
@@ -894,17 +845,12 @@ void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vect
       vector<double> empty_vector;
       for(size_t j=0;j<dims_out[1];j++){
          empty_vector.push_back(modes_data[i][j]);
-         if( m_VerbLevel > 0 ){
-            printf("%e ",modes_data[i][j]);
-         }
          
+         _PRINTF_LEVEL0("%e ",modes_data[i][j]);         
       }
       out_vector.push_back( empty_vector );
       
-      if( m_VerbLevel > 0 ){
-         printf("\n");
-         printf("-------------------------------\n");
-      }
+      _PRINTF_LEVEL0("\n-------------------------------\n");
    }
 
    if( m_VerbLevel > 0 ){   
@@ -932,20 +878,16 @@ int Beam2016Implementation::Read()
    if( !m_pH5File ){
       m_pH5File = new H5File( m_h5file.c_str(), H5F_ACC_RDONLY );      
    }else{
-      if( m_VerbLevel>=0 ){printf(" Beam2016Implementation::Read : file %s already read -> skipped\n",m_h5file.c_str());}
+      _PRINTF_LEVEL0(" Beam2016Implementation::Read : file %s already read -> skipped\n",m_h5file.c_str());
       return 1;
    }
    
    if( m_pH5File ){
       hid_t group_id = m_pH5File->getId();
-      if( m_VerbLevel >= 0 ){
-         printf("Group ID = %d\n",(int)group_id);
-      }
+      _PRINTF_LEVEL0("Group ID = %d\n",(int)group_id);
          
       hid_t file_id = m_pH5File->getId();
-      if( m_VerbLevel >= 0 || 1 ){
-         printf("File ID = %d\n",(int)file_id);
-      }
+      _PRINTF_LEVEL0("File ID = %d\n",(int)file_id);
          
       /* TODO :  not sure how to read attribute with the official HDF5 library ... 
       if( H5Aexists( file_id, "VERSION" ) ){
@@ -994,6 +936,7 @@ int Beam2016Implementation::Read()
        }       
        std::sort( m_freq_list.begin(), m_freq_list.end() );
        
+       // show frequencies in the H5 file :
        if( m_VerbLevel >= 0 ){
           printf("Maximum antenna index in file = %d\n",max_ant_idx);
           printf("FREQUENCIES :\n");
@@ -1007,27 +950,7 @@ int Beam2016Implementation::Read()
    return 1;
 }   
 
-
-//----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ---------------------------------------------------------------
-void Beam2016Implementation::zeros( vector< vector<double> >& arr, int size )
-{
-   vector<double> zero_vector(1, 0.0);
-   arr.assign(size, zero_vector);       
-}
-
-void Beam2016Implementation::merge( vector<double>& arr1, vector<double>& arr2, vector<double>& arr_merged )
-{
-   arr_merged = arr1;
-   arr_merged.insert(arr_merged.end(), arr2.begin(), arr2.end());
-}
-
-void Beam2016Implementation::flipud( vector<double>& arr, vector<double>& arr_flipud, int skip )
-{
-   for(size_t i=(arr.size()-1);i>=skip;i--){
-      arr_flipud.push_back( arr[i] );
-   }
-}
-
+//----------------------------------------------------------------------------------- debuging / logging functions ----------------------------------------------------------------------------------------------------------------
 void Beam2016Implementation::print( vector< vector<double> >& arr, const char* name, int force )
 {
    if( m_VerbLevel > 0 || force>0 ){
@@ -1064,6 +987,70 @@ void Beam2016Implementation::print( vector<int>& arr, const char* name, int forc
       }
       printf("\n");
    }      
+}
+
+void Beam2016Implementation::print( vector< complex<double> >& Q1, vector< complex<double> >& Q1_accum, 
+                                    vector< complex<double> >& Q2, vector< complex<double> >& Q2_accum, 
+                                    int my_len_half, 
+                                    vector<double>& N_accum, vector<double>& M_accum, 
+                                    double Nmax )
+{                                    
+      if( m_VerbLevel > 1 ){
+         printf("Q1 = \n");
+         for(int i=0;i<my_len_half;i++){
+            complex<double>& q1_val = Q1[i];
+            complex<double>& q1_accum_val = Q1_accum[i];
+            
+            printf("\tQ1[%d] = %e + j%e -> Q1_accum[%d] = %e + j%e\n",i,q1_val.real(),q1_val.imag(),i,q1_accum_val.real(),q1_accum_val.imag());
+         }
+         printf("\n\nQ2 = \n");
+         for(int i=0;i<my_len_half;i++){
+            complex<double>& q2_val = Q2[i];
+            complex<double>& q2_accum_val = Q2_accum[i];
+            
+            printf("\tQ2[%d] = %e + j%e -> Q2_accum[%d] = %e + j%e\n",i,q2_val.real(),q2_val.imag(),i,q2_accum_val.real(),q2_accum_val.imag());
+         }
+         
+         printf("\n\n");
+         printf("N_max = %.2f\n",Nmax);
+         printf("N_accum.size = %d , M_accum.size = %d\n",(int)(N_accum.size()),(int)(M_accum.size()));
+         printf("N_accum =\n");
+         for(size_t i=0;i<N_accum.size();i++){
+            printf("\t");
+            printf("%.0f ",N_accum[i]);
+            if( ((i+1)%11)==0  ){
+               printf("\n");
+            }
+         }
+         printf("\n\n\n");fflush(stdout);
+
+         printf("M_accum =\n");
+         for(size_t i=0;i<M_accum.size();i++){
+            printf("\t");
+            printf("%.0f ",M_accum[i]);
+            if( ((i+1)%11)==0  ){
+               printf("\n");
+            }
+         }
+         printf("\n");fflush(stdout);
+         
+      }
+}
+
+
+
+//----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ---------------------------------------------------------------
+void Beam2016Implementation::merge( vector<double>& arr1, vector<double>& arr2, vector<double>& arr_merged )
+{
+   arr_merged = arr1;
+   arr_merged.insert(arr_merged.end(), arr2.begin(), arr2.end());
+}
+
+void Beam2016Implementation::flipud( vector<double>& arr, vector<double>& arr_flipud, int skip )
+{
+   for(size_t i=(arr.size()-1);i>=skip;i--){
+      arr_flipud.push_back( arr[i] );
+   }
 }
 
 void Beam2016Implementation::arrange( vector<int>& arr, int size )

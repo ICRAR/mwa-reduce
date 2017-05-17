@@ -96,7 +96,8 @@ protected :
    //    Jones matrix filled with components for given polarisation (pol input parameter)
    void CalcSigmas( double phi, double theta, 
                     std::vector< std::complex<double> >& Q1_accum, std::vector< std::complex<double> >& Q2_accum, 
-                    std::vector<double>& M_accum, std::vector<double>& N_accum, std::vector<double>& MabsM, double Nmax, char pol,
+                    std::vector<double>& M_accum, std::vector<double>& N_accum, std::vector<double>& MabsM, double Nmax, std::vector<double>& Cmn,
+                    char pol,
                     JonesMatrix& jones_matrix );
    
    //---------------------------------------------------- Calculations and variables for spherical waves coefficients (see equations 3-6 in the Sokolowski et al paper) ----------------------------------------------------
@@ -112,6 +113,8 @@ protected :
    std::vector<double> N_accum_X;
    std::vector<double> MabsM_X; // precalculated m/abs(m) to make it once for all pointings
    double Nmax_X;          // maximum N coefficient for Y (=max(N_accum_X)) - to avoid relaculations 
+   std::vector<double> Cmn_X; // coefficient under sumation in equation 3 for X pol.
+    
 
    // Y polarisation :
    std::vector< std::complex<double> > Q1_accum_Y;
@@ -120,6 +123,9 @@ protected :
    std::vector<double> N_accum_Y;
    std::vector<double> MabsM_Y; // precalculated m/abs(m) to make it once for all pointings
    double Nmax_Y;          // maximum N coefficient for Y (=max(N_accum_Y)) - to avoid relaculations
+   std::vector<double> Cmn_Y; // coefficient under sumation in equation 3 for Y pol
+   
+   std::vector< std::complex<double> > j_power_cache; // powers of j calculated once 
    
    // Information on last modes parameters - not to recalculate the same again and again !
    int     m_CalcModesLastFreqHz;
@@ -138,7 +144,7 @@ protected :
    // function calculating all coefficients Q1, Q2, N, M and derived MabsM, Nmax for a given polarisation ("X" or "Y") - perhaps enum should be used here 
    double CalcModes( int freq_hz, size_t n_ant, const double* delays, const double* amp, char pol,
                      std::vector< std::complex<double> >& Q1_accum, std::vector< std::complex<double> >& Q2_accum,
-                     std::vector<double>& M_accum, std::vector<double>& N_accum, std::vector<double>& MabsM   );                                                                              
+                     std::vector<double>& M_accum, std::vector<double>& N_accum, std::vector<double>& MabsM, std::vector<double>& Cmn   );
    // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
    // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -202,22 +208,24 @@ protected :
       
    
    // factorial calculation :
-   double factorial_wrapper_base( int n );
-   double factorial_wrapper( int n ); // uses precalculated factorials stored in m_Factorial
-   void cache_factorial( int max_n );                     
+   double factorial_wrapper_base( unsigned n );
+   double factorial_wrapper( unsigned n ); // uses precalculated factorials stored in m_Factorial
+   void cache_factorial( unsigned max_n );                     
    // precalculated factorials :
    std::vector<double> m_Factorial;   
-                       
 
-   //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ----------------------------------------------------------------
-   // vector initialisation, printing etc (a bit like numpy functions)   
-   void zeros( std::vector< std::vector<double> >& arr, int size );
-   // void zeros( std::vector< std::vector<double> >& arr, int size_x, int size_y );
-   void arrange( std::vector<int>& arr, int size );
-   // double max( std::vector<double>& arr );
+
+   //----------------------------------------------------------------------------------- debuging / logging functions ----------------------------------------------------------------------------------------------------------------
+   void print( std::vector< std::complex<double> >& Q1, std::vector< std::complex<double> >& Q1_accum, std::vector< std::complex<double> >& Q2, std::vector< std::complex<double> >& Q2_accum, int my_len_half, 
+               std::vector<double>& N_accum, std::vector<double>& M_accum, double Nmax );
    void print( std::vector<double>& arr, const char* name, int force=0 );
    void print( std::vector<int>& arr, const char* name, int force=0 );
    void print( std::vector< std::vector<double> >& arr, const char* name, int force=0 );
+                                                 
+
+   //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ----------------------------------------------------------------
+   // vector initialisation, printing etc (a bit like numpy functions)   
+   void arrange( std::vector<int>& arr, int size );
    void flipud( std::vector<double>& arr, std::vector<double>& arr_flipud, int skip=0 );
    void merge( std::vector<double>& arr1, std::vector<double>& arr2, std::vector<double>& arr_merged );
 
