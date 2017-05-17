@@ -37,8 +37,6 @@ static time_t get_dttm()
    return gm_time;
 }
 
-#define nullptr NULL
-
 /*
   Print jones matrix in a format :
 
