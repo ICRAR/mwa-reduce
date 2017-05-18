@@ -38,7 +38,7 @@ public :
    }      
    
    // to be replaced with proper std initialisation :
-   static std::vector< std::vector<JonesMatrix> >& zeros( std::vector< std::vector<JonesMatrix> >& jones, int x_size, int y_size );
+   static void zeros( std::vector< std::vector<JonesMatrix> >& jones, int x_size, int y_size );
    
    void Print(const char* name,double az_deg=0,double za_deg=0);   
 };

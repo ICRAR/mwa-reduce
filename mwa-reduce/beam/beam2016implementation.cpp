@@ -13,10 +13,14 @@
 
 #include <boost/math/special_functions/legendre.hpp>
 #include <boost/math/special_functions/factorials.hpp>
+#include <boost/filesystem.hpp>
 
 #include <H5Cpp.h>
 
 #include "beam2016implementation.h"
+#ifndef _GET_JONES_2016_TEST
+#include "system.h"
+#endif
 
 using namespace std;
 using namespace H5;
@@ -45,9 +49,9 @@ static time_t get_dttm()
 */ 
 void JonesMatrix::Print(const char* name,double az_deg,double za_deg)
 {
-   printf("%s at (az,za)=(%.2f,%.2f) [deg] = \n",name,az_deg,za_deg);
+/*   printf("%s at (az,za)=(%.2f,%.2f) [deg] = \n",name,az_deg,za_deg);
    printf("\t%.8f + %.8fj     |     %.8f + %.8fj\n",j00.real(),j00.imag(),j01.real(),j01.imag());
-   printf("\t%.8f + %.8fj     |     %.8f + %.8fj\n",j10.real(),j10.imag(),j11.real(),j11.imag());
+   printf("\t%.8f + %.8fj     |     %.8f + %.8fj\n",j10.real(),j10.imag(),j11.real(),j11.imag());*/
 }   
 
 
@@ -295,7 +299,7 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
       _PRINTF_LEVEL0("DEBUG : %.2f %.4f %.8f -> phi_comp = %e + %ej\n",M,phi,c_mn,phi_comp.real(),phi_comp.imag());
       _PRINTF_LEVEL0("DEBUG : Q1[%d] = %e + %ej , Q2[%d] = %e + %ej\n",int(i),Q1_accum[i].real(),Q1_accum[i].imag(),int(i),Q2_accum[i].real(),Q2_accum[i].imag());
 
-      if( (n+1) >= j_power_cache.size() ){
+      if( (n+1) >= int(j_power_cache.size()) ){
          char szError[1024];
          sprintf(szError,"ERROR : j_power_cache.size() = %d too few values as power %d requested\n",int(j_power_cache.size()),(n+1));
          BOOST_ASSERT_MSG( false , szError );
@@ -385,7 +389,7 @@ void Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const double*
    double maxN = std::max(Nmax_X,Nmax_Y);
    complex<double> complex_j(0,1);
    j_power_cache.assign( int(maxN) + 20 , 1 );
-   for(int i=1;i<j_power_cache.size();i++){
+   for(int i=1;i<int(j_power_cache.size());i++){
       j_power_cache[i] = j_power_cache[i-1] * complex_j;
    }
 
@@ -609,7 +613,7 @@ void Beam2016Implementation::cache_factorial( unsigned max_n )
    time_t start_time = get_dttm();
    
    m_Factorial.clear();
-   for(int i=0;i<=max_n;i++){
+   for(unsigned i=0;i<=max_n;i++){
       double fact = factorial_wrapper_base( i );
       m_Factorial.push_back( fact );
    }
@@ -827,7 +831,7 @@ void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vect
    DataSpace modes_dataspace = modes.getSpace();
    int rank = modes_dataspace.getSimpleExtentNdims();            
    hsize_t dims_out[2];
-   int ndims = modes_dataspace.getSimpleExtentDims( dims_out, NULL);
+   modes_dataspace.getSimpleExtentDims( dims_out, NULL);
    _PRINTF_LEVEL0("rank of modes = %d : %d x %d\n",(int)(rank),(int)(dims_out[0]),(int)(dims_out[1]));
    modes_dataspace.selectAll();
             
@@ -874,6 +878,30 @@ void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vect
 int Beam2016Implementation::Read()
 {
    if( !m_pH5File ){
+      if(!boost::filesystem::exists(m_h5file.c_str())){
+         string h5_test_path = "mwapy/pb/";
+         h5_test_path += m_h5file.c_str();
+         
+         _PRINTF_LEVEL0("WARNING : file %s does not exist -> trying python path %s\n",m_h5file.c_str(),h5_test_path.c_str());
+#ifdef _GET_JONES_2016_TEST // to enable compilation of standalong test not using the rest of the anoko machinery: 
+        std::string h5_path = h5_test_path.c_str();
+#else
+        std::string h5_path = System::FindPythonFilePath(h5_test_path.c_str());
+#endif
+         
+         if(!boost::filesystem::exists(h5_path.c_str())){
+            char szError[1024];
+            
+            sprintf(szError,"ERROR - cannot find the H5 file tested paths %s and %s -> cannot continue",m_h5file.c_str(),h5_path.c_str());
+            printf("%s\n",szError);
+            BOOST_ASSERT_MSG( false, szError );                        
+         }else{
+            // found H5 file and using it :
+            printf("Found H5 file %s on %s -> using this path\n",m_h5file.c_str(),h5_path.c_str());
+            m_h5file = h5_path.c_str();    
+         }
+      }
+   
       m_pH5File = new H5File( m_h5file.c_str(), H5F_ACC_RDONLY );      
    }else{
       _PRINTF_LEVEL0(" Beam2016Implementation::Read : file %s already read -> skipped\n",m_h5file.c_str());
@@ -905,7 +933,9 @@ int Beam2016Implementation::Read()
       m_obj_list.clear();
       m_freq_list.clear();
       herr_t status =  H5Ovisit (file_id, H5_INDEX_NAME, H5_ITER_NATIVE, list_obj_iterate, this);
-      BOOST_ASSERT_MSG( status>=0 , "H5Ovisit returned with negative value which indicates a critical error" );
+      if( status < 0 ){
+         BOOST_ASSERT_MSG( status>=0 , "H5Ovisit returned with negative value which indicates a critical error" );
+      }
       
             
       int max_ant_idx=-1;
@@ -1046,7 +1076,7 @@ void Beam2016Implementation::merge( vector<double>& arr1, vector<double>& arr2, 
 
 void Beam2016Implementation::flipud( vector<double>& arr, vector<double>& arr_flipud, int skip )
 {
-   for(size_t i=(arr.size()-1);i>=skip;i--){
+   for(int i=int(arr.size()-1);i>=skip;i--){
       arr_flipud.push_back( arr[i] );
    }
 }
@@ -1059,7 +1089,7 @@ void Beam2016Implementation::arrange( vector<int>& arr, int size )
    }
 }
 
-vector< vector<JonesMatrix> >& JonesMatrix::zeros( vector< vector<JonesMatrix> >& jones, int x_size, int y_size )
+void JonesMatrix::zeros( vector< vector<JonesMatrix> >& jones, int x_size, int y_size )
 {
    vector<JonesMatrix> zero_vector(x_size, JonesMatrix(0,0,0,0) );
    jones.assign(y_size, zero_vector);  
