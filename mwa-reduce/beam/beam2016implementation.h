@@ -19,6 +19,7 @@
 
 // default 
 #define DEFAULT_H5_FILE "mwa_full_embedded_element_pattern.h5"
+#define DEFAULT_H5_FILE_PATH "mwapy/data/"
 #define N_ANT_COUNT 16
 
 /*

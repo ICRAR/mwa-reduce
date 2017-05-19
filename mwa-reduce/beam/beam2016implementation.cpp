@@ -291,6 +291,8 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
       // MS tested it (2017-05-17), but does not seem to give a significant speed up, so for now the old version left 
       // If tested again comment the 2 lines above and uncomment the line below , 
       // also verify that lines in CalcModes ( after comment "Intialisation of Cmn vector :") are un-commented - FOR NOW THEY ARE COMMENTED OUT NOT TO CALCULATE SOMETHING WHICH IS NOT USED 
+      // I've tested it on 2017-05-19 and the version with line below and lines at the end of CalcModes uncommented runs in ~9m30sec and the current one was ~9m40sec so I leave the current 
+      // version as I've tested it for longer time (MS), but it can be restored if some further optimisation is needed (but it will not be a breaktrough).
       // double c_mn = Cmn[i];
                
       complex<double> ejm_phi( cos(M*phi), sin(M*phi) );
@@ -879,7 +881,7 @@ int Beam2016Implementation::Read()
 {
    if( !m_pH5File ){
       if(!boost::filesystem::exists(m_h5file.c_str())){
-         string h5_test_path = "mwapy/pb/";
+         string h5_test_path = DEFAULT_H5_FILE_PATH;
          h5_test_path += m_h5file.c_str();
          
          _PRINTF_LEVEL0("WARNING : file %s does not exist -> trying python path %s\n",m_h5file.c_str(),h5_test_path.c_str());
