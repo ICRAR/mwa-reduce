@@ -1,7 +1,9 @@
 
 Note on testing 2016 beam model (Full Embedded Element - FE model)
   Compilation command for test program :
-     g++   beam2016implementation.cpp get_jones2016.cpp -o get_jones2016 -lhdf5_cpp -lhdf5 -lboost_system -lboost_filesystem -g -D_GET_JONES_2016_TEST     
+     g++   beam2016implementation.cpp beam2016test.cpp -o beam2016test -lhdf5_cpp -lhdf5 -lboost_system -lboost_filesystem -g -D_GET_JONES_2016_TEST     
+
+  The beam test can also be compiled with 'make beam2016test' in the build directory.
 
   Running a test :
          # ./get_jones AZIM_DEG ZA_DEG FREQ_HZ ZENITH_NORM USE_CLOSEST_GRIDPOINT

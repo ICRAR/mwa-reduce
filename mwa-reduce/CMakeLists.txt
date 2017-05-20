@@ -170,6 +170,9 @@ target_link_libraries(subtrmodel ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost
 #target_link_libraries(subtrspectrum ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(tests ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB})
 
+add_executable(beam2016test EXCLUDE_FROM_ALL beam/beam2016implementation.cpp beam/beam2016test.cpp beam/system.cpp )
+target_link_libraries(beam2016test ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${HDF5_LIBRARIES})
+
 if(NOT GSL_CBLAS_LIB)
   message("GSL CBLAS lib was not found. GSL needs CBLAS: disabling GSL.")
 endif(NOT GSL_CBLAS_LIB)
