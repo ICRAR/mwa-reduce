@@ -626,18 +626,14 @@ void Beam2016Implementation::cache_factorial( unsigned max_n )
 int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin_out, vector<double>& p1_out )
 {
    int size = nmax*nmax + 2*nmax;
-   p1sin_out.assign(size, 0.0);
-   p1_out = p1sin_out;
+   p1sin_out.resize(size);
+   p1_out.resize(size);
 
    double u = cos(theta);
    double sin_th = sin(theta);
    double delu=1e-6;
    
    for(int n=1;n<=nmax;n++){
-      vector<int> l(n/2+1);
-			for(size_t i=0;i!=l.size();i++)
-				l[i] = i;
-			
       vector<double> P(n+1);
 			lpmv( P, n , u );
       
@@ -651,20 +647,18 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
 				 lpmv(Pu_mdelu, n, u-delu);
          
          // Pm_sin[1,0]=-(P[0]-Pu_mdelu[0])/delu #backward difference         
-         Pm_sin[1] = -(P[0]-Pu_mdelu[0])/delu;
-         if( u == -1 ){
+         if( u == -1 )
             Pm_sin[1] = -(Pu_mdelu[0]-P[0])/delu; // #forward difference
-         }
+         else
+					Pm_sin[1] = -(P[0]-Pu_mdelu[0])/delu;
       } else {
          for(size_t i=0;i<P.size();i++){
             Pm_sin[i] = P[i]/sin_th;
          }
       }
       
-      vector<double> Pm_sin_flipud;
       vector<double> Pm_sin_merged;
       for(size_t i=(Pm_sin.size()-1);i>=1;i--){
-         Pm_sin_flipud.push_back( Pm_sin[i] );
          Pm_sin_merged.push_back( Pm_sin[i] );
       }
       for(size_t i=0;i<Pm_sin.size();i++){
