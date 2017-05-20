@@ -6,8 +6,8 @@ Note on testing 2016 beam model (Full Embedded Element - FE model)
   The beam test can also be compiled with 'make beam2016test' in the build directory.
 
   Running a test :
-         # ./get_jones AZIM_DEG ZA_DEG FREQ_HZ ZENITH_NORM USE_CLOSEST_GRIDPOINT
-        ./get_jones 45 10 208640000 1 1
+         # ./beam2016test AZIM_DEG ZA_DEG FREQ_HZ ZENITH_NORM USE_CLOSEST_GRIDPOINT
+        ./beam2016test 45 10 208640000 1 1
 
   Expected Jones Matrix :
         

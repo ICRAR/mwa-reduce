@@ -1,9 +1,12 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  C++ implementation of Full Embeded Element beam model for MWA based on beam_full_EE.py script and Sokolowski et al (2016) paper
-    Implemented by Marcin Sokolowski (May 2017) - marcin.sokolowski@curtin.edu.au
-          * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-          
+/**
+ * C++ implementation of Full Embeded Element beam model for MWA based on beam_full_EE.py script
+ * and Sokolowski et al (2016) paper
+ * Implemented by Marcin Sokolowski (May 2017) - marcin.sokolowski@curtin.edu.au
+ * 20 May 2017 : Somewhat optimized by André Offringa.
+ */
+
 #include <algorithm>
+#include <cmath>
 #include <complex>
 #include <cstdlib>
 #include <cstring>
@@ -18,9 +21,7 @@
 #include <H5Cpp.h>
 
 #include "beam2016implementation.h"
-#ifndef _GET_JONES_2016_TEST
 #include "system.h"
-#endif
 
 using namespace std;
 using namespace H5;
@@ -625,68 +626,107 @@ void Beam2016Implementation::cache_factorial( unsigned max_n )
 // OUTPUT : returns list of Legendre polynomial values calculated up to order nmax :
 int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin_out, vector<double>& p1_out )
 {
-   int size = nmax*nmax + 2*nmax;
-   p1sin_out.resize(size);
-   p1_out.resize(size);
+	int size = nmax*nmax + 2*nmax;
+	p1sin_out.resize(size);
+	p1_out.resize(size);
 
-   double u = cos(theta);
-   double sin_th = sin(theta);
-   double delu=1e-6;
-   
-   for(int n=1;n<=nmax;n++){
-      vector<double> P(n+1);
-			lpmv( P, n , u );
-      
-      // skip first 1 and build table Pm1 (P minus 1 )
-      vector<double> Pm1(P.begin()+1, P.end());
-      Pm1.push_back(0);
-      
-      vector<double> Pm_sin(n+1, 0.0),Pm1_merged,Pm1_flipud;
-      if( u==1 || u==-1){
-         vector<double> Pu_mdelu(n+1);
-				 lpmv(Pu_mdelu, n, u-delu);
-         
-         // Pm_sin[1,0]=-(P[0]-Pu_mdelu[0])/delu #backward difference         
-         if( u == -1 )
-            Pm_sin[1] = -(Pu_mdelu[0]-P[0])/delu; // #forward difference
-         else
-					Pm_sin[1] = -(P[0]-Pu_mdelu[0])/delu;
-      } else {
-         for(size_t i=0;i<P.size();i++){
-            Pm_sin[i] = P[i]/sin_th;
-         }
-      }
-      
-      vector<double> Pm_sin_merged;
-      for(size_t i=(Pm_sin.size()-1);i>=1;i--){
-         Pm_sin_merged.push_back( Pm_sin[i] );
-      }
-      for(size_t i=0;i<Pm_sin.size();i++){
-         Pm_sin_merged.push_back( Pm_sin[i] );
-      }
-      
-      int ind_start=(n-1)*(n-1)+2*(n-1); // #start index to populate
-      int ind_stop=n*n+2*n; //#stop index to populate
-      
-      // P_sin[np.arange(ind_start,ind_stop)]=np.append(np.flipud(Pm_sin[1::,0]),Pm_sin)      
-      int modified=0;
-      for(int i=ind_start;i<ind_stop;i++){
-         p1sin_out[i] = (Pm_sin_merged[modified]);
-      
-         modified++;
-      }
-      
-      // P1[np.arange(ind_start,ind_stop)]=np.append(np.flipud(Pm1[1::,0]),Pm1)
-      flipud( Pm1, Pm1_flipud, 1 );
-      merge( Pm1_flipud, Pm1, Pm1_merged );
-      modified=0;
-      for(int i=ind_start;i<ind_stop;i++){
-         p1_out[i] = Pm1_merged[modified];
-         modified++;
-      }
-   }      
-  
-   return nmax;
+	double sin_th, u;
+	sincos(theta, &sin_th, &u);
+	double delu=1e-6;
+	
+	vector<double> P, Pm1, Pm_sin, Pu_mdelu, Pm_sin_merged, Pm1_merged;
+	P.reserve(nmax+1);
+	Pm1.reserve(nmax+1);
+	Pm_sin.reserve(nmax+1);
+	Pu_mdelu.reserve(nmax+1);
+	Pm_sin_merged.reserve(nmax*2+1);
+	Pm1_merged.reserve(nmax*2+1);
+	
+	// Create a look-up table for the legendre polynomials
+	// Such that legendre_table[ m * nmax + (n-1) ] = legendre(n, m, u)
+	vector<double> legendre_table(nmax * (nmax+1));
+	vector<double>::iterator legendre_iter = legendre_table.begin();
+	for(int m=0; m!=nmax+1; ++m) {
+		double leg0 = boost::math::legendre_p(0, m, u);
+		double leg1 = boost::math::legendre_p(1, m, u);
+		*legendre_iter = leg1;
+			++legendre_iter;
+		for(int n=2; n!=nmax+1; ++n) {
+			if(m < n)
+				*legendre_iter = boost::math::legendre_next(n-1, m, u, leg1, leg0);
+			else if(m == n)
+				*legendre_iter = boost::math::legendre_p(n, m, u);
+			else
+				*legendre_iter = 0.0;
+			//std::cout << n << ',' << m << ' ' << leg1 << "~" << leg0 << "->" << *legendre_iter << '\n';
+			//std::cout << boost::math::legendre_p(n, m, u) << '\n';
+			leg0 = leg1;
+			leg1 = *legendre_iter;
+			++legendre_iter;
+		}
+	}
+	
+	for(int n=1; n<=nmax; n++) {
+		P.resize(n+1);
+		// Assign P[m] to legendre(n, m, u)
+		// This is equal to:
+		// lpmv(P, n , u);
+		for(size_t m=0; m!=size_t(n)+1; ++m)
+			P[m] = legendre_table[m*nmax + (n-1)];
+		
+		// skip first 1 and build table Pm1 (P minus 1 )
+		Pm1.assign(P.begin()+1, P.end());
+		Pm1.push_back(0);
+		
+		Pm_sin.assign(n+1, 0.0);
+		if( u==1 || u==-1 ) {
+			// In this case we take the easy approach and don't use
+			// precalculated polynomials, since this path does not occur often.
+			
+			// TODO This path doesn't make sense. 
+			// I think Marcin should look at this; this path only occurs on polar positions so
+			// is rare, but what is done here looks wrong: first calculate *all* polynomials,
+			// then only use the pol for m=1. Pm_sin for indices 0 and >=2 are not calculated, this
+			// seems not right.
+			Pu_mdelu.resize(1);
+			lpmv(Pu_mdelu, n, u-delu);
+			
+			// Pm_sin[1,0]=-(P[0]-Pu_mdelu[0])/delu #backward difference         
+			if( u == -1 )
+				Pm_sin[1] = -(Pu_mdelu[0]-P[0])/delu; // #forward difference
+			else
+				Pm_sin[1] = -(P[0]-Pu_mdelu[0])/delu;
+		}
+		else {
+			for(size_t i=0; i<P.size(); i++){
+				Pm_sin[i] = P[i] / sin_th;
+			}
+		}
+		
+		Pm_sin_merged.assign(Pm_sin.rbegin(), Pm_sin.rend()-1);
+		Pm_sin_merged.insert(Pm_sin_merged.end(), Pm_sin.begin(), Pm_sin.end());
+		
+		int ind_start=(n-1)*(n-1)+2*(n-1); // #start index to populate
+		int ind_stop=n*n+2*n; //#stop index to populate
+		
+		// P_sin[np.arange(ind_start,ind_stop)]=np.append(np.flipud(Pm_sin[1::,0]),Pm_sin)      
+		int modified=0;
+		for(int i=ind_start; i<ind_stop; i++){
+			p1sin_out[i] = (Pm_sin_merged[modified]);
+			modified++;
+		}
+		
+		// P1[np.arange(ind_start,ind_stop)]=np.append(np.flipud(Pm1[1::,0]),Pm1)
+		Pm1_merged.assign(Pm1.rbegin(), Pm1.rend()-1);
+		Pm1_merged.insert(Pm1_merged.end(), Pm1.begin(), Pm1.end());
+		modified=0;
+		for(int i=ind_start;i<ind_stop;i++){
+			p1_out[i] = Pm1_merged[modified];
+			modified++;
+		}
+	}      
+
+	return nmax;
 }
 
 // Legendre polynomials :

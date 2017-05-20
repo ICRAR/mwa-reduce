@@ -1,10 +1,11 @@
 #ifndef _GET_FF_H__
 #define _GET_FF_H__
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  C++ implementation of Full Embeded Element beam model for MWA based on beam_full_EE.py script and Sokolowski et al (2017) paper
-  Implemented by Marcin Sokolowski (May 2017) - marcin.sokolowski@curtin.edu.au
-      * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/**
+ * C++ implementation of Full Embeded Element beam model for MWA based on beam_full_EE.py
+ * script and Sokolowski et al (2017) paper
+ * Implemented by Marcin Sokolowski (May 2017) - marcin.sokolowski@curtin.edu.au
+ */
 
 #include <algorithm>
 #include <complex>
