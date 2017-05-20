@@ -48,7 +48,7 @@ public :
 class Beam2016Implementation
 {
 public :
-   Beam2016Implementation( const char* h5_file=DEFAULT_H5_FILE );      
+   Beam2016Implementation( const double* delays, const double* amps );      
    ~Beam2016Implementation();
    
 
@@ -64,10 +64,11 @@ public :
    // INPUT : (az_deg,za_deg) - azimuth and zenith angles [in degrees]
    //         freq_hz_param   - frequency in Hz
    //         delays          - delays in beamformer steps 
-   //         amps            - amplutudes 
+   //         amps            - amplitudes 
    //         bZenithNorm     - normalise to zenith (>0) or not (<=0)
    // OUTPUT : Jones matrix (normalised or not - depending on the parameter bZenithNorm )
-   JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays=NULL, const double* amps=NULL, bool bZenithNorm=true );
+   JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, bool bZenithNorm=true );
+   JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays, const double* amps, bool bZenithNorm=true );
 
    // Calculation of Jones matrix for an image passed in the arrays azimuth and zenith angles maps. 
    // This function calls the single direction one (above) for all pixel in the input image.
@@ -80,13 +81,13 @@ public :
    //       bZenithNorm     - normalise to zenith (>0) or not (<=0)
    // OUTPUT :
    //       2D array of JonesMatrix for each pixel 
-   void CalcJones( std::vector< std::vector<double> >& azim_arr, std::vector< std::vector<double> >& za_arr, std::vector< std::vector<JonesMatrix> >& jones,
+   void CalcJonesArray( std::vector< std::vector<double> >& azim_arr, std::vector< std::vector<double> >& za_arr, std::vector< std::vector<JonesMatrix> >& jones,
                    int freq_hz_param, const double* delays=NULL, const double* amps=NULL, bool bZenithNorm=true );
 protected :
 
    // Calculation of Jones matrix for a single pointing direction (internal function):
    // INPUT : (az_rad,za_rad) - azimuth and zenith in [radians]
-   JonesMatrix CalcJones( double az_rad, double za_rad );
+   JonesMatrix CalcJonesDirect( double az_rad, double za_rad );
 
    //-------------------------------------------------------------------- Calculation of Jones matrix components for given polarisation (eq. 4 and 5 in the Sokolowski et al (2017) paper --------------------------------
    // Internal function to calculate Jones matrix componenets for a given polarisation (pol). The are calculated as electric field vectors E_theta_mn (eq.4) and E_phi_mn (eq.5 in the Sokolowski et al 2017 paper).
@@ -158,8 +159,8 @@ protected :
    // Some static/constant variables like : default delays and amps:
    static const double m_DefaultDelays[];  // at zenith {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
    static const double m_DefaultAmps[];    // just {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
-   static const double delayStep;          // delay step in MWA beamformer (in picoseconds)
-      
+   static const double _delayStep;          // delay step in MWA beamformer (in picoseconds)
+	double _delays[16], _amps[16];
 
    // parameters:
    static int m_VerbLevel;  // debug level
@@ -187,7 +188,7 @@ protected :
    static herr_t list_obj_iterate(hid_t loc_id, const char *name, const H5O_info_t *info, void *operator_data);
       
       
-   std::string m_h5file;   // H5 File name 
+   std::string _h5filename;   // H5 File name 
    H5::H5File* m_pH5File;   
    
    // Data structures for H5 file data :

@@ -58,7 +58,7 @@ void JonesMatrix::Print(const char* name,double az_deg,double za_deg)
 int Beam2016Implementation::m_VerbLevel=-1; // >=0 to enable talking
 const double Beam2016Implementation::m_DefaultDelays[]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // default delays at zenith 
 const double Beam2016Implementation::m_DefaultAmps[]={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};   // default amplitudes 1 for all the tile dipoles 
-const double Beam2016Implementation::delayStep=435.0e-12; // beamformer step in pico-seconds 
+const double Beam2016Implementation::_delayStep=435.0e-12; // beamformer step in pico-seconds 
 
 int Beam2016Implementation::has_freq(int freq_hz)
 {
@@ -104,7 +104,7 @@ complex<double> Beam2016Implementation::power_complex( complex<double> val, int 
    return ret;
 }
 
-Beam2016Implementation::Beam2016Implementation( const char* h5_file ) : 
+Beam2016Implementation::Beam2016Implementation( const double* delays, const double* amps ) : 
   m_CalcModesLastFreqHz(-1),
   m_CalcModesLastDelays(nullptr),
   m_CalcModesLastAmps(nullptr),
@@ -113,11 +113,18 @@ Beam2016Implementation::Beam2016Implementation( const char* h5_file ) :
   m_AntennaCount(N_ANT_COUNT),
   m_pH5File(nullptr)
 {
-   if( h5_file ){
-      m_h5file = h5_file;
-   }else{
-      m_h5file = DEFAULT_H5_FILE;
-   }   
+	if( !delays ) {
+		delays = m_DefaultDelays;
+	}
+	if( !amps ) {
+		amps = m_DefaultAmps;
+	}
+	for(size_t i=0; i!=16; ++i)
+	{
+		_delays[i] = delays[i];
+		_amps[i] = amps[i];
+	}
+	Read();
 }
 
 Beam2016Implementation::~Beam2016Implementation()
@@ -129,7 +136,7 @@ Beam2016Implementation::~Beam2016Implementation()
 
 
 //-------------------------------------------------------------------- Calculation of Jones matrix ------------------------------------------------------------------------------------------------------------------
-void Beam2016Implementation::CalcJones( vector< vector<double> >& azim_arr, vector< vector<double> >& za_arr, vector< vector<JonesMatrix> >& jones, int freq_hz_param, const double* delays, const double* amps, bool bZenithNorm )
+void Beam2016Implementation::CalcJonesArray( vector< vector<double> >& azim_arr, vector< vector<double> >& za_arr, vector< vector<JonesMatrix> >& jones, int freq_hz_param, const double* delays, const double* amps, bool bZenithNorm )
 {  
   // convert AZIM -> FEKO PHI phi=90-azim or azim=90-phi :
   // python : phi_arr=math.pi/2-phi_arr #Convert to East through North (FEKO coords)
@@ -153,13 +160,12 @@ void Beam2016Implementation::CalcJones( vector< vector<double> >& azim_arr, vect
           double azim_deg = image_row[x];
           double za_deg   = (za_arr[y])[x];
           
-          (jones[y])[x] = CalcJones( azim_deg, za_deg, freq_hz_param, delays, amps, bZenithNorm );
+          (jones[y])[x] = CalcJones( azim_deg, za_deg, freq_hz_param, bZenithNorm );
       }
   }
-      
 }
 
-JonesMatrix Beam2016Implementation::CalcJones( double az_rad, double za_rad )
+JonesMatrix Beam2016Implementation::CalcJonesDirect( double az_rad, double za_rad )
 {  
   // convert AZIM -> FEKO PHI phi=90-azim or azim=90-phi :
   // python : phi_arr=math.pi/2-phi_arr #Convert to East through North (FEKO coords)  
@@ -172,28 +178,22 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_rad, double za_rad )
   return jones;  
 }
 
-
-JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays, const double* amps, bool bZenithNorm )
+JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int freq_hz_param, bool bZenithNorm )
 {
-   if( !delays ){
-      delays = m_DefaultDelays;
-   }
-   if( !amps ){
-      amps = m_DefaultAmps;
-   }
-      
-   Read();
-   
-   int freq_hz = freq_hz_param;
+	return CalcJones(az_deg, za_deg, freq_hz_param, _delays, _amps, bZenithNorm);
+}
+
+JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int freq_hz, const double* delays, const double* amps, bool bZenithNorm )
+{
    if( has_freq(freq_hz)<=0 ){
       freq_hz = find_closest_freq( freq_hz );
    }
    
    CalcModes( freq_hz , m_AntennaCount, delays, amps );   
-   JonesMatrix jones_ret = CalcJones( az_deg*deg2rad, za_deg*deg2rad );   
+   JonesMatrix jones_ret = CalcJonesDirect( az_deg*deg2rad, za_deg*deg2rad );   
    
-   if( bZenithNorm  ){
-      if( freq_hz != m_NormFreqHz ){
+   if( bZenithNorm ) {
+      if( freq_hz != m_NormFreqHz ) {
          CalcZenithNormMatrix( freq_hz ); 
       }
       
@@ -223,19 +223,19 @@ void Beam2016Implementation::CalcZenithNormMatrix( int freq_hz )
       JonesMatrix tmp_jones;
 
       // j00 :
-      tmp_jones = CalcJones( j00_max_az, 0, freq_hz, NULL, NULL, 0 );
+      tmp_jones = CalcJones( j00_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
       m_NormJones.j00 = tmp_jones.j00;
 
       // j01 :
-      tmp_jones = CalcJones( j01_max_az, 0, freq_hz, NULL, NULL, 0 );
+      tmp_jones = CalcJones( j01_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
       m_NormJones.j01 = tmp_jones.j01;
 
       // j10 :
-      tmp_jones = CalcJones( j10_max_az, 0, freq_hz, NULL, NULL, 0 );      
+      tmp_jones = CalcJones( j10_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );      
       m_NormJones.j10 = tmp_jones.j10;
 
       // j11 :
-      tmp_jones = CalcJones( j11_max_az, 0, freq_hz, NULL, NULL, 0 );
+      tmp_jones = CalcJones( j11_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
       m_NormJones.j11 = tmp_jones.j11;               
       
       m_NormJones.Print("Zenith normalisation matrix",0,0);
@@ -257,13 +257,13 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
    // int nmax = int( max(N_accum) );
    int nmax =  int( Nmax );
 
-   complex<double> complex_j(0,1);
+   //complex<double> complex_j(0,1);
 
    //double sin_theta = sin(theta);
    double cos_theta = cos(theta);
    double u = cos_theta;
 
-   vector<double> P1sin_arr,P1_arr;
+   vector<double> P1sin_arr, P1_arr;
          
    P1sin( nmax, theta, P1sin_arr, P1_arr );
    _PRINTF_LEVEL0("DEBUG sizes P1_sin_arr.size = %d , P1_arr.size = %d, N.size = %d, M.size = %d, Q2.size = %d, Q1.size = %d\n",(int)(P1sin_arr.size()),(int)(P1_arr.size()),(int)(N_accum.size()),(int)(M_accum.size()),(int)(Q2_accum.size()),(int)(Q1_accum.size()));
@@ -339,7 +339,7 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
 
 //-------------------------------------------------------------------- Calculation of spherical harmonics coefficients (eq. 3-6 in the Sokolowski et al 2016 paper)  --------------------------------
 // function comparing current parameters : frequency, delays and amplitudes with those previously used to calculate spherical waves coefficients (stored in the 3 variables : 
-// m_CalcModesLastFreqHz , m_CalcModesLastDelays, m_CalcModesLastAmps )
+// m_CalcModesLastFreqHz , , m_CalcModesLastAmps )
 int Beam2016Implementation::IsCalcModesRequired( int freq_hz, int n_ant, const double* delays, const double* amps )
 {
    if( freq_hz != m_CalcModesLastFreqHz ){
@@ -428,7 +428,7 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
       
    
    for(size_t a=0;a<n_ant;a++){
-      double phase = 2*M_PI*freq_hz*(-double(delays[a])*delayStep); 
+      double phase = 2*M_PI*freq_hz*(-double(delays[a])*_delayStep); 
 
       phases[a] = phase;
       
@@ -625,10 +625,7 @@ void Beam2016Implementation::cache_factorial( unsigned max_n )
 // OUTPUT : returns list of Legendre polynomial values calculated up to order nmax :
 int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin_out, vector<double>& p1_out )
 {
-   _PRINTF_LEVEL0("DEBUG : theta = %.8f (update)\n",theta);fflush(0);
-
    int size = nmax*nmax + 2*nmax;
-   _PRINTF_LEVEL0("P1sin.size = %d\n",size);
    p1sin_out.assign(size, 0.0);
    p1_out = p1sin_out;
 
@@ -647,20 +644,10 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       Pm_sin.assign(n+1,0);
       
       arrange(l, int(n/2)+1);
-      _PRINTF_LEVEL1("DEBUG(0) : Pm_sin size = %d vs. shape(P) = %d\n",(int)(Pm_sin.size()),(int)(P.size()));
-      
-      if( m_VerbLevel > 0 ){
-         printf("l = ");
-         for(size_t i=0;i<l.size();i++){printf("%d ",l[i]);}
-         printf("\n");
-      }
-      
+			
       vector<int> orders;
       arrange(orders,n+1);
       P = lpmv( orders, n , u );
-      
-      print(orders,"orders");      
-      print(P,"P"); 
       
       // skip first 1 and build table Pm1 (P minus 1 )
       for(size_t i=1;i<P.size();i++){
@@ -670,7 +657,6 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       
       if( u==1 || u==-1){
          vector<double> Pu_mdelu;
-         _PRINTF_LEVEL0("Special case u=%.2f\n",u);
          Pu_mdelu=lpmv(orders,n,u-delu);
          
          // Pm_sin[1,0]=-(P[0]-Pu_mdelu[0])/delu #backward difference         
@@ -679,13 +665,10 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
             Pm_sin[1] = -(Pu_mdelu[0]-P[0])/delu; // #forward difference
          }
       }else{
-         _PRINTF_LEVEL1("DEBUG(1) : Pm_sin size = %d vs. shape(P) = %d\n",(int)(Pm_sin.size()),(int)(P.size()));
          for(size_t i=0;i<P.size();i++){
             Pm_sin[i] = P[i]/sin_th;
          }
       }
-      
-      char szDesc[128];
       
       for(size_t i=(Pm_sin.size()-1);i>=1;i--){
          Pm_sin_flipud.push_back( Pm_sin[i] );
@@ -695,14 +678,6 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       for(size_t i=0;i<Pm_sin.size();i++){
          Pm_sin_merged.push_back( Pm_sin[i] );
       }
-      sprintf(szDesc,"Pm_sin_flipud[%d]",n);
-      print(Pm_sin_flipud,szDesc,0);
-      
-      sprintf(szDesc,"Pm_sin[%d]",n);
-      print(Pm_sin,szDesc,0);
-      
-      sprintf(szDesc,"Pm_sin_merged[%d]",n);
-      print(Pm_sin_merged,szDesc,0);
       
       int ind_start=(n-1)*(n-1)+2*(n-1); // #start index to populate
       int ind_stop=n*n+2*n; //#stop index to populate
@@ -714,7 +689,6 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
       
          modified++;
       }
-      _PRINTF_LEVEL0("DEBUG : ind_start=%d , ind_end=%d vs. Pm_sin_merged.size()=%d vs. modified=%d\n",ind_start,ind_stop,(int)(Pm_sin_merged.size()),modified);
       
       // P1[np.arange(ind_start,ind_stop)]=np.append(np.flipud(Pm1[1::,0]),Pm1)
       flipud( Pm1, Pm1_flipud, 1 );
@@ -724,13 +698,8 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
          p1_out[i] = Pm1_merged[modified];
          modified++;
       }
-      _PRINTF_LEVEL0("DEBUG : ind_start=%d , ind_end=%d vs. Pm1_merged.size()=%d vs. modified=%d\n",ind_start,ind_stop,(int)(Pm_sin_merged.size()),modified);
    }      
   
-   print( p1sin_out , "P1sin = " );   
-   print( p1_out , "P1 = " );
-   
-   
    return nmax;
 }
 
@@ -869,8 +838,8 @@ void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vect
       }
    }
    
-   delete [] modes_data;
-   delete [] data;   
+   delete[] modes_data;
+   delete[] data;   
 }
 
 
@@ -879,34 +848,30 @@ void Beam2016Implementation::ReadDataSet( const char* dataset_name, vector< vect
 // Read data from H5 file, file name is specified in the object constructor       
 int Beam2016Implementation::Read()
 {
-   if( !m_pH5File ){
-      if(!boost::filesystem::exists(m_h5file.c_str())){
+   if( !m_pH5File ) {
+      //if(!boost::filesystem::exists(_h5filename)) {
          string h5_test_path = DEFAULT_H5_FILE_PATH;
-         h5_test_path += m_h5file.c_str();
+         h5_test_path += DEFAULT_H5_FILE;
          
-         _PRINTF_LEVEL0("WARNING : file %s does not exist -> trying python path %s\n",m_h5file.c_str(),h5_test_path.c_str());
-#ifdef _GET_JONES_2016_TEST // to enable compilation of standalong test not using the rest of the anoko machinery: 
-        std::string h5_path = h5_test_path.c_str();
-#else
-        std::string h5_path = System::FindPythonFilePath(h5_test_path.c_str());
-#endif
+         _PRINTF_LEVEL0("WARNING : file %s does not exist -> trying python path %s\n",_h5filename.c_str(),h5_test_path.c_str());
+        std::string h5_path = System::FindPythonFilePath(h5_test_path);
          
-         if(!boost::filesystem::exists(h5_path.c_str())){
+         if(!boost::filesystem::exists(h5_path)){
             char szError[1024];
             
-            sprintf(szError,"ERROR - cannot find the H5 file tested paths %s and %s -> cannot continue",m_h5file.c_str(),h5_path.c_str());
+            sprintf(szError,"ERROR - cannot find the H5 file tested paths %s and %s -> cannot continue",_h5filename.c_str(),h5_path.c_str());
             printf("%s\n",szError);
             BOOST_ASSERT_MSG( false, szError );                        
-         }else{
+         } else {
             // found H5 file and using it :
-            printf("Found H5 file %s on %s -> using this path\n",m_h5file.c_str(),h5_path.c_str());
-            m_h5file = h5_path.c_str();    
+            printf("Found H5 file %s on %s -> using this path\n",_h5filename.c_str(),h5_path.c_str());
+            _h5filename = h5_path.c_str();    
          }
-      }
+      //}
    
-      m_pH5File = new H5File( m_h5file.c_str(), H5F_ACC_RDONLY );      
+      m_pH5File = new H5File( _h5filename.c_str(), H5F_ACC_RDONLY );
    }else{
-      _PRINTF_LEVEL0(" Beam2016Implementation::Read : file %s already read -> skipped\n",m_h5file.c_str());
+      _PRINTF_LEVEL0(" Beam2016Implementation::Read : file %s already read -> skipped\n",_h5filename.c_str());
       return 1;
    }
    
@@ -1052,7 +1017,7 @@ void Beam2016Implementation::print( vector< complex<double> >& Q1, vector< compl
                printf("\n");
             }
          }
-         printf("\n\n\n");fflush(stdout);
+         printf("\n\n\n");
 
          printf("M_accum =\n");
          for(size_t i=0;i<M_accum.size();i++){
@@ -1062,7 +1027,7 @@ void Beam2016Implementation::print( vector< complex<double> >& Q1, vector< compl
                printf("\n");
             }
          }
-         printf("\n");fflush(stdout);
+         printf("\n");
          
       }
 }

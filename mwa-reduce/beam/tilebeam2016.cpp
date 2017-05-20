@@ -12,6 +12,7 @@
 //bool TileBeam2016::_firstInit = true;
 
 TileBeam2016::TileBeam2016(const double* delays, bool frequencyInterpolation) :
+	Beam2016Implementation(delays, nullptr),
 	_frequencyInterpolation(frequencyInterpolation)
 {
 	for(size_t i=0;i!=16;++i)
@@ -35,7 +36,7 @@ void TileBeam2016::getTabulatedResponse(double az, double za, double freq, std::
 	// input are radians -> convert to degrees as implementation class expects :
 	double az_deg = az*(180.00/M_PI);
 	double za_deg = za*(180.00/M_PI);
-	JonesMatrix jones = CalcJones( az_deg, za_deg, freq, _delaysInSteps, NULL, 1 );
+	JonesMatrix jones = CalcJones( az_deg, za_deg, freq, 1 );
 	result[0] = jones.j00;
 	result[1] = jones.j01;
 	result[2] = jones.j10;
@@ -48,7 +49,7 @@ void TileBeam2016::getInterpolatedResponse(double az, double za, double freq, st
 	double az_deg = az*(180.00/M_PI);
 	double za_deg = za*(180.00/M_PI);
 
-	JonesMatrix jones =  CalcJones( az_deg, za_deg, freq, _delaysInSteps, NULL, 1 );
+	JonesMatrix jones =  CalcJones( az_deg, za_deg, freq, 1 );
 	result[0] = jones.j00;
 	result[1] = jones.j01;
 	result[2] = jones.j10;

@@ -69,9 +69,9 @@ int main (int argc, char* argv[])
       
       delays = pGridPoint->delays;
    }
-   Beam2016Implementation fullee( DEFAULT_H5_FILE );
+   Beam2016Implementation fullee(delays, amps);
    
-   JonesMatrix jones_matrix = fullee.CalcJones( az, za, freq_hz, delays, amps, zenith_norm );
+   JonesMatrix jones_matrix = fullee.CalcJones( az, za, freq_hz, zenith_norm );
 
    printf("Jones = \n");
    printf("---------------------------------------------------\n");
@@ -89,7 +89,7 @@ int main (int argc, char* argv[])
          double azim=-10;
       
          while( azim<= 10.00 ){
-            jones_matrix = fullee.CalcJones( azim, 90.00-elev, freq_hz, delays, amps, zenith_norm );
+            jones_matrix = fullee.CalcJones( azim, 90.00-elev, freq_hz, zenith_norm );
             // jones_matrix.Print("TEST", azim,90.00-elev);
       
             azim += step;
