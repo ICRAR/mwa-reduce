@@ -223,14 +223,6 @@ protected :
    void print( std::vector<double>& arr, const char* name, int force=0 );
    void print( std::vector<int>& arr, const char* name, int force=0 );
    void print( std::vector< std::vector<double> >& arr, const char* name, int force=0 );
-                                                 
-
-   //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ----------------------------------------------------------------
-   // vector initialisation, printing etc (a bit like numpy functions)   
-   void arrange( std::vector<int>& arr, int size );
-   void flipud( std::vector<double>& arr, std::vector<double>& arr_flipud, int skip=0 );
-   void merge( std::vector<double>& arr1, std::vector<double>& arr2, std::vector<double>& arr_merged );
-
 };
 
 

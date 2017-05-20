@@ -1047,26 +1047,6 @@ void Beam2016Implementation::print( vector< complex<double> >& Q1, vector< compl
 
 
 //----------------------------------------------------------------------------------- auxiliary functions for basic vector operations - TO BE REPLACED BY std calls ---------------------------------------------------------------
-void Beam2016Implementation::merge( vector<double>& arr1, vector<double>& arr2, vector<double>& arr_merged )
-{
-   arr_merged = arr1;
-   arr_merged.insert(arr_merged.end(), arr2.begin(), arr2.end());
-}
-
-void Beam2016Implementation::flipud( vector<double>& arr, vector<double>& arr_flipud, int skip )
-{
-   for(int i=int(arr.size()-1);i>=skip;i--){
-      arr_flipud.push_back( arr[i] );
-   }
-}
-
-void Beam2016Implementation::arrange( vector<int>& arr, int size )
-{
-   arr.clear();
-   for(int i=0;i<size;i++){
-     arr.push_back(i);
-   }
-}
 
 void JonesMatrix::zeros( vector< vector<JonesMatrix> >& jones, int x_size, int y_size )
 {
