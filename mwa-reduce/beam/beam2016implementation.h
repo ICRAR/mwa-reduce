@@ -202,8 +202,7 @@ protected :
    std::complex<double> power_complex( std::complex<double> val, int n );
 
    // Calculations of Legendre polynomials :
-   double lpmv( int order, int n, double x );
-   std::vector<double> lpmv( std::vector<int>& orders, int n, double x );
+   void lpmv( std::vector<double>& output, int n, double x );
    
    // OUTPUT : returns list of Legendre polynomial values calculated up to order nmax :
    int P1sin( int nmax, double theta, std::vector<double>& p1sin_out, std::vector<double>& p1_out );

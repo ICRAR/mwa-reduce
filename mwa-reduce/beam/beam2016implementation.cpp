@@ -629,50 +629,42 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
    p1sin_out.assign(size, 0.0);
    p1_out = p1sin_out;
 
-
    double u = cos(theta);
    double sin_th = sin(theta);
    double delu=1e-6;
    
    for(int n=1;n<=nmax;n++){
-      vector<double> P,Pm1,Pm1_merged,Pm1_flipud;
-      vector<double> Pm_sin;
-      vector<double> Pm_sin_flipud;
-      vector<double> Pm_sin_merged;
-      vector<int> l;
-      P.assign(n+1,0.0);
-      Pm_sin.assign(n+1,0);
-      
-      arrange(l, int(n/2)+1);
+      vector<int> l(n/2+1);
+			for(size_t i=0;i!=l.size();i++)
+				l[i] = i;
 			
-      vector<int> orders;
-      arrange(orders,n+1);
-      P = lpmv( orders, n , u );
+      vector<double> P(n+1);
+			lpmv( P, n , u );
       
       // skip first 1 and build table Pm1 (P minus 1 )
-      for(size_t i=1;i<P.size();i++){
-         Pm1.push_back( P[i] );
-      }
+      vector<double> Pm1(P.begin()+1, P.end());
       Pm1.push_back(0);
       
+      vector<double> Pm_sin(n+1, 0.0),Pm1_merged,Pm1_flipud;
       if( u==1 || u==-1){
-         vector<double> Pu_mdelu;
-         Pu_mdelu=lpmv(orders,n,u-delu);
+         vector<double> Pu_mdelu(n+1);
+				 lpmv(Pu_mdelu, n, u-delu);
          
          // Pm_sin[1,0]=-(P[0]-Pu_mdelu[0])/delu #backward difference         
          Pm_sin[1] = -(P[0]-Pu_mdelu[0])/delu;
          if( u == -1 ){
             Pm_sin[1] = -(Pu_mdelu[0]-P[0])/delu; // #forward difference
          }
-      }else{
+      } else {
          for(size_t i=0;i<P.size();i++){
             Pm_sin[i] = P[i]/sin_th;
          }
       }
       
+      vector<double> Pm_sin_flipud;
+      vector<double> Pm_sin_merged;
       for(size_t i=(Pm_sin.size()-1);i>=1;i--){
          Pm_sin_flipud.push_back( Pm_sin[i] );
-
          Pm_sin_merged.push_back( Pm_sin[i] );
       }
       for(size_t i=0;i<Pm_sin.size();i++){
@@ -704,27 +696,13 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
 }
 
 // Legendre polynomials :
-vector<double> Beam2016Implementation::lpmv( vector<int>& orders, int n, double x )
+void Beam2016Implementation::lpmv( vector<double>& output, int n, double x )
 {
-   vector<double> out;
-   for(size_t i=0;i<orders.size();i++){
-      int o = orders[i];
-   
-      double val = lpmv( o, n, x );
-      out.push_back(val);
+   for(size_t order=0; order<output.size(); order++) {
+      double val = boost::math::legendre_p<double>(n, order, x);
+      output[order] = val;
    }
-   
-   return out;
 }
-
-// Legendre polynomials :
-double Beam2016Implementation::lpmv( int order, int n, double x )
-{
-   double ret = boost::math::legendre_p<double>( n, order, x );   
-   return ret;
-}
-
-
 
 //----------------------------------------------------------------------------------- HDF5 File interface and data structures for H5 data -----------------------------------------------------------------------------------
 // This function goes thorugh all dataset names and records them info list of strings : Beam2016Implementation::m_obj_list
