@@ -15,31 +15,44 @@ struct cGridPoint
 
 cGridPoint* find_closest_gridpoint( double az_deg, double za_deg );
 
-int main (int argc, char* argv[])
+int main (int argc, char* argv[]) 
 {
    double az = 45;
+   double za = 0;
+   int freq_hz = 70400000;
+   int zenith_norm=0;
+   int find_closest=0;
+   int speed_test=1;   
+   
+   if( argc>=2 && strncmp(argv[1],"-h",2)==0 ){
+      printf("Usage (default values of parameters in brakets [] ):\n");
+      printf("beam2016test AZ[=%.2f deg] ZA[=%.2f deg]  freq_hz[=%d Hz] zenith_normalisation[=%d] find_closest[=%d] speed_test[=%d]\n",az,za,freq_hz,zenith_norm,find_closest,speed_test);
+      exit(0);
+   }
+
    if ( argc>=2 ){
       az = atof( argv[1]);
    }
-   double za = 0;
+
    if ( argc>=3 ){
       za = atof( argv[2]);
    }
-   int freq_hz = 70400000;
+
    if ( argc>=4 ){
       freq_hz = atol( argv[3]);
    }
    
-   int zenith_norm=0;
    if ( argc>=5 ){
       zenith_norm = atol( argv[4]);
    }
  
-   int find_closest=0;
    if ( argc>=6 ){
       find_closest = atol( argv[5]);
    }
    
+   if ( argc>=7 ){
+      speed_test = atol( argv[6]);
+   }
 
    printf("########################################################################\n");
    printf("PARAMETERS:\n");
@@ -48,6 +61,7 @@ int main (int argc, char* argv[])
    printf("Frequency    = %d\n",freq_hz);
    printf("find_closest = %d\n",find_closest);
    printf("zenith_norm  = %d\n",zenith_norm);
+   printf("speed_test   = %d\n",speed_test);
    printf("########################################################################\n");   
    
    std::complex<double> test_complex(10,-20);
@@ -80,7 +94,7 @@ int main (int argc, char* argv[])
    printf("---------------------------------------------------\n");
    
    // speed test :
-   if( 1 ) {
+   if( speed_test ) {
       double step = 20.00/100;
       int count=0;
       double elev=70.00;
