@@ -32,8 +32,10 @@ public:
 				throw std::runtime_error(s+"Requested index value for antenna1 out of bounds");
 			if(antenna2 >= _nAntenna)
 				throw std::runtime_error(s+"Requested index value for antenna2 out of bounds");
-			if(timeIndex >= _nTimesteps)
-				throw std::runtime_error(s+"Requested index value for time index out of bounds");
+			if(timeIndex >= _nTimesteps) {
+				errMsg << "Requested index value for time index out of bounds (>=" << _nTimesteps << ")";  
+				throw std::runtime_error(errMsg.str());
+			}
 		}
 		if(antenna1 > antenna2)
 			std::swap(antenna1, antenna2);
