@@ -153,7 +153,6 @@ void Peeler::Perform()
 		casacore::Array<complex_t> data(dataShape), modelData(dataShape);
 		casacore::Array<float> weights(dataShape);
 		casacore::Array<bool> flags(dataShape);
-		size_t timeIndex = 0;
 		time = timeColumn(startRow);
 		size_t selectedCount = 0, notSelected = 0;
 		MSPredicter::RowData rowData;
@@ -161,20 +160,14 @@ void Peeler::Perform()
 		predicter->Start(false);
 		while(predicter->GetNextRow(rowData))
 		{
-			size_t rowIndex = rowData.rowIndex;
-			boost::mutex::scoped_lock lock(predicter->IOMutex());
-			if(timeColumn(rowIndex) != time)
-			{
-				++timeIndex;
-				time = timeColumn(rowIndex);
-			}
 			// Cross correlation?
 			size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
 			if(antenna1 == antenna2)
 			{
-				lock.unlock();
 			}
 			else {
+				size_t rowIndex = rowData.rowIndex;
+				boost::mutex::scoped_lock lock(predicter->IOMutex());
 				dataColumn.get(rowIndex, data);
 				weightColumn.get(rowIndex, weights);
 				flagColumn.get(rowIndex, flags);
@@ -211,6 +204,7 @@ void Peeler::Perform()
 					}
 				}
 				else {
+					size_t timeIndex = rowData.timeIndex;
 					for(size_t ch = 0; ch!=channelCount; ++ch)
 					{
 						size_t chIndex = ch * 4;
