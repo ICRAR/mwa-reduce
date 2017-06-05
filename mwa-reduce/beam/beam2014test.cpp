@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "beam2016implementation.h"
+#include "tilebeam2014.h"
 
 struct cGridPoint
 {
@@ -15,20 +16,20 @@ struct cGridPoint
 
 cGridPoint* find_closest_gridpoint( double az_deg, double za_deg );
 
-int main (int argc, char* argv[]) 
+int main (int argc, char* argv[])
 {
    double az = 45;
    double za = 0;
    int freq_hz = 70400000;
    int zenith_norm=0;
    int find_closest=0;
-   int speed_test=1;   
-   
+
    if( argc>=2 && strncmp(argv[1],"-h",2)==0 ){
       printf("Usage (default values of parameters in brakets [] ):\n");
-      printf("beam2016test AZ[=%.2f deg] ZA[=%.2f deg]  freq_hz[=%d Hz] zenith_normalisation[=%d] find_closest[=%d] speed_test[=%d]\n",az,za,freq_hz,zenith_norm,find_closest,speed_test);
+      printf("beam2014test AZ[=%.2f deg] ZA[=%.2f deg]  freq_hz[=%d Hz] zenith_normalisation[=%d] find_closest_gridpoint[=%d]\n",az,za,freq_hz,zenith_norm,find_closest);
       exit(0);
    }
+
 
    if ( argc>=2 ){
       az = atof( argv[1]);
@@ -50,9 +51,6 @@ int main (int argc, char* argv[])
       find_closest = atol( argv[5]);
    }
    
-   if ( argc>=7 ){
-      speed_test = atol( argv[6]);
-   }
 
    printf("########################################################################\n");
    printf("PARAMETERS:\n");
@@ -61,17 +59,14 @@ int main (int argc, char* argv[])
    printf("Frequency    = %d\n",freq_hz);
    printf("find_closest = %d\n",find_closest);
    printf("zenith_norm  = %d\n",zenith_norm);
-   printf("speed_test   = %d\n",speed_test);
    printf("########################################################################\n");   
    
    std::complex<double> test_complex(10,-20);
    printf("Test = %.2f + %.2fj\n",test_complex.real(),test_complex.imag());
    
    const double default_delays[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-   const double default_amps[16]   = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
    
    const double* delays = default_delays; // CBeamModel_FullEE::m_DefaultDelays; // {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-   const double* amps   = default_amps;   // CBeamModel_FullEE::m_DefaultAmps;   // {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
    if( find_closest ){
       cGridPoint* pGridPoint = find_closest_gridpoint( az, za );
       if( !pGridPoint ){
@@ -83,18 +78,28 @@ int main (int argc, char* argv[])
       
       delays = pGridPoint->delays;
    }
-   Beam2016Implementation fullee(delays, amps);
-   
-   JonesMatrix jones_matrix = fullee.CalcJones( az, za, freq_hz, zenith_norm );
+
+// void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
+   TileBeam2014 beam2014( delays, false );
+   std::complex<double> jones[4];
+   beam2014.ArrayResponse( za*(M_PI/180.0) , az*(M_PI/180.0) , freq_hz, jones );
+
+/*   Beam2016Implementation fullee(delays, amps);   
+   JonesMatrix jones_matrix = fullee.CalcJones( az, za, freq_hz, zenith_norm );*/
+   JonesMatrix jones_matrix;
+   jones_matrix.j00 = jones[0];
+   jones_matrix.j01 = jones[1];
+   jones_matrix.j10 = jones[2];
+   jones_matrix.j11 = jones[3];
 
    printf("Jones = \n");
    printf("---------------------------------------------------\n");
    printf("\t%.8f + %.8fj     |     %.8f + %.8fj\n",jones_matrix.j00.real(),jones_matrix.j00.imag(),jones_matrix.j01.real(),jones_matrix.j01.imag());
    printf("\t%.8f + %.8fj     |     %.8f + %.8fj\n",jones_matrix.j10.real(),jones_matrix.j10.imag(),jones_matrix.j11.real(),jones_matrix.j11.imag());
    printf("---------------------------------------------------\n");
-   
+/*   
    // speed test :
-   if( speed_test ) {
+   if( 0 ) {
       double step = 20.00/100;
       int count=0;
       double elev=70.00;
@@ -112,7 +117,7 @@ int main (int argc, char* argv[])
          elev += step;
       }
       printf("Total %d calculations of jones matrix\n",count);
-   }
+   }*/
 
    
 //   std::complex<double> test_complex2 = cis(1);
