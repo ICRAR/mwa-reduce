@@ -261,8 +261,8 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
    //complex<double> complex_j(0,1);
 
    //double sin_theta = sin(theta);
-   double cos_theta = cos(theta);
-   double u = cos_theta;
+   //double cos_theta = 
+   double u = cos(theta);
 
    vector<double> P1sin_arr, P1_arr;
          
@@ -583,12 +583,6 @@ double Beam2016Implementation::CalcModes( int freq_hz, size_t n_ant, const doubl
 
 
 //------------------------------------------------------------------------------------------------------ maths functions and wrappers ---------------------------------------------------------------------------------------
-// factorial calculation :
-double Beam2016Implementation::factorial_wrapper_base( unsigned n )
-{
-   return boost::math::factorial<double>(n);
-}
-
 // uses precalculated factorials stored in m_Factorial
 double Beam2016Implementation::factorial_wrapper( unsigned n )
 {
@@ -608,17 +602,17 @@ double Beam2016Implementation::factorial_wrapper( unsigned n )
       return m_Factorial[n];
    }
 
-   return factorial_wrapper_base( n );
+   return boost::math::factorial<double>(n);
 }
 
 void Beam2016Implementation::cache_factorial( unsigned max_n )
 {
    time_t start_time = get_dttm();
    
-   m_Factorial.clear();
+   m_Factorial.resize(max_n+1);
    for(unsigned i=0;i<=max_n;i++){
-      double fact = factorial_wrapper_base( i );
-      m_Factorial.push_back( fact );
+      double fact = boost::math::factorial<double>(i);
+      m_Factorial[i] = fact;
    }
    _PRINTF_LEVEL0("Initialisation of factorial %d! took %d seconds\n",max_n,(int)(get_dttm()-start_time));
 }
