@@ -225,19 +225,19 @@ void Beam2016Implementation::CalcZenithNormMatrix( int freq_hz )
 
       // j00 :
       tmp_jones = CalcJones( j00_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
-      m_NormJones.j00 = tmp_jones.j00;
+      m_NormJones.j00 = abs( tmp_jones.j00 );
 
       // j01 :
       tmp_jones = CalcJones( j01_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
-      m_NormJones.j01 = tmp_jones.j01;
+      m_NormJones.j01 = abs( tmp_jones.j01 );
 
       // j10 :
       tmp_jones = CalcJones( j10_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );      
-      m_NormJones.j10 = tmp_jones.j10;
+      m_NormJones.j10 = abs( tmp_jones.j10 );
 
       // j11 :
       tmp_jones = CalcJones( j11_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
-      m_NormJones.j11 = tmp_jones.j11;               
+      m_NormJones.j11 = abs( tmp_jones.j11 );               
       
       m_NormJones.Print("Zenith normalisation matrix",0,0);
       
@@ -327,10 +327,10 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta,
          
    if( pol == 'X' ){            
        jones_matrix.j00 = sigma_T;
-       jones_matrix.j01 = sigma_P;
+       jones_matrix.j01 = -sigma_P; // as it is now in python code in sign_fix branch
    }else{
        jones_matrix.j10 = sigma_T;
-       jones_matrix.j11 = sigma_P;
+       jones_matrix.j11 = -sigma_P; // as it is now in python code in sign_fix branch
    }
             
    if( m_VerbLevel > 0 ){            
