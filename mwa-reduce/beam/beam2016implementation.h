@@ -210,7 +210,6 @@ protected :
       
    
    // factorial calculation :
-   double factorial_wrapper_base( unsigned n );
    double factorial_wrapper( unsigned n ); // uses precalculated factorials stored in m_Factorial
    void cache_factorial( unsigned max_n );                     
    // precalculated factorials :
