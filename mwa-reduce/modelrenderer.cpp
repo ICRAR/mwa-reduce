@@ -1,14 +1,15 @@
 
 #include <iostream>
 
+#include "fitsreader.h"
 #include "modelrenderer.h"
 #include "model/model.h"
-#include "imagecoordinates.h"
+#include "units/imagecoordinates.h"
 #include "uvector.h"
 #include "fftconvolver.h"
 
 template<typename T>
-T ModelRenderer::gaus(T x, T sigma) const
+T ModelRenderer::gaus(T x, T sigma)
 {
 	long double xi = x / sigma;
 	return exp(T(-0.5) * xi * xi);// / (sigma * sqrt(T(2.0) * M_PIl));
@@ -56,7 +57,7 @@ void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHe
 			
 			for(int y=yTop; y!=yBottom; ++y)
 			{
-				            double *imageDataPtr = imageData + y*imageWidth+xLeft;
+				double *imageDataPtr = imageData + y*imageWidth+xLeft;
 				for(int x=xLeft; x!=xRight; ++x)
 				{
 					long double l, m;
@@ -72,87 +73,104 @@ void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHe
 	}
 }
 
-/** Restore an elliptical beam*/
-void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamMaj, long double beamMin, long double beamPA,
-														long double startFrequency, long double endFrequency, PolarizationEnum polarization)
+void ModelRenderer::renderGaussianComponent(double* imageData, size_t imageWidth, size_t imageHeight, long double posRA, long double posDec, long double gausMaj, long double gausMin, long double gausPA, long double flux, bool normalizeIntegratedFlux)
 {
-	if(beamMaj == 0.0 && beamMin == 0.0)
+	// Using the FWHM formula for a Gaussian:
+	long double sigmaMaj = gausMaj / (2.0L * sqrtl(2.0L * logl(2.0L)));
+	long double sigmaMin = gausMin / (2.0L * sqrtl(2.0L * logl(2.0L)));
+	// TODO this won't work for non-equally spaced dimensions
+	long double minPixelScale = std::min(_pixelScaleL, _pixelScaleM);
+	// ...And this is not accurate, as the correlation between beam and source PA has
+	// to be taken into account
+	if(normalizeIntegratedFlux)
 	{
-		RenderModel(imageData, imageWidth, imageHeight, model, startFrequency, endFrequency, polarization);
+		double factor = 2.0L * M_PI * sigmaMaj * sigmaMin / (minPixelScale * minPixelScale);
+		if(factor > 1.0)
+			flux /= factor;
 	}
-	else {
-		// Using the FWHM formula for a Gaussian:
-		long double sigmaMaj = beamMaj / (2.0L * sqrtl(2.0L * logl(2.0L)));
-		long double sigmaMin = beamMin / (2.0L * sqrtl(2.0L * logl(2.0L)));
-		
-		// Make rotation matrix
-		long double transf[4];
-		// Position angle is angle from North: 
-		sincosl(beamPA+0.5*M_PI, &transf[2], &transf[0]);
-		transf[1] = -transf[2];
-		transf[3] = transf[0];
-		double sigmaMax = std::max(std::fabs(sigmaMaj * transf[0]), std::fabs(sigmaMaj * transf[1]));
-		// Multiply with scaling matrix to make variance 1.
-		transf[0] = transf[0] / sigmaMaj;
-		transf[1] = transf[1] / sigmaMaj;
-		transf[2] = transf[2] / sigmaMin;
-		transf[3] = transf[3] / sigmaMin;
-		
-		int boundingBoxSize = ceil(sigmaMax * 20.0 / std::min(_pixelScaleL, _pixelScaleM));
-		for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
+	
+	// Make rotation matrix
+	long double transf[4];
+	// Position angle is angle from North: 
+	long double angle = gausPA+0.5*M_PI;
+	transf[2] = sin(angle);
+	transf[0] = cos(angle);
+	transf[1] = -transf[2];
+	transf[3] = transf[0];
+	double sigmaMax = std::max(std::fabs(sigmaMaj * transf[0]), std::fabs(sigmaMaj * transf[1]));
+	// Multiply with scaling matrix to make variance 1.
+	transf[0] = transf[0] / sigmaMaj;
+	transf[1] = transf[1] / sigmaMaj;
+	transf[2] = transf[2] / sigmaMin;
+	transf[3] = transf[3] / sigmaMin;
+	int boundingBoxSize = ceil(sigmaMax * 20.0 / minPixelScale);
+	long double sourceL, sourceM;
+	ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
+
+	// Calculate the bounding box
+	int sourceX, sourceY;
+	ImageCoordinates::LMToXY<long double>(sourceL-_phaseCentreDL, sourceM-_phaseCentreDM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
+	int
+		xLeft = sourceX - boundingBoxSize,
+		xRight = sourceX + boundingBoxSize,
+		yTop = sourceY - boundingBoxSize,
+		yBottom = sourceY + boundingBoxSize;
+	if(xLeft < 0) xLeft = 0;
+	if(xLeft > (int) imageWidth) xLeft = (int) imageWidth;
+	if(xRight < xLeft) xRight = xLeft;
+	if(xRight > (int) imageWidth) xRight = (int) imageWidth;
+	if(yTop < 0) yTop = 0;
+	if(yTop > (int) imageHeight) yTop = (int) imageHeight;
+	if(yBottom < yTop) yBottom = yTop;
+	if(yBottom > (int) imageHeight) yBottom = (int) imageHeight;
+	
+	for(int y=yTop; y!=yBottom; ++y)
+	{
+		double *imageDataPtr = imageData + y*imageWidth+xLeft;
+		for(int x=xLeft; x!=xRight; ++x)
 		{
-			for(ModelSource::const_iterator comp=src->begin(); comp!=src->end(); ++comp)
-			{
-				long double
-					posRA = comp->PosRA(),
-					posDec = comp->PosDec(),
-					sourceL, sourceM;
-				ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
-				const SpectralEnergyDistribution &sed = comp->SED();
-				const long double intFlux = sed.IntegratedFlux(startFrequency, endFrequency, polarization);
-				
-				int sourceX, sourceY;
-				ImageCoordinates::LMToXY<long double>(sourceL-_phaseCentreDL, sourceM-_phaseCentreDM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
-				int
-					xLeft = sourceX - boundingBoxSize,
-					xRight = sourceX + boundingBoxSize,
-					yTop = sourceY - boundingBoxSize,
-					yBottom = sourceY + boundingBoxSize;
-				if(xLeft < 0) xLeft = 0;
-				if(xLeft > (int) imageWidth) xLeft = (int) imageWidth;
-				if(xRight < xLeft) xRight = xLeft;
-				if(xRight > (int) imageWidth) xRight = (int) imageWidth;
-				if(yTop < 0) yTop = 0;
-				if(yTop > (int) imageHeight) yTop = (int) imageHeight;
-				if(yBottom < yTop) yBottom = yTop;
-				if(yBottom > (int) imageHeight) yBottom = (int) imageHeight;
-				
-				for(int y=yTop; y!=yBottom; ++y)
-				{
-					double *imageDataPtr = imageData + y*imageWidth+xLeft;
-					for(int x=xLeft; x!=xRight; ++x)
-					{
-						long double l, m;
-						ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, l, m);
-						l += _phaseCentreDL; m += _phaseCentreDM;
-						long double
-							lTransf = (l-sourceL)*transf[0] + (m-sourceM)*transf[1],
-							mTransf = (l-sourceL)*transf[2] + (m-sourceM)*transf[3];
-						long double dist = sqrt(lTransf*lTransf + mTransf*mTransf);
-						long double g = gaus(dist, 1.0L);
-						(*imageDataPtr) += double(g * intFlux);
-						++imageDataPtr;
-					}
-				}
-			}
+			long double l, m;
+			ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, l, m);
+			l += _phaseCentreDL; m += _phaseCentreDM;
+			long double
+				lTransf = (l-sourceL)*transf[0] + (m-sourceM)*transf[1],
+				mTransf = (l-sourceL)*transf[2] + (m-sourceM)*transf[3];
+			long double dist = sqrt(lTransf*lTransf + mTransf*mTransf);
+			long double g = gaus(dist, 1.0L);
+			(*imageDataPtr) += double(g * flux);
+			++imageDataPtr;
 		}
 	}
+}
+
+void ModelRenderer::renderPointComponent(double* imageData, size_t imageWidth, size_t imageHeight, long double posRA, long double posDec, long double flux)
+{
+	long double sourceL, sourceM;
+	ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
+	sourceL -= _phaseCentreDL; sourceM -= _phaseCentreDM;
+	
+	int sourceX, sourceY;
+	ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
+	
+	if(sourceX >= 0 && sourceX < (int) imageWidth && sourceY >= 0 && sourceY < (int) imageHeight)
+	{
+		double *imageDataPtr = imageData + sourceY*imageWidth + sourceX;
+		(*imageDataPtr) += double(flux);
+	}
+}
+
+/** Restore a model with an elliptical beam */
+void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamMaj, long double beamMin, long double beamPA, long double startFrequency, long double endFrequency, PolarizationEnum polarization)
+{
+	ao::uvector<double> renderedWithoutBeam(imageWidth * imageHeight, 0.0);
+	renderModel(renderedWithoutBeam.data(), imageWidth, imageHeight, model, startFrequency, endFrequency, polarization, true);
+	Restore(imageData, renderedWithoutBeam.data(), imageWidth, imageHeight, beamMaj, beamMin, beamPA, _pixelScaleL, _pixelScaleM);
 }
 
 /**
  * Restore a diffuse image (e.g. produced with multi-scale clean)
  */
-void ModelRenderer::Restore(double* imageData, double* modelData, size_t imageWidth, size_t imageHeight, long double beamMaj, long double beamMin, long double beamPA)
+void ModelRenderer::Restore(double* imageData, const double* modelData, size_t imageWidth, size_t imageHeight, long double beamMaj, long double beamMin, long double beamPA, long double pixelScaleL, long double pixelScaleM)
 {
 	if(beamMaj == 0.0 && beamMin == 0.0)
 	{
@@ -167,7 +185,9 @@ void ModelRenderer::Restore(double* imageData, double* modelData, size_t imageWi
 		// Make rotation matrix
 		long double transf[4];
 		// Position angle is angle from North: 
-		sincosl(beamPA+0.5*M_PI, &transf[2], &transf[0]);
+		long double angle = beamPA+0.5*M_PI;
+		transf[2] = sin(angle);
+		transf[0] = cos(angle);
 		transf[1] = -transf[2];
 		transf[3] = transf[0];
 		double sigmaMax = std::max(std::fabs(sigmaMaj * transf[0]), std::fabs(sigmaMaj * transf[1]));
@@ -178,7 +198,7 @@ void ModelRenderer::Restore(double* imageData, double* modelData, size_t imageWi
 		transf[3] = transf[3] / sigmaMin;
 		
 		size_t minDimension = std::min(imageWidth, imageHeight);
-		size_t boundingBoxSize = std::min<size_t>(ceil(sigmaMax * 40.0 / std::min(_pixelScaleL, _pixelScaleM)), minDimension);
+		size_t boundingBoxSize = std::min<size_t>(ceil(sigmaMax * 40.0 / std::min(pixelScaleL, pixelScaleM)), minDimension);
 		if(boundingBoxSize%2!=0) ++boundingBoxSize;
 		ao::uvector<double> kernel(boundingBoxSize*boundingBoxSize);
 		typename ao::uvector<double>::iterator i=kernel.begin();
@@ -187,7 +207,7 @@ void ModelRenderer::Restore(double* imageData, double* modelData, size_t imageWi
 			for(size_t x=0; x!=boundingBoxSize; ++x)
 			{
 				long double l, m;
-				ImageCoordinates::XYToLM<long double>(x, y, _pixelScaleL, _pixelScaleM, boundingBoxSize, boundingBoxSize, l, m);
+				ImageCoordinates::XYToLM<long double>(x, y, pixelScaleL, pixelScaleM, boundingBoxSize, boundingBoxSize, l, m);
 				long double
 					lTransf = l*transf[0] + m*transf[1],
 					mTransf = l*transf[2] + m*transf[3];
@@ -207,30 +227,29 @@ void ModelRenderer::Restore(double* imageData, double* modelData, size_t imageWi
 }
 
 /**
-* Render each point-source as one pixel
+* Render without beam convolution, such that each point-source is one pixel.
 */
-void ModelRenderer::RenderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization)
+void ModelRenderer::renderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization, bool normalizeIntegratedFlux)
 {
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
 		for(ModelSource::const_iterator comp=src->begin(); comp!=src->end(); ++comp)
 		{
-			long double
+			const long double
 				posRA = comp->PosRA(),
 				posDec = comp->PosDec(),
-				sourceL, sourceM;
-			int sourceX, sourceY;
-			ImageCoordinates::RaDecToLM(posRA, posDec, _phaseCentreRA, _phaseCentreDec, sourceL, sourceM);
-			sourceL -= _phaseCentreDL; sourceM -= _phaseCentreDM;
-			ImageCoordinates::LMToXY<long double>(sourceL, sourceM, _pixelScaleL, _pixelScaleM, imageWidth, imageHeight, sourceX, sourceY);
+				intFlux = comp->SED().IntegratedFlux(startFrequency, endFrequency, polarization);
 			
-			const long double intFlux = comp->SED().IntegratedFlux(startFrequency, endFrequency, polarization);
-			
-			if(sourceX >= 0 && sourceX < (int) imageWidth && sourceY >= 0 && sourceY < (int) imageHeight)
+			if(comp->Type() == ModelComponent::GaussianSource)
 			{
-				            double *imageDataPtr = imageData + sourceY*imageWidth + sourceX;
-				(*imageDataPtr) += double(intFlux);
+				long double
+					gausMaj = comp->MajorAxis(),
+					gausMin = comp->MinorAxis(),
+					gausPA = comp->PositionAngle();
+				renderGaussianComponent(imageData, imageWidth, imageHeight, posRA, posDec, gausMaj, gausMin, gausPA, intFlux, normalizeIntegratedFlux);
 			}
+			else
+				renderPointComponent(imageData, imageWidth, imageHeight, posRA, posDec, intFlux);
 		}
 	}
 }

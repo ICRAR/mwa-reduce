@@ -1,5 +1,5 @@
 #include "fitsreader.h"
-#include "polarizationenum.h"
+#include "polarization.h"
 
 #include <stdexcept>
 #include <sstream>
@@ -20,6 +20,8 @@ FitsReader::FitsReader(const FitsReader& source) :
 	_hasBeam(source._hasBeam),
 	_beamMajorAxisRad(source._beamMajorAxisRad), _beamMinorAxisRad(source._beamMinorAxisRad), _beamPositionAngle(source._beamPositionAngle),
 	_polarization(source._polarization),
+	_unit(source._unit),
+	_telescopeName(source._telescopeName), _observer(source._observer), _objectName(source._objectName),
 	_origin(source._origin), _originComment(source._originComment),
 	_history(source._history)
 {
@@ -59,6 +61,10 @@ FitsReader& FitsReader::operator=(const FitsReader& rhs)
 	_beamMinorAxisRad = rhs._beamMinorAxisRad;
 	_beamPositionAngle = rhs._beamPositionAngle;
 	_polarization = rhs._polarization;
+	_unit = rhs._unit;
+	_telescopeName = rhs._telescopeName;
+	_observer = rhs._observer;
+	_objectName = rhs._objectName;
 	_origin = rhs._origin;
 	_originComment = rhs._originComment;
 	_history = rhs._history;
@@ -76,15 +82,6 @@ FitsReader& FitsReader::operator=(const FitsReader& rhs)
 	checkStatus(status, _filename);
 	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
 	return *this;
-}
-
-float FitsReader::readFloatKey(const char *key)
-{
-	int status = 0;
-	float floatValue;
-	fits_read_key(_fitsPtr, TFLOAT, key, &floatValue, 0, &status);
-	checkStatus(status, _filename, std::string("Read float key ") + key);
-	return floatValue;
 }
 
 double FitsReader::readDoubleKey(const char *key)
@@ -271,6 +268,13 @@ void FitsReader::initialize()
 		_beamMinorAxisRad = 0.0;
 		_beamPositionAngle = 0.0;
 	}
+	
+	_telescopeName = std::string();
+	ReadStringKeyIfExists("TELESCOP", _telescopeName);
+	_observer = std::string();
+	ReadStringKeyIfExists("OBSERVER", _observer);
+	_objectName = std::string();
+	ReadStringKeyIfExists("OBJECT", _objectName);
 	
 	_origin = std::string();
 	_originComment = std::string();

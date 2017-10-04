@@ -14,8 +14,9 @@ class Delaunay
 {
 private:
 	class TriangleNode;
-	struct Vertex
+	class Vertex
 	{
+	public:
 		Vertex() : inConvexHull(false), outsideConvexHull(false)
 		{ }
 		
@@ -43,7 +44,7 @@ private:
 			return *a < *b;
 		}
 		
-		bool IsLeftTurn(const std::vector<Vertex*> vertices) const
+		bool IsLeftTurn(const std::vector<Vertex*>& vertices) const
 		{
 			if(vertices.size() < 2) return false;
 			
@@ -57,7 +58,7 @@ private:
 		{
 			return (b->x - a->x)*(c->y - a->y) - (b->y - a->y)*(c->x - a->x) > 0.0;
 		}
-		bool IsRightTurn(const std::vector<Vertex*> vertices) const
+		bool IsRightTurn(const std::vector<Vertex*>& vertices) const
 		{
 			if(vertices.size() < 2) return false;
 			
@@ -92,8 +93,9 @@ private:
 		}
 	};
 	
-	struct Edge
+	class Edge
 	{
+	public:
 		class Vertex *vertices[2];
 		
 		Edge(Vertex* v1, Vertex* v2)
@@ -108,7 +110,7 @@ private:
 					if(vertices[v1] == other.vertices[v2])
 						return true;
 			}
-			v1=0; v2=0;
+			//v1=0; v2=0;
 			return false;
 		}
 		bool Crosses(const Vertex* a, const Vertex* b)
@@ -131,8 +133,9 @@ private:
 		}
 	};
 	
-	struct TriangleNode
+	class TriangleNode
 	{
+	public:
 		TriangleNode()
 		{
 			for(size_t i=0; i!=3; ++i)

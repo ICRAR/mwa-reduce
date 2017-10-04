@@ -156,7 +156,7 @@ public:
 			}
 		}
 		
-		_beamEvaluator.reset(new BeamEvaluator(_ms));
+		_beamEvaluator.reset(new LBeamEvaluator(_ms));
 		
 		ao::lane<RowData> internalLane(ION_SPECTRUM_ROW_LANE_SIZE);
 		lane_write_buffer<RowData> bufferedLane(&internalLane, ION_SPECTRUM_ROW_BUFFER_SIZE);
@@ -477,7 +477,7 @@ private:
 	IonSolutionFile _ionSolutionFile;
 	Model _model;
 	BandData _bandData;
-	std::unique_ptr<BeamEvaluator> _beamEvaluator;
+	std::unique_ptr<LBeamEvaluator> _beamEvaluator;
 	ao::uvector<FluxSpectrumAccumulator*> _accumulatorPerSource;
 	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
 	ao::uvector<size_t> _sourceToClusterIndex;

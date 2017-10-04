@@ -8,7 +8,7 @@
 #include <map>
 #include <cmath>
 
-#include "polarizationenum.h"
+#include "polarization.h"
 #include "fitsiochecker.h"
 
 class FitsWriter : protected FitsIOChecker
@@ -16,6 +16,7 @@ class FitsWriter : protected FitsIOChecker
 	public:
 	enum Unit {
 		JanskyPerBeam,
+		Jansky,
 		Kelvin,
 		MilliKelvin
 	};
@@ -29,8 +30,10 @@ class FitsWriter : protected FitsIOChecker
 			_beamMajorAxisRad(0.0), _beamMinorAxisRad(0.0), _beamPositionAngle(0.0),
 			_polarization(Polarization::StokesI),
 			_unit(JanskyPerBeam),
+			_isUV(false),
+			_telescopeName(), _observer(), _objectName(),
 			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa"),
-			_multiFPtr(0)
+			_multiFPtr(nullptr)
 		{
 		}
 		
@@ -43,15 +46,18 @@ class FitsWriter : protected FitsIOChecker
 			_hasBeam(false),
 			_beamMajorAxisRad(0.0), _beamMinorAxisRad(0.0), _beamPositionAngle(0.0),
 			_polarization(Polarization::StokesI),
+			_unit(JanskyPerBeam),
+			_isUV(false),
+			_telescopeName(), _observer(), _objectName(),
 			_origin("AO/WSImager"), _originComment("Imager written by Andre Offringa"),
-			_multiFPtr(0)
+			_multiFPtr(nullptr)
 		{
 			SetMetadata(reader);
 		}
 		
 		~FitsWriter()
 		{
-			if(_multiFPtr != 0)
+			if(_multiFPtr != nullptr)
 				FinishMulti();
 		}
 		
@@ -122,9 +128,26 @@ class FitsWriter : protected FitsIOChecker
 		{
 			_polarization = polarization;
 		}
+		Unit GetUnit() const { return _unit; }
 		void SetUnit(Unit unit)
 		{
 			_unit = unit;
+		}
+		void SetIsUV(bool isUV)
+		{
+			_isUV = isUV;
+		}
+		void SetTelescopeName(const std::string& telescopeName)
+		{
+			_telescopeName = telescopeName;
+		}
+		void SetObserver(const std::string& observer)
+		{
+			_observer = observer;
+		}
+		void SetObjectName(const std::string& objectName)
+		{
+			_objectName = objectName;
 		}
 		void SetOrigin(const std::string& origin, const std::string& comment)
 		{
@@ -135,10 +158,11 @@ class FitsWriter : protected FitsIOChecker
 		{
 			_history = history;
 		}
-		void AddHistory(std::string& historyLine)
+		void AddHistory(const std::string& historyLine)
 		{
 			_history.push_back(historyLine);
 		}
+
 		void SetMetadata(const class FitsReader& reader);
 		
 		double RA() const { return _phaseCentreRA; }
@@ -205,6 +229,8 @@ class FitsWriter : protected FitsIOChecker
 		double _beamMajorAxisRad, _beamMinorAxisRad, _beamPositionAngle;
 		PolarizationEnum _polarization;
 		Unit _unit;
+		bool _isUV;
+		std::string _telescopeName, _observer, _objectName;
 		std::string _origin, _originComment;
 		std::vector<std::string> _history;
 		std::map<std::string, std::string> _extraStringKeywords;

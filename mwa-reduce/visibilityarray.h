@@ -32,10 +32,8 @@ public:
 				throw std::runtime_error(s+"Requested index value for antenna1 out of bounds");
 			if(antenna2 >= _nAntenna)
 				throw std::runtime_error(s+"Requested index value for antenna2 out of bounds");
-			if(timeIndex >= _nTimesteps) {
-				errMsg << "Requested index value for time index out of bounds (>=" << _nTimesteps << ")";  
-				throw std::runtime_error(errMsg.str());
-			}
+			if(timeIndex >= _nTimesteps)
+				throw std::runtime_error(s+"Requested index value for time index out of bounds");
 		}
 		if(antenna1 > antenna2)
 			std::swap(antenna1, antenna2);
@@ -51,7 +49,7 @@ private:
 		return (antenna1*(2*_nAntenna - antenna1 - 3) + 2*antenna2 - 2)/2;
 	}
 	// Ordered in Polarization, Frequency, Antenna2, Antenna1 (i.e., Antenna1 is most significant, and a1 <= a2), Time
-	size_t _nBaselines, _nPolarizations, _nChannels, _nAntenna, _nTimesteps;
+	size_t _nBaselines, _nChannels, _nAntenna, _nTimesteps;
 	ao::uvector<T> _values;
 };
 

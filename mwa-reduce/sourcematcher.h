@@ -4,7 +4,7 @@
 #include "model/model.h"
 
 #include "progressbar.h"
-#include "angle.h"
+#include "units/angle.h"
 
 #include <fstream>
 

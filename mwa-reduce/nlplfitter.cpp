@@ -145,8 +145,8 @@ public:
 				const double a_j = gsl_vector_get(xvec, j);
 				fity = a_j + fity * lg;
 			}
-			//std::cout << x << ':' << fity << " / " << exp10(fity) << "\n";
-			gsl_vector_set(f, i, exp10(fity) - y);
+			//std::cout << x << ':' << fity << " / " << pow(10.0, fity) << "\n";
+			gsl_vector_set(f, i, pow(10.0, fity) - y);
 		}
 			
 		return GSL_SUCCESS;
@@ -171,7 +171,7 @@ public:
 				const double a_j = gsl_vector_get(xvec, j);
 				fity = a_j + fity * lg;
 			}
-			fity = exp10(fity);
+			fity = pow(10.0, fity);
 			// dY/da_i = e^[ a_0...a_i-1,a_i+1...a_n] * (e^[a_i {log x}^i]) {log x}^i
 			gsl_matrix_set(J, i, 0, fity);
 			
@@ -397,9 +397,9 @@ void NonLinearPowerLawFitter::Fit(ao::uvector<double>& terms, size_t nTerms)
 	}
 	
 	if(isNegative)
-		terms[0] = -exp10(terms[0]);
+		terms[0] = -pow(10.0, terms[0]);
 	else
-		terms[0] = exp10(terms[0]);
+		terms[0] = pow(10.0, terms[0]);
 }
 
 void NonLinearPowerLawFitter::FitStable(ao::uvector<double>& terms, size_t nTerms)
@@ -437,9 +437,9 @@ void NonLinearPowerLawFitter::FitStable(ao::uvector<double>& terms, size_t nTerm
 	}
 	
 	if(isNegative)
-		terms[0] = -exp10(terms[0]);
+		terms[0] = -pow(10.0, terms[0]);
 	else
-		terms[0] = exp10(terms[0]);
+		terms[0] = pow(10.0, terms[0]);
 }
 
 void NonLinearPowerLawFitter::FastFit(double& exponent, double& factor)
@@ -502,5 +502,5 @@ double NonLinearPowerLawFitter::Evaluate(double x, const ao::uvector<double>& te
 		size_t j = terms.size()-k-1;
 		y = y * lg + terms[j];
 	}
-	return exp10(y * lg) * terms[0];
+	return pow(10.0, y * lg) * terms[0];
 }

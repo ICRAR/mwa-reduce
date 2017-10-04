@@ -30,6 +30,11 @@ inline std::string Angle::ToNiceString(double angleRad)
 {
 	std::ostringstream str;
 	double degAngle = angleRad * 180.0 / M_PI;
+	if(degAngle < 0.0)
+	{
+		str << "-";
+		degAngle = -degAngle;
+	}
 	if(degAngle >= 2.0)
 	{
 		str << round(degAngle*100.0)/100.0 << " deg";
@@ -91,19 +96,19 @@ inline double Angle::Parse(const std::string& s, const std::string& valueDescrip
 		return val * M_PI/180.0;
 	
 	// In arcmin?
-	else if(unitStr.empty() || unitStr=="amin" || unitStr=="arcmin" || unitStr=="\'")
+	else if(unitStr=="amin" || unitStr=="arcmin" || unitStr=="\'")
 		return val * M_PI/(180.0*60.0);
 	
 	// In arcsec?
-	else if(unitStr.empty() || unitStr=="asec" || unitStr=="arcsec" || unitStr=="\'\'")
+	else if(unitStr=="asec" || unitStr=="arcsec" || unitStr=="\'\'")
 		return val * M_PI/(180.0*60.0*60.0);
 	
 	// In marcsec?
-	else if(unitStr.empty() || unitStr=="masec" || unitStr=="marcsec")
+	else if(unitStr=="mas" || unitStr=="masec" || unitStr=="marcsec")
 		return val * M_PI/(180.0*60.0*60.0*1000.0);
 	
 	// In radians
-	else if(unitStr.empty() || unitStr=="rad" || unitStr=="radians")
+	else if(unitStr=="rad" || unitStr=="radians")
 		return val;
 	
 	throw std::runtime_error("Invalid unit specification in angle given for " + valueDescription);

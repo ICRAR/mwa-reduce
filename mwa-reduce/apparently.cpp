@@ -10,7 +10,8 @@
 #include "model/model.h"
 
 #include "fitsreader.h"
-#include "imagecoordinates.h"
+
+#include "units/imagecoordinates.h"
 
 int main(int argc, char **argv)
 {

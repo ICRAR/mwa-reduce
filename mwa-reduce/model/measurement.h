@@ -5,7 +5,7 @@
 
 #include <cstring>
 
-#include "../polarizationenum.h"
+#include "../polarization.h"
 
 class Measurement
 {
@@ -29,12 +29,13 @@ class Measurement
 			memcpy(_fluxDensityStddevs, source._fluxDensityStddevs, sizeof(long double)*4);
 		}
 		
-		void operator=(const Measurement &source)
+		Measurement& operator=(const Measurement &source)
 		{ 
 			_frequencyHz = source._frequencyHz;
 			_bandWidthHz = source._bandWidthHz;
 			memcpy(_fluxDensities, source._fluxDensities, sizeof(long double)*4);
 			memcpy(_fluxDensityStddevs, source._fluxDensityStddevs, sizeof(long double)*4);
+			return *this;
 		}
 		
 		void operator+=(const Measurement &rhs)

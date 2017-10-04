@@ -1,7 +1,7 @@
 #include "areaset.h"
 #include "banddata.h"
-#include "beamevaluator.h"
-#include "imagecoordinates.h"
+#include "delaunay.h"
+#include "units/imagecoordinates.h"
 #include "loghistogram.h"
 #include "rmsynthesis.h"
 #include "uvector.h"
@@ -14,6 +14,8 @@
 #include "gnuplot.h"
 #include "spectrumft.h"
 #include "ndppp.h"
+
+#include "deconvolution/spectralfitter.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
@@ -57,59 +59,24 @@ bool compareWithBeam(const ModelSource& lhs, const ModelSource& rhs)
 	return lhsVal < rhsVal;
 }
 
-class IsApparentLessBright
-{
-public:
-	BeamEvaluator* _beam;
-	double _frequency;
-	
-	bool operator()(const ModelSource& lhs, const ModelSource& rhs) const
-	{
-		return totalAppFlux(lhs) < totalAppFlux(rhs);
-	}
-	
-	bool operator()(const ModelComponent& lhs, const ModelComponent& rhs) const
-	{
-		return totalAppFlux(lhs) < totalAppFlux(rhs);
-	}
-	
-	double totalAppFlux(const ModelComponent& c) const
-	{
-		double stokesFlux[4];
-		for(size_t p=0; p!=4; ++p)
-			stokesFlux[p] = c.SED().FluxAtFrequency(_frequency, Polarization::IndexToStokes(p));
-		std::complex<double> linFlux[4];
-		Polarization::StokesToLinear(stokesFlux, linFlux);
-		_beam->AbsToApparent(c.PosRA(), c.PosDec(), _frequency, linFlux);
-		return (std::abs(linFlux[0]) + std::abs(linFlux[3])) * 0.5;
-	}
-	
-	double totalAppFlux(const ModelSource& s) const
-	{
-		double totalFlux = 0.0;
-		for(ModelSource::const_iterator compIter=s.begin(); compIter!=s.end(); ++compIter)
-			totalFlux += totalAppFlux(*compIter);
-		return totalFlux / s.ComponentCount();
-	}
-};
-
 int main(int argc, char *argv[])
 {
 	if(argc == 1)
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral energy distribution. Usage:\n"
-		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-list] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] <model> [<more models...>]\n";
+		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] <model> [<more models...>]\n";
 		return 0;
 	}
 	int argi = 1;
-	bool outputPlot = false, doFT = false, outputRMPlot = false, outputCsv = false, outputSICsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyAppThreshold = false, applyIndexThreshold = false, applyComponentThreshold = false, applyClusterThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false, outputList = false;
+	bool outputPlot = false, doFT = false, outputRMPlot = false, outputCsv = false, outputSICsv = false, powerlaw = false, optimize = false, applyThreshold = false, applyIndexThreshold = false, applyComponentThreshold = false, applyClusterThreshold = false, resample = false, resampleByAveraging = false, unpolarized = false, delNaNs = false, outputList = false;
+	double evaluateFrequency = 0.0;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
-	long double scale = 1.0, threshold = 0.0, appThreshold = 0.0, logNlogSFrequency = 0.0;
+	long double scale = 1.0, threshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0, sagecalFirstClusterChunkSize = 1;
-	std::string outputModel, collectName, appThresholdMS, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, skyModelFilename, sortBeamPrefix;
+	std::string outputModel, collectName, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, skyModelFilename, sortBeamPrefix;
 	bool nearFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0, setFrequencyValue = 0.0, powerSumLimit = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
@@ -123,6 +90,11 @@ int main(int argc, char *argv[])
 	size_t simUniformN = 0;
 	double simUniformRa=0.0, simUniformDec=0.0, simUniformDist=0.0, simUniformFlux=0.0;
 	double simPopulationRa=0.0, simPopulationDec=0.0, simPopulationDist=0.0, simPopulationFluxLo=0.0, simPopulationFluxHi=0.0;
+	double simSIAverage = -0.7, simSIStdDev = 0.2;
+	std::string saveClusters;
+	std::string scaleToModelFilename;
+	double scaleToFreqStart = 0.0, scaleToFreqEnd = 0.0;
+	size_t scaleToNTerms = 0;
 	
 	std::string selectSourceName;
 	while(argi!=argc && argv[argi][0]=='-')
@@ -148,6 +120,18 @@ int main(int argc, char *argv[])
 			csvFilename = argv[argi];
 		} else if(option == "list") {
 			outputList = true;
+		} else if(option == "evaluate") {
+			++argi;
+			evaluateFrequency = atof(argv[argi]);
+		} else if(option == "scale-to") {
+			scaleToModelFilename = argv[argi+1];
+			scaleToFreqStart = atof(argv[argi+2]);
+			scaleToFreqEnd = atof(argv[argi+3]);
+			scaleToNTerms = atoi(argv[argi+4]);
+			argi += 4;
+		} else if(option == "save-clusters") {
+			++argi;
+			saveClusters = argv[argi];
 		} else if(option == "search") {
 			++argi;
 			searchCount = atoi(argv[argi]);
@@ -215,7 +199,7 @@ int main(int argc, char *argv[])
 			++argi;
 			setPolarization[0] = true;
 			setPolFlux[0] = atof(argv[argi]);
-		} else if(option == "-set1")
+		} else if(option == "set1")
 		{
 			++argi;
 			setPolarization[1] = true;
@@ -238,13 +222,6 @@ int main(int argc, char *argv[])
 			++argi;
 			threshold = atof(argv[argi]);
 			applyThreshold = true;
-		} else if(option == "tapp")
-		{
-			++argi;
-			appThresholdMS = argv[argi];
-			++argi;
-			appThreshold = atof(argv[argi]);
-			applyAppThreshold = true;
 		} else if(option == "t-index")
 		{
 			++argi;
@@ -399,7 +376,60 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	
+	if(scaleToNTerms > 0)
+	{
+		Model scaleModel(scaleToModelFilename);
+		if(scaleModel.SourceCount() != 1)
+			throw std::runtime_error("Scale reference model should have a single source");
+		const ModelSource& source = scaleModel.Source(0);
+		ao::uvector<double> values(scaleToNTerms), frequencies(scaleToNTerms), weights(scaleToNTerms, 1.0);
+		double scaleToBandwidth = scaleToFreqEnd - scaleToFreqStart;
+		std::cout << "Scaling model to have the following flux values:\n";
+		std::cout << "Frequency\tTo\tOld\n";
+		for(size_t term = 0; term!=scaleToNTerms; ++term)
+		{
+			double frequency = scaleToFreqStart + scaleToBandwidth * double(term) / double(scaleToNTerms-1);
+			values[term] = source.TotalFlux(frequency, Polarization::StokesI);
+			frequencies[term] = frequency;
+			std::cout << round(frequency*1e-6) << " MHz\t" << values[term] << " Jy\t" <<
+				model.Source(0).TotalFlux(frequency, Polarization::StokesI) << " Jy\n";
+		}
+		
+		for(ModelSource& source : model)
+		{
+			ao::uvector<double> scalingFactors(values.size());
+			for(size_t term = 0; term!=scaleToNTerms; ++term)
+			{
+				double frequency = frequencies[term];
+				double flux = values[term];
+				scalingFactors[term] = flux / source.TotalFlux(frequency, Polarization::StokesI);
+			}
+			for(ModelComponent& component : source)
+			{
+				ao::uvector<double> fitValues(scaleToNTerms);
+				for(size_t term = 0; term!=scaleToNTerms; ++term)
+				{
+					double frequency = frequencies[term];
+					double oldFlux = component.SED().FluxAtFrequency(frequency, Polarization::StokesI);
+					double newFlux = oldFlux * scalingFactors[term];
+					fitValues[term] = newFlux;
+				}
+				SpectralFittingMode mode;
+				PowerLawSED& sed = static_cast<PowerLawSED&>(component.SED());
+				double refFreq = sed.ReferenceFrequencyHz();
+				if(sed.IsLogarithmic())
+					mode = LogPolynomialSpectralFitting;
+				else
+					mode = PolynomialSpectralFitting;
+				size_t nTerms = sed.NTerms();
+				SpectralFitter fitter(mode, nTerms);
+				fitter.SetFrequencies(frequencies.data(), weights.data(), scaleToNTerms);
+				ao::uvector<double> newTerms;
+				fitter.Fit(newTerms, fitValues.data());
+				sed.SetFromStokesIFit(refFreq, newTerms);
+			}
+		}
+	}
 	if(simUniformN != 0 || simPopulationFluxHi != 0.0)
 	{
 		size_t simN;
@@ -429,6 +459,7 @@ int main(int argc, char *argv[])
 		
 		std::mt19937 rnd;
 		std::uniform_real_distribution<double> dist(0.0, 1.0);
+		std::normal_distribution<double> siDist(simSIAverage, simSIStdDev); 
 		for(size_t i=0; i!=simN; ++i)
 		{
 			double ra, dec;
@@ -462,7 +493,8 @@ int main(int argc, char *argv[])
 			}
 			
 			double b[] = {flux, 0.0, 0.0, 0.0};
-			ao::uvector<double> si(1, -0.7);
+			double spectralIndex = siDist(rnd);
+			ao::uvector<double> si(1, spectralIndex);
 			sed.SetData(150.0e6, b, si);
 			comp.SetSED(sed);
 			ModelSource source;
@@ -698,50 +730,22 @@ int main(int argc, char *argv[])
 		Model temp;
 		std::vector<std::string> clusterNames;
 		model.GetClusterNames(clusterNames);
+		size_t thresholded = 0, total = clusterNames.size();
 		for(std::vector<std::string>::const_iterator clName=clusterNames.begin(); clName!=clusterNames.end(); ++clName)
 		{
 			SourceGroup group;
 			model.GetSourcesInCluster(*clName, group);
 			
-			if(group.TotalFlux(Polarization::StokesI) >= threshold)
+			if(std::fabs(group.TotalFlux(Polarization::StokesI)) >= threshold)
 			{
 				for(SourceGroup::const_iterator s=group.begin(); s!=group.end(); ++s)
 					temp.AddSource(*s);
 			}
+			else
+				++thresholded;
 		}
 		model = temp;
-	}
-	
-	if(applyAppThreshold)
-	{
-		Model temp;
-		casacore::MeasurementSet ms(appThresholdMS);
-		BeamEvaluator beam(ms);
-		BandData bandData(ms.spectralWindow());
-		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
-		{
-			double stokesFlux[4];
-			for(size_t p=0; p!=4; ++p)
-			{
-				stokesFlux[p] = sourcePtr->TotalFlux(bandData.LowestFrequency(), bandData.HighestFrequency(), Polarization::IndexToStokes(p));
-				if(sourcePtr->Peak().HasMeasuredSED() && !std::isfinite(stokesFlux[p]))
-				{
-					const MeasuredSED& sed = sourcePtr->Peak().MSED();
-					long double f, e;
-					sed.FitPowerlaw(f, e, Polarization::IndexToStokes(p));
-					double lowFlux = f * std::pow(bandData.LowestFrequency(), e);
-					double hiFlux = f * std::pow(bandData.HighestFrequency(), e);
-					stokesFlux[p] = (lowFlux + hiFlux) * 0.5;
-				}
-			}
-			std::complex<double> linFlux[4];
-			Polarization::StokesToLinear(stokesFlux, linFlux);
-			beam.AbsToApparent(sourcePtr->Peak().PosRA(), sourcePtr->Peak().PosDec(), bandData.CentreFrequency(), linFlux);
-			double appStokesIFlux = (std::abs(linFlux[0]) + std::abs(linFlux[3])) * 0.5;
-			if(appStokesIFlux >= appThreshold)
-				temp.AddSource(*sourcePtr);
-		}
-		model = temp;
+		std::cout << "Thresholded " << thresholded << " / " << total << " clusters.\n";
 	}
 	
 	if(rndN != 0)
@@ -879,18 +883,14 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		if(scale != 1.0)
+	}
+	if(scale != 1.0)
+	{
+		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
 		{
-			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
 			{
-				for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
-				{
-					MeasuredSED &sed = compPtr->MSED();
-					for(MeasuredSED::iterator m=sed.begin(); m!=sed.end(); ++m)
-					{
-						m->second.SetFluxDensityFromIndex(p, m->second.FluxDensityFromIndex(p) * scale);
-					}
-				}
+				compPtr->MSED() *= scale;
 			}
 		}
 	}
@@ -1127,7 +1127,7 @@ int main(int argc, char *argv[])
 	
 	if(!skyModelFilename.empty())
 	{
-		NDPPP::SaveSkyModel(skyModelFilename, model);
+		NDPPP::SaveSkyModel(skyModelFilename, model, true);
 	}
 	
 	if(!sagecalPrefix.empty())
@@ -1454,6 +1454,24 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+	if(!saveClusters.empty())
+	{
+		std::vector<std::string> clusters;
+		model.GetClusterNames(clusters);
+		Delaunay delaunay;
+		for(const std::string& cluster : clusters)
+		{
+			SourceGroup sourceGroup;
+			model.GetSourcesInCluster(cluster, sourceGroup);
+			double ra = sourceGroup.MeanRA(), dec = sourceGroup.MeanDec();
+			if(!std::isfinite(ra) || !std::isfinite(dec))
+				throw std::runtime_error("One of the directions has a non-finite RA or Dec");
+			delaunay.AddVertex(ra, dec, nullptr);
+		}
+		delaunay.Triangulate();
+		delaunay.SaveTriangulationAsKvis(saveClusters);
+	}
+	
 	if(outputList) {
 		for(Model::const_iterator s=model.begin();
 				s!=model.end(); ++s)
@@ -1464,6 +1482,19 @@ int main(int argc, char *argv[])
 				<< RaDecCoord::RAToString(source.MeanRA()) << " "
 				<< RaDecCoord::DecToString(source.MeanDec()) << " "
 				<< source.TotalFlux(Polarization::StokesI) << '\n';
+		}
+	}
+	
+	if(evaluateFrequency != 0.0) {
+		for(Model::const_iterator s=model.begin();
+				s!=model.end(); ++s)
+		{
+			const ModelSource& source = *s;
+			std::cout
+				<< source.Name() << " "
+				<< RaDecCoord::RAToString(source.MeanRA()) << " "
+				<< RaDecCoord::DecToString(source.MeanDec()) << " "
+				<< source.TotalFlux(evaluateFrequency, Polarization::StokesI) << '\n';
 		}
 	}
 	

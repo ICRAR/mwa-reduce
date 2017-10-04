@@ -37,6 +37,9 @@ void FitsWriter::writeHeaders(fitsfile*& fptr, const std::string& filename, size
 		case JanskyPerBeam:
 			fits_write_key(fptr, TSTRING, "BUNIT", (void*) "JY/BEAM", "Units are in Jansky per beam", &status); checkStatus(status, filename);
 			break;
+		case Jansky:
+			fits_write_key(fptr, TSTRING, "BUNIT", (void*) "JY", "Units are in Jansky", &status); checkStatus(status, filename);
+			break;
 		case Kelvin:
 			fits_write_key(fptr, TSTRING, "BUNIT", (void*) "K", "Units are in Kelvin", &status); checkStatus(status, filename);
 			break;
@@ -58,24 +61,63 @@ void FitsWriter::writeHeaders(fitsfile*& fptr, const std::string& filename, size
 	
 	fits_write_key(fptr, TDOUBLE, "EQUINOX", (void*) &equinox, "J2000", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TSTRING, "BTYPE", (void*) "Intensity", "", &status); checkStatus(status, filename);
+	if(!_telescopeName.empty())
+	{
+		fits_write_key(fptr, TSTRING, "TELESCOP", (void*) _telescopeName.c_str(), "", &status); checkStatus(status, filename);
+	}
+	if(!_observer.empty())
+	{
+		fits_write_key(fptr, TSTRING, "OBSERVER", (void*) _observer.c_str(), "", &status); checkStatus(status, filename);
+	}
+	if(!_objectName.empty())
+	{
+		fits_write_key(fptr, TSTRING, "OBJECT", (void*) _objectName.c_str(), "", &status); checkStatus(status, filename);
+	}
 	fits_write_key(fptr, TSTRING, "ORIGIN", (void*) _origin.c_str(), _originComment.c_str(), &status); checkStatus(status, filename);
 	double phaseCentreRADeg = (_phaseCentreRA/M_PI)*180.0, phaseCentreDecDeg = (_phaseCentreDec/M_PI)*180.0;
 	double
 		centrePixelX = _pixelSizeX!=0.0 ? ((_width / 2.0)+1.0 + _phaseCentreDL/_pixelSizeX) : (_width / 2.0)+1.0,
-		centrePixelY = _pixelSizeY!=0.0 ? ((_height / 2.0)+1.0 - _phaseCentreDM/_pixelSizeY) : (_height / 2.0)+1.0,
-		stepXDeg = (-_pixelSizeX / M_PI)*180.0,
-		stepYDeg = ( _pixelSizeY / M_PI)*180.0;
-	fits_write_key(fptr, TSTRING, "CTYPE1", (void*) "RA---SIN", "Right ascension angle cosine", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TDOUBLE, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TDOUBLE, "CRVAL1", (void*) &phaseCentreRADeg, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TDOUBLE, "CDELT1", (void*) &stepXDeg, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TSTRING, "CUNIT1", (void*) "deg", "", &status); checkStatus(status, filename);
+		centrePixelY = _pixelSizeY!=0.0 ? ((_height / 2.0)+1.0 - _phaseCentreDM/_pixelSizeY) : (_height / 2.0)+1.0;
+	if(_isUV)
+	{
+		double deltX, deltY;
+		if(_pixelSizeX==0.0 || _pixelSizeY==0.0)
+		{
+			deltX = 1.0; deltY = 1.0;
+		}
+		else {
+			deltX = 1.0 / (_width * _pixelSizeX);
+			deltY = 1.0 / (_height * _pixelSizeY);
+		}
+		fits_write_key(fptr, TSTRING, "CTYPE1", (void*) "U---WAV", "U axis of UV plane", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRVAL1", (void*) &zero, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CDELT1", (void*) &deltX, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TSTRING, "CUNIT1", (void*) "lambda", "", &status); checkStatus(status, filename);
+		
+		fits_write_key(fptr, TSTRING, "CTYPE2", (void*) "V---WAV", "V axis of UV plane", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRPIX2", (void*) &centrePixelY, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRVAL2", (void*) &zero, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CDELT2", (void*) &deltY, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TSTRING, "CUNIT2", (void*) "lambda", "", &status); checkStatus(status, filename);
+	}
+	else {
+		double
+			stepXDeg = (-_pixelSizeX / M_PI)*180.0,
+			stepYDeg = ( _pixelSizeY / M_PI)*180.0;
+		fits_write_key(fptr, TSTRING, "CTYPE1", (void*) "RA---SIN", "Right ascension angle cosine", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRPIX1", (void*) &centrePixelX, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRVAL1", (void*) &phaseCentreRADeg, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CDELT1", (void*) &stepXDeg, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TSTRING, "CUNIT1", (void*) "deg", "", &status); checkStatus(status, filename);
+		
+		fits_write_key(fptr, TSTRING, "CTYPE2", (void*) "DEC--SIN", "Declination angle cosine", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRPIX2", (void*) &centrePixelY, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CRVAL2", (void*) &phaseCentreDecDeg, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TDOUBLE, "CDELT2", (void*) &stepYDeg, "", &status); checkStatus(status, filename);
+		fits_write_key(fptr, TSTRING, "CUNIT2", (void*) "deg", "", &status); checkStatus(status, filename);
+	}
 	
-	fits_write_key(fptr, TSTRING, "CTYPE2", (void*) "DEC--SIN", "Declination angle cosine", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TDOUBLE, "CRPIX2", (void*) &centrePixelY, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TDOUBLE, "CRVAL2", (void*) &phaseCentreDecDeg, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TDOUBLE, "CDELT2", (void*) &stepYDeg, "", &status); checkStatus(status, filename);
-	fits_write_key(fptr, TSTRING, "CUNIT2", (void*) "deg", "", &status); checkStatus(status, filename);
 
 	fits_write_key(fptr, TSTRING, "CTYPE3", (void*) "FREQ", "Central frequency", &status); checkStatus(status, filename);
 	fits_write_key(fptr, TDOUBLE, "CRPIX3", (void*) &one, "", &status); checkStatus(status, filename);
@@ -98,6 +140,7 @@ void FitsWriter::writeHeaders(fitsfile*& fptr, const std::string& filename, size
 		case Polarization::YY: pol = -6.0; break; //yup, this is really the right value
 		case Polarization::XY: pol = -7.0; break;
 		case Polarization::YX: pol = -8.0; break;
+		case Polarization::Instrumental:
 			throw std::runtime_error("Incorrect polarization given to fits writer");
 	}
 	fits_write_key(fptr, TSTRING, "CTYPE4", (void*) "STOKES", "", &status); checkStatus(status, filename);
@@ -238,6 +281,9 @@ void FitsWriter::SetMetadata(const FitsReader& reader)
 	}
 	_phaseCentreDL = reader.PhaseCentreDL();
 	_phaseCentreDM = reader.PhaseCentreDM();
+	_telescopeName = reader.TelescopeName();
+	_observer = reader.Observer();
+	_objectName = reader.ObjectName();
 	_origin = reader.Origin();
 	_originComment = reader.OriginComment();
 	_history = reader.History();

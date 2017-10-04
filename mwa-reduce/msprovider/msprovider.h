@@ -1,7 +1,7 @@
 #ifndef MSPROVIDER_H
 #define MSPROVIDER_H
 
-#include "../polarizationenum.h"
+#include "../polarization.h"
 
 #include <casacore/casa/Arrays/Array.h>
 

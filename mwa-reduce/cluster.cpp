@@ -1,4 +1,4 @@
-#include "imagecoordinates.h"
+#include "units/imagecoordinates.h"
 #include "uvector.h"
 
 #include "model/model.h"
@@ -9,18 +9,6 @@
 class Cluster
 {
 public:
-	Cluster() { }
-	Cluster(const Cluster& source) :
-		_sources(source._sources),
-		_meanRA(source._meanRA),
-		_meanDec(source._meanDec)
-	{ }
-	void operator=(const Cluster& rhs)
-	{
-		_sources = rhs._sources;
-		_meanRA = rhs._meanRA;
-		_meanDec = rhs._meanDec;
-	}
 	bool operator<(const Cluster& rhs) const
 	{
 		return TotalFlux() < rhs.TotalFlux();
@@ -90,7 +78,7 @@ public:
 		double sum = 0.0;
 		for(std::vector<const ModelSource*>::const_iterator s=_sources.begin(); s!=_sources.end(); ++s)
 		{
-			double flux = (*s)->TotalFlux(150000000.0, Polarization::StokesI);
+			double flux = (*s)->TotalFlux(Polarization::StokesI);
 			sum += flux;
 		}
 		return sum;
@@ -132,13 +120,13 @@ void Output(const std::vector<Cluster>& clusters)
 		{
 			double sum = 0.0;
 			double
-				maxSource = clusters[i].Source(0)->TotalFlux(150000000.0, Polarization::StokesI),
+				maxSource = clusters[i].Source(0)->TotalFlux(Polarization::StokesI),
 				minSource = maxSource;
 			double maxDist = 0.0;
 			for(size_t s=0; s!=clusters[i].SourceCount(); ++s)
 			{
 				const ModelSource& source = *clusters[i].Source(s);
-				double flux = source.TotalFlux(150000000.0, Polarization::StokesI);
+				double flux = source.TotalFlux(Polarization::StokesI);
 				double dist = clusters[i].AngularDistance(source)*180.0/M_PI;
 				sumDist += dist;
 				sumDistSq += dist*dist;

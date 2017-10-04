@@ -217,17 +217,17 @@ public:
 		e2 = trHalf - term;
 		if(matrix[2] != 0.0)
 		{
-			vec1[0] = e1 - matrix[3];
-			vec1[1] = matrix[2];
-			vec2[0] = e2 - matrix[3];
-			vec2[1] = matrix[2];
+			vec1[0] = matrix[3] - e1;
+			vec1[1] = -matrix[2];
+			vec2[0] = matrix[3] - e2;
+			vec2[1] = -matrix[2];
 		}
 		else if(matrix[1] != 0.0)
 		{
-			vec1[0] = matrix[1];
-			vec1[1] = e1 - matrix[0];
-			vec2[0] = matrix[1];
-			vec2[1] = e2 - matrix[0];
+			vec1[0] = -matrix[1];
+			vec1[1] = matrix[0] - e1;
+			vec2[0] = -matrix[1];
+			vec2[1] = matrix[0] - e2;
 		}
 		else {
 			vec1[0] = 1.0;
@@ -283,7 +283,8 @@ class MC2x2
 public:
 	MC2x2() { }
 	MC2x2(const MC2x2& source) { Matrix2x2::Assign(_values, source._values); }
-	MC2x2(const double source[4]) { Matrix2x2::Assign(_values, source); }
+	template<typename T>
+	explicit MC2x2(const T source[4]) { Matrix2x2::Assign(_values, source); }
 	MC2x2(double m00, double m01, double m10, double m11) {
 		_values[0] = m00; _values[1] = m01;
 		_values[2] = m10; _values[3] = m11;
@@ -396,6 +397,15 @@ public:
 	void EigenValues(std::complex<double> &e1, std::complex<double> &e2) const
 	{
 		Matrix2x2::EigenValues(_values, e1, e2);
+	}
+	bool HasNaN() const
+	{
+		return !(
+			std::isfinite(_values[0].real()) && std::isfinite(_values[0].imag()) &&
+			std::isfinite(_values[1].real()) && std::isfinite(_values[1].imag()) &&
+			std::isfinite(_values[2].real()) && std::isfinite(_values[2].imag()) &&
+			std::isfinite(_values[3].real()) && std::isfinite(_values[3].imag())
+		);
 	}
 private:
 	std::complex<double> _values[4];

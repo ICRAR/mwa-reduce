@@ -4,40 +4,20 @@
 #include <vector>
 #include <string>
 
-#include "imagecoordinates.h"
-#include "radeccoord.h"
+#include "units/imagecoordinates.h"
+#include "units/radeccoord.h"
 
 class SkyAreaElement
 {
 	public:
 		enum TypeEnum { Circle, Line, Box };
 		
-		SkyAreaElement() : _type(Circle), _circleRadius(-1.0), _circleCentreRA(0.0), _circleCentreDec(0.0)
+		SkyAreaElement() : 
+			_type(Circle), _circleRadius(-1.0),
+			_circleCentreRA(0.0), _circleCentreDec(0.0),
+			_boxUpperRA(0.0), _boxLowerRA(0.0),
+			_boxUpperDec(0.0), _boxLowerDec(0.0)
 		{
-		}
-		
-		SkyAreaElement(const SkyAreaElement &source) :
-			_type(source._type),
-			_circleRadius(source._circleRadius),
-			_circleCentreRA(source._circleCentreRA),
-			_circleCentreDec(source._circleCentreDec),
-			_boxUpperRA(source._boxUpperRA),
-			_boxLowerRA(source._boxLowerRA),
-			_boxUpperDec(source._boxUpperDec),
-			_boxLowerDec(source._boxLowerDec)
-		{
-		}
-		
-		void operator=(const SkyAreaElement &source)
-		{
-			_type = source._type;
-			_circleRadius = source._circleRadius;
-			_circleCentreRA = source._circleCentreRA;
-			_circleCentreDec = source._circleCentreDec;
-			_boxUpperRA = source._boxUpperRA;
-			_boxLowerRA = source._boxLowerRA;
-			_boxUpperDec = source._boxUpperDec;
-			_boxLowerDec = source._boxLowerDec;
 		}
 		
 		void SetToCircle(double radius, double raCentre, double decCentre)

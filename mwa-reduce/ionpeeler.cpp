@@ -7,7 +7,8 @@
 #include "progressbar.h"
 #include "serializable.h"
 #include "msselection.h"
-#include "imagecoordinates.h"
+
+#include "units/imagecoordinates.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include <casacore/tables/Tables/ArrayColumn.h>

@@ -2,13 +2,14 @@
 
 #include "beamevaluator.h"
 #include "banddata.h"
-#include "imagecoordinates.h"
 #include "peeler.h"
 #include "calibrator.h"
 #include "solutionapplier.h"
 #include "subtractor.h"
 //#include "spectrumsubtractor.h"
 #include "calibrationmethod.h"
+
+#include "units/imagecoordinates.h"
 
 #include "model/model.h"
 

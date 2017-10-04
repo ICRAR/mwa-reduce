@@ -1,12 +1,13 @@
 #include "beam/tilebeam.h"
 
 #include "fitsreader.h"
-#include "imagecoordinates.h"
 #include "fitswriter.h"
 #include "banddata.h"
 #include "matrix2x2.h"
 #include "numberlist.h"
 #include "progressbar.h"
+
+#include "units/imagecoordinates.h"
 
 #include "mwa/metafitsfile.h"
 #include "mwa/mwaconfig.h"

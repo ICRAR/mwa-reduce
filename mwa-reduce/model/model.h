@@ -24,14 +24,15 @@ class Model
 		{
 		}
 		
-		Model(const char *filename) { read(filename); }
-		Model(const std::string& filename) { read(filename.c_str()); }
+		explicit Model(const char *filename) { read(filename); }
+		explicit Model(const std::string& filename) { read(filename.c_str()); }
 		
-		void operator=(const Model &source)
+		Model& operator=(const Model &source)
 		{
 			_polarizationType = source._polarizationType;
 			_sources = source._sources;
 			_clusters = source._clusters;
+			return *this;
 		}
 		
 		void operator+=(const Model &rhs);

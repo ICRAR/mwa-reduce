@@ -35,6 +35,10 @@ public:
 	 * used.
 	 */
 	static void PrepareKernel(double* dest, const double* source, size_t imgWidth, size_t imgHeight);
+	
+	/**
+	 * Convolve an image with an already prepared kernel of the same size.
+	 */
 	static void ConvolveSameSize(double* image, const double* kernel, size_t imgWidth, size_t imgHeight);
 	
 	static void Reverse(double* image, size_t imgWidth, size_t imgHeight);

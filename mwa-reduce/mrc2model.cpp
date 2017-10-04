@@ -2,8 +2,9 @@
 #include <cmath>
 #include <fstream>
 
-#include "imagecoordinates.h"
 #include "mrccatalogue.h"
+
+#include "units/imagecoordinates.h"
 
 #include "model/model.h"
 

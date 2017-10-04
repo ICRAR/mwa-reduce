@@ -30,7 +30,7 @@ FluxAccumulator::FluxAccumulator(double lambda) :
 	}
 }
 
-void FluxAccumulator::UpdateBeam(const std::complex<double>* beamGains, double ionG, double ionDL, double ionDM)
+void FluxAccumulator::UpdateBeam(const MC2x2& beamGains, double ionG, double ionDL, double ionDM)
 {
 	accumulateBeforeBeamChange();
 	
@@ -39,7 +39,7 @@ void FluxAccumulator::UpdateBeam(const std::complex<double>* beamGains, double i
 	_movedLMSqrt = sqrt(1.0 - _movedL*_movedL - _movedM*_movedM);
 	_ionG = ionG;
 	
-	Matrix2x2::Assign(_beamGains, beamGains);
+	beamGains.CopyValues(_beamGains);
 	//_beamGains[0] = 1.0; _beamGains[1] = 0.0;
 	//_beamGains[2] = 0.0; _beamGains[3] = 1.0;
 }

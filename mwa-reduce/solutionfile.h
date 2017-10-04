@@ -37,8 +37,8 @@
  * double nChannel x 8 : real of interval 0, antenna 1, channel 0, pol 0
  * etc.
  * 
- * ints are here always 32 bits unsigned integers, doubles are IEEE double precision 64 bit floating points.
- * If a solution is not available, either because its data no data were selected during calibration for this interval
+ * here, ints are always 32 bits unsigned integers, doubles are IEEE double precision 64 bit floating points.
+ * If a solution is not available, either because no data were selected during calibration for this interval
  * or because the calibration diverged, a "NaN" will be stored in the doubles belonging to that solution.
  */
 class SolutionFile
@@ -47,7 +47,7 @@ class SolutionFile
 	/** Empty constructor. After constructing, either @ref OpenForReading() should be called or the parameters should
 	 * be initialized and @ref OpenForWriting() or @ref OpenInMemory() should be called.
 	 */
-  SolutionFile() : _outputStream(0), _inputStream(0)
+  SolutionFile() : _outputStream(0), _inputStream(0), _readPointer(nullptr)
   {
     strcpy(_header.intro, "MWAOCAL");
     _header.fileType = 0; // Complex jones solutions
@@ -132,7 +132,7 @@ class SolutionFile
 		_inputStream->read(reinterpret_cast<char*>(&timeStart), sizeof(timeStart));
 		_inputStream->read(reinterpret_cast<char*>(&timeEnd), sizeof(timeEnd)); 
 		if(_inputStream->bad())
-			throw std::runtime_error("Error reading input solutions file");
+			throw std::runtime_error("Error reading header from solutions file");
 	}
 
 	/** Read a complex solution from the file.

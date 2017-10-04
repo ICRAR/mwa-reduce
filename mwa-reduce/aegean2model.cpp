@@ -3,6 +3,9 @@
 #include <string>
 
 #include "model/model.h"
+
+#include "units/angle.h"
+
 #include "fitsreader.h"
 
 #include <boost/tokenizer.hpp>
@@ -12,12 +15,13 @@ using namespace std;
 int main(int argc, char* argv[])
 {
 	if(argc < 4) {
-		cout << "Syntax: aegean2model [-fitsfreq <fitsfile>] [-use-peak] <aegean-file> <output-model> <src-prefix>\n";
+		cout << "Syntax: aegean2model [-fitsfreq <fitsfile>] [-use-peak] [-correct beam <maj> <min>] <aegean-file> <output-model> <src-prefix>\n";
 	}
 	else {
 		std::string freqfitsfile;
 		size_t argi = 1;
-		bool usePeak = false;
+		bool usePeak = false, correctBeam = false;
+		double beamMaj = 0.0, beamMin = 0.0, beamIntegral = 0.0;
 		while(argv[argi][0] == '-')
 		{
 			std::string p(&argv[argi][1]);
@@ -29,6 +33,17 @@ int main(int argc, char* argv[])
 			else if(p == "use-peak")
 			{
 				usePeak = true;
+			}
+			else if(p == "correct-beam")
+			{
+				correctBeam = true;
+				beamMaj = atof(argv[argi+1]);
+				beamMin = atof(argv[argi+2]);
+				// Using the FWHM formula for a Gaussian:
+				long double sigmaMaj = beamMaj / (2.0L * sqrtl(2.0L * logl(2.0L)));
+				long double sigmaMin = beamMin / (2.0L * sqrtl(2.0L * logl(2.0L)));
+				beamIntegral = 2.0L * M_PI * sigmaMaj * sigmaMin;
+				argi+=2;
 			}
 			else {
 				throw std::runtime_error("Unknown parameter");
@@ -59,21 +74,46 @@ int main(int argc, char* argv[])
 				double ra = atof(beg->c_str());
 				++beg; ++beg;
 				double dec = atof(beg->c_str());
+				++beg; ++beg;
 				double flux;
 				if(usePeak)
 				{
-					++beg; ++beg;
 					flux = atof(beg->c_str());
 					++beg; ++beg;
 				}
 				else {
-					++beg; ++beg; ++beg; ++beg;
+					++beg; ++beg;
 					flux = atof(beg->c_str());
 				}
+				++beg; ++beg;
+				double major = atof(beg->c_str());
+				++beg; ++beg;
+				double minor = atof(beg->c_str());
+				++beg; ++beg;
+				double pa = atof(beg->c_str());
 				ModelComponent component;
 				component.SetPosRA(ra * M_PI / 180.0);
 				component.SetPosDec(dec * M_PI / 180.0);
 				component.SetSED(MeasuredSED(flux, frequency));
+				if(correctBeam)
+				{
+					long double sigmaMaj = major / (2.0L * sqrtl(2.0L * logl(2.0L)));
+					long double sigmaMin = minor / (2.0L * sqrtl(2.0L * logl(2.0L)));
+					long double sourceIntegral = 2.0L * M_PI * sigmaMaj * sigmaMin;
+					long double correction = sqrt(beamIntegral / sourceIntegral);
+					long double asec = M_PI / 180.0 / 60.0 / 60.0;
+					std::cout << "Correcting " << flux << " Jy source from " << Angle::ToNiceString(major*asec) << " x " << Angle::ToNiceString(minor*asec)
+						<< " to " << Angle::ToNiceString(major * correction*asec) << " x " << Angle::ToNiceString(minor * correction*asec) << "\n";
+					major *= correction;
+					minor *= correction;
+				}
+				if(usePeak)
+				{
+					component.SetType(ModelComponent::GaussianSource);
+					component.SetMajorAxis(major * M_PI / (180.0 * 60.0 * 60.0));
+					component.SetMinorAxis(minor * M_PI / (180.0 * 60.0 * 60.0));
+					component.SetPositionAngle(pa * M_PI / 180.0);
+				}
 				ModelSource source;
 				ostringstream srcName;
 				++srcIndex;

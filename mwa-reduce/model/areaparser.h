@@ -2,7 +2,8 @@
 #define AREA_PARSER_H
 
 #include "../areaset.h"
-#include "../radeccoord.h"
+
+#include "../units/radeccoord.h"
 
 #include "tokenizer.h"
 

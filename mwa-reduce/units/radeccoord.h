@@ -7,6 +7,10 @@
 #include <cstdlib>
 #include <cmath>
 
+#ifndef M_PIl
+#define M_PIl 3.141592653589793238462643383279502884L
+#endif
+
 class RaDecCoord
 {
 	private:
@@ -60,9 +64,9 @@ class RaDecCoord
 			if(*cstr != 0)
 				throw std::runtime_error("Could not parse RA (string contains more tokens than expected)");
 			if(sign)
-				return (hrs/24.0 - mins/(24.0*60.0) - secs/(24.0*60.0*60.0))*2.0*M_PI;
+				return (hrs/24.0 - mins/(24.0*60.0) - secs/(24.0*60.0*60.0))*2.0*M_PIl;
 			else
-				return (hrs/24.0 + mins/(24.0*60.0) + secs/(24.0*60.0*60.0))*2.0*M_PI;
+				return (hrs/24.0 + mins/(24.0*60.0) + secs/(24.0*60.0*60.0))*2.0*M_PIl;
 		}
 		
 		static long double ParseDec(const std::string &str)
@@ -112,9 +116,9 @@ class RaDecCoord
 			if(*cstr != 0)
 				throw std::runtime_error("Could not parse Dec (string contains more tokens than expected)");
 			else if(sign)
-				return (degs/360.0 - mins/(360.0*60.0) - secs/(360.0*60.0*60.0))*2.0*M_PI;
+				return (degs/360.0 - mins/(360.0*60.0) - secs/(360.0*60.0*60.0))*2.0*M_PIl;
 			else
-				return (degs/360.0 + mins/(360.0*60.0) + secs/(360.0*60.0*60.0))*2.0*M_PI;
+				return (degs/360.0 + mins/(360.0*60.0) + secs/(360.0*60.0*60.0))*2.0*M_PIl;
 		}
 		
 		static std::string RAToString(long double ra)
@@ -170,6 +174,11 @@ class RaDecCoord
 					s << (char) ((subSecInt%10)+'0');
 			}
 			return s.str();
+		}
+		
+		static std::string RaDecToString(long double ra, long double dec)
+		{
+			return RAToString(ra) + ' ' + DecToString(dec);
 		}
 		
 		static void RAToHMS(long double ra, int& hrs, int& min, double& sec)
@@ -258,7 +267,7 @@ class RaDecCoord
 		static void DecToDMS(long double dec, int& deg, int& min, double& sec)
 		{
 			const long double partsPerDeg = 60.0L*60.0L*100.0L;
-			long double degf = dec * (180.0 / M_PI);
+			long double degf = dec * (180.0 / M_PIl);
 			degf = round(degf * partsPerDeg)/partsPerDeg;
 			bool negate = degf < 0;
 			if(negate) {
