@@ -61,7 +61,7 @@ class BandData
 		/**
 		 * Construct an empty instance.
 		 */
-		BandData() : _channelCount(0), _channelFrequencies(0), _frequencyStep(0.0)
+		BandData() : _channelCount(0), _channelFrequencies(), _frequencyStep(0.0)
 		{
 		}
 		
