@@ -7,11 +7,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
 
 set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -std=c++0x")
 
-find_library(CASA_MS_LIB casa_ms REQUIRED)
-find_library(CASA_TABLES_LIB casa_tables REQUIRED)
-find_library(CASA_CASA_LIB casa_casa REQUIRED)
-find_library(CASA_MEASURES_LIB casa_measures REQUIRED)
-find_library(CASA_FITS_LIB casa_fits REQUIRED)
+SET(CASACORE_MAKE_REQUIRED_EXTERNALS_OPTIONAL TRUE)
+find_package(Casacore REQUIRED COMPONENTS casa ms tables measures fits scimath scimath_f)
+
 find_library(FFTW3_LIB fftw3 REQUIRED)
 find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
 find_package(Boost COMPONENTS date_time filesystem system thread REQUIRED)
@@ -27,11 +25,11 @@ find_package(LibXml2)
 
 find_package(HDF5 COMPONENTS CXX REQUIRED)
 
-set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_MEASURES_LIB} ${CASA_CASA_LIB} ${CASA_FITS_LIB} ${DL_LIB})
+set(CASA_LIBS ${CASACORE_LIBRARIES})
 
 find_path(CASA_INCLUDE_DIR NAMES ms/MeasurementSets/MeasurementSet.h PATHS /usr/local/include/casacore PATH_SUFFIXES casacore)
 
-include_directories(${CASA_INCLUDE_DIR})
+include_directories(${CASACORE_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${FITSIO_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
