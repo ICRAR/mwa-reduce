@@ -1,0 +1,23 @@
+
+Note on testing 2016 beam model (Full Embedded Element - FE model)
+  Compilation command for test program :
+     g++   beam2016implementation.cpp beam2016test.cpp -o beam2016test -lhdf5_cpp -lhdf5 -lboost_system -lboost_filesystem -g -D_GET_JONES_2016_TEST     
+
+  The beam test can also be compiled with 'make beam2016test' in the build directory.
+
+  Running a test :
+         # ./beam2016test AZIM_DEG ZA_DEG FREQ_HZ ZENITH_NORM USE_CLOSEST_GRIDPOINT
+        ./beam2016test 45 10 208640000 1 1
+
+  Expected Jones Matrix :
+        
+       Zenith normalisation matrix at (az,za)=(0.00,0.00) [deg] = 
+           1.13234843 + -0.30265411j     |     1.13234843 + -0.30265411j
+           1.13164506 + -0.30557779j     |     1.13164506 + -0.30557779j
+
+
+        Jones at (az,za)=(45.00,10.00) [deg] = 
+	-0.14380674 + -0.66636056j     |     0.13102608 + 0.67100625j
+	-0.14375553 + -0.66621239j     |     -0.13099902 + -0.67083994j
+
+        

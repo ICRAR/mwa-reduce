@@ -1,12 +1,13 @@
 #include "beam/tilebeam.h"
 
 #include "fitsreader.h"
-#include "imagecoordinates.h"
 #include "fitswriter.h"
 #include "banddata.h"
 #include "matrix2x2.h"
 #include "numberlist.h"
 #include "progressbar.h"
+
+#include "units/imagecoordinates.h"
 
 #include "mwa/metafitsfile.h"
 #include "mwa/mwaconfig.h"
@@ -72,9 +73,11 @@ int main(int argc, char *argv[])
 {
 	if(argc < 2)
 	{
-		std::cout << "Syntax: beam [-2013 | -2014 | -2014i] [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] -[m <metafits>] [-delays <0,0,..>]\n"
-			"  -2013 selects the 'analytical' beam, -2014 selected the beam that takes tile impedance etc. into account, and\n"
-			"  -2014i selects the same beam but also enables frequency interpolation.\n";
+		std::cout << "Syntax: beam [-2013 | -2014 | -2014i | -2016] [-allsky] [-square] [-proto <input fitsfile>] [-name <prefix>] [-ms <measurementset>] -[m <metafits>] [-delays <0,0,..>]\n"
+			"  -2013 selects the 'analytical' beam\n"
+			"  -2014 selected the beam that takes tile impedance etc. into account\n"
+			"  -2014i selects the same beam but also enables frequency interpolation\n"
+			"  -2016 selects the improved beam described by M. Sokolowski (2017)\n";
 		return 0;
 	}
 	
@@ -86,6 +89,7 @@ int main(int argc, char *argv[])
 	double delays[16];
 	bool doSquare = false, hasDelays = false;
 	bool use2013 = false;
+	bool use2016 = false;
 	bool doInterpolate = false;
 	for(size_t i=0; i!=16; ++i)
 		delays[i] = 0.0;
@@ -123,6 +127,11 @@ int main(int argc, char *argv[])
 		{
 			use2013 = false;
 			doInterpolate = true;
+		}
+		else if(param == "2016")
+		{
+			use2016 = true;
+			doInterpolate = false;
 		}
 		else if(param == "allsky")
 		{
@@ -315,16 +324,22 @@ int main(int argc, char *argv[])
 
 	if(doSquare)
 	{
-		if(use2013)
+		if(use2016) {
+			MakeBeam<TileBeam2016,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
+		} else if(use2013) {
 			MakeBeam<TileBeam2013,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
-		else
+		} else {
 			MakeBeam<TileBeam2014,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
+		}
 	}
 	else {
-		if(use2013)
+		if(use2016) {
+			MakeBeam<TileBeam2016,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);	        	
+		} else if(use2013) {
 			MakeBeam<TileBeam2013,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
-		else
+		} else {
 			MakeBeam<TileBeam2014,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
+		}
 	}
 	
 	std::cout << "\nWriting...\n";

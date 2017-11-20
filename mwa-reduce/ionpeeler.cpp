@@ -1,14 +1,14 @@
 #include "ionpeeler.h"
 
 #include "beamevaluator.h"
-#include "ionpeeler.h"
 #include "ionsolutionfile.h"
 #include "imageweights.h"
 #include "predicter.h"
 #include "progressbar.h"
 #include "serializable.h"
 #include "msselection.h"
-#include "imagecoordinates.h"
+
+#include "units/imagecoordinates.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include <casacore/tables/Tables/ArrayColumn.h>
@@ -544,7 +544,7 @@ void IonPeeler::positionFitter(size_t channelBlockIndex, PeelingStats& stats)
 	}
 	fInfo.lambda /= curChannelBlockSize;*/
 		
-	// Predict model for this source
+	// Predict model for all directions
 	for(size_t sourceIndex=0; sourceIndex!=_predictionModels.size(); ++sourceIndex)
 	{
 		ao::uvector<std::complex<double>>& modelData = modelDataPerSource[sourceIndex];

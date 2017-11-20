@@ -11,7 +11,7 @@
 class LogBinnedPlot
 {
 public:
-	LogBinnedPlot(size_t binsPerOrderOfMagnitude = 4) : _binsPerOrderOfMagnitude(binsPerOrderOfMagnitude)
+	explicit LogBinnedPlot(size_t binsPerOrderOfMagnitude = 4) : _binsPerOrderOfMagnitude(binsPerOrderOfMagnitude)
 	{ }
 	
 	void Add(double x, double y, double yVariance)

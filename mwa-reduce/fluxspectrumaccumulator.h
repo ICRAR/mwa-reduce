@@ -3,8 +3,7 @@
 
 #include "fluxaccumulator.h"
 #include "banddata.h"
-#include "imagecoordinates.h"
-
+#include "units/imagecoordinates.h"
 #include "model/modelsource.h"
 
 #include <vector>
@@ -55,16 +54,16 @@ public:
 			delete _accumulators[ch];
 	}
 	
-	void UpdateBeam(BeamEvaluator& evaluator, const double* ionG, const double* ionDL, const double* ionDM)
+	void UpdateBeam(LBeamEvaluator& evaluator, const double* ionG, const double* ionDL, const double* ionDM)
 	{
-		BeamEvaluator::PrecalcPosInfo posInfo;
+		LBeamEvaluator::PrecalcPosInfo posInfo;
 		evaluator.PrecalculatePositionInfo(posInfo, _component.PosRA(), _component.PosDec());
-		std::complex<double> beamGains[4];
+		MC2x2 beamGains;
 		for(size_t ch=0; ch!=_bandData->ChannelCount(); ++ch)
 		{
 			size_t channelBlockIndex = ch * _channelBlocks / _bandData->ChannelCount();
 			const double frequency = _bandData->ChannelFrequency(ch);
-			evaluator.EvaluateAbsToApparentGain(posInfo, frequency, beamGains);
+			evaluator.Evaluate(posInfo, frequency, 0, beamGains); /* TODO antenna index! */
 			_accumulators[ch]->UpdateBeam(beamGains, ionG[channelBlockIndex], ionDL[channelBlockIndex], ionDM[channelBlockIndex]);
 		}
 	}

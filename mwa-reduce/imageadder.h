@@ -4,6 +4,7 @@
 #include "fitsreader.h"
 #include "fitswriter.h"
 #include "uvector.h"
+#include "image.h"
 
 #include <vector>
 #include <stdexcept>
@@ -20,7 +21,8 @@ public:
 		_imgWriter(),
 		_frequencySum(0.0), _lowestFreq(0.0), _highestFreq(0.0),
 		_normalizationFactorSum(0.0), _normalizationFactorWeightSum(0.0),
-		_totalImageWeight(0.0), _totalImageWeightWeightSum(0.0)
+		_totalImageWeight(0.0), _totalImageWeightWeightSum(0.0),
+		_threshold(0.0)
 	{
 	}
 	
@@ -100,27 +102,38 @@ public:
 			weightsReader.Read<double>(&beamImage[0]);
 		}
 		
-		double centralWeight = beamImage[_width/2 + (_height/2)*_width];
-		_normalizationFactorSum += wscNormalizationFactor * wscImageWeight * centralWeight;
-		_normalizationFactorWeightSum += wscImageWeight * centralWeight;
-		_totalImageWeight += wscImageWeight * centralWeight;
-		_totalImageWeightWeightSum += centralWeight;
-		
-		// Add the images in
-		double *outImagePtr = _outImage.data(), *outWeightPtr = _outWeights.data();
-		ao::uvector<double>::iterator inpBeamIter = beamImage.begin();
-		for(ao::uvector<double>::iterator i=inpImage.begin(); i!=inpImage.end(); ++i)
+		bool acceptImage = true;
+		if(_threshold != 0.0)
 		{
-			double beamVal = *inpBeamIter;
-			*outImagePtr +=  (*i) * beamVal * wscImageWeight;
-			*outWeightPtr += beamVal * beamVal * wscImageWeight;
-			
-			++inpBeamIter;
-			++outImagePtr;
-			++outWeightPtr;
+			double rms = Image::RMS(inpImage.data(), inpImage.size());
+			if(rms == 0.0 || !std::isfinite(rms) || rms > _threshold)
+				acceptImage = false;
 		}
 		
-		std::cout << '.' << std::flush;
+		if(acceptImage)
+		{
+			double centralWeight = beamImage[_width/2 + (_height/2)*_width];
+			_normalizationFactorSum += wscNormalizationFactor * wscImageWeight * centralWeight;
+			_normalizationFactorWeightSum += wscImageWeight * centralWeight;
+			_totalImageWeight += wscImageWeight * centralWeight;
+			_totalImageWeightWeightSum += centralWeight;
+			
+			// Add the images in
+			double *outImagePtr = _outImage.data(), *outWeightPtr = _outWeights.data();
+			ao::uvector<double>::iterator inpBeamIter = beamImage.begin();
+			for(ao::uvector<double>::iterator i=inpImage.begin(); i!=inpImage.end(); ++i)
+			{
+				double beamVal = *inpBeamIter;
+				*outImagePtr +=  (*i) * beamVal * wscImageWeight;
+				*outWeightPtr += beamVal * beamVal * wscImageWeight;
+				
+				++inpBeamIter;
+				++outImagePtr;
+				++outWeightPtr;
+			}
+			std::cout << '.' << std::flush;
+		}
+		else { std::cout << 'R' << std::flush; }
 	}
 	
 	void Finish(const std::string& outputFilename, const std::string& outputWeightsFilename="")
@@ -144,6 +157,8 @@ public:
 		if(!outputWeightsFilename.empty() && outputWeightsFilename!="-")
 			_imgWriter->Write<double>(outputWeightsFilename, _outWeights.data());
 	}
+	
+	void SetThreshold(double threshold) { _threshold = threshold; }
 private:
 	size_t _width, _height, _count;
 	ao::uvector<double> _outImage, _outWeights;
@@ -151,6 +166,7 @@ private:
 	double _frequencySum, _lowestFreq, _highestFreq;
 	double _normalizationFactorSum, _normalizationFactorWeightSum;
 	double _totalImageWeight, _totalImageWeightWeightSum;
+	double _threshold;
 };
 
 #endif

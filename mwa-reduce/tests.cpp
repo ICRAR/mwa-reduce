@@ -2,11 +2,14 @@
 #include <casacore/measures/Measures/MEpoch.h>
 #include <casacore/measures/Measures/MPosition.h>
 
-#include "radeccoord.h"
+#include "units/radeccoord.h"
+
 #include "nlplfitter.h"
 #include "matrix2x2.h"
+
 #include "beam/tilebeam.h"
-#include "imagecoordinates.h"
+
+#include "units/imagecoordinates.h"
 
 std::string raStr(const std::string &str)
 {

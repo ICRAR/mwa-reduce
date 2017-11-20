@@ -8,6 +8,13 @@ class FitsIOChecker
 protected:
 	static void checkStatus(int status, const std::string& filename);
 	static void checkStatus(int status, const std::string& filename, const std::string& operation);
+public:
+	enum Unit {
+		JanskyPerBeam,
+		Jansky,
+		Kelvin,
+		MilliKelvin
+	};
 };
 
 #endif

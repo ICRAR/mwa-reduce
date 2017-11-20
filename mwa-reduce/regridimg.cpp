@@ -1,7 +1,8 @@
 #include "fitsreader.h"
 #include "fitswriter.h"
-#include "imagecoordinates.h"
-#include "radeccoord.h"
+
+#include "units/imagecoordinates.h"
+#include "units/radeccoord.h"
 
 #include <vector>
 #include <stdexcept>

@@ -49,7 +49,7 @@ private:
 		return (antenna1*(2*_nAntenna - antenna1 - 3) + 2*antenna2 - 2)/2;
 	}
 	// Ordered in Polarization, Frequency, Antenna2, Antenna1 (i.e., Antenna1 is most significant, and a1 <= a2), Time
-	size_t _nBaselines, _nPolarizations, _nChannels, _nAntenna, _nTimesteps;
+	size_t _nBaselines, _nChannels, _nAntenna, _nTimesteps;
 	ao::uvector<T> _values;
 };
 

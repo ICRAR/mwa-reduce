@@ -14,7 +14,7 @@
 class ModelParser : private Tokenizer
 {
 	public:
-		ModelParser()
+		ModelParser() : _fileVersion1_0(false)
 		{
 		}
 		
@@ -79,7 +79,7 @@ class ModelParser : private Tokenizer
 					parseComponent(component);
 					source.AddComponent(component);
 				}
-				else throw std::runtime_error("Unknown token");
+				else throw std::runtime_error(std::string("Unknown token ") + token);
 			}
 		}
 		
@@ -198,7 +198,7 @@ class ModelParser : private Tokenizer
 				else if(token == "beam-value") {
 					// ignore
 				}
-				else throw std::runtime_error("Unknown token");
+				else throw std::runtime_error(std::string("Unknown token ") + token);
 			}
 		}
 		
@@ -210,6 +210,7 @@ class ModelParser : private Tokenizer
 				throw std::runtime_error("Expecting {");
 			double refFrequency = 0.0;
 			double brightness[4] = { 0.0, 0.0, 0.0, 0.0 };
+			bool isLogarithmic = true;
 			ao::uvector<double> terms;
 			bool hasFrequency = false, hasBrightness = false;
 			while(getToken(token) && token != "}")
@@ -229,9 +230,10 @@ class ModelParser : private Tokenizer
 						brightness[p] = getTokenAsDouble();
 					hasBrightness = true;
 				}
-				else if(token == "spectral-index") {
+				else if(token == "spectral-index" || token == "polynomial") {
+					isLogarithmic = (token == "spectral-index");
 					if(!terms.empty())
-						throw std::runtime_error("Double SI specification");
+						throw std::runtime_error("Double SI/polynomial specification");
 					getToken(token);
 					if(token != "{")
 							throw std::runtime_error("Expecting {");
@@ -240,11 +242,12 @@ class ModelParser : private Tokenizer
 						terms.push_back(atof(token.c_str()));
 					}
 				}
-				else throw std::runtime_error("Unknown token");
+				else throw std::runtime_error(std::string("Unknown token ") + token);
 			}
 			if(!hasFrequency || !hasBrightness || terms.empty())
 				throw std::runtime_error("Incomplete SED specification");
 			sed.SetData(refFrequency, brightness, terms);
+			sed.SetIsLogarithmic(isLogarithmic);
 		}
 };
 

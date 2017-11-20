@@ -46,6 +46,13 @@ public:
 			flush();
 	}
 	
+	void write(value_type &&element)
+	{
+		_buffer.push_back(std::move(element));
+		if(_buffer.size() == _buffer_size)
+			flush();
+	}
+	
 	void write_end()
 	{
 		flush();
@@ -54,7 +61,7 @@ public:
 		
 	void flush()
 	{
-		_lane->write(&_buffer[0], _buffer.size());
+		_lane->move_write(&_buffer[0], _buffer.size());
 		_buffer.clear();
 	}
 private:
@@ -90,12 +97,15 @@ public:
 			if(_buffer_fill_count == 0)
 				return false;
 		}
-		element = _buffer[_buffer_pos];
+		element = std::move(_buffer[_buffer_pos]);
 		++_buffer_pos;
 		return true;
 	}
 	
 private:
+	lane_read_buffer(const lane_read_buffer&) = delete;
+	lane_read_buffer& operator=(const lane_read_buffer&) = delete;
+
 	Tp* _buffer;
 	size_t _buffer_size, _buffer_pos, _buffer_fill_count;
 	ao::lane<Tp>* _lane;

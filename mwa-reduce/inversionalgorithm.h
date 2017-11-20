@@ -1,7 +1,7 @@
 #ifndef INVERSION_ALGORITHM_H
 #define INVERSION_ALGORITHM_H
 
-#include "polarizationenum.h"
+#include "polarization.h"
 #include "msselection.h"
 #include "weightmode.h"
 

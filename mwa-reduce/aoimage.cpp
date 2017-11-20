@@ -372,7 +372,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 	std::cout << "ChannelCount: " << channelCount << ", polarizationCount: " << polarizationCount << ", freqstep: " << frequencyStep << '\n';
 	
 	std::cout << "Initializing weights... " << std::flush;
-	ImageWeights weights(WeightMode::UniformWeighted, imager.ImageSize(), imager.ImageSize(), imager.PixelScale(), imager.PixelScale());
+	WeightMode weightMode(WeightMode::UniformWeighted);
+	ImageWeights weights(weightMode, imager.ImageSize(), imager.ImageSize(), imager.PixelScale(), imager.PixelScale());
 	bool weightsNeedData = true;
 	if(info.onlyModel) weightsNeedData = false;
 	
@@ -397,7 +398,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 				dataColumn.get(row, data);
 				flagColumn.get(row, flags);
 				readData(info.polarization, info.psf, channelCount, polarizationCount, formattedData.data(), formattedFlags.data(), data.begin(), flags.begin());
-				weights.Grid(formattedData.data(), formattedFlags.data(), u, v, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
+				// TODO this needs to be fixed.
+				// weights.Grid(formattedData.data(), formattedFlags.data(), u, v, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
 			}
 		}
 	}
@@ -537,7 +539,8 @@ void image(const char *msName, const char *columnName, BTPImager &imager, size_t
 							++outPtr;
 						}
 					}
-					double weight = weights.ApplyWeights(work.data, formattedFlags.data(), work.uTimesLambda, work.vTimesLambda, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
+					//TODO
+					double weight = 1.0;//weights.ApplyWeights(work.data, formattedFlags.data(), work.uTimesLambda, work.vTimesLambda, channelCount, highestFrequency-frequencyStep*channelCount/avgFactor, frequencyStep);
 					work.weight = weight * avgFactor;
 					worklane.write(work);
 				}

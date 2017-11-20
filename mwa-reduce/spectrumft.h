@@ -4,7 +4,7 @@
 #include "uvector.h"
 #include "model/measuredsed.h"
 #include "universe.h"
-#include "angle.h"
+#include "units/angle.h"
 
 #include <fftw3.h>
 
@@ -14,7 +14,7 @@
 class SpectrumFT
 {
 public:
-	SpectrumFT(size_t channelCount);
+	explicit SpectrumFT(size_t channelCount);
 	~SpectrumFT();
 	
 	void GetFTPower(ao::uvector<double>& destination, const MeasuredSED& sed, size_t nTermsFitted, bool toTemperature, bool useLomb) const;

@@ -4,8 +4,8 @@
 #include "spectralenergydistribution.h"
 #include "measuredsed.h"
 
-#include "../radeccoord.h"
-#include "../imagecoordinates.h"
+#include "../units/imagecoordinates.h"
+#include "../units/radeccoord.h"
 
 class ModelComponent
 {
@@ -46,7 +46,7 @@ class ModelComponent
 		bool HasSED() const { return _sed != 0; }
 		SpectralEnergyDistribution &SED() { return *_sed; }
 		const SpectralEnergyDistribution &SED() const { return *_sed; }
-		bool HasMeasuredSED() const { return dynamic_cast<MeasuredSED*>(&*_sed)!=0; }
+		bool HasMeasuredSED() const { return dynamic_cast<MeasuredSED*>(_sed.get())!=0; }
 		MeasuredSED& MSED() { return static_cast<MeasuredSED&>(*_sed); }
 		const MeasuredSED& MSED() const { return static_cast<const MeasuredSED&>(*_sed); }
 		long double L() const { return _l; }
@@ -76,6 +76,7 @@ class ModelComponent
 		std::string ToString() const
 		{
 			std::stringstream s;
+			s.precision(15);
 			s << "  component {\n";
 			switch(_type)
 			{
@@ -91,8 +92,10 @@ class ModelComponent
 			}
 				s << "\n    position "
 					<< RaDecCoord::RAToString(_posRA) << ' '
-					<< RaDecCoord::DecToString(_posDec) << '\n'
-					<< _sed->ToString() << "  }\n";
+					<< RaDecCoord::DecToString(_posDec) << '\n';
+			if(_sed)
+				s << _sed->ToString();
+			s << "  }\n";
 			return s.str();
 		}
 		

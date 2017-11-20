@@ -1,7 +1,8 @@
 #include "predicter.h"
-#include "imagecoordinates.h"
 #include "beamevaluator.h"
 #include "solutionfile.h"
+
+#include "units/imagecoordinates.h"
 
 #include "model/model.h"
 

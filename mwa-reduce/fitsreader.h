@@ -6,13 +6,13 @@
 
 #include <fitsio.h>
 
-#include "polarizationenum.h"
+#include "polarization.h"
 #include "fitsiochecker.h"
 
-class FitsReader : protected FitsIOChecker
+class FitsReader : public FitsIOChecker
 {
 	public:
-		FitsReader(const std::string &filename) 
+		explicit FitsReader(const std::string &filename) 
 		: _filename(filename), _hasBeam(false)
 		{
 			initialize(); 
@@ -42,10 +42,16 @@ class FitsReader : protected FitsIOChecker
 		double DateObs() const { return _dateObs; }
 		PolarizationEnum Polarization() const { return _polarization; }
 		
+		FitsIOChecker::Unit Unit() const { return _unit; }
+		
 		bool HasBeam() const { return _hasBeam; }
 		double BeamMajorAxisRad() const { return _beamMajorAxisRad; }
 		double BeamMinorAxisRad() const { return _beamMinorAxisRad; }
 		double BeamPositionAngle() const { return _beamPositionAngle; }
+		
+		const std::string& TelescopeName() const { return _telescopeName; }
+		const std::string& Observer() const { return _observer; }
+		const std::string& ObjectName() const { return _objectName; }
 		
 		const std::string& Origin() const { return _origin; }
 		const std::string& OriginComment() const { return _originComment; }
@@ -66,7 +72,6 @@ class FitsReader : protected FitsIOChecker
 		
 		fitsfile* FitsHandle() const { return _fitsPtr; }
 	private:
-		float readFloatKey(const char* key);
 		double readDoubleKey(const char* key);
 		std::string readStringKey(const char* key);
 		void readHistory();
@@ -86,6 +91,8 @@ class FitsReader : protected FitsIOChecker
 		double _beamMajorAxisRad, _beamMinorAxisRad, _beamPositionAngle;
 		
 		PolarizationEnum _polarization;
+		FitsIOChecker::Unit _unit;
+		std::string _telescopeName, _observer, _objectName;
 		std::string _origin, _originComment;
 		std::vector<std::string> _history;
 };

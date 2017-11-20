@@ -1,9 +1,9 @@
 #ifndef FLUX_ACCUMULATOR_H
 #define FLUX_ACCUMULATOR_H
 
-#include "beamevaluator.h"
+#include "lofar/lbeamevaluator.h"
 
-#include "polarizationenum.h"
+#include "polarization.h"
 #include "matrix2x2.h"
 #include "serializable.h"
 
@@ -20,7 +20,7 @@ public:
 	 */
 	FluxAccumulator(double lambda);
 	
-	void UpdateBeam(const std::complex<double>* beamGains, double ionG, double ionDL, double ionDM);
+	void UpdateBeam(const MC2x2& beamGains, double ionG, double ionDL, double ionDM);
 	void Add(const std::complex<double>* vis, const double visWeight, double u, double v, double w);
 	
 	double L() const { return _l; }
@@ -143,6 +143,8 @@ private:
 			// Calculate Weight += w (B* B) (B* B)
 			Matrix2x2::HermATimesB(temp, _beamGains, _beamGains);
 			Matrix2x2::ATimesB(temp2, temp, temp); //Herm?!
+			// We weight with _ionG^2, but that might induce bias...
+			// TODO investigate this...
 			Matrix2x2::MultiplyAdd(_accWeights, temp2, _accVisWeightBeforeBeamChange * (_ionG*_ionG));
 		}
 		

@@ -1,17 +1,18 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.8)
 
 project(mwa-reduce)
 
+# Add CMake subdirectory to module search path
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
+
 set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -std=c++0x")
 
-find_library(CASA_MS_LIB casa_ms REQUIRED)
-find_library(CASA_TABLES_LIB casa_tables REQUIRED)
-find_library(CASA_CASA_LIB casa_casa REQUIRED)
-find_library(CASA_MEASURES_LIB casa_measures REQUIRED)
-find_library(CASA_FITS_LIB casa_fits REQUIRED)
+SET(CASACORE_MAKE_REQUIRED_EXTERNALS_OPTIONAL TRUE)
+find_package(Casacore REQUIRED COMPONENTS casa ms tables measures fits scimath scimath_f)
+
 find_library(FFTW3_LIB fftw3 REQUIRED)
 find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
-find_package(Boost COMPONENTS filesystem system thread REQUIRED)
+find_package(Boost COMPONENTS date_time filesystem system thread REQUIRED)
 find_library(FITSIO_LIB cfitsio REQUIRED)
 find_library(DL_LIB dl REQUIRED)
 find_path(FITSIO_INCLUDE_DIR NAMES fitsio.h)
@@ -22,16 +23,19 @@ find_path(GTS_INCLUDE_DIR NAMES gts.h)
 find_path(GLIB_INCLUDE_DIR NAMES glib.h PATH_SUFFIXES glib-2.0)
 find_package(LibXml2)
 
-set(CASA_LIBS ${CASA_MS_LIB} ${CASA_TABLES_LIB} ${CASA_MEASURES_LIB} ${CASA_CASA_LIB} ${CASA_FITS_LIB} ${DL_LIB})
+find_package(HDF5 COMPONENTS CXX REQUIRED)
+
+set(CASA_LIBS ${CASACORE_LIBRARIES})
 
 find_path(CASA_INCLUDE_DIR NAMES ms/MeasurementSets/MeasurementSet.h PATHS /usr/local/include/casacore PATH_SUFFIXES casacore)
 
-include_directories(${CASA_INCLUDE_DIR})
+include_directories(${CASACORE_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${FITSIO_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
+include_directories(${HDF5_INCLUDE_DIRS})
 
-set(BEAM_LIBS mwareducebeam ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
+set(BEAM_LIBS mwareducebeam ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${HDF5_LIBRARIES})
 
 if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   include_directories(${GSL_INCLUDE_DIR})
@@ -74,7 +78,7 @@ IF("${isSystemDir}" STREQUAL "-1")
    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 ENDIF("${isSystemDir}" STREQUAL "-1")
 
-add_library(mwareducebeam fitsiochecker.cpp beam/joneslookupdipole.cpp beam/system.cpp beam/tilebeam.cpp beam/tilebeambase.cpp beam/tilebeam2014.cpp beam/tileimpedance.cpp beam/lnaimpedance.cpp alglib/ap.cpp alglib/alglibinternal.cpp alglib/alglibmisc.cpp alglib/integration.cpp alglib/interpolation.cpp alglib/linalg.cpp alglib/optimization.cpp alglib/solvers.cpp alglib/specialfunctions.cpp)
+add_library(mwareducebeam fitsiochecker.cpp beam/joneslookupdipole.cpp beam/system.cpp beam/tilebeambase.cpp beam/tilebeam2013.cpp beam/tilebeam2014.cpp beam/tilebeam2016.cpp beam/beam2016implementation.cpp beam/tileimpedance.cpp beam/lnaimpedance.cpp alglib/ap.cpp alglib/alglibinternal.cpp alglib/alglibmisc.cpp alglib/integration.cpp alglib/interpolation.cpp alglib/linalg.cpp alglib/optimization.cpp alglib/solvers.cpp alglib/specialfunctions.cpp)
 set(BEAMFILES "")
 
 add_executable(addimg addimg.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
@@ -90,6 +94,7 @@ add_executable(calibrate calibrate.cpp calibrator.cpp beamevaluator.cpp calibrat
 add_executable(collectionsolutions collectionsolutions.cpp beamevaluator.cpp model/model.cpp nlplfitter.cpp)
 add_executable(combinespectra combinespectra.cpp beamevaluator.cpp imageweights.cpp model/model.cpp mspredicter.cpp multibanddata.cpp nlplfitter.cpp predicter.cpp progressbar.cpp spectrummaker.cpp ${BEAMFILES})
 add_executable(cluster cluster.cpp model/model.cpp nlplfitter.cpp)
+add_executable(fitsmodel fitsmodel.cpp fitsiochecker.cpp fitsreader.cpp image.cpp nlplfitter.cpp polynomialfitter.cpp deconvolution/deconvolutionalgorithm.cpp deconvolution/spectralfitter.cpp model/model.cpp wsclean/logger.cpp)
 add_executable(flagantennae flagantennae.cpp)
 add_executable(flagbaselines flagbaselines.cpp)
 add_executable(flagionsolutions flagionsolutions.cpp)
@@ -109,7 +114,7 @@ add_executable(peel peel.cpp peeler.cpp beamevaluator.cpp calibrationmethod.cpp 
 add_executable(phasecal beamevaluator.cpp phasecal.cpp model/model.cpp nlplfitter.cpp predicter.cpp ${BEAMFILES})
 add_executable(regridimg regridimg.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(render render.cpp modelrenderer.cpp fftconvolver.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp model/model.cpp nlplfitter.cpp)
-add_executable(editmodel editmodel.cpp beamevaluator.cpp fitsreader.cpp fitsiochecker.cpp model/model.cpp nlplfitter.cpp rmsynthesis.cpp spectrumft.cpp ${BEAMFILES})
+add_executable(editmodel editmodel.cpp beamevaluator.cpp fitsreader.cpp fitsiochecker.cpp model/model.cpp nlplfitter.cpp polynomialfitter.cpp rmsynthesis.cpp spectrumft.cpp deconvolution/spectralfitter.cpp ${BEAMFILES})
 add_executable(simcompress simcompress.cpp gausencoder.cpp)
 add_executable(storetime storetime.cpp stopwatch.cpp)
 add_executable(subtrmodel beamevaluator.cpp subtrmodel.cpp model/model.cpp nlplfitter.cpp predicter.cpp ${BEAMFILES} mspredicter.cpp progressbar.cpp)
@@ -130,7 +135,7 @@ else(LIBXML2_FOUND)
   message("Libxml2 NOT found: will NOT build vo2model and scaleimage")
 endif(LIBXML2_FOUND)
 
-target_link_libraries(addimg ${FITSIO_LIB} ${CASA_LIBS})
+target_link_libraries(addimg ${FITSIO_LIB} ${CASA_LIBS} ${Boost_DATE_TIME_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(aegean2model ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(applybeam ${FITSIO_LIB} ${CASA_LIBS})
 target_link_libraries(apparently ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB} )
@@ -144,6 +149,7 @@ target_link_libraries(calibrate ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_
 target_link_libraries(collectionsolutions ${BEAM_LIBS} ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(combinespectra ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(editmodel ${BEAM_LIBS} ${FITSIO_LIB} ${CASA_LIBS} ${FFTW3_LIB})
+target_link_libraries(fitsmodel ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB} ${Boost_DATE_TIME_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(flagantennae ${CASA_LIBS})
 target_link_libraries(flagbaselines ${CASA_LIBS})
 target_link_libraries(flagmwa ${CASA_LIBS})
@@ -164,6 +170,9 @@ target_link_libraries(subtrmodel ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost
 #target_link_libraries(subtrspectrum ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(tests ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB})
 
+add_executable(beam2016test EXCLUDE_FROM_ALL beam/beam2016implementation.cpp beam/beam2016test.cpp beam/system.cpp )
+target_link_libraries(beam2016test ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${HDF5_LIBRARIES})
+
 if(NOT GSL_CBLAS_LIB)
   message("GSL CBLAS lib was not found. GSL needs CBLAS: disabling GSL.")
 endif(NOT GSL_CBLAS_LIB)
@@ -176,7 +185,7 @@ if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   target_link_libraries(tests ${GSL_LIB} ${GSL_CBLAS_LIB})
   target_link_libraries(editmodel ${GSL_LIB} ${GSL_CBLAS_LIB})
   target_link_libraries(simcompress ${GSL_LIB} ${GSL_CBLAS_LIB})
-  target_link_libraries(model2kvis ${GSL_LIB} ${GSL_CBLAS_LIB})
+  target_link_libraries(model2kvis ${GSL_LIB} ${GSL_CBLAS_LIB} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
   target_link_libraries(matchsources ${GSL_LIB} ${GSL_CBLAS_LIB})
   target_link_libraries(render ${GSL_LIB} ${GSL_CBLAS_LIB})
   target_link_libraries(vo2model ${GSL_LIB} ${GSL_CBLAS_LIB})
@@ -184,9 +193,6 @@ if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
 	add_executable(sedcombine sedcombine.cpp sedanalyser.cpp model/model.cpp nlplfitter.cpp rmsynthesis.cpp progressbar.cpp spectrumft.cpp subbandpassband.cpp)
   target_link_libraries(sedcombine ${FFTW3_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
   
-	add_executable(aoimage aoimage.cpp btpimager.cpp fftconvolver.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp imageweights.cpp model/model.cpp modelrenderer.cpp  multibanddata.cpp nlplfitter.cpp)
-	target_link_libraries(aoimage ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${FITSIO_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
-	
 else(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   message("GNU scientific library (gsl) not found: some features will be disabled (this is not an error).")
 endif(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)

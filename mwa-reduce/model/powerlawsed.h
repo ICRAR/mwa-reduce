@@ -3,17 +3,20 @@
 
 #include "spectralenergydistribution.h"
 
-class PowerLawSED : public SpectralEnergyDistribution
+#include "../polynomialfitter.h"
+
+class PowerLawSED final : public SpectralEnergyDistribution
 {
 public:
-	PowerLawSED() : _referenceFrequency(0.0)
+	PowerLawSED() : _referenceFrequency(0.0), _isLogarithmic(true)
 	{
 		for(size_t p=0; p!=4; ++p) _factors[p] = 0.0;
 	}
 	
 	PowerLawSED(double referenceFrequency, double constantFlux) :
 		_referenceFrequency(referenceFrequency),
-		_terms(1)
+		_terms(1),
+		_isLogarithmic(true)
 	{
 		double refBrightness = constantFlux;
 		if(refBrightness <= 0.0)
@@ -24,22 +27,26 @@ public:
 			_factors[p] = 0.0;
 	}
 	
-	virtual PowerLawSED* Clone() const
+	virtual PowerLawSED* Clone() const override
 	{
 		return new PowerLawSED(*this);
 	}
 	
-	virtual std::string ToString() const
+	virtual std::string ToString() const override
 	{
 		std::ostringstream str;
+		str.precision(15);
 		double term1 = _terms.size()>1 ? _terms[1] : 0.0;
 		double f = _terms[0];
 		double
 			i=f*_factors[0], q=f*_factors[1],
 			u=f*_factors[2], v=f*_factors[3];
 		str << "    sed {\n      frequency " << _referenceFrequency*1e-6 << " MHz\n      fluxdensity Jy "
-			<< i << " " << q << " " << u << " " << v <<
-			"\n      spectral-index { ";
+			<< i << " " << q << " " << u << " " << v << "\n";
+		if(_isLogarithmic)
+			str << "      spectral-index { ";
+		else
+			str << "      polynomial { ";
 		str << term1;
 		for(size_t i=2; i<_terms.size(); ++i)
 			str << ", " << _terms[i];
@@ -47,12 +54,15 @@ public:
 		return str.str();
 	}
 	
-	virtual long double FluxAtFrequencyFromIndex(long double frequencyHz, size_t pIndex) const
+	virtual long double FluxAtFrequencyFromIndex(long double frequencyHz, size_t pIndex) const override
 	{
-		return NonLinearPowerLawFitter::Evaluate(frequencyHz/_referenceFrequency, _terms) * _factors[pIndex];
+		if(_isLogarithmic)
+			return NonLinearPowerLawFitter::Evaluate(frequencyHz/_referenceFrequency, _terms) * _factors[pIndex];
+		else
+			return PolynomialFitter::Evaluate(frequencyHz/_referenceFrequency - 1.0, _terms) * _factors[pIndex];
 	}
 	
-	virtual long double IntegratedFlux(long double startFrequency, long double endFrequency, PolarizationEnum polarization) const
+	virtual long double IntegratedFlux(long double startFrequency, long double endFrequency, PolarizationEnum polarization) const override
 	{
 		size_t pIndex = Polarization::StokesToIndex(polarization);
 		long double sum = 0.0;
@@ -64,28 +74,28 @@ public:
 		return sum / 101.0;
 	}
 	
-	virtual long double AverageFlux(long double startFrequency, long double endFrequency, PolarizationEnum polarization) const
+	virtual long double AverageFlux(long double startFrequency, long double endFrequency, PolarizationEnum polarization) const override
 	{
 		return IntegratedFlux(startFrequency, endFrequency, polarization);
 	}
 	
-	virtual bool operator<(const SpectralEnergyDistribution &other) const
+	virtual bool operator<(const SpectralEnergyDistribution &other) const override
 	{
 		return other.FluxAtFrequencyFromIndex(_referenceFrequency, 0) < FluxAtFrequencyFromIndex(_referenceFrequency, 0);
 	}
 	
-	virtual void operator*=(double factor)
+	virtual void operator*=(double factor) override
 	{
 		for(size_t p=0; p!=4; ++p)
 			_factors[p] *= factor;
 	}
 	
-	virtual void operator+=(const SpectralEnergyDistribution &other)
+	virtual void operator+=(const SpectralEnergyDistribution &other) override
 	{
 		throw std::runtime_error("operator+= not yet implemented for power law sed");
 	}
 	
-	virtual long double ReferenceFrequencyHz() const
+	virtual long double ReferenceFrequencyHz() const override
 	{
 		return _referenceFrequency;
 	}
@@ -104,6 +114,21 @@ public:
 			_factors[p] = brightnessVector[p] / refBrightness;
 	}
 	
+	void SetFromStokesIFit(double referenceFrequency, const ao::uvector<double>& terms)
+	{
+		_referenceFrequency = referenceFrequency;
+		double refBrightness = terms[0];
+		if(refBrightness <= 0.0)
+			refBrightness = 1.0;
+		_terms.resize(terms.size());
+		_terms[0] = refBrightness;
+		for(size_t i=1; i!=terms.size(); ++i)
+			_terms[i] = terms[i];
+		_factors[0] = terms[0] / refBrightness;
+		for(size_t p=1; p!=4; ++p)
+			_factors[p] = 0.0;
+	}
+	
 	void GetData(double& referenceFrequency, double* brightnessVector, std::vector<double>& siTerms) const
 	{
 		referenceFrequency = _referenceFrequency;
@@ -114,10 +139,26 @@ public:
 		for(size_t i=0; i!=_terms.size()-1; ++i)
 			siTerms[i] = _terms[i+1];
 	}
+	
+	double NTerms() const
+	{
+		return _terms.size();
+	}
+	
+	void SetIsLogarithmic(bool isLogarithmic)
+	{
+		_isLogarithmic = isLogarithmic;
+	}
+
+	bool IsLogarithmic() const
+	{
+		return _isLogarithmic;
+	}
 private:
 	double _referenceFrequency;
 	double _factors[4];
 	ao::uvector<double> _terms;
+	bool _isLogarithmic;
 };
 
 #endif

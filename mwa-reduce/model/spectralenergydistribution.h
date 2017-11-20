@@ -4,7 +4,7 @@
 #include "measurement.h"
 
 #include "../nlplfitter.h"
-#include "../polarizationenum.h"
+#include "../polarization.h"
 
 #include <cmath>
 #include <iostream>
@@ -54,7 +54,7 @@ public:
 			return fluxDensityAJy + slope * (requestedFrequency - referenceFrequencyAHz);
 		} else {
 			long double si =
-				log(fabs(fluxDensityBJy/fluxDensityAJy)) /
+			  log(std::abs(fluxDensityBJy/fluxDensityAJy)) /
 				log(referenceFrequencyBHz/referenceFrequencyAHz);
 			return fluxDensityAJy * std::pow(requestedFrequency/referenceFrequencyAHz, si);
 		}

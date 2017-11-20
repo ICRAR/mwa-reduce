@@ -3,8 +3,6 @@
 
 #include <map>
 
-#include "../uvector.h"
-
 #include "measurement.h"
 #include "spectralenergydistribution.h"
 
@@ -18,6 +16,7 @@ public:
 	typedef FluxMap::const_iterator const_iterator;
 	typedef FluxMap::reverse_iterator reverse_iterator;
 	typedef FluxMap::const_reverse_iterator const_reverse_iterator;
+	typedef FluxMap::value_type value_type;
 		
 	MeasuredSED()
 	{ }
@@ -168,6 +167,7 @@ public:
 	std::string ToString() const
 	{
 		std::ostringstream s;
+		s.precision(15);
 		for(FluxMap::const_iterator i=_measurements.begin(); i!=_measurements.end(); ++i)
 		{
 			i->second.ToStream(s);

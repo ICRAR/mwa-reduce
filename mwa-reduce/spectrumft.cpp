@@ -82,7 +82,7 @@ void SpectrumFT::GetFTPower(ao::uvector<double>& destination, const MeasuredSED&
 	if(toTemperature)
 	{
 		ConvertFluxToTemperature(destination, _frequencies.data(), _pBeamOmegas.data());
-		double kParResolution = GetMaxKParallell(sed, false) / sed.MeasurementCount();
+		//double kParResolution = GetMaxKParallell(sed, false) / sed.MeasurementCount();
 		// TODO
 	}
 }

@@ -2,7 +2,7 @@
 #define ION_INTERPOLATOR_H
 
 #include "delaunay.h"
-#include "imagecoordinates.h"
+#include "units/imagecoordinates.h"
 #include "ionsolutionfile.h"
 #include "model/model.h"
 #include "triangleinterpolator.h"
@@ -65,7 +65,13 @@ public:
 		_endChannel = endChannel;
 		_polarization = polarization;
 		
-		_triangulator.Clear();
+		initializeTriangulator(_triangulator, solutions);
+		
+	}
+	
+	void initializeTriangulator(Delaunay& delaunay, IonSolutionFile& solutions)
+	{
+		delaunay.Clear();
 		for(size_t direction=0; direction!=solutions.DirectionCount(); ++direction)
 		{
 			double posRA, posDec;
@@ -91,11 +97,11 @@ public:
 			ImageCoordinates::LMToRaDec(l, m, _phaseCentreRA, _phaseCentreDec, posRA, posDec);
 			if(!std::isfinite(posRA) || !std::isfinite(posDec))
 				throw std::runtime_error("One of the directions in the model is not finite.");
-			_triangulator.AddVertex(posRA, posDec, &_directionIndices[direction]);
+			delaunay.AddVertex(posRA, posDec, &_directionIndices[direction]);
 		}
-		_triangulator.Triangulate();
-		_triangulator.SaveConvexHullAsKvis("convex.ann");
-		_triangulator.SaveTriangulationAsKvis("triangles.ann");
+		delaunay.Triangulate();
+		delaunay.SaveConvexHullAsKvis("convex.ann");
+		delaunay.SaveTriangulationAsKvis("triangles.ann");
 	}
 	
 	
@@ -205,7 +211,7 @@ private:
 		return val / count;
 	}
 	
-	void meanPos(const std::vector<ModelSource*>& sources, double& meanRA, double& meanDec)
+	static void meanPos(const std::vector<ModelSource*>& sources, double& meanRA, double& meanDec)
 	{
 		std::vector<double> raValues;
 		double decSum = 0.0;

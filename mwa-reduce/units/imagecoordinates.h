@@ -130,13 +130,22 @@ class ImageCoordinates
 		}
 	private:
 		static void SinCos(double angle, double* sinAngle, double* cosAngle)
-		{ sincos(angle, sinAngle, cosAngle); }
+		{
+			*sinAngle = std::sin(angle);
+			*cosAngle = std::cos(angle);
+		}
 		
 		static void SinCos(long double angle, long double* sinAngle, long double* cosAngle)
-		{ sincosl(angle, sinAngle, cosAngle); }
+		{
+			*sinAngle = std::sin(angle);
+			*cosAngle = std::cos(angle);
+		}
 		
 		static void SinCos(float angle, float* sinAngle, float* cosAngle)
-		{ sincosf(angle, sinAngle, cosAngle); }
+		{
+			*sinAngle = std::sin(angle);
+			*cosAngle = std::cos(angle);
+		}
 		
 		ImageCoordinates();
 };
