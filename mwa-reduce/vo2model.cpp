@@ -14,6 +14,7 @@
 Model model;
 ModelSource source;
 double flux, spectInd, secondFlux, thirdFlux;
+size_t nSources = 0, spectIndNotAvailable=0, removed=0;
 
 struct FieldStruct
 {
@@ -65,39 +66,57 @@ void startRow()
 
 void endRow()
 {
-	if(parserData.useConstantSI)
-		source.front().MSED().AddMeasurement(flux, parserData.frequency, parserData.constantSI);
-	else if(parserData.useSecondFrequency)
+	if(parserData.useSIFormat)
 	{
-		double fluxAlt = secondFlux, freqAlt = parserData.secondFrequency;
-		if(!std::isfinite(secondFlux))
-		{
-			if(!std::isfinite(thirdFlux))
-				std::cout << "Warning: flux2 and flux3 unset\n";
-			else {
-				fluxAlt = thirdFlux;
-				freqAlt = parserData.thirdFrequency;
-			}
+		++nSources;
+		if(!std::isfinite(flux)) {
+			if(removed < 100)
+				std::cout << "Warning: " << source.Name() << " has no flux: removing.\n";
+			++removed;
 		}
-		source.front().MSED().AddMeasurement(flux, parserData.frequency);
-		if(std::isfinite(fluxAlt))
-			source.front().MSED().AddMeasurement(fluxAlt, freqAlt);
-	}
-	else if(!std::isfinite(spectInd)) {
-		if(parserData.useSIFormat)
-		{
+		else {
 			PowerLawSED sed;
 			const double fluxes[4] = { flux, 0.0, 0.0, 0.0 };
+			if(!std::isfinite(spectInd)) {
+				if(spectIndNotAvailable < 100)
+					std::cout << "Warning: " << source.Name() << " has no SI.\n";
+				spectInd = 0.0;
+				spectIndNotAvailable++;
+			}
 			ao::uvector<double> slopes{spectInd};
 			sed.SetData(parserData.frequency, fluxes, slopes);
 			source.front().SetSED(sed);
+			model.AddSource(source);
+		}
+		if(nSources%1000 == 0)
+			std::cout << "Progress: " << nSources << " sources parsed.\n";
+	}
+	else {
+		if(parserData.useConstantSI)
+			source.front().MSED().AddMeasurement(flux, parserData.frequency, parserData.constantSI);
+		else if(parserData.useSecondFrequency)
+		{
+			double fluxAlt = secondFlux, freqAlt = parserData.secondFrequency;
+			if(!std::isfinite(secondFlux))
+			{
+				if(!std::isfinite(thirdFlux))
+					std::cout << "Warning: flux2 and flux3 unset\n";
+				else {
+					fluxAlt = thirdFlux;
+					freqAlt = parserData.thirdFrequency;
+				}
+			}
+			source.front().MSED().AddMeasurement(flux, parserData.frequency);
+			if(std::isfinite(fluxAlt))
+				source.front().MSED().AddMeasurement(fluxAlt, freqAlt);
+		}
+		else if(!std::isfinite(spectInd)) {
+			source.front().MSED().AddMeasurement(flux, parserData.frequency, spectInd);
 		}
 		else
-			source.front().MSED().AddMeasurement(flux, parserData.frequency, spectInd);
+			source.front().MSED().AddMeasurement(flux, parserData.frequency);
+		model.AddSource(source);
 	}
-	else
-		source.front().MSED().AddMeasurement(flux, parserData.frequency);
-	model.AddSource(source);
 }
 
 void readFile(const std::string& filename)
@@ -170,6 +189,11 @@ int main(int argc, char* argv[])
 	readFile(inFile);
 
 	xmlCleanupParser();
+	
+	if(parserData.useSIFormat)
+	{
+		std::cout << "Stats:\nSources: " << nSources << "\nRemoved because flux unset: " << removed << "\nSI unavailable: " << spectIndNotAvailable << '\n';
+	}
 	
 	model.Save(outFile.c_str());
 	
