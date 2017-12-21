@@ -70,7 +70,7 @@ public:
 		double wscNormalizationFactor;
 		if(!inpReader.ReadDoubleKeyIfExists("WSCNORMF", wscNormalizationFactor))
 		{
-			std::cerr << "Warning: Keyword WSCNORM not found!\n";
+			std::cerr << "Warning: Keyword WSCNORMF not found!\n";
 			wscNormalizationFactor = 1.0;
 		}
 		
