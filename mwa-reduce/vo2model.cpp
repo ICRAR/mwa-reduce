@@ -7,6 +7,7 @@
 
 #include "model/modelsource.h"
 #include "model/model.h"
+#include "model/powerlawsed.h"
 
 #include "parser/votableparser.h"
 
@@ -22,7 +23,7 @@ struct FieldStruct
 struct ParserData {
 	xmlTextReaderPtr reader;
 	std::string fluxColumn;
-	bool useConstantSI, useSecondFrequency, useThirdFrequency;
+	bool useConstantSI, useSecondFrequency, useThirdFrequency, useSIFormat;
 	double frequency, secondFrequency, thirdFrequency, constantSI;
 	std::string siColumn, secondFluxCol, thirdFluxCol;
 } parserData;
@@ -54,7 +55,8 @@ void startRow()
 {
 	source = ModelSource();
 	source.AddComponent(ModelComponent());
-	source.front().SetSED(MeasuredSED());
+	if(!parserData.useSIFormat)
+		source.front().SetSED(MeasuredSED());
 	flux = std::numeric_limits<double>::quiet_NaN();
 	spectInd = std::numeric_limits<double>::quiet_NaN();
 	secondFlux = std::numeric_limits<double>::quiet_NaN();
@@ -81,8 +83,18 @@ void endRow()
 		if(std::isfinite(fluxAlt))
 			source.front().MSED().AddMeasurement(fluxAlt, freqAlt);
 	}
-	else if(!std::isfinite(spectInd))
-		source.front().MSED().AddMeasurement(flux, parserData.frequency, spectInd);
+	else if(!std::isfinite(spectInd)) {
+		if(parserData.useSIFormat)
+		{
+			PowerLawSED sed;
+			const double fluxes[4] = { flux, 0.0, 0.0, 0.0 };
+			ao::uvector<double> slopes{spectInd};
+			sed.SetData(parserData.frequency, fluxes, slopes);
+			source.front().SetSED(sed);
+		}
+		else
+			source.front().MSED().AddMeasurement(flux, parserData.frequency, spectInd);
+	}
 	else
 		source.front().MSED().AddMeasurement(flux, parserData.frequency);
 	model.AddSource(source);
@@ -107,6 +119,7 @@ int main(int argc, char* argv[])
 
 	parserData.useConstantSI = false;
 	parserData.useSecondFrequency = false;
+	parserData.useSIFormat = false;
 	
 	size_t argi = 1;
 	while(argv[argi][0]=='-')
@@ -122,6 +135,7 @@ int main(int argc, char* argv[])
 		{
 			++argi;
 			parserData.siColumn = argv[argi];
+			parserData.useSIFormat = true;
 		}
 		else if(p == "flux2")
 		{
