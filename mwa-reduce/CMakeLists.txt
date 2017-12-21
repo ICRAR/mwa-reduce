@@ -7,8 +7,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
 
 set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -std=c++0x")
 
+find_package(HDF5 COMPONENTS C CXX REQUIRED)
+
 SET(CASACORE_MAKE_REQUIRED_EXTERNALS_OPTIONAL TRUE)
 find_package(Casacore REQUIRED COMPONENTS casa ms tables measures fits scimath scimath_f)
+set(CASA_LIBS ${CASACORE_LIBRARIES})
 
 find_library(FFTW3_LIB fftw3 REQUIRED)
 find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
@@ -23,10 +26,6 @@ find_path(GTS_INCLUDE_DIR NAMES gts.h)
 find_path(GLIB_INCLUDE_DIR NAMES glib.h PATH_SUFFIXES glib-2.0)
 find_package(LibXml2)
 
-find_package(HDF5 COMPONENTS CXX REQUIRED)
-
-set(CASA_LIBS ${CASACORE_LIBRARIES})
-
 find_path(CASA_INCLUDE_DIR NAMES ms/MeasurementSets/MeasurementSet.h PATHS /usr/local/include/casacore PATH_SUFFIXES casacore)
 
 include_directories(${CASACORE_INCLUDE_DIRS})
@@ -35,7 +34,7 @@ include_directories(${FITSIO_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 include_directories(${HDF5_INCLUDE_DIRS})
 
-set(BEAM_LIBS mwareducebeam ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${HDF5_LIBRARIES})
+set(BEAM_LIBS mwareducebeam ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 
 if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   include_directories(${GSL_INCLUDE_DIR})
