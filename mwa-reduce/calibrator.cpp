@@ -239,7 +239,7 @@ void Calibrator::Perform()
 					double w = rowData.w;
 					
 					bool selected = true;
-					if((u*u + v*v + w*w < _minUVW*_minUVW)||(u*u + v*v + w*w > _maxUVW*_maxUVW))
+					if((u*u + v*v + w*w < _minUVW*_minUVW) || (u*u + v*v + w*w > _maxUVW*_maxUVW))
 						selected = false;
 					if(selected)
 						selectedCount++;
