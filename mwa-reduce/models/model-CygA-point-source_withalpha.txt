@@ -1,0 +1,13 @@
+skymodel fileformat 1.1
+source {
+  name "CygA"
+  component {
+    type point
+    position 19h59m28.3s +40d44m02s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 9736.0791345 0 0 0
+      spectral-index { -0.78 0.00 }
+    }
+  }
+}

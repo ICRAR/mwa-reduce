@@ -1,0 +1,94 @@
+skymodel fileformat 1.1
+source {
+  name "3C444"
+  component {
+    type point
+    position -01h45m34.4s -17d01m30s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 39.5384187 0 0 0
+      spectral-index { -0.78 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d01m48s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 22.0061198 0 0 0
+      spectral-index { -0.78 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m33.2s -17d02m24s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 4.5379081 0 0 0
+      spectral-index { -0.68 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d00m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 3.4024946 0 0 0
+      spectral-index { -0.62 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d00m54s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 3.0192216 0 0 0
+      spectral-index { -0.77 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m33.2s -17d02m06s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.7268868 0 0 0
+      spectral-index { -0.78 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d02m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.3310504 0 0 0
+      spectral-index { -0.58 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m35.7s -17d00m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.2057688 0 0 0
+      spectral-index { -0.56 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m34.4s -17d01m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9764044 0 0 0
+      spectral-index { -0.77 0.00 }
+    }
+  }
+  component {
+    type point
+    position -01h45m33.2s -17d02m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.4799112 0 0 0
+      spectral-index { -0.39 0.00 }
+    }
+  }
+}

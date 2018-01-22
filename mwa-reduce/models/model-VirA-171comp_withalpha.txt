@@ -1,0 +1,1543 @@
+skymodel fileformat 1.1
+source {
+  name "VirA"
+  component {
+    type point
+    position -11h29m10.8s 12d23m39s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 87.9153779 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.2s 12d23m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 86.4409901 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.2s 12d23m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 33.4589555 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m56.4s 12d23m34s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 10.5385857 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m06.0s 12d23m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 7.9735305 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.0s 12d24m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 6.8510800 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m18.8s 12d22m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 6.5967361 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.0s 12d23m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 6.0370406 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.7s 12d22m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 5.5043452 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.6s 12d23m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 4.7466975 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.8s 12d23m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 4.4760813 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.1s 12d22m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 4.4505908 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.0s 12d24m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 4.0848529 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m06.0s 12d23m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 3.8027340 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m58.0s 12d23m34s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 3.6804116 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m58.0s 12d23m04s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 3.2762910 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.5s 12d26m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 3.2462849 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m26.6s 12d18m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 3.0445385 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.4s 12d23m39s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.9924219 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m01.2s 12d25m06s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.9264379 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.2s 12d23m11s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.8902194 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.4s 12d23m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.8842342 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.1s 12d20m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.8671070 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.0s 12d17m39s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.8473612 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.6s 12d23m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.8380227 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.2s 12d22m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.8338010 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m28.3s 12d20m13s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.7793064 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m18.6s 12d17m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.7782777 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m25.1s 12d19m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.7590663 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m59.7s 12d26m06s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.4848296 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.6s 12d23m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.4720844 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m53.2s 12d24m33s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.4332073 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m57.9s 12d22m04s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.4178836 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.1s 12d21m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.4153854 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m20.2s 12d17m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.4137020 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.4s 12d25m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.3081462 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.6s 12d22m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.2280409 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.2s 12d22m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.1865988 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.5s 12d21m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.1200937 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m58.0s 12d22m34s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.0782107 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m23.4s 12d18m11s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.0667881 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m21.8s 12d17m11s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 2.0005368 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m13.9s 12d22m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.9879118 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m21.9s 12d20m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.9387210 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m18.7s 12d19m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.9333771 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.4s 12d23m06s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.8982675 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.6s 12d24m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.8392706 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m06.0s 12d25m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.8355299 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m13.9s 12d20m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.8274873 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m18.6s 12d19m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.8063120 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m28.2s 12d18m13s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7920304 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m54.9s 12d27m05s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7859517 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.6s 12d25m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7824113 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m20.3s 12d20m11s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7761856 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m21.8s 12d18m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7646962 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m23.4s 12d17m11s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7644424 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m20.2s 12d19m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7205020 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m53.2s 12d23m03s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.7104153 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m21.9s 12d21m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.6769357 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.5s 12d20m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.6465020 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m59.6s 12d24m35s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.6453798 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.0s 12d16m39s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.6081594 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m05.8s 12d18m05s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5958016 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.2s 12d25m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5917803 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.3s 12d20m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5912593 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.5s 12d21m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5862894 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m59.6s 12d22m35s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5792889 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m06.0s 12d24m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5707921 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m23.4s 12d19m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5696164 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m21.9s 12d21m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.5104592 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m54.8s 12d24m34s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4938530 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m01.3s 12d25m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4661046 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m13.8s 12d17m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4631254 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m13.8s 12d17m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4489106 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.2s 12d18m05s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4405473 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m21.9s 12d22m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4337472 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m23.4s 12d18m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4195725 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m56.5s 12d25m35s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4167402 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.0s 12d23m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.4061592 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m13.8s 12d19m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.3916104 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.6s 12d24m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.3904481 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.3s 12d19m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.3743629 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m58.1s 12d27m06s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.3634746 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.6s 12d17m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.3588121 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m53.3s 12d26m34s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.3448778 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m06.0s 12d24m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.3439025 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.4s 12d24m39s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.2923751 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.5s 12d27m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.2725158 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.4s 12d18m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.2381811 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.4s 12d18m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.2285179 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.4s 12d25m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.2186036 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m25.0s 12d18m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.2130473 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.1s 12d20m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.2102404 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.9s 12d27m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1833297 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m29.9s 12d20m14s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1722050 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.7s 12d19m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1657763 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m58.1s 12d27m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1640235 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m23.5s 12d20m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1468401 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.2s 12d17m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1446371 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m51.5s 12d22m32s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1422858 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.3s 12d21m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1339092 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.3s 12d21m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1299720 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.1s 12d19m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1257784 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m18.8s 12d24m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1208059 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m59.5s 12d22m04s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.1114607 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m02.9s 12d26m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0917443 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m33.0s 12d17m14s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0866743 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m13.8s 12d18m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0813303 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m58.1s 12d25m35s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0777446 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m06.1s 12d26m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0729297 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.6s 12d19m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0678209 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m54.9s 12d26m34s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0561297 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h30m08.4s 11d40m28s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0446390 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.4s 12d28m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0437399 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.4s 12d22m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0408795 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m20.3s 12d19m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0346859 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m25.1s 12d21m13s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0237883 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.3s 12d26m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0181598 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.8s 12d25m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0070311 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m56.4s 12d24m04s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 1.0003138 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.4s 12d17m39s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9996231 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.6s 12d22m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9985236 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m53.1s 12d22m33s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9791786 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.8s 12d29m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9743544 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m29.9s 12d21m44s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9710639 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.2s 12d23m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9526460 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m56.5s 12d26m05s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9472193 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.2s 12d24m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9460757 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m59.6s 12d25m05s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9438980 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m59.7s 12d27m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9262791 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m28.3s 12d21m14s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9220200 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.2s 12d18m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9206373 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m31.4s 12d19m14s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9065828 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m20.2s 12d17m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.9022996 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.1s 12d26m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8983358 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.2s 12d18m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8869506 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m33.1s 12d19m45s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8794998 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m56.4s 12d25m04s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8791752 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m21.9s 12d19m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8706409 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m56.4s 12d23m04s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8581535 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.4s 12d24m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8562537 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.8s 12d28m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8445653 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m58.1s 12d26m35s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8372989 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.3s 12d25m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8367511 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.0s 12d18m07s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8099807 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.4s 12d16m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8020878 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.1s 12d27m41s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.8007972 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.7s 12d27m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7976256 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m54.8s 12d23m33s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7961039 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m25.0s 12d17m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7903458 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m01.2s 12d24m36s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7889203 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m29.8s 12d17m43s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7622769 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m22.0s 12d23m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7546378 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m26.7s 12d20m43s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7527794 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.4s 12d17m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7505657 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m20.4s 12d24m12s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7485043 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m07.4s 12d18m06s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7404323 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m13.9s 12d21m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7338886 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.4s 12d29m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7266877 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m04.3s 12d19m35s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7218662 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m09.1s 12d21m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7036287 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m54.8s 12d24m04s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.7032987 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m17.1s 12d21m40s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6958613 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h28m50.1s 12d26m03s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6954004 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m12.2s 12d17m37s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6853832 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m28.3s 12d20m44s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6829424 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m15.4s 12d19m09s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6788236 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.0s 12d25m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6782691 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m14.1s 12d26m10s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6772912 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m10.7s 12d21m38s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6743774 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+  component {
+    type point
+    position -11h29m03.0s 12d29m08s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 0.6703748 0 0 0
+      spectral-index { -0.86 0.00 }
+    }
+  }
+}

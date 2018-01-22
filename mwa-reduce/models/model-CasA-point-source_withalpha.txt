@@ -1,0 +1,13 @@
+skymodel fileformat 1.1
+source {
+  name "CasA"
+  component {
+    type point
+    position 23h23m27.9s +58d48m42s
+    sed {
+      frequency 154 MHz
+      fluxdensity Jy 13059.0593460 0 0 0
+      spectral-index { -0.41 0.00 }
+    }
+  }
+}
