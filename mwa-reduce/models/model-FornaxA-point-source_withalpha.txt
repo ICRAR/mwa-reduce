@@ -1,0 +1,13 @@
+skymodel fileformat 1.1
+source {
+  name "FornaxA"
+  component {
+    type point
+    position 03h22m41.7s -37d12m30s
+    sed {
+      frequency 200 MHz
+      fluxdensity Jy 138.3788727 0 0 0
+      spectral-index { 0.34 0.00 }
+    }
+  }
+}

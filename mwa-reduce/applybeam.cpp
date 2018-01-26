@@ -1,12 +1,18 @@
 #include "fitsreader.h"
 #include "fitswriter.h"
 
+#include <iostream>
 #include <vector>
 #include <stdexcept>
 #include <string>
 
 int main(int argc, char *argv[])
 {
+	if(argc < 4)
+	{
+		std::cout << "Syntax: applybeam <inpfits> <beamfits> <outfits>\n";
+		return 0;
+	}
 	const char *inpFits = argv[1];
 	const char *beamFits = argv[2];
 	const char *outFits = argv[3];
