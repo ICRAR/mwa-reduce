@@ -169,7 +169,7 @@ void Regrid(ImageInfo &destImage, const ImageInfo &sourceImage)
 		}
 	}
 	std::cout << "Bounding box: (" << xLeft << ',' << yTop << ")-(" << xRight << ',' << yBottom << "), "
-	<< (withinField * 100 / (destImage.height*destImage.width)) << "% pixels fitted in new image.\n";
+	<< (withinField * 100 / (sourceImage.height*sourceImage.width)) << "% pixels fitted in new image.\n";
 }
 
 int main(int argc, char *argv[])
@@ -239,6 +239,9 @@ int main(int argc, char *argv[])
 		}
 		argi += 3;
 		int argStart = argi;
+		double
+			frequencyMin = templateReader.Frequency(),
+			frequencyMax = templateReader.Frequency();
 		for(; argi + 1 < argc; argi += 2)
 		{
 			const char *inpImageName = argv[argi];
@@ -251,6 +254,9 @@ int main(int argc, char *argv[])
 			if(weightsReader.ImageWidth() != inpReader.ImageWidth() || weightsReader.ImageHeight() != inpReader.ImageHeight())
 				throw std::runtime_error("Weights and image do not have same size");
 			
+			frequencyMin = std::min(inpReader.Frequency() - inpReader.Bandwidth()/2, frequencyMin);
+			frequencyMax = std::max(inpReader.Frequency() + inpReader.Bandwidth()/2, frequencyMax);
+		
 			ImageInfo inpImage(inpReader.ImageWidth() * inpReader.ImageHeight());
 			
 			inpReader.Read<double>(&inpImage.values[0]);
@@ -285,7 +291,7 @@ int main(int argc, char *argv[])
 		std::cout << "Writing " << outImageName << "...\n";
 		FitsWriter imgWriter;
 		imgWriter.SetImageDimensions(outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY);
-		imgWriter.SetFrequency(outImage.frequency, outImage.bandwidth);
+		imgWriter.SetFrequency((frequencyMin+frequencyMax)*0.5, frequencyMax-frequencyMin);
 		imgWriter.SetDate(outImage.dateObs);
 		imgWriter.Write<double>(outImageName, &outImage.values[0]);
 		
