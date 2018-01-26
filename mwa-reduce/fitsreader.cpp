@@ -13,6 +13,7 @@ FitsReader::FitsReader(const FitsReader& source) :
 	_filename(source._filename),
 	_fitsPtr(0),
 	_imgWidth(source._imgWidth), _imgHeight(source._imgHeight),
+	_nFrequencies(source._nFrequencies),
 	_phaseCentreRA(source._phaseCentreRA), _phaseCentreDec(source._phaseCentreDec),
 	_pixelSizeX(source._pixelSizeX), _pixelSizeY(source._pixelSizeY),
 	_phaseCentreDL(source._phaseCentreDL), _phaseCentreDM(source._phaseCentreDM),
@@ -23,7 +24,8 @@ FitsReader::FitsReader(const FitsReader& source) :
 	_unit(source._unit),
 	_telescopeName(source._telescopeName), _observer(source._observer), _objectName(source._objectName),
 	_origin(source._origin), _originComment(source._originComment),
-	_history(source._history)
+	_history(source._history),
+	_checkCType(source._checkCType)
 {
 	int status = 0;
 	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
@@ -47,6 +49,7 @@ FitsReader& FitsReader::operator=(const FitsReader& rhs)
 	_filename = rhs._filename;
 	_imgWidth = rhs._imgWidth;
 	_imgHeight = rhs._imgHeight;
+	_nFrequencies = rhs._nFrequencies;
 	_phaseCentreRA = rhs._phaseCentreRA;
 	_phaseCentreDec = rhs._phaseCentreDec;
 	_pixelSizeX = rhs._pixelSizeX;
@@ -168,10 +171,27 @@ void FitsReader::initialize()
 	std::vector<long> naxes(naxis);
 	fits_get_img_size(_fitsPtr, naxis, &naxes[0], &status);
 	checkStatus(status, _filename);
-	for(int i=2;i!=naxis;++i)
-		if(naxes[i] != 1) throw std::runtime_error("Multiple images in fits file");
+	
 	_imgWidth = naxes[0];
 	_imgHeight = naxes[1];
+	_nFrequencies = 1;
+	
+	std::string tmp;
+	for(int i=2;i!=naxis;++i)
+	{
+		std::ostringstream name;
+		name << "CTYPE" << (i+1);
+		if(ReadStringKeyIfExists(name.str().c_str(), tmp))
+		{
+			if(tmp == "FREQ")
+				_nFrequencies = naxes[i];
+			else if(naxes[i] != 1)
+				throw std::runtime_error("Multiple images given in fits file");
+		}
+	}
+	
+	if(_nFrequencies != 1 && !_allowMultiFreq)
+		throw std::runtime_error("Multiple frequencies given in fits file");
 	
 	double bScale = 1.0, bZero = 0.0, equinox = 2000.0;
 	ReadDoubleKeyIfExists("BSCALE", bScale);
@@ -184,8 +204,7 @@ void FitsReader::initialize()
 	if(equinox != 2000.0)
 		throw std::runtime_error("Invalid value for EQUINOX: "+readStringKey("EQUINOX"));
 	
-	std::string tmp;
-	if(ReadStringKeyIfExists("CTYPE1", tmp) && tmp != "RA---SIN")
+	if(ReadStringKeyIfExists("CTYPE1", tmp) && tmp != "RA---SIN" && _checkCType)
 		throw std::runtime_error("Invalid value for CTYPE1");
 	
 	_phaseCentreRA = 0.0;
@@ -194,7 +213,7 @@ void FitsReader::initialize()
 	_pixelSizeX = 0.0;
 	ReadDoubleKeyIfExists("CDELT1", _pixelSizeX);
 	_pixelSizeX *= -M_PI / 180.0;
-	if(ReadStringKeyIfExists("CUNIT1", tmp) && tmp != "deg")
+	if(ReadStringKeyIfExists("CUNIT1", tmp) && tmp != "deg" && _checkCType)
 		throw std::runtime_error("Invalid value for CUNIT1");
 	double centrePixelX = 0.0;
 	if(ReadDoubleKeyIfExists("CRPIX1", centrePixelX))
@@ -202,7 +221,7 @@ void FitsReader::initialize()
 	else
 		_phaseCentreDL = 0.0;
 
-	if(ReadStringKeyIfExists("CTYPE2",tmp) && tmp != "DEC--SIN")
+	if(ReadStringKeyIfExists("CTYPE2",tmp) && tmp != "DEC--SIN" && _checkCType)
 		throw std::runtime_error("Invalid value for CTYPE2");
 	_phaseCentreDec = 0.0;
 	ReadDoubleKeyIfExists("CRVAL2", _phaseCentreDec);
@@ -210,7 +229,7 @@ void FitsReader::initialize()
 	_pixelSizeY = 0.0;
 	ReadDoubleKeyIfExists("CDELT2", _pixelSizeY);
 	_pixelSizeY *= M_PI / 180.0;
-	if(ReadStringKeyIfExists("CUNIT2", tmp) && tmp != "deg")
+	if(ReadStringKeyIfExists("CUNIT2", tmp) && tmp != "deg" && _checkCType)
 		throw std::runtime_error("Invalid value for CUNIT2");
 	double centrePixelY = 0.0;
 	if(ReadDoubleKeyIfExists("CRPIX2", centrePixelY))
@@ -284,11 +303,11 @@ void FitsReader::initialize()
 	readHistory();
 }
 
-template void FitsReader::Read(float* image);
-template void FitsReader::Read(double* image);
+template void FitsReader::ReadFrequency(float* image, size_t index);
+template void FitsReader::ReadFrequency(double* image, size_t index);
 
 template<typename NumType>
-void FitsReader::Read(NumType* image)
+void FitsReader::ReadFrequency(NumType* image, size_t index)
 {
 	int status = 0;
 	int naxis = 0;
@@ -296,6 +315,8 @@ void FitsReader::Read(NumType* image)
 	checkStatus(status, _filename);
 	std::vector<long> firstPixel(naxis);
 	for(int i=0;i!=naxis;++i) firstPixel[i] = 1;
+	if(naxis > 2)
+		firstPixel[2] = index+1;
 	
 	if(sizeof(NumType)==8)
 		fits_read_pix(_fitsPtr, TDOUBLE, &firstPixel[0], _imgWidth*_imgHeight, 0, image, 0, &status);

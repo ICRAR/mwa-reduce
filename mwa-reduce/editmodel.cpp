@@ -771,6 +771,7 @@ int main(int argc, char *argv[])
 	}
 	if(nearFilter)
 	{
+		Model newModel;
 		for(size_t i = model.SourceCount(); i>0; --i)
 		{
 			ModelSource& source = model.Source(i-1);
@@ -780,9 +781,12 @@ int main(int argc, char *argv[])
 				double dist = ImageCoordinates::AngularDistance(source.Peak().PosRA(), source.Peak().PosDec(), nearFilterRA, nearFilterDec);
 				isNear = (dist <= nearFilterDist);
 			}
-			if(!isNear)
-				model.RemoveSource(i-1);
+			if(isNear)
+			{
+				newModel.AddSource(source);
+			}
 		}
+		model = newModel;
 	}
 	
 	if(doCollect)

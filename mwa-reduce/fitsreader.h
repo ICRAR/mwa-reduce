@@ -13,7 +13,11 @@ class FitsReader : public FitsIOChecker
 {
 	public:
 		explicit FitsReader(const std::string &filename) 
-		: _filename(filename), _hasBeam(false)
+		: FitsReader(filename, true, false)
+		{ }
+		explicit FitsReader(const std::string &filename, bool checkCType, bool allowMultiFreq=false) :
+			_filename(filename), _hasBeam(false),
+			_checkCType(checkCType), _allowMultiFreq(allowMultiFreq)
 		{
 			initialize(); 
 		}
@@ -22,7 +26,12 @@ class FitsReader : public FitsIOChecker
 		
 		FitsReader& operator=(const FitsReader& rhs);
 		
-		template<typename NumType> void Read(NumType *image);
+		template<typename NumType> void ReadFrequency(NumType *image, size_t index);
+		
+		template<typename NumType> void Read(NumType *image)
+		{
+			ReadFrequency(image, 0);
+		}
 		
 		size_t ImageWidth() const { return _imgWidth; }
 		size_t ImageHeight() const { return _imgHeight; }
@@ -71,6 +80,8 @@ class FitsReader : public FitsIOChecker
 		const std::string& Filename() const { return _filename; }
 		
 		fitsfile* FitsHandle() const { return _fitsPtr; }
+		
+		size_t NFrequencies() const { return _nFrequencies; }
 	private:
 		double readDoubleKey(const char* key);
 		std::string readStringKey(const char* key);
@@ -83,6 +94,7 @@ class FitsReader : public FitsIOChecker
 		fitsfile *_fitsPtr;
 		
 		size_t _imgWidth, _imgHeight;
+		size_t _nFrequencies;
 		double _phaseCentreRA, _phaseCentreDec;
 		double _pixelSizeX, _pixelSizeY;
 		double _phaseCentreDL, _phaseCentreDM;
@@ -95,6 +107,8 @@ class FitsReader : public FitsIOChecker
 		std::string _telescopeName, _observer, _objectName;
 		std::string _origin, _originComment;
 		std::vector<std::string> _history;
+		
+		bool _checkCType, _allowMultiFreq;
 };
 
 #endif
