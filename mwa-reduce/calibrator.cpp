@@ -110,6 +110,12 @@ void Calibrator::Perform()
 		pageSize = sysconf(_SC_PAGE_SIZE);
 	int64_t memSize = (int64_t) pageCount * (int64_t) pageSize;
 	double memSizeInGB = (double) memSize / (1024.0*1024.0*1024.0);
+	// obey absmem limits
+	if (_absmem > 0.0)
+	{
+		memSizeInGB = _absmem;
+		memSize = _absmem * 1024.0 * 1024.0 * 1024.0;
+	}
 	size_t nBaselines = antennaCount * (antennaCount-1) / 2;
 	
 	for(size_t intervalIndex=0; intervalIndex!=intervalCount; ++intervalIndex)

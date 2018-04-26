@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 	if(argc < 3)
 	{
 		std::cout <<
-			"Usage: calibrate [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <max uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] [-quiet] <measurementset.ms> <solutions.bin>\n\n"
+			"Usage: calibrate [-absmem <mem in GB>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <max uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rhs <rhs solutions>] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] [-quiet] <measurementset.ms> <solutions.bin>\n\n"
 			"This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n\n"
 			"The official name of this algorithm is the \"Mitchcal\" algorithm. The following is a suggestion for referencing this algorithm in scientific articles:\n"
 			"\" Calibration was performed with the full-Jones Mitchcal algorithm developed for MWA calibration, as described by Offringa et al. (2016) \"\n"
@@ -38,7 +38,8 @@ int main(int argc, char *argv[])
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
 			minUVW = 0.0,
-			maxUVW = 5000.0;
+		  maxUVW = 5000.0,
+		  absmem = 0.0;
 		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
 		
 		while(argv[argi][0] == '-')
@@ -56,6 +57,11 @@ int main(int argc, char *argv[])
 				dataColumnName = argv[argi+1];
 				argi += 2;
 			}
+			else if(param == "absmem")
+			  {
+			    absmem = atof(argv[argi+1]);
+			    argi +=2;
+			  }
 			/*else if(param == "pf") == 0)
 			{
 				saveFaradayPlotFiles = true;
@@ -165,6 +171,7 @@ int main(int argc, char *argv[])
 		calibrator.SetVerbose(!doQuiet);
 		calibrator.SetSavePlotFiles(savePlotFiles);
 		calibrator.SetDataColumnName(dataColumnName);
+		calibrator.SetAbsMem(absmem);
 		if(savePlotFiles)
 		{
 			calibrator.SetPlotFilenames(plotPhaseFile, plotGainFile);
