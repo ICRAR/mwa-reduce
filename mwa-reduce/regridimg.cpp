@@ -169,7 +169,7 @@ void Regrid(ImageInfo &destImage, const ImageInfo &sourceImage)
 		}
 	}
 	std::cout << "Bounding box: (" << xLeft << ',' << yTop << ")-(" << xRight << ',' << yBottom << "), "
-	<< (withinField * 100 / (destImage.height*destImage.width)) << "% pixels fitted in new image.\n";
+	<< (withinField * 100 / (sourceImage.height*sourceImage.width)) << "% pixels fitted in new image.\n";
 }
 
 int main(int argc, char *argv[])
@@ -177,115 +177,125 @@ int main(int argc, char *argv[])
 	if(argc < 5)
 	{
 		std::cerr << "Syntax: regridimg [options] <outimage> <outweights> <template> <inpimage1> <inpweights1> [<inpimage2> <inpweights2> ...]\n"
-			"All images should be fits files. First image will define the size and pointing centre.\n";
+			"All images should be fits files. First image will define the size and pointing centre.\n"
+			" -s <width> <height>\n"
+			" -c <RA> <dec>\n";
 	}
-	int argi = 1;
-	bool overrideSize = false, overrideCentre = false;
-	size_t width = 0, height = 0;
-	long double altRA = 0.0, altDec = 0.0;
-	while(argv[argi][0] == '-')
-	{
-		if(strcmp(argv[argi], "-s") == 0)
+	else {
+		int argi = 1;
+		bool overrideSize = false, overrideCentre = false;
+		size_t width = 0, height = 0;
+		long double altRA = 0.0, altDec = 0.0;
+		while(argv[argi][0] == '-')
 		{
-			overrideSize = true;
-			width = atoi(argv[argi+1]);
-			height = atoi(argv[argi+2]);
-			argi += 3;
+			if(strcmp(argv[argi], "-s") == 0)
+			{
+				overrideSize = true;
+				width = atoi(argv[argi+1]);
+				height = atoi(argv[argi+2]);
+				argi += 3;
+			}
+			else if(strcmp(argv[argi], "-c") == 0)
+			{
+				overrideCentre = true;
+				altRA = RaDecCoord::ParseRA(argv[argi+1]);
+				altDec = RaDecCoord::ParseDec(argv[argi+2]);
+				argi += 3;
+			}
+			else throw std::runtime_error("Bad parameter");
 		}
-		else if(strcmp(argv[argi], "-c") == 0)
+		const char
+			*outImageName = argv[argi],
+			*outWeightName = argv[argi+1],
+			*templateName = argv[argi+2];
+		
+		FitsReader templateReader(templateName);
+		if(!overrideSize)
 		{
-			overrideCentre = true;
-			altRA = RaDecCoord::ParseRA(argv[argi+1]);
-			altDec = RaDecCoord::ParseDec(argv[argi+2]);
-			argi += 3;
+			width = templateReader.ImageWidth();
+			height = templateReader.ImageHeight();
 		}
-		else throw std::runtime_error("Bad parameter");
-	}
-	const char
-		*outImageName = argv[argi],
-		*outWeightName = argv[argi+1],
-		*templateName = argv[argi+2];
-	
-	FitsReader templateReader(templateName);
-	if(!overrideSize)
-	{
-		width = templateReader.ImageWidth();
-		height = templateReader.ImageHeight();
-	}
-	const size_t size = width * height;
-	ImageInfo outImage(size);
-	outImage.width = width;
-	outImage.height = height;
-	if(overrideCentre)
-	{
-		outImage.ra = altRA;
-		outImage.dec = altDec;
-	} else {
-		outImage.ra = templateReader.PhaseCentreRA();
-		outImage.dec = templateReader.PhaseCentreDec();
-	}
-	outImage.pixelSizeX = templateReader.PixelSizeX();
-	outImage.pixelSizeY = templateReader.PixelSizeY();
-	outImage.frequency = templateReader.Frequency();
-	outImage.bandwidth = templateReader.Bandwidth();
-	outImage.dateObs = templateReader.DateObs();
-	for(size_t i=0; i!=size; ++i)
-	{
-		outImage.values[i] = 0.0;
-		outImage.weights[i] = 0.0;
-	}
-	argi += 3;
-	int argStart = argi;
-	for(; argi + 1 < argc; argi += 2)
-	{
-		const char *inpImageName = argv[argi];
-		const char *inpWeightName = argv[argi+1];
+		const size_t size = width * height;
+		ImageInfo outImage(size);
+		outImage.width = width;
+		outImage.height = height;
+		if(overrideCentre)
+		{
+			outImage.ra = altRA;
+			outImage.dec = altDec;
+		} else {
+			outImage.ra = templateReader.PhaseCentreRA();
+			outImage.dec = templateReader.PhaseCentreDec();
+		}
+		outImage.pixelSizeX = templateReader.PixelSizeX();
+		outImage.pixelSizeY = templateReader.PixelSizeY();
+		outImage.frequency = templateReader.Frequency();
+		outImage.bandwidth = templateReader.Bandwidth();
+		outImage.dateObs = templateReader.DateObs();
+		for(size_t i=0; i!=size; ++i)
+		{
+			outImage.values[i] = 0.0;
+			outImage.weights[i] = 0.0;
+		}
+		argi += 3;
+		int argStart = argi;
+		double
+			frequencyMin = templateReader.Frequency(),
+			frequencyMax = templateReader.Frequency();
+		for(; argi + 1 < argc; argi += 2)
+		{
+			const char *inpImageName = argv[argi];
+			const char *inpWeightName = argv[argi+1];
+			
+			std::cout << "Regridding " << inpImageName << "... (" << ((argi-argStart)/2) << '/' << ((argc-argStart)/2) << ")\n";
+			
+			FitsReader inpReader(inpImageName);
+			FitsReader weightsReader(inpWeightName);
+			if(weightsReader.ImageWidth() != inpReader.ImageWidth() || weightsReader.ImageHeight() != inpReader.ImageHeight())
+				throw std::runtime_error("Weights and image do not have same size");
+			
+			frequencyMin = std::min(inpReader.Frequency() - inpReader.Bandwidth()/2, frequencyMin);
+			frequencyMax = std::max(inpReader.Frequency() + inpReader.Bandwidth()/2, frequencyMax);
 		
-		std::cout << "Regridding " << inpImageName << "... (" << ((argi-argStart)/2) << '/' << ((argc-argStart)/2) << ")\n";
+			ImageInfo inpImage(inpReader.ImageWidth() * inpReader.ImageHeight());
+			
+			inpReader.Read<double>(&inpImage.values[0]);
+			weightsReader.Read<double>(&inpImage.weights[0]);
+			
+			inpImage.width = inpReader.ImageWidth(),
+			inpImage.height = inpReader.ImageHeight();
+			inpImage.ra = inpReader.PhaseCentreRA();
+			inpImage.dec = inpReader.PhaseCentreDec();
+			inpImage.pixelSizeX = inpReader.PixelSizeX();
+			inpImage.pixelSizeY = inpReader.PixelSizeY();
+			inpImage.frequency = inpReader.Frequency();
+			inpImage.bandwidth = inpReader.Bandwidth();
+			inpImage.dateObs = inpReader.DateObs();
+			
+			Regrid(outImage, inpImage);
+		}
 		
-		FitsReader inpReader(inpImageName);
-		FitsReader weightsReader(inpWeightName);
-		if(weightsReader.ImageWidth() != inpReader.ImageWidth() || weightsReader.ImageHeight() != inpReader.ImageHeight())
-			throw std::runtime_error("Weights and image do not have same size");
+		// Divide the weight out
+		std::cout << "Applying weights...\n";
+		const double *weightsIter = &outImage.weights[0];
+		double *imageEnd = &outImage.values[0] + (outImage.width * outImage.height);
+		for(double *imagePtr=&outImage.values[0]; imagePtr!=imageEnd; ++imagePtr)
+		{
+			if((*weightsIter) != 0.0)
+				*imagePtr /= *weightsIter;
+			else
+				*imagePtr = 0.0;
+			++weightsIter;
+		}
 		
-		ImageInfo inpImage(inpReader.ImageWidth() * inpReader.ImageHeight());
+		std::cout << "Writing " << outImageName << "...\n";
+		FitsWriter imgWriter;
+		imgWriter.SetImageDimensions(outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY);
+		imgWriter.SetFrequency((frequencyMin+frequencyMax)*0.5, frequencyMax-frequencyMin);
+		imgWriter.SetDate(outImage.dateObs);
+		imgWriter.Write<double>(outImageName, &outImage.values[0]);
 		
-		inpReader.Read<double>(&inpImage.values[0]);
-		weightsReader.Read<double>(&inpImage.weights[0]);
-		
-		inpImage.width = inpReader.ImageWidth(),
-		inpImage.height = inpReader.ImageHeight();
-		inpImage.ra = inpReader.PhaseCentreRA();
-		inpImage.dec = inpReader.PhaseCentreDec();
-		inpImage.pixelSizeX = inpReader.PixelSizeX();
-		inpImage.pixelSizeY = inpReader.PixelSizeY();
-		inpImage.frequency = inpReader.Frequency();
-		inpImage.bandwidth = inpReader.Bandwidth();
-		inpImage.dateObs = inpReader.DateObs();
-		
-		Regrid(outImage, inpImage);
+		std::cout << "Writing " << outWeightName << "...\n";
+		imgWriter.Write<double>(outWeightName, &outImage.weights[0]);
 	}
-	
-	// Divide the weight out
-	std::cout << "Applying weights...\n";
-	const double *weightsIter = &outImage.weights[0];
-	double *imageEnd = &outImage.values[0] + (outImage.width * outImage.height);
-	for(double *imagePtr=&outImage.values[0]; imagePtr!=imageEnd; ++imagePtr)
-	{
-		if((*weightsIter) != 0.0)
-			*imagePtr /= *weightsIter;
-		else
-			*imagePtr = 0.0;
-		++weightsIter;
-	}
-	
-	std::cout << "Writing " << outImageName << "...\n";
-	FitsWriter imgWriter;
-	imgWriter.SetImageDimensions(outImage.width, outImage.height, outImage.ra, outImage.dec, outImage.pixelSizeX, outImage.pixelSizeY);
-	imgWriter.SetFrequency(outImage.frequency, outImage.bandwidth);
-	imgWriter.SetDate(outImage.dateObs);
-	imgWriter.Write<double>(outImageName, &outImage.values[0]);
-	
-	std::cout << "Writing " << outWeightName << "...\n";
-	imgWriter.Write<double>(outWeightName, &outImage.weights[0]);
 }

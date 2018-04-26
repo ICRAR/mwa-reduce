@@ -1,7 +1,6 @@
 #ifndef CALIBRATION_METHOD_H
 #define CALIBRATION_METHOD_H
 
-#include "predicter.h"
 #include "visibilityarray.h"
 
 #include <complex>
