@@ -60,8 +60,8 @@ public:
 			outputColumn = &*copyColumn;
 		}
 		casacore::IPosition dataShape = dataColumn.shape(0);
-		casacore::Array<casa::Complex> data(dataShape);
-		for(casacore::Array<casa::Complex>::iterator i=data.begin(); i!=data.end(); ++i)
+		casacore::Array<casacore::Complex> data(dataShape);
+		for(casacore::Array<casacore::Complex>::iterator i=data.begin(); i!=data.end(); ++i)
 			*i = 0.0;
 		for(size_t row=0; row!=ms.nrow(); ++row)
 			outputColumn->put(row, data);

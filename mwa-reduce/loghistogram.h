@@ -408,14 +408,14 @@ class LogHistogram : public Serializable
 				double binStart() const
 				{
 					return _iterator->first>0.0 ?
-						pow10(log10(_iterator->first)-0.005) :
-						-pow10(log10(-_iterator->first)-0.005);
+						exp10(log10(_iterator->first)-0.005) :
+						-exp10(log10(-_iterator->first)-0.005);
 				}
 				double binEnd() const
 				{
 					return _iterator->first>0.0 ?
-						pow10(log10(_iterator->first)+0.005) :
-						-pow10(log10(-_iterator->first)+0.005);
+						exp10(log10(_iterator->first)+0.005) :
+						-exp10(log10(-_iterator->first)+0.005);
 				}
 			private:
 				std::map<double, AmplitudeBin>::const_iterator _iterator;
@@ -472,22 +472,22 @@ class LogHistogram : public Serializable
 		double binStart(double x) const
 		{
 			return x>0.0 ?
-				pow10(log10(x)-0.005) :
-				-pow10(log10(x)-0.005);
+				exp10(log10(x)-0.005) :
+				-exp10(log10(x)-0.005);
 		}
 		double binEnd(double x) const
 		{
 			return x>0.0 ?
-				pow10(log10(x)+0.005) :
-				-pow10(log10(x)+0.005);
+				exp10(log10(x)+0.005) :
+				-exp10(log10(x)+0.005);
 		}
 		
 		static double getCentralAmplitude(const double amplitude)
 		{
 			if(amplitude>=0.0)
-				return pow10(round(100.0*log10(amplitude))/100.0);
+				return exp10(round(100.0*log10(amplitude))/100.0);
 			else
-				return -pow10(round(100.0*log10(-amplitude))/100.0);
+				return -exp10(round(100.0*log10(-amplitude))/100.0);
 		}
 };
 

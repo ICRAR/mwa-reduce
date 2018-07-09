@@ -4,7 +4,7 @@
 #include <casacore/measures/Measures/MDirection.h>
 #include <casacore/measures/Measures/MCDirection.h>
 
-namespace casa
+namespace casacore
 {
 	class MEpoch;
 	class MPosition;
