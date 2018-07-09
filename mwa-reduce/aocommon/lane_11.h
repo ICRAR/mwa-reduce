@@ -230,6 +230,40 @@ class lane
 				_reading_possible_condition.notify_all();
 			}
 		}
+
+		/** @brief Write a single element by constructing it.
+		 * @details This method is thread safe, and can be called together with
+		 * other write and read methods from different threads.
+		 * 
+		 * If this call comes after a call to write_end(), the call
+		 * will be ignored. The implementation does not construct the value
+		 * in place, but rather constructs the value and then move assigns it.
+		 * This is because the value that it is moved into has already been
+		 * constructed (in the current implementation).
+		 * @param element Object to be moved into the cyclic buffer.
+		 */
+		template<typename... Args>
+		void emplace(Args&&... args)
+		{
+			std::unique_lock<std::mutex> lock(_mutex);
+			LANE_REGISTER_DEBUG_INFO;
+
+			if(_status == status_normal)
+			{
+				while(_free_write_space == 0)
+				{
+					LANE_REGISTER_DEBUG_WRITE_WAIT;
+					_writing_possible_condition.wait(lock);
+				}
+
+				_buffer[_write_position] = value_type(args...);
+				_write_position = (_write_position+1) % _capacity;
+				--_free_write_space;
+				// Now that there is less free write space, there is more free read
+				// space and thus readers can possibly continue.
+				_reading_possible_condition.notify_all();
+			}
+		}
 		
 		/** @brief Write a single element by moving it in.
 		 * @details This method is thread safe, and can be called together with
