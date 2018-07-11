@@ -145,7 +145,7 @@ class ModelParser : private Tokenizer
 				}
 				else if(token == "position-angle") {
 					getToken(token);
-					component.SetPositionAngle(atof(token.c_str()) * 180.0/M_PI);
+					component.SetPositionAngle(atof(token.c_str()) * M_PI/180.0);
 				}
 				else throw std::runtime_error("Unknown keyname in component");
 			}
