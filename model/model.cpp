@@ -26,11 +26,10 @@ void Model::operator+=(const Model& rhs)
 	if(Empty())
 		(*this) = rhs;
 	else {
-		for(const_iterator i = rhs.begin(); i!=rhs.end(); ++i)
-			add(*i);
-		for(std::map<std::string,ModelCluster>::const_iterator c = rhs._clusters.begin();
-				c!=rhs._clusters.end(); ++c)
-			_clusters.insert(*c);
+		for(const ModelSource& s : rhs)
+			add(s);
+		for(const std::pair<std::string,ModelCluster>& c : rhs._clusters)
+			_clusters.emplace(c);
 	}
 }
 
@@ -44,17 +43,18 @@ void Model::Optimize()
 
 void Model::add(const ModelSource& source)
 {
+	/*
 	if(source.ComponentCount()!=0)
 	{
-		for(iterator i = begin(); i!=end(); ++i)
+		for(ModelSource& s : *this)
 		{
-			if(i->ComponentCount()!=0 && source.Peak().PosDec() == i->Peak().PosDec() && source.Peak().PosRA() == i->Peak().PosRA())
+			if(s.ComponentCount()!=0 && source.Peak().PosDec() == s.Peak().PosDec() && source.Peak().PosRA() == s.Peak().PosRA())
 			{
-				(*i) += source;
+				s += source;
 				return;
 			}
 		}
-	}
+	}*/
 	_sources.push_back(source);
 }
 

@@ -68,8 +68,8 @@ class ModelSource
 	
 		void operator+=(const ModelSource& rhs)
 		{
-			for(const_iterator i = rhs.begin(); i!=rhs.end(); ++i)
-				(*this) += *i;
+			for(const ModelComponent& c : rhs)
+				(*this) += c;
 		}
 		
 		void operator*=(double factor)

@@ -134,6 +134,14 @@ public:
 			_factors[p] = 0.0;
 	}
 	
+	/**
+	 * Retrieve the parameters for this SED.
+	 * 
+	 * The terms are in units as they are regularly found in sky models.
+	 * @param referenceFrequency In Hz the frequency with which the spectral function is evaluated.
+	 * @param brightnessVector Flux of Stokes I, Q, U, V in Jy.
+	 * @param siTerms SI index, SI curvature and higher terms.
+	 */
 	void GetData(double& referenceFrequency, double* brightnessVector, std::vector<double>& siTerms) const
 	{
 		referenceFrequency = _referenceFrequency;
