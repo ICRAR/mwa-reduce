@@ -109,8 +109,6 @@ Beam2016Implementation::Beam2016Implementation( const double* delays, const doub
   m_CalcModesLastFreqHz(-1),
   m_CalcModesLastDelays(nullptr),
   m_CalcModesLastAmps(nullptr),
-  m_NormJones(1,1,1,1),
-  m_NormFreqHz(-1),
   m_AntennaCount(N_ANT_COUNT),
   m_pH5File(nullptr)
 {
@@ -194,14 +192,18 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int
    JonesMatrix jones_ret = CalcJonesDirect( az_deg*deg2rad, za_deg*deg2rad );   
    
    if( bZenithNorm ) {
-      if( freq_hz != m_NormFreqHz ) {
-         CalcZenithNormMatrix( freq_hz ); 
+      std::map<int, JonesMatrix>::iterator it_NormJones;
+      it_NormJones = m_NormJoneses.find( freq_hz );
+      
+      if( it_NormJones == m_NormJoneses.end() ){
+         // normalisation Jones for requested frequency freq_hz not found -> calculate 
+         it_NormJones = CalcZenithNormMatrix( freq_hz ); 
       }
       
-      jones_ret.j00 = jones_ret.j00 / m_NormJones.j00;
-      jones_ret.j01 = jones_ret.j01 / m_NormJones.j01;
-      jones_ret.j10 = jones_ret.j10 / m_NormJones.j10;
-      jones_ret.j11 = jones_ret.j11 / m_NormJones.j11;      
+      jones_ret.j00 = jones_ret.j00 / (it_NormJones->second).j00;
+      jones_ret.j01 = jones_ret.j01 / (it_NormJones->second).j01;
+      jones_ret.j10 = jones_ret.j10 / (it_NormJones->second).j10;
+      jones_ret.j11 = jones_ret.j11 / (it_NormJones->second).j11;      
    }
    
    jones_ret.Print("Jones",az_deg,za_deg);
@@ -209,9 +211,13 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int
    return jones_ret;
 }
 
-void Beam2016Implementation::CalcZenithNormMatrix( int freq_hz )
+std::map<int, JonesMatrix>::iterator Beam2016Implementation::CalcZenithNormMatrix( int freq_hz )
 {
-   if( freq_hz != m_NormFreqHz ){
+   std::map<int, JonesMatrix>::iterator it_NormJones;
+   it_NormJones = m_NormJoneses.find( freq_hz );
+
+   if( it_NormJones == m_NormJoneses.end() ){
+      // normalisation Jones for requested frequency freq_hz not found -> calculate 
       printf("INFO : calculating Jones matrix for frequency = %d Hz\n",freq_hz);
    
       // Azimuth angles at which Jones components are maximum (see beam_full_EE.py for comments):
@@ -222,29 +228,42 @@ void Beam2016Implementation::CalcZenithNormMatrix( int freq_hz )
       double j11_max_az= 90.00;
    
       JonesMatrix tmp_jones;
-
+      
+      m_NormJoneses[ freq_hz ] = JonesMatrix(1,1,1,1);
+      JonesMatrix& norm_jones = m_NormJoneses[ freq_hz ]; // reference 
+            
       // j00 :
       tmp_jones = CalcJones( j00_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
-      m_NormJones.j00 = abs( tmp_jones.j00 );
+      norm_jones.j00 = abs( tmp_jones.j00 );
 
       // j01 :
       tmp_jones = CalcJones( j01_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
-      m_NormJones.j01 = abs( tmp_jones.j01 );
+      norm_jones.j01 = abs( tmp_jones.j01 );
 
       // j10 :
       tmp_jones = CalcJones( j10_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );      
-      m_NormJones.j10 = abs( tmp_jones.j10 );
+      norm_jones.j10 = abs( tmp_jones.j10 );
 
       // j11 :
       tmp_jones = CalcJones( j11_max_az, 0, freq_hz, m_DefaultDelays, m_DefaultAmps, false );
-      m_NormJones.j11 = abs( tmp_jones.j11 );               
+      norm_jones.j11 = abs( tmp_jones.j11 );               
       
-      m_NormJones.Print("Zenith normalisation matrix",0,0);
+      norm_jones.Print("Zenith normalisation matrix",0,0);      
       
-      m_NormFreqHz = freq_hz;
+      // set iterator value after it was set / added to m_NormJoneses map :
+      it_NormJones = m_NormJoneses.find( freq_hz );      
    }else{
       printf("INFO : normalisation matrix already calculated for frequency = %d Hz\n",freq_hz);
    }
+
+   // at this point normalisation matrix must be calculated and if it is not -> it's an error in the code :
+   if( it_NormJones == m_NormJoneses.end() ){
+      char szError[1024];
+      sprintf(szError, "Normalisation Jones matrix was not calculated for frequency %d Hz" , freq_hz );
+      BOOST_ASSERT_MSG( (it_NormJones != m_NormJoneses.end()) , szError );
+   }
+   
+   return it_NormJones;
 }
 
 

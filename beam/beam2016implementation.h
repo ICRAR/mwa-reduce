@@ -13,6 +13,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <map>
 
 #include <boost/math/special_functions/legendre.hpp>
 
@@ -152,9 +153,9 @@ protected :
 
    // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
    // Calculation of normalisation matrix :
-   void CalcZenithNormMatrix( int freq_hz );
-   JonesMatrix m_NormJones;
-   int         m_NormFreqHz;
+   std::map<int,JonesMatrix>::iterator CalcZenithNormMatrix( int freq_hz );
+
+   std::map<int,JonesMatrix> m_NormJoneses; // was JonesMatrix m_NormJones; int         m_NormFreqHz;
    // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
    // Some static/constant variables like : default delays and amps:
