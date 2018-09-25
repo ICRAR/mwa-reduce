@@ -1,4 +1,3 @@
-#include "areaset.h"
 #include "banddata.h"
 #include "delaunay.h"
 #include "units/imagecoordinates.h"
@@ -6,7 +5,6 @@
 #include "rmsynthesis.h"
 #include "uvector.h"
 
-#include "model/areaparser.h"
 #include "model/model.h"
 #include "model/powerlawsed.h"
 #include "fitsreader.h"
@@ -21,6 +19,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
+#include <limits>
 #include <random>
 #include <set>
 
@@ -65,7 +65,9 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral energy distribution. Usage:\n"
-		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-without/only <areafile>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] <model> [<more models...>]\n";
+		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near/outside <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] [-min-separation <angle>] [-replace-si <si>] [-set-cluster <name>] "
+		"[-rts <filename>] "
+		"<model> [<more models...>]\n";
 		return 0;
 	}
 	int argi = 1;
@@ -77,11 +79,10 @@ int main(int argc, char *argv[])
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0, sagecalFirstClusterChunkSize = 1;
 	std::string outputModel, collectName, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, skyModelFilename, sortBeamPrefix;
-	bool nearFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false;
+	bool nearFilter = false, outsideFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0, setFrequencyValue = 0.0, powerSumLimit = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
-	bool excludeArea = false, logNlogS = false, sourceStats = false;
-	std::unique_ptr<AreaSet> areaSet;
+	bool logNlogS = false, sourceStats = false;
 	size_t rndN = 0, minMeasurements = 0, thresholdIndex = 0;
 	double rndRA = 0.0, rndDec = 0.0, rndDist = 0.0;
 	bool doSearch = false;
@@ -95,6 +96,11 @@ int main(int argc, char *argv[])
 	std::string scaleToModelFilename;
 	double scaleToFreqStart = 0.0, scaleToFreqEnd = 0.0;
 	size_t scaleToNTerms = 0;
+	double minSeparation = 0.0;
+	bool replaceSI = false;
+	double replaceSIvalue = 0.0;
+	std::string setClusterName;
+	std::string rtsFilename;
 	
 	std::string selectSourceName;
 	while(argi!=argc && argv[argi][0]=='-')
@@ -147,8 +153,17 @@ int main(int argc, char *argv[])
 			++argi;
 			nearFilterDec = RaDecCoord::ParseDec(argv[argi]);
 			++argi;
-			nearFilterDist = atof(argv[argi]) * (M_PI/180.0);
+			nearFilterDist = Angle::Parse(argv[argi], "near filter distance", Angle::Degrees);
 			nearFilter = true;
+		} else if(option == "outside")
+		{
+			++argi;
+			nearFilterRA = RaDecCoord::ParseRA(argv[argi]);
+			++argi;
+			nearFilterDec = RaDecCoord::ParseDec(argv[argi]);
+			++argi;
+			nearFilterDist = Angle::Parse(argv[argi], "outside filter distance", Angle::Degrees);
+			outsideFilter = true;
 		} else if(option == "rnd")
 		{
 			++argi;
@@ -158,7 +173,7 @@ int main(int argc, char *argv[])
 			++argi;
 			rndDec = RaDecCoord::ParseDec(argv[argi]);
 			++argi;
-			rndDist = atof(argv[argi]) * (M_PI/180.0);
+			rndDist = Angle::Parse(argv[argi], "rnd", Angle::Degrees);
 		} else if(option == "collect")
 		{
 			doCollect = true;
@@ -266,13 +281,6 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			sortBeamPrefix = argv[argi];
-		} else if(option == "without" || option == "only")
-		{
-			excludeArea = (option == "without");
-			++argi;
-			areaSet.reset(new AreaSet());
-			AreaParser areaParser;
-			areaParser.Parse(*areaSet, argv[argi]);
 		} else if(option == "lognlogs")
 		{
 			++argi;
@@ -336,6 +344,24 @@ int main(int argc, char *argv[])
 			simPopulationFluxLo = atof(argv[argi+4]);
 			simPopulationFluxHi = atof(argv[argi+5]);
 			argi+=5;
+		} else if(option == "min-separation")
+		{
+			++argi;
+			minSeparation = Angle::Parse(argv[argi], "min-separation", Angle::Arcseconds);
+		}
+		else if(option == "replace-si")
+		{
+			++argi;
+			replaceSI = true;
+			replaceSIvalue = atof(argv[argi]);
+		} else if(option == "set-cluster")
+		{
+			++argi;
+			setClusterName = argv[argi];
+		} else if(option == "rts")
+		{
+			++argi;
+			rtsFilename = argv[argi];
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
@@ -430,6 +456,28 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+	if(replaceSI)
+	{
+		for(ModelSource& source : model)
+		{
+			for(ModelComponent& component : source)
+			{
+				if(component.HasPowerLawSED())
+				{
+					PowerLawSED& sed = static_cast<PowerLawSED&>(component.SED());
+					if(!sed.IsLogarithmic())
+						throw std::runtime_error("Can only set SI of sources with a logarithmic SED");
+					double refFreq, brightness[4];
+					std::vector<double> siTerms;
+					sed.GetData(refFreq, brightness, siTerms);
+					siTerms.assign(1, replaceSIvalue);
+					sed.SetData(refFreq, brightness, siTerms);
+				}
+				else throw std::runtime_error("Can only set SI of sources with a power law SED");
+			}
+		}
+	}
+	
 	if(simUniformN != 0 || simPopulationFluxHi != 0.0)
 	{
 		size_t simN;
@@ -465,14 +513,7 @@ int main(int argc, char *argv[])
 			double ra, dec;
 			do {
 				ra = dist(rnd) * 2.0*M_PI;
-				dec = acos(2.0*dist(rnd) - 1.0);
-				// normalize dec to -90 to 90 deg.
-				if(dec > 0.5*M_PI) {
-					dec = 0.5*M_PI - dec;
-				}
-				else if(dec < -0.5*M_PI) {
-					dec = -0.5*M_PI - dec;
-				}
+				dec = 0.5*M_PI - acos(2.0*dist(rnd) - 1.0);
 			} while(ImageCoordinates::AngularDistance(ra, dec, simRa, simDec) > simDist);
 			ModelComponent comp;
 			comp.SetPosRA(ra);
@@ -604,21 +645,6 @@ int main(int argc, char *argv[])
 		model = newModel;
 	}
 	
-	if(areaSet != 0)
-	{
-		std::vector<size_t> toBeRemoved;
-		for(size_t i=0; i!=model.SourceCount(); ++i)
-		{
-			const ModelSource& source = model.Source(i);
-			std::vector<const SkyArea*> areas;
-			areaSet->FindAreas(areas, source.Peak().PosRA(), source.Peak().PosDec());
-			if((areas.empty() && !excludeArea) || (!areas.empty() && excludeArea))
-				toBeRemoved.push_back(i);
-		}
-		for(std::vector<size_t>::const_reverse_iterator i=toBeRemoved.rbegin(); i!=toBeRemoved.rend(); ++i)
-			model.RemoveSource(*i);
-	}
-	
 	if(!toAppBeamPrefix.empty())
 	{
 		std::vector<ao::uvector<double>> images(8);
@@ -725,6 +751,30 @@ int main(int argc, char *argv[])
 		model = temp;
 	}
 	
+	if(minSeparation != 0.0)
+	{
+		Model newModel;
+		for(size_t i=0; i!=model.SourceCount(); ++i) {
+			const ModelSource &s1 = model.Source(i);
+			bool remain = true;
+			for(size_t j=0; j!=model.SourceCount(); ++j) {
+				if(i != j)
+				{
+					const ModelSource &s2 = model.Source(j);
+					double dist = ImageCoordinates::AngularDistance(s1.MeanRA(), s1.MeanDec(), s2.MeanRA(), s2.MeanDec());
+					if(dist < minSeparation)
+					{
+						if(s1.TotalFlux(Polarization::StokesI) < s2.TotalFlux(Polarization::StokesI))
+							remain = false;
+					}
+				}
+			}
+			if(remain)
+				newModel.AddSource(s1);
+		}
+		model = newModel;
+	}
+	
 	if(applyClusterThreshold)
 	{
 		Model temp;
@@ -769,7 +819,7 @@ int main(int argc, char *argv[])
 			model.AddSource(source);
 		}
 	}
-	if(nearFilter)
+	if(nearFilter || outsideFilter)
 	{
 		Model newModel;
 		for(size_t i = model.SourceCount(); i>0; --i)
@@ -781,12 +831,12 @@ int main(int argc, char *argv[])
 				double dist = ImageCoordinates::AngularDistance(source.Peak().PosRA(), source.Peak().PosDec(), nearFilterRA, nearFilterDec);
 				isNear = (dist <= nearFilterDist);
 			}
-			if(isNear)
+			if((isNear && nearFilter) || (!isNear && outsideFilter))
 			{
 				newModel.AddSource(source);
 			}
 		}
-		model = newModel;
+		model = std::move(newModel);
 	}
 	
 	if(doCollect)
@@ -802,6 +852,12 @@ int main(int argc, char *argv[])
 		}
 		model = Model();
 		model.AddSource(newSource);
+	}
+	
+	if(!setClusterName.empty())
+	{
+		for(ModelSource& source : model)
+			source.SetClusterName(setClusterName);
 	}
 	
 	if(powerlaw || resample || resampleByAveraging)
@@ -1486,6 +1542,34 @@ int main(int argc, char *argv[])
 				<< RaDecCoord::RAToString(source.MeanRA()) << " "
 				<< RaDecCoord::DecToString(source.MeanDec()) << " "
 				<< source.TotalFlux(Polarization::StokesI) << '\n';
+		}
+	}
+	
+	if(!rtsFilename.empty())
+	{
+		std::ofstream rtsStream(rtsFilename);
+		for(const ModelSource& s : model)
+		{
+			std::string name = s.Name();
+			std::replace(name.begin(), name.end(), ' ', '_');
+			std::replace(name.begin(), name.end(), '-', 'm');
+			rtsStream << "SOURCE "
+				<< std::setprecision(std::numeric_limits<double>::digits10 + 1)
+				<< name << " "
+				<< s.MeanRA()/M_PI*12.0 << " "
+				<< s.MeanDec()/M_PI*180.0 << '\n';
+			for(const ModelComponent& c : s)
+			{
+				rtsStream << "COMPONENT "
+				<< c.PosRA()/M_PI*12.0 << " "
+				<< c.PosDec()/M_PI*180.0 << '\n'
+				<< "FREQ 150.0e6 "
+				<< c.SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
+				<< "FREQ 200.0e6 "
+				<< c.SED().FluxAtFrequency(200e6, Polarization::StokesI) << " 0 0 0\n"
+				"END COMPONENT\n";
+			}
+			rtsStream << "END SOURCE\n";
 		}
 	}
 	
