@@ -3,6 +3,7 @@
 
 #include "spectralenergydistribution.h"
 #include "measuredsed.h"
+#include "powerlawsed.h"
 
 #include "../units/imagecoordinates.h"
 #include "../units/radeccoord.h"
@@ -43,10 +44,11 @@ class ModelComponent
 		enum Type Type() const { return _type; }
 		long double PosRA() const { return _posRA; }
 		long double PosDec() const { return _posDec; }
-		bool HasSED() const { return _sed != 0; }
+		bool HasSED() const { return _sed != nullptr; }
 		SpectralEnergyDistribution &SED() { return *_sed; }
 		const SpectralEnergyDistribution &SED() const { return *_sed; }
-		bool HasMeasuredSED() const { return dynamic_cast<MeasuredSED*>(_sed.get())!=0; }
+		bool HasMeasuredSED() const { return dynamic_cast<MeasuredSED*>(_sed.get())!=nullptr; }
+		bool HasPowerLawSED() const { return dynamic_cast<PowerLawSED*>(_sed.get())!=nullptr; }
 		MeasuredSED& MSED() { return static_cast<MeasuredSED&>(*_sed); }
 		const MeasuredSED& MSED() const { return static_cast<const MeasuredSED&>(*_sed); }
 		long double L() const { return _l; }

@@ -14,26 +14,16 @@ class Model
 		
 		Model() :
 			_polarizationType(FullXY)
-		{
-		}
+		{ }
 
-		Model(const Model &source) :
-			_polarizationType(source._polarizationType),
-			_sources(source._sources),
-			_clusters(source._clusters)
-		{
-		}
+		Model(const Model& source) = default;
+		Model(Model&& source) = default;
 		
 		explicit Model(const char *filename) { read(filename); }
 		explicit Model(const std::string& filename) { read(filename.c_str()); }
 		
-		Model& operator=(const Model &source)
-		{
-			_polarizationType = source._polarizationType;
-			_sources = source._sources;
-			_clusters = source._clusters;
-			return *this;
-		}
+		Model& operator=(const Model& source) = default;
+		Model& operator=(Model&& source) = default;
 		
 		void operator+=(const Model &rhs);
 		

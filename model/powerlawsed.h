@@ -105,7 +105,8 @@ public:
 	 * @param brightnessVector A Stokes matrix representing the fluxes at the reference frequency
 	 * @param siTerms The SI terms
 	 */
-	void SetData(double referenceFrequency, const double* brightnessVector, const ao::uvector<double>& siTerms)
+	template<typename Vector>
+	void SetData(double referenceFrequency, const double* brightnessVector, const Vector& siTerms)
 	{
 		_referenceFrequency = referenceFrequency;
 		double refBrightness = brightnessVector[0];
@@ -142,7 +143,8 @@ public:
 	 * @param brightnessVector Flux of Stokes I, Q, U, V in Jy.
 	 * @param siTerms SI index, SI curvature and higher terms.
 	 */
-	void GetData(double& referenceFrequency, double* brightnessVector, std::vector<double>& siTerms) const
+	template<typename Vector>
+	void GetData(double& referenceFrequency, double* brightnessVector, Vector& siTerms) const
 	{
 		referenceFrequency = _referenceFrequency;
 		double f = _terms[0];
