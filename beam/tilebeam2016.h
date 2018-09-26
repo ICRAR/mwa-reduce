@@ -9,10 +9,6 @@
 #include "lnaimpedance.h"
 #include "beam2016implementation.h"
 
-#ifndef SPEED_OF_LIGHT
-#define SPEED_OF_LIGHT 299792458.0        // speed of light in m/s
-#endif
-
 class TileBeam2016 : public Beam2016Implementation
 {
 public:
@@ -50,7 +46,5 @@ private:
 	 */
 	void getInterpolatedResponse(double az, double za, double freq, std::complex<double>* result);
 };
-
-#undef SPEED_OF_LIGHT
 
 #endif

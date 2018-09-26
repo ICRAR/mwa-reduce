@@ -1,4 +1,7 @@
 #include "beam/tilebeam.h"
+#include "beam/tilebeam2013.h"
+#include "beam/tilebeam2014.h"
+#include "beam/tilebeam2016.h"
 
 #include "fitsreader.h"
 #include "fitswriter.h"
