@@ -32,18 +32,13 @@
 class JonesMatrix 
 {
 public :
-   std::complex<double> j00; 
-   std::complex<double> j01; 
-   std::complex<double> j10; 
-   std::complex<double> j11; 
+   std::complex<double> j00, j01, j10, j11; 
 
    JonesMatrix( double j00_r=0.00, double j01_r=0.00, double j10_r=0.00, double j11_r=0.00 ) : j00(j00_r,0), j01(j01_r,0), j10(j10_r,0), j11(j11_r,0){
    }      
    
    // to be replaced with proper std initialisation :
    static void zeros( std::vector< std::vector<JonesMatrix> >& jones, int x_size, int y_size );
-   
-   void Print(const char* name,double az_deg=0,double za_deg=0);   
 };
 
 
@@ -133,8 +128,8 @@ protected :
    
    // Information on last modes parameters - not to recalculate the same again and again !
    int     m_CalcModesLastFreqHz;
-   double* m_CalcModesLastDelays;
-   double* m_CalcModesLastAmps;
+   std::unique_ptr<double[]> m_CalcModesLastDelays;
+   std::unique_ptr<double[]> m_CalcModesLastAmps;
    
    // function comparing current parameters : frequency, delays and amplitudes with those previously used to calculate spherical waves coefficients (stored in the 3 variables above)
    int IsCalcModesRequired( int freq_hz, int n_ant, const double* delays, const double* amps );
@@ -191,7 +186,7 @@ protected :
       
       
    std::string _h5filename;   // H5 File name 
-   H5::H5File* m_pH5File;   
+   std::unique_ptr<H5::H5File> m_pH5File;   
    
    // Data structures for H5 file data :
    std::vector<std::string> m_obj_list;  // list of datasets in H5 file 
@@ -199,9 +194,6 @@ protected :
    std::vector< std::vector<double> > m_Modes;  // data in Modes DataSet 
 
    //------------------------------------------------------------------------------------------------------ maths functions and wrappers ---------------------------------------------------------------------------------------
-   // local power calculations
-   // WARNING : please do not remove - the program works 2x slower when std::power is used instead !!!
-   std::complex<double> power_complex( std::complex<double> val, int n );
 
    // Calculations of Legendre polynomials :
    void lpmv( std::vector<double>& output, int n, double x );
@@ -215,14 +207,6 @@ protected :
    void cache_factorial( unsigned max_n );                     
    // precalculated factorials :
    std::vector<double> m_Factorial;   
-
-
-   //----------------------------------------------------------------------------------- debuging / logging functions ----------------------------------------------------------------------------------------------------------------
-   void print( std::vector< std::complex<double> >& Q1, std::vector< std::complex<double> >& Q1_accum, std::vector< std::complex<double> >& Q2, std::vector< std::complex<double> >& Q2_accum, int my_len_half, 
-               std::vector<double>& N_accum, std::vector<double>& M_accum, double Nmax );
-   void print( std::vector<double>& arr, const char* name, int force=0 );
-   void print( std::vector<int>& arr, const char* name, int force=0 );
-   void print( std::vector< std::vector<double> >& arr, const char* name, int force=0 );
 };
 
 
