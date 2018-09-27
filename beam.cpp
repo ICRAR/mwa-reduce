@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
 	const casacore::MDirection::Ref azelgeoRef(casacore::MDirection::AZELGEO, frame);
 	const casacore::MDirection::Ref j2000Ref(casacore::MDirection::J2000, frame);
 	casacore::MPosition wgs = casacore::MPosition::Convert(arrayPos, casacore::MPosition::WGS84)();
-	double arrLatitude = wgs.getValue().getLat(); // arrayPos.getValue().getLat();
+	double arrLatitude = wgs.getValue().getLat();
 	
 	casacore::MDirection zenith(casacore::MVDirection(0.0, 0.0, 1.0), azelgeoRef);
 	casacore::MDirection zenithHaDec = casacore::MDirection::Convert(zenith, hadecRef)();

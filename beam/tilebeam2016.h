@@ -5,8 +5,6 @@
 #include <map>
 #include <set>
 
-#include "tileimpedance.h"
-#include "lnaimpedance.h"
 #include "beam2016implementation.h"
 
 class TileBeam2016 : public Beam2016Implementation

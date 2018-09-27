@@ -1,5 +1,4 @@
 #include "tilebeam2016.h"
-#include "joneslookupdipole.h"
 
 #define SPEED_OF_LIGHT 299792458.0        // speed of light in m/s
 
@@ -9,8 +8,6 @@
 
 #include <limits>
 
-//bool TileBeam2016::_firstInit = true;
-
 TileBeam2016::TileBeam2016(const double* delays, bool frequencyInterpolation) :
 	Beam2016Implementation(delays, nullptr),
 	_frequencyInterpolation(frequencyInterpolation)
@@ -19,11 +16,6 @@ TileBeam2016::TileBeam2016(const double* delays, bool frequencyInterpolation) :
 	{
 		_delaysInSteps[i] = delays[i];
 	}
-	// if(_firstInit)
-	//{
-	//	std::cout << "Frequency interpolation of beam is " << (_frequencyInterpolation ? "enabled" : "disabled") << ".\n";
-	//	_firstInit = false;
-	//}
 }
 
 /**

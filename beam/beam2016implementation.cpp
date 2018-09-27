@@ -106,6 +106,7 @@ void Beam2016Implementation::CalcJonesArray( vector< vector<double> >& azim_arr,
         }
      }
   }
+  
   JonesMatrix::zeros( jones, (int)(azim_arr[0].size()), (int)(azim_arr.size()) );
 
   for(size_t y=0;y<azim_arr.size();y++){
@@ -702,15 +703,15 @@ int Beam2016Implementation::Read()
 {
    if( !m_pH5File ) {
       //if(!boost::filesystem::exists(_h5filename)) {
-         string h5_test_path = DEFAULT_H5_FILE_PATH;
-         h5_test_path += DEFAULT_H5_FILE;
-         
-        std::string h5_path = System::FindPythonFilePath(h5_test_path);
-         
-         // found H5 file and using it :
-         std::cout << "Found H5 file " + _h5filename + " at " + h5_path + " -> using this path";
+			string h5_test_path = DEFAULT_H5_FILE_PATH;
+			h5_test_path += DEFAULT_H5_FILE;
+				
+			std::string h5_path = System::FindPythonFilePath(h5_test_path);
+				
+			// found H5 file and using it :
+			std::cout << "Found H5 file " + _h5filename + " at " + h5_path + " -> using this path";
    
-      m_pH5File.reset(new H5File( _h5filename.c_str(), H5F_ACC_RDONLY ));
+      m_pH5File.reset(new H5File(h5_path.c_str(), H5F_ACC_RDONLY ));
    } else {
       return 1;
    }
