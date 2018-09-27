@@ -13,6 +13,7 @@ SET(CASACORE_MAKE_REQUIRED_EXTERNALS_OPTIONAL TRUE)
 find_package(Casacore REQUIRED COMPONENTS casa ms tables measures fits scimath scimath_f)
 set(CASA_LIBS ${CASACORE_LIBRARIES})
 
+find_package(Threads REQUIRED)
 find_library(FFTW3_LIB fftw3 REQUIRED)
 find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
 find_package(Boost COMPONENTS date_time filesystem system thread REQUIRED)
@@ -132,6 +133,8 @@ if(LIBXML2_FOUND)
 else(LIBXML2_FOUND)
   message("Libxml2 NOT found: will NOT build vo2model and scaleimage")
 endif(LIBXML2_FOUND)
+
+link_libraries(${CMAKE_THREAD_LIBS_INIT})
 
 target_link_libraries(addimg ${FITSIO_LIB} ${CASA_LIBS} ${Boost_DATE_TIME_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(aegean2model ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB})
