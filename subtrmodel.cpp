@@ -35,10 +35,6 @@ int main(int argc, char **argv)
 			++argi;
 		}
 		
-		std::cout << "Reading model... " << std::flush;
-		Model model(argv[argi]);
-		std::cout << "DONE\n";
-		
 		std::cout << "Opening measurement set... " << std::flush;
 		MeasurementSet ms(argv[argi+1], Table::Update);
 		std::cout << "DONE\n";
@@ -65,6 +61,10 @@ int main(int argc, char **argv)
 			}
 		}
 		else {
+			std::cout << "Reading model... " << std::flush;
+			Model model(argv[argi]);
+			std::cout << "DONE\n";
+		
 			Subtractor subtractor(threadCount);
 			subtractor.SetRevert(revert);
 			subtractor.SetToModel(setvis);

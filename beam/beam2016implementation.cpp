@@ -29,7 +29,6 @@ using namespace H5;
 // constants :
 static const double deg2rad = M_PI/180.00;
 
-int Beam2016Implementation::m_VerbLevel=-1; // >=0 to enable talking
 const double Beam2016Implementation::m_DefaultDelays[]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // default delays at zenith 
 const double Beam2016Implementation::m_DefaultAmps[]={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};   // default amplitudes 1 for all the tile dipoles 
 const double Beam2016Implementation::_delayStep=435.0e-12; // beamformer step in pico-seconds 
@@ -67,8 +66,8 @@ int Beam2016Implementation::find_closest_freq(int freq_hz)
 
 Beam2016Implementation::Beam2016Implementation( const double* delays, const double* amps ) : 
   m_CalcModesLastFreqHz(-1),
-  m_CalcModesLastDelays(nullptr),
-  m_CalcModesLastAmps(nullptr),
+  m_CalcModesLastDelays(),
+  m_CalcModesLastAmps(),
   m_AntennaCount(N_ANT_COUNT),
   m_pH5File()
 {
@@ -91,7 +90,7 @@ Beam2016Implementation::~Beam2016Implementation()
 
 
 //-------------------------------------------------------------------- Calculation of Jones matrix ------------------------------------------------------------------------------------------------------------------
-void Beam2016Implementation::CalcJonesArray( vector< vector<double> >& azim_arr, vector< vector<double> >& za_arr, vector< vector<JonesMatrix> >& jones, int freq_hz_param, const double* delays, const double* amps, bool bZenithNorm )
+void Beam2016Implementation::CalcJonesArray( vector< vector<double> >& azim_arr, vector< vector<double> >& za_arr, vector< vector<JonesMatrix> >& jones, int freq_hz_param, bool bZenithNorm )
 {  
   // convert AZIM -> FEKO PHI phi=90-azim or azim=90-phi :
   // python : phi_arr=math.pi/2-phi_arr #Convert to East through North (FEKO coords)

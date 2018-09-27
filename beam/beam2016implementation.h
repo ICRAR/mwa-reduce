@@ -79,7 +79,7 @@ public :
    // OUTPUT :
    //       2D array of JonesMatrix for each pixel 
    void CalcJonesArray( std::vector< std::vector<double> >& azim_arr, std::vector< std::vector<double> >& za_arr, std::vector< std::vector<JonesMatrix> >& jones,
-                   int freq_hz_param, const double* delays=NULL, const double* amps=NULL, bool bZenithNorm=true );
+                   int freq_hz_param, bool bZenithNorm=true );
 protected :
 
    // Calculation of Jones matrix for a single pointing direction (internal function):
