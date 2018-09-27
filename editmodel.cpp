@@ -1553,21 +1553,28 @@ int main(int argc, char *argv[])
 			std::string name = s.Name();
 			std::replace(name.begin(), name.end(), ' ', '_');
 			std::replace(name.begin(), name.end(), '-', 'm');
+			ModelSource::const_iterator compIter = s.begin();
 			rtsStream << "SOURCE "
 				<< std::setprecision(std::numeric_limits<double>::digits10 + 1)
 				<< name << " "
-				<< s.MeanRA()/M_PI*12.0 << " "
-				<< s.MeanDec()/M_PI*180.0 << '\n';
-			for(const ModelComponent& c : s)
+				<< compIter->PosRA()/M_PI*12.0 << " "
+				<< compIter->PosDec()/M_PI*180.0 << '\n'
+				<< "FREQ 150.0e6 "
+				<< compIter->SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
+				<< "FREQ 200.0e6 "
+				<< compIter->SED().FluxAtFrequency(200e6, Polarization::StokesI) << " 0 0 0\n";
+			++compIter;
+			while(compIter!=s.end())
 			{
 				rtsStream << "COMPONENT "
-				<< c.PosRA()/M_PI*12.0 << " "
-				<< c.PosDec()/M_PI*180.0 << '\n'
+				<< compIter->PosRA()/M_PI*12.0 << " "
+				<< compIter->PosDec()/M_PI*180.0 << '\n'
 				<< "FREQ 150.0e6 "
-				<< c.SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
+				<< compIter->SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
 				<< "FREQ 200.0e6 "
-				<< c.SED().FluxAtFrequency(200e6, Polarization::StokesI) << " 0 0 0\n"
+				<< compIter->SED().FluxAtFrequency(200e6, Polarization::StokesI) << " 0 0 0\n"
 				"ENDCOMPONENT\n";
+				++compIter;
 			}
 			rtsStream << "ENDSOURCE\n";
 		}
