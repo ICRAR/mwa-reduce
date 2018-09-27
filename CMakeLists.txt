@@ -5,7 +5,7 @@ project(mwa-reduce)
 # Add CMake subdirectory to module search path
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
 
-set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -std=c++0x")
+set(CMAKE_CXX_FLAGS "-O3 -ggdb -Wvla -Wall -DNDEBUG -march=native -std=c++0x -pthread")
 
 find_package(HDF5 COMPONENTS C CXX REQUIRED)
 
@@ -78,6 +78,8 @@ IF("${isSystemDir}" STREQUAL "-1")
    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 ENDIF("${isSystemDir}" STREQUAL "-1")
 
+link_libraries(${CMAKE_THREAD_LIBS_INIT})
+
 add_library(mwareducebeam fitsiochecker.cpp beam/joneslookupdipole.cpp beam/system.cpp beam/tilebeambase.cpp beam/tilebeam2013.cpp beam/tilebeam2014.cpp beam/tilebeam2016.cpp beam/beam2016implementation.cpp beam/tileimpedance.cpp beam/lnaimpedance.cpp alglib/ap.cpp alglib/alglibinternal.cpp alglib/alglibmisc.cpp alglib/integration.cpp alglib/interpolation.cpp alglib/linalg.cpp alglib/optimization.cpp alglib/solvers.cpp alglib/specialfunctions.cpp)
 set(BEAMFILES "")
 
@@ -133,8 +135,6 @@ if(LIBXML2_FOUND)
 else(LIBXML2_FOUND)
   message("Libxml2 NOT found: will NOT build vo2model and scaleimage")
 endif(LIBXML2_FOUND)
-
-link_libraries(${CMAKE_THREAD_LIBS_INIT})
 
 target_link_libraries(addimg ${FITSIO_LIB} ${CASA_LIBS} ${Boost_DATE_TIME_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(aegean2model ${FITSIO_LIB} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB})
