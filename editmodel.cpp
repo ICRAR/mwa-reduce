@@ -1567,9 +1567,9 @@ int main(int argc, char *argv[])
 				<< c.SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
 				<< "FREQ 200.0e6 "
 				<< c.SED().FluxAtFrequency(200e6, Polarization::StokesI) << " 0 0 0\n"
-				"END COMPONENT\n";
+				"ENDCOMPONENT\n";
 			}
-			rtsStream << "END SOURCE\n";
+			rtsStream << "ENDSOURCE\n";
 		}
 	}
 	
