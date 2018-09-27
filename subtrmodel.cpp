@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 				modelColumn.get(i, modelArr);
 				
 				casacore::Array<casacore::Complex>::contiter d=dataArr.cbegin();
-				for(casacore::Array<casacore::Complex>::const_contiter m=modelArr.cbegin(); m!=modelArr.cend(); ++m)
+				for(casacore::Array<casacore::Complex>::const_contiter m=modelArr.cbegin(); m!=modelArr.cend(); ++m, ++d)
 				{
 					*d -= *m;
 				}
