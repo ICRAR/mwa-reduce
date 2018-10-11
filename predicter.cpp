@@ -87,12 +87,13 @@ void Predicter::updateBeam(ModelComponent& component)
 {
 	SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
 	BeamEvaluator::PrecalcPosInfo posInfo;
-	if(_beamEvaluator != 0) {
+	if(_beamEvaluator != nullptr) {
 		_beamEvaluator->PrecalculatePositionInfo(posInfo, component.PosRA(), component.PosDec());
 	}
-	for(size_t ch=0;ch!=_channelCount;++ch)
+	
+	_threads.For(0, _channelCount, [&](size_t ch, size_t /*thread*/)
 	{
-		if(_beamEvaluator != 0)
+		if(_beamEvaluator != nullptr)
 		{
 			double chCentreFreq = (_channelCount>1) ? (_startFrequency + (long double) ch * (_endFrequency - _startFrequency) / (long double) (_channelCount-1)) : _startFrequency;
 			_beamEvaluator->EvaluateAbsToApparentGain(posInfo, chCentreFreq, &parameters->beamValues[ch*4]);
@@ -106,7 +107,7 @@ void Predicter::updateBeam(ModelComponent& component)
 			parameters->appBrightness[ch*4+0] = 1.0; parameters->appBrightness[ch*4+1] = 0.0;
 			parameters->appBrightness[ch*4+2] = 0.0; parameters->appBrightness[ch*4+3] = 1.0;
 		}
-	}
+	});
 }
 
 void Predicter::UpdateBeam(Model& model)

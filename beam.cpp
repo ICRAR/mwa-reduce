@@ -40,7 +40,7 @@ void MakeBeam(double** imgPtr, size_t width, size_t height, double pixelSizeX, d
 		j2000ToHaDecRef(j2000Ref, hadecRef),
 		j2000ToAzelGeoRef(j2000Ref, azelgeoRef);
 
-	TileBeamBase<TileImplementation> tilebeam(delays, freqInterpolation);
+	TileBeamBase<TileImplementation> tilebeam(delays, freqInterpolation, "");
 	ProgressBar progressBar("Constructing beam");
 	for(size_t y=0;y!=height;++y)
 	{

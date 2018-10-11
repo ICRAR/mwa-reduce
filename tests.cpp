@@ -137,7 +137,7 @@ void testRotationAngle()
 
 void showBeam(const double *delays, double ra, double dec)
 {
-	TileBeam beam(delays);
+	TileBeam beam(delays, false, "");
 	std::complex<double> gains[4];
 	
 	dec = dec *(M_PI/180.0);

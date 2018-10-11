@@ -11,7 +11,7 @@
 
 bool TileBeam2014::_firstInit = true;
 
-TileBeam2014::TileBeam2014(const double* delays, bool frequencyInterpolation) :
+TileBeam2014::TileBeam2014(const double* delays, bool frequencyInterpolation, const std::string& /*searchPath*/) :
 	_dipoleHeight(0.28), /* Seems to be 0.3 in the RTS, 0.278 in beam script */
 	_dipoleSeparations(1.100),
 	_delayStep(435.0e-12),

@@ -4,6 +4,8 @@
 #include <complex>
 #include <vector>
 
+#include "aocommon/threadpool.h"
+
 class Predicter
 {
 	public:
@@ -52,6 +54,7 @@ class Predicter
 		class BeamEvaluator *_beamEvaluator;
 		CNumType _totalFlux[4];
 		std::vector<std::complex<double>> _rhsSolutions;
+		ThreadPool _threads;
 };
 
 #endif

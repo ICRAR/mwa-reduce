@@ -47,7 +47,7 @@ BeamEvaluator::BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays)
 	}
 	if(reportDelays)
 		std::cout << "]\n";
-	_tileBeam.reset(new TileBeam(delays));
+	_tileBeam.reset(new TileBeam(delays, false, ""));
 }
 
 void BeamEvaluator::EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double>* gains)

@@ -6,7 +6,7 @@
 class TileBeam2013
 {
 public:
-	TileBeam2013(const double *delays, bool frequencyInterpolation = true);
+	TileBeam2013(const double *delays, bool frequencyInterpolation, const std::string& searchPath);
 	
 	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain);
 	

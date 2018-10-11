@@ -10,7 +10,7 @@
 // taken from the RTS codebase
 // Optimized 2012-11-17 by Offringa.
 
-TileBeam2013::TileBeam2013(const double *delays, bool /*frequencyInterpolation*/) :
+TileBeam2013::TileBeam2013(const double *delays, bool /*frequencyInterpolation*/, const std::string& /*searchPath*/) :
 	_dipoleSize(0.278), /* Seems to be 0.3 in the RTS, 0.278 in beam script */
 	_dipoleSeparations(1.100),
 	_delayStep(435.0e-12),
