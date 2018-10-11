@@ -1,7 +1,7 @@
 #include "tilebeambase.h"
-#include "tilebeam2013.h"
-#include "tilebeam2014.h"
 #include "tilebeam2016.h"
+#include "tilebeam2014.h"
+#include "tilebeam2013.h"
 
 #include <casacore/measures/Measures/MDirection.h>
 #include <casacore/measures/Measures/MEpoch.h>
@@ -100,8 +100,8 @@ void TileBeamBase<Implementation>::PrecalculatePositionInfo(TileBeamBase::Precal
 	posInfo.azimuth = azel.getValue().get()[0];
 }
 
-template class TileBeamBase<TileBeam2013>;
+template class TileBeamBase<TileBeam2016>;
 
 template class TileBeamBase<TileBeam2014>;
 
-template class TileBeamBase<TileBeam2016>;
+template class TileBeamBase<TileBeam2013>;

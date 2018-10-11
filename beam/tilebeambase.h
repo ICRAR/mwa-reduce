@@ -14,7 +14,7 @@ template<typename Implementation>
 class TileBeamBase : private Implementation
 {
 public:
-	TileBeamBase(const double *delays, bool frequencyInterpolation = true) : Implementation(delays, frequencyInterpolation) { }
+	TileBeamBase(const double *delays, bool frequencyInterpolation, const std::string& searchPath) : Implementation(delays, frequencyInterpolation, searchPath) { }
 	
 	struct PrecalcPosInfo
 	{

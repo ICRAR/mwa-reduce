@@ -10,7 +10,7 @@
 class TileBeam2016 : public Beam2016Implementation
 {
 public:
-	TileBeam2016(const double *delays, bool frequencyInterpolation = true);
+	TileBeam2016(const double *delays, bool frequencyInterpolation, const std::string& searchPath);
 	
 	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
 	{

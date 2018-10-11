@@ -8,8 +8,8 @@
 
 #include <limits>
 
-TileBeam2016::TileBeam2016(const double* delays, bool frequencyInterpolation) :
-	Beam2016Implementation(delays, nullptr),
+TileBeam2016::TileBeam2016(const double* delays, bool frequencyInterpolation, const std::string& searchPath) :
+	Beam2016Implementation(delays, nullptr, searchPath),
 	_frequencyInterpolation(frequencyInterpolation)
 {
 	for(size_t i=0;i!=16;++i)
