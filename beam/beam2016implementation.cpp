@@ -608,7 +608,6 @@ const std::vector<std::vector<double>>& Beam2016Implementation::GetDataSet(const
 // Read dataset_name from H5 file
 void Beam2016Implementation::ReadDataSet(const std::string& dataset_name, vector<vector<double>>& out_vector, H5::H5File& h5File )
 {
-	std::cout << "Reading dataset " << dataset_name << "\n";
 	DataSet modes = h5File.openDataSet(dataset_name);
 	DataSpace modes_dataspace = modes.getSpace();
 	int rank = modes_dataspace.getSimpleExtentNdims();            
