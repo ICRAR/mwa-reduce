@@ -29,7 +29,6 @@ public:
 	}
 	
 private:
-	double _delaysInSteps[16];
 	bool _frequencyInterpolation;
 	
 	/**
@@ -42,7 +41,11 @@ private:
 	/**
 	 * Create a few tabulated responses and interpolated over these.
 	 */
-	void getInterpolatedResponse(double az, double za, double freq, std::complex<double>* result);
+	void getInterpolatedResponse(double az, double za, double freq, std::complex<double>* result)
+	{
+		// Not implemented yet: just call normal function
+		getTabulatedResponse(az, za, freq, result);
+	}
 };
 
 #endif
