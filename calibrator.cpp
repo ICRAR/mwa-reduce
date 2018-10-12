@@ -280,6 +280,7 @@ void Calibrator::Perform()
 				std::cout << "DONE (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected)\nCalibrating...\n";
 		
 			ParallelFor<size_t> loop(_threadCount);
+			_threadData.assign(loop.NThreads(), ThreadData(chBlockCount));
 			loop.Run(0, partChBlockCount, std::bind(&Calibrator::calibrateChannelBlock, this, std::placeholders::_1, std::placeholders::_2));
 
 			// Save solutions
@@ -383,12 +384,12 @@ void Calibrator::Perform()
 
 void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIndex)
 {
-	size_t lastSuccessfulChannel = _threadData[threadIndex].lastSuccesfulChannel;
+	size_t lastSuccessfulChBlock = _threadData[threadIndex].lastSuccesfulChBlock;
 	
 	CalibrationMethod& method = *_calMethods[channelBlockIndex];
 	
-	if(lastSuccessfulChannel < channelBlockIndex)
-		method.InitSolutions(*_calMethods[lastSuccessfulChannel]);
+	if(lastSuccessfulChBlock < channelBlockIndex)
+		method.InitSolutions(*_calMethods[lastSuccessfulChBlock]);
 	size_t iters = _nIter;
 	double limit = _stoppingAccuracy;
 	method.Execute(limit, iters);
@@ -410,11 +411,11 @@ void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIn
 			{
 				std::cout << "Channel " << channelBlockIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
 			}
-			_threadData[threadIndex].lastSuccesfulChannel = channelBlockIndex;
+			_threadData[threadIndex].lastSuccesfulChBlock = channelBlockIndex;
 		}
 	}
 	else {
-		_threadData[threadIndex].lastSuccesfulChannel = channelBlockIndex;
+		_threadData[threadIndex].lastSuccesfulChBlock = channelBlockIndex;
 	}
 	if(channelBlockIndex<=16)
 	{

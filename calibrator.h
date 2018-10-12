@@ -131,7 +131,8 @@ public:
 private:
 	struct ThreadData
 	{
-		size_t lastSuccesfulChannel;
+		ThreadData(size_t nChBlocks) : lastSuccesfulChBlock(nChBlocks) { }
+		size_t lastSuccesfulChBlock;
 	};
 	std::vector<ThreadData> _threadData;
 	std::vector<std::unique_ptr<class CalibrationMethod>> _calMethods;
