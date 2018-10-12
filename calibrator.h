@@ -10,7 +10,6 @@
 
 #include <memory>
 #include <mutex>
-#include <queue>
 #include <vector>
 
 class Calibrator
