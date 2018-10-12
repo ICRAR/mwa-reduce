@@ -2,10 +2,11 @@
 
 #include "calibrationmethod.h"
 #include "banddata.h"
-#include "beamevaluator.h"
 #include "matrix2x2.h"
-#include "mspredicter.h"
 #include "parallelfor.h"
+
+#include "beamevaluator.h"
+#include "mspredicter.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 

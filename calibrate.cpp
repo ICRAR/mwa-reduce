@@ -2,15 +2,17 @@
 
 #include <iostream>
 #include <stdexcept>
+
 #include "calibrator.h"
 #include "calibrationmethod.h"
+#include "system.h"
 
 int main(int argc, char *argv[])
 {
 	if(argc < 3)
 	{
 		std::cout <<
-			"Usage: calibrate [-absmem <mem in GB>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <max uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rotation] [-applybeam] [-t timesteps] [-ch channels per solution] [-datacolumn <name>] [-quiet] [-mwa-path path] <measurementset.ms> <solutions.bin>\n\n"
+			"Usage: calibrate [-absmem <mem in GB>] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <max uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rotation] [-applybeam] [-t timesteps] [-interval <starttime> <endtime>] [-ch channels per solution] [-datacolumn <name>] [-quiet] [-mwa-path path] <measurementset.ms> <solutions.bin>\n\n"
 			"This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n\n"
 			"The official name of this algorithm is the \"Mitchcal\" algorithm. The following is a suggestion for referencing this algorithm in scientific articles:\n"
 			"\" Calibration was performed with the full-Jones Mitchcal algorithm developed for MWA calibration, as described by Offringa et al. (2016) \"\n"
@@ -30,7 +32,8 @@ int main(int argc, char *argv[])
 		// bool saveCrossTermsPlotFile = false, saveFaradayPlotFiles = false;
 		bool
 			savePlotFiles = false, applyBeam = false,
-			onlyScalar = false, onlyDiag = false, onlyRotation = false, doQuiet = false;
+			onlyScalar = false, onlyDiag = false, onlyRotation = false, doQuiet = false,
+			hasInterval = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile,  mwaPath;
 		size_t
 			niter = CalibrationMethod::DefaultNIter(),
@@ -41,9 +44,11 @@ int main(int argc, char *argv[])
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
 			stopAccuracy = CalibrationMethod::DefaultStoppingAccuracy(),
 			minUVW = 0.0,
-		  maxUVW = 5000.0,
+		  maxUVW = 10000000.0,
 		  absmem = 0.0;
-		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+		size_t threadCount = System::ProcessorCount();
+		size_t intervalStart = 0, intervalEnd = 0;
+		size_t followAntenna = 0;
 		
 		while(argv[argi][0] == '-')
 		{
@@ -57,23 +62,23 @@ int main(int argc, char *argv[])
 			}
 			else if(param == "datacolumn")
 			{
-				dataColumnName = argv[argi+1];
-				argi++;
+				++argi;
+				dataColumnName = argv[argi];
 			}
 			else if(param == "absmem")
 			{
-				absmem = atof(argv[argi+1]);
-				argi++;
+				++argi;
+				absmem = atof(argv[argi]);
 			}
 			else if(param == "i")
 			{
-				niter = atoi(argv[argi+1]);
-				argi++;
+				++argi;
+				niter = atoi(argv[argi]);
 			}
 			else if(param == "j")
 			{
-				threadCount = atoi(argv[argi+1]);
-				argi++;
+				++argi;
+				threadCount = atoi(argv[argi]);
 			}
 			else if(param == "a")
 			{
@@ -83,28 +88,28 @@ int main(int argc, char *argv[])
 			}
 			else if(param == "m")
 			{
-				modelFile = argv[argi+1];
 				argi++;
+				modelFile = argv[argi];
 			}
 			else if(param == "t")
 			{
-				solutionInterval = atoi(argv[argi+1]);
 				argi++;
+				solutionInterval = atoi(argv[argi]);
 			}
 			else if(param == "ch")
 			{
-				solutionChannels = atoi(argv[argi+1]);
-				argi++;
+				++argi;
+				solutionChannels = atoi(argv[argi]);
 			}
 			else if(param == "minuv")
 			{
-				minUVW = atof(argv[argi+1]);
 				argi++;
+				minUVW = atof(argv[argi]);
 			}
 			else if(param == "maxuv")
 			{
-				maxUVW = atof(argv[argi+1]);
-				argi++;
+				++argi;
+				maxUVW = atof(argv[argi]);
 			}
 			else if(param == "applybeam")
 			{
@@ -126,10 +131,22 @@ int main(int argc, char *argv[])
 			{
 				doQuiet = true;
 			}
+			else if(param == "follow-antenna")
+			{
+				++argi;
+				followAntenna = atoi(argv[argi]);
+			}
 			else if(param == "mwa-path")
 			{
 				++argi;
 				mwaPath = argv[argi];
+			}
+			else if(param == "interval")
+			{
+				hasInterval = true;
+				intervalStart = atof(argv[argi+1]);
+				intervalEnd = atof(argv[argi+2]);
+				argi += 2;
 			}
 			else throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
 			++argi;
@@ -157,8 +174,11 @@ int main(int argc, char *argv[])
 		calibrator.SetVerbose(!doQuiet);
 		calibrator.SetSavePlotFiles(savePlotFiles);
 		calibrator.SetDataColumnName(dataColumnName);
+		calibrator.SetFollowAntenna(followAntenna);
 		calibrator.SetAbsMem(absmem);
 		calibrator.SetMWAPath(mwaPath);
+		if(hasInterval)
+			calibrator.SetInterval(intervalStart, intervalEnd);
 		if(savePlotFiles)
 		{
 			calibrator.SetPlotFilenames(plotPhaseFile, plotGainFile);
