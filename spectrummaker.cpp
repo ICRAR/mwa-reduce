@@ -87,7 +87,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	_beamWeights[0].resize(_sources.size() * channelCount * 4);
 	_beamWeights[1].resize(_sources.size() * channelCount * 4);
 	if(_applyBeam)
-		_beamEvaluator.reset(new BeamEvaluator(ms));
+		_beamEvaluator.reset(new BeamEvaluator(ms, true, ""));
 	
 	const size_t BUFFER_COUNT = 16;
 	size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);

@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
 		dataColumn= "DATA";
 	}
 		
-	BeamEvaluator beamEvaluator(ms, false);
+	BeamEvaluator beamEvaluator(ms, false, "");
 	
 	std::vector<std::pair<double, ModelSource*>> sources;
 	

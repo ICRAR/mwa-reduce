@@ -93,7 +93,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 	// By setting the time beforehand, we don't waste time calculating a time step we don't need.
 	casacore::MEpoch::ROScalarColumn timeMColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
 	casacore::MEpoch startTime = timeMColumn(startRow);
-	BeamEvaluator beamEvaluator(ms);
+	BeamEvaluator beamEvaluator(ms, true, "");
 	beamEvaluator.SetTime(startTime);
 	
 	std::vector<std::string> clusterNames;

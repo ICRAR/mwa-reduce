@@ -125,7 +125,7 @@ void Peeler::Perform()
 		else {
 			if(_beamOnSource || _applyBeam)
 			{
-				beamEvaluator.reset(new BeamEvaluator(_ms));
+				beamEvaluator.reset(new BeamEvaluator(_ms, true, ""));
 			}
 			if(_beamOnSource)
 			{

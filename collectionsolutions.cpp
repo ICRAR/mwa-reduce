@@ -61,7 +61,7 @@ void addSolutionFile(Model& model, const char* solutionFilename, const char* msF
 		firstTime = timeColumn(0),
 		lastTime = timeColumn(ms.nrow()-1),
 		time = casacore::MEpoch(casacore::MVEpoch(0.5 * (firstTime.getValue().get() + lastTime.getValue().get())), firstTime.getRef());
-	BeamEvaluator beamEvaluator(ms, false);
+	BeamEvaluator beamEvaluator(ms, false, "");
 	beamEvaluator.SetTime(time);
 	BandData bandData(ms.spectralWindow());
 	if(centralFrequency == 0.0)
