@@ -121,12 +121,10 @@ public:
 	{
 		_followAntenna = followAntenna;
 	}
-	
 	void SetMWAPath(const std::string& path)
 	{
 		_mwaPath = path;
-	}
-	
+	}	
 	SolutionFile& GetSolutionFile() {
 		return _solutionFile;
 	}

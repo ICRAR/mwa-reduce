@@ -96,6 +96,11 @@ int main(int argc, char *argv[])
 				solutionChannels = atoi(argv[argi+1]);
 				argi += 2;
 			}
+			else if(param == "ch")
+			{
+				solutionChannels = atoi(argv[argi+1]);
+				argi += 2;
+			}
 			else if(param == "minuv")
 			{
 				minUVW = atof(argv[argi+1]);
