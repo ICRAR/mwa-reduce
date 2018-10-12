@@ -10,8 +10,9 @@
 #include <casacore/tables/Tables/ArrColDesc.h>
 
 #include "banddata.h"
-#include "solutionfile.h"
 #include "matrix2x2.h"
+#include "solutionfile.h"
+#include "uvector.h"
 
 class SolutionApplier
 {
@@ -124,20 +125,10 @@ public:
 		/**
 		 * Read the solutions file
 		 */
-		std::vector<std::complex<double>*> values(antennaCount);
-		for(size_t a = 0; a!=antennaCount; ++a) {
-			values[a] = new std::complex<double>[channelCount*4];
-		}
+		size_t channelBlockCount = 0;
 		if(_preset)
 		{
-			for(size_t a = 0; a!=antennaCount; ++a) {
-				for(size_t ch = 0; ch!=channelCount; ++ch) {
-					values[a][ch*4+0] = _presetValues[0];
-					values[a][ch*4+1] = _presetValues[1];
-					values[a][ch*4+2] = _presetValues[2];
-					values[a][ch*4+3] = _presetValues[3];
-				}		  
-			}
+			channelBlockCount = channelCount;
 		}
 		else {
 			std::cout << "Checking solutions file..." << std::flush;
@@ -147,11 +138,35 @@ public:
 				s << "Antenna counts do not match: " << solutionFile.AntennaCount() << " in solution file, " << antennaCount << " in MS.";
 				throw std::runtime_error(s.str());
 			}
-			if(solutionFile.ChannelCount() != channelCount)
-				throw std::runtime_error("Set and solution file have different number of channels");
-			if(solutionFile.PolarizationCount() != polarizationCount) throw std::runtime_error("Polarization counts do not match");
+			channelBlockCount = solutionFile.ChannelCount();
+			if(channelBlockCount > channelCount)
+				throw std::runtime_error("Solution file has more channels than the measurement set");
+			if(channelCount % channelBlockCount != 0)
+				throw std::runtime_error("The number of channels in the measurement set is not divisible by the number of spectral solutions");
+			if(solutionFile.PolarizationCount() != polarizationCount)
+				throw std::runtime_error("Polarization counts do not match");
 			if(channelCount%solutionFile.ChannelCount()!=0) throw std::runtime_error("Channel counts do not match");
 			std::cout << " DONE\n";
+		}
+		std::vector<ao::uvector<std::complex<double>>> values(antennaCount);
+		for(size_t a = 0; a!=antennaCount; ++a)
+			values[a].resize(channelBlockCount*4);
+		
+		if(_preset)
+		{
+			for(size_t a = 0; a!=antennaCount; ++a) {
+				for(size_t cb = 0; cb!=channelBlockCount; ++cb) {
+					values[a][cb*4+0] = _presetValues[0];
+					values[a][cb*4+1] = _presetValues[1];
+					values[a][cb*4+2] = _presetValues[2];
+					values[a][cb*4+3] = _presetValues[3];
+				}		  
+			}
+		}
+		
+		if(channelBlockCount != channelCount)
+		{
+			std::cout << "Applying each solution to " << channelCount / channelBlockCount << "channels.\n";
 		}
 		
 		/**
@@ -165,9 +180,9 @@ public:
 			if(!_preset)
 			{
 				for(size_t a = 0; a!=antennaCount; ++a) {
-					for(size_t ch = 0; ch!=channelCount; ++ch) {
+					for(size_t cb = 0; cb!=channelBlockCount; ++cb) {
 						for(size_t p = 0; p!=4; ++p) {
-							values[a][ch*4+p] = solutionFile.ReadNextSolution();
+							values[a][cb*4+p] = solutionFile.ReadNextSolution();
 						}
 					}
 				}
@@ -184,15 +199,17 @@ public:
 			{
 				// Cross correlation?
 				size_t a1 = ant1Column.get(rowIndex), a2 = ant2Column.get(rowIndex);
-				if(a1 != a2) {
+				if(a1 != a2)
+				{
 					dataColumn.get(rowIndex, data);
 					casacore::Array<complex_t>::contiter dataPtr = data.cbegin();
 					for(size_t ch=0; ch!=channelCount; ++ch)
 					{
-						size_t chFileIndex = ch * 4;
+						size_t cb = ch*channelBlockCount/channelCount;
+						size_t cbFileIndex = cb * 4;
 						std::complex<double>
-						*solA = &values[a1][chFileIndex],
-						*solB = &values[a2][chFileIndex];
+							*solA = &values[a1][cbFileIndex],
+							*solB = &values[a2][cbFileIndex];
 						std::complex<double> dataVals[4] = {
 							dataPtr[0], dataPtr[1], dataPtr[2], dataPtr[3]
 						};
@@ -206,14 +223,6 @@ public:
 				}
 				outputColumn->put(rowIndex, data);
 			}
-		}
-		
-		/**
-		 * Free mem
-		 */
-		for(size_t a = 0; a!=antennaCount; ++a)
-		{
-		  delete[] values[a];
 		}
 	}
 private:
