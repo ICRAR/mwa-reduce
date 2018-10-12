@@ -94,12 +94,7 @@ int main(int argc, char *argv[])
 			else if(param == "ch")
 			{
 				solutionChannels = atoi(argv[argi+1]);
-				argi += 2;
-			}
-			else if(param == "ch")
-			{
-				solutionChannels = atoi(argv[argi+1]);
-				argi += 2;
+				argi++;
 			}
 			else if(param == "minuv")
 			{
