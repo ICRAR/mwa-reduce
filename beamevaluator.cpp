@@ -9,7 +9,7 @@
 #include "beamevaluator.h"
 #include "banddata.h"
 
-BeamEvaluator::BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays)
+BeamEvaluator::BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays, const std::string& mwaPath)
 {
 	/**
 		* Read some meta data from the measurement set
@@ -47,7 +47,7 @@ BeamEvaluator::BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays)
 	}
 	if(reportDelays)
 		std::cout << "]\n";
-	_tileBeam.reset(new TileBeam(delays, false, ""));
+	_tileBeam.reset(new TileBeam(delays, false, mwaPath));
 }
 
 void BeamEvaluator::EvaluateAbsToApparentGain(double ra, double dec, double frequency, std::complex<double>* gains)

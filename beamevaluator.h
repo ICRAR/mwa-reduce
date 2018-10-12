@@ -19,7 +19,7 @@ class BeamEvaluator
 	public:
 		typedef TileBeam::PrecalcPosInfo PrecalcPosInfo;
 		
-		BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays = true);
+		BeamEvaluator(casacore::MeasurementSet& ms, bool reportDelays, const std::string& mwaPath);
 		
 		void EvaluateApparentToAbsGain(double ra, double dec, std::complex<double> *gains)
 		{

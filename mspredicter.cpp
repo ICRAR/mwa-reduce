@@ -46,7 +46,7 @@ void MSPredicter::Start(bool reportSources)
 		_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
 		if(_applyBeam)
 		{
-			_beamEvaluator.reset(new BeamEvaluator(_ms, false));
+			_beamEvaluator.reset(new BeamEvaluator(_ms, false, _mwaPath));
 			_beamEvaluator->SetTime(startTime);
 			_predicter->Initialize(_model, _solutionFile, &*_beamEvaluator);
 		}

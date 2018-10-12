@@ -177,7 +177,7 @@ void Calibrator::Perform()
 			else {
 				if(_beamOnSource || _applyBeam)
 				{
-					beamEvaluator.reset(new BeamEvaluator(_ms, _verbose));
+					beamEvaluator.reset(new BeamEvaluator(_ms, _verbose, _mwaPath));
 				}
 				if(_beamOnSource)
 				{
@@ -204,6 +204,7 @@ void Calibrator::Perform()
 				predicter->SetStartRow(intervalRowStart);
 				predicter->SetEndRow(intervalRowEnd);
 				predicter->SetApplyBeam(_applyBeam);
+				predicter->SetMWAPath(_mwaPath);
 				if(_verbose)
 					std::cout << "Reading data & predicting model...\n";
 			}

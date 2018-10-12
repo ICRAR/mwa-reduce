@@ -75,6 +75,8 @@ public:
 	void SetApplyBeam(bool applyBeam) { _applyBeam = applyBeam; }
 	void SetStartRow(size_t startRow) { _startRow = startRow; }
 	void SetEndRow(size_t endRow) { _endRow = endRow; }
+	void SetMWAPath(const std::string& mwaPath) { _mwaPath = mwaPath; }
+
 private:
 	void ReadThreadFunc();
 	void PredictThreadFunc();
@@ -96,7 +98,7 @@ private:
 	std::unique_ptr<Predicter> _predicter;
 	std::vector<std::complex<double>*> _buffers;
 	std::unique_ptr<BandData> _bandData;
-	std::string _solutionFile;
+	std::string _solutionFile, _mwaPath;
 	size_t _startRow, _endRow, _threadCount;
 };
 
