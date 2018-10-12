@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 	if(argc < 3)
 	{
 		std::cout <<
-			"Usage: calibrate [-absmem <mem in GB>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <max uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rotation] [-applybeam] [-t timesteps] [-datacolumn <name>] [-quiet] [-mwa-path path] <measurementset.ms> <solutions.bin>\n\n"
+			"Usage: calibrate [-absmem <mem in GB>] [-beam-on-source] [-p <phases.txt> <gains.txt>] [-pf <faraday.txt>] [-px <crossterms.txt>] [-minuv <min uvw dist in m>] [-maxuv <max uvw dist in m>] [-a <min-accuracy> <stop-accuracy>] [-i <niter>] [-j <threads>] [-m <model>] [-scalar] [-diag] [-rotation] [-applybeam] [-t timesteps] [-ch channels per solution] [-datacolumn <name>] [-quiet] [-mwa-path path] <measurementset.ms> <solutions.bin>\n\n"
 			"This will calculate \"static\" phase offsets for all stations. It produces approximate least-squares solutions.\n\n"
 			"The official name of this algorithm is the \"Mitchcal\" algorithm. The following is a suggestion for referencing this algorithm in scientific articles:\n"
 			"\" Calibration was performed with the full-Jones Mitchcal algorithm developed for MWA calibration, as described by Offringa et al. (2016) \"\n"
@@ -29,10 +29,13 @@ int main(int argc, char *argv[])
 		int argi = 1;
 		// bool saveCrossTermsPlotFile = false, saveFaradayPlotFiles = false;
 		bool
-			savePlotFiles = false, beamOnSource = false, applyBeam = false,
+			savePlotFiles = false, applyBeam = false,
 			onlyScalar = false, onlyDiag = false, onlyRotation = false, doQuiet = false;
 		std::string plotPhaseFile, plotGainFile, plotFaradayFile, crossTermsPlotFile, modelFile,  mwaPath;
-		size_t niter = CalibrationMethod::DefaultNIter(), solutionInterval = 0;
+		size_t
+			niter = CalibrationMethod::DefaultNIter(),
+			solutionInterval = 0,
+			solutionChannels = 1;
 		std::string dataColumnName = "DATA";
 		double
 			minAccuracy = CalibrationMethod::DefaultMinAccuracy(),
@@ -88,6 +91,11 @@ int main(int argc, char *argv[])
 				solutionInterval = atoi(argv[argi+1]);
 				argi++;
 			}
+			else if(param == "ch")
+			{
+				solutionChannels = atoi(argv[argi+1]);
+				argi += 2;
+			}
 			else if(param == "minuv")
 			{
 				minUVW = atof(argv[argi+1]);
@@ -101,10 +109,6 @@ int main(int argc, char *argv[])
 			else if(param == "applybeam")
 			{
 				applyBeam = true;
-			}
-			else if(param == "beam-on-source")
-			{
-				beamOnSource = true;
 			}
 			else if(param == "scalar")
 			{
@@ -142,10 +146,10 @@ int main(int argc, char *argv[])
 		calibrator.SetAccuracy(minAccuracy, stopAccuracy);
 		calibrator.SetModelFilename(modelFile);
 		calibrator.SetSolutionInterval(solutionInterval);
+		calibrator.SetSolutionChannels(solutionChannels);
 		calibrator.SetMinUVW(minUVW);
 		calibrator.SetMaxUVW(maxUVW);
 		calibrator.SetApplyBeam(applyBeam);
-		calibrator.SetBeamOnSource(beamOnSource);
 		calibrator.SetOnlyScalar(onlyScalar);
 		calibrator.SetOnlyDiag(onlyDiag);
 		calibrator.SetOnlyRotation(onlyRotation);

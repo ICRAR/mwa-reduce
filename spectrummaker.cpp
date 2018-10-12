@@ -129,7 +129,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 	{
 		size_t rowIndex = rowData.rowIndex;
 		
-		boost::mutex::scoped_lock lock(modelPredicter.IOMutex());
+		std::unique_lock<std::mutex> lock(modelPredicter.IOMutex());
 		progress.SetProgress(rowIndex, ms.nrow());
 		
 		// Cross correlation?

@@ -5,19 +5,19 @@
 #include "beamevaluator.h"
 #include "matrix2x2.h"
 #include "mspredicter.h"
+#include "parallelfor.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
 #include <casacore/tables/Tables/ArrayColumn.h>
 #include <casacore/tables/Tables/ScalarColumn.h>
 
-#include <boost/thread/thread.hpp>
-
+#include <complex>
 #include <fstream>
-#include <stdexcept>
 #include <memory>
 #include <queue>
-#include <complex>
+#include <stdexcept>
+#include <thread>
 
 Calibrator::Calibrator(casacore::MeasurementSet& ms, size_t threadCount) :
 	_ms(ms),
@@ -30,14 +30,15 @@ Calibrator::Calibrator(casacore::MeasurementSet& ms, size_t threadCount) :
 	_onlyScalar(false),
 	_onlyDiag(false),
 	_onlyRotation(false),
-	_beamOnSource(false),
 	_applyBeam(false),
 	_minUVW(0.0),
-	_maxUVW(5000.0),
+	_maxUVW(100000000.0),
 	_savePlotFiles(false),
 	_saveFaradayPlotFiles(false),
 	_saveCrossTermsPlotFile(false),
-	_verbose(false)
+	_verbose(false),
+	_selection(MSSelection::Everything()),
+	_followAntenna(0)
 {
 }
 
@@ -70,23 +71,43 @@ void Calibrator::Perform()
 	if(polarizationCount != 4)
 		throw std::runtime_error("Pol count in MS != 4");
 	
+	if(channelCount % _solutionChannels != 0)
+	{
+		std::cout
+			<< "WARNING: You've requested to solve for " << _solutionChannels << " channels\n"
+			<< "per solution. However, the total number of channels (" << channelCount << ") is\n"
+			<< "not divisable by this. Therefore, some solutions will have different number of channels.\n";
+	}
+	size_t chBlockCount = channelCount / _solutionChannels;
+	if(chBlockCount == 0)
+		throw std::runtime_error("Invalid value for solution-channels");
+	
 	if(_verbose)
 	 std::cout << "DONE\nCounting timesteps... " << std::flush;
 	double time = -1.0;
-	std::vector<size_t> timestepRows;
+	std::vector<size_t> timestepRows, selectedRows;
 	for(size_t rowIndex=0;rowIndex!=_ms.nrow();++rowIndex)
 	{
 		if(timeColumn(rowIndex) != time)
 		{
+			if(_selection.IsTimeSelected(timestepRows.size()))
+			{
+				selectedRows.push_back(rowIndex);
+			}
+			else if(_selection.HasInterval() && timestepRows.size() == _selection.IntervalEnd())
+			{
+				selectedRows.push_back(rowIndex);
+			}
 			timestepRows.push_back(rowIndex);
 			time = timeColumn(rowIndex);
 		}
 	}
-	size_t timestepCount = timestepRows.size();
-	timestepRows.push_back(_ms.nrow());
-	size_t intervalCount = (_solutionInterval!=0) ? (timestepCount + _solutionInterval - 1) / _solutionInterval : 1;
+	if(_selection.IsTimeSelected(timestepRows.size()-1))
+		selectedRows.push_back(_ms.nrow());
+	size_t selTimestepCount = selectedRows.size()-1;
+	size_t intervalCount = (_solutionInterval!=0) ? (selTimestepCount + _solutionInterval - 1) / _solutionInterval : 1;
 	if(_verbose)
-	 std::cout << "DONE (" << timestepCount << " timesteps, " << intervalCount << " intervals)\n";
+	 std::cout << "DONE (" << timestepRows.size() << " timesteps, " << selTimestepCount << " selected, " << intervalCount << " intervals)\n";
 
 	if(!_modelFilename.empty()) {
 		if(_verbose)
@@ -97,7 +118,7 @@ void Calibrator::Perform()
 	}
 
 	_solutionFile.SetAntennaCount(antennaCount);
-	_solutionFile.SetChannelCount(channelCount);
+	_solutionFile.SetChannelCount(chBlockCount);
 	_solutionFile.SetIntervalCount(intervalCount);
 	_solutionFile.SetPolarizationCount(4);
 	if(_solutionFilename.empty())
@@ -122,48 +143,51 @@ void Calibrator::Perform()
 	{
 		std::cout << " >>> INTERVAL " << (intervalIndex+1) << " / " << intervalCount << " <<<\n";
 		size_t
-			intervalTimestepStart = (intervalIndex*timestepCount) / intervalCount,
-			intervalTimestepEnd = ((intervalIndex+1)*timestepCount) / intervalCount,
-			intervalRowStart = timestepRows[intervalTimestepStart],
-			intervalRowEnd = timestepRows[intervalTimestepEnd],
+			intervalTimestepStart = (intervalIndex*selTimestepCount) / intervalCount,
+			intervalTimestepEnd = ((intervalIndex+1)*selTimestepCount) / intervalCount,
+			intervalRowStart = selectedRows[intervalTimestepStart],
+			intervalRowEnd = selectedRows[intervalTimestepEnd],
 			timestepsInInterval = intervalTimestepEnd - intervalTimestepStart;
-			
 		size_t samplesPerChannel = nBaselines * timestepsInInterval * 4;
 		// 2 for complex data, 2 for complex model, 1 for weights
-		double memPerChannel = samplesPerChannel * 5 * sizeof(double);
+		double memPerChannelBlock = samplesPerChannel * 5 * sizeof(double) * _solutionChannels;
 		if(_verbose)
 		{
 			std::cout << "Will use " << _threadCount << " cores.\n";
 			std::cout << "Detected " << round(memSizeInGB*10.0)/10.0 << " GB of system memory.\n";
-			std::cout << "One channel takes " << round(memPerChannel*10.0/(1024*1024))/10.0 << " MB of mem.\n";
+			std::cout << "One channel block of " << _solutionChannels << " channels takes " << round(memPerChannelBlock*10.0/(1024*1024))/10.0 << " MB of mem.\n";
 		}
-		size_t channelsPerPass = memSize / memPerChannel;
-		if(channelsPerPass > channelCount)
-			channelsPerPass = channelCount;
-		if(channelsPerPass == 0) {
+		size_t chBlocksPerPass = memSize / memPerChannelBlock;
+		if(chBlocksPerPass > chBlockCount)
+			chBlocksPerPass = chBlockCount;
+		if(chBlocksPerPass == 0)
+		{
 			if(_verbose)
-				std::cout << "WARNING: NOT ENOUGH MEMORY FOR EVEN ONE CHANNEL, expect very bad performance.\n";
-			channelsPerPass = 1;
+				std::cout << "WARNING: NOT ENOUGH MEMORY FOR EVEN ONE CHANNEL BLOCK, expect very bad performance.\n";
+			chBlocksPerPass = 1;
 		}
-		size_t passCount = (channelCount + channelsPerPass - 1) / channelsPerPass;
+		size_t passCount = (chBlockCount + chBlocksPerPass - 1) / chBlocksPerPass;
 		if(_verbose)
-			std::cout << "Number of channels that fit in memory: " << channelsPerPass << " (" << passCount << " passes)\n";
+			std::cout << "Number of channel that fit in memory: " << chBlocksPerPass << " blocks (" << chBlocksPerPass*_solutionChannels << " channels, " << passCount << " passes)\n";
 		
 		for(size_t pass=0; pass!=passCount; ++pass) {
 			size_t
-				startChannel = (channelCount * pass) / passCount,
-				endChannel = (channelCount * (pass+1)) / passCount,
-				partChannelCount = endChannel - startChannel;
+				startChBlock = (chBlockCount * pass) / passCount,
+				endChBlock = (chBlockCount * (pass+1)) / passCount,
+				partChBlockCount = endChBlock - startChBlock;
 
-			BandData partBandData(bandData, startChannel, endChannel);
-
-			std::vector<CalibrationMethod*> calMethods(partChannelCount);
-			for(size_t ch=0; ch!=partChannelCount; ++ch)
+			_calMethods.resize(partChBlockCount);
+			for(size_t cb = 0; cb!=partChBlockCount; ++cb)
 			{
-				calMethods[ch] = new CalibrationMethod(1, antennaCount, timestepsInInterval);
-				calMethods[ch]->SetOnlySolveScalar(_onlyScalar);
-				calMethods[ch]->SetOnlySolveDiag(_onlyDiag);
-				calMethods[ch]->SetOnlySolveRotation(_onlyRotation);
+				const size_t
+					cbChStart = (cb+startChBlock)*channelCount/chBlockCount,
+					cbChEnd = (cb+1+startChBlock)*channelCount/chBlockCount,
+					cbNCh = cbChEnd - cbChStart;
+				std::unique_ptr<CalibrationMethod>& method = _calMethods[cb];
+				method.reset(new CalibrationMethod(cbNCh, antennaCount, timestepsInInterval));
+				method->SetOnlySolveScalar(_onlyScalar);
+				method->SetOnlySolveDiag(_onlyDiag);
+				method->SetOnlySolveRotation(_onlyRotation);
 			}
 			std::unique_ptr<MSPredicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
@@ -175,31 +199,10 @@ void Calibrator::Perform()
 				predicter->SetEndRow(intervalRowEnd);
 			}
 			else {
-				if(_beamOnSource || _applyBeam)
+				if(_applyBeam)
 				{
 					beamEvaluator.reset(new BeamEvaluator(_ms, _verbose, _mwaPath));
 				}
-				if(_beamOnSource)
-				{
-					if(_model.SourceCount() != 1)
-						std::cout << "Warning: To correct for the beam, there should be exactly one source in the model";
-					const ModelComponent& component = _model.Source(0).Peak();
-					std::cout << "Predicting beam... " << std::flush;
-					beamValues.resize(partChannelCount*4);
-					double beamSum[4] = {0.0, 0.0, 0.0, 0.0};
-					for(size_t ch=0; ch!=partChannelCount; ++ch)
-					{
-						double frequency = partBandData.ChannelFrequency(ch);
-						beamEvaluator->EvaluateApparentToAbsGain(component.PosRA(), component.PosDec(), frequency, &beamValues[ch*4]);
-						for(size_t p=0; p!=4; ++p)
-							beamSum[p] += std::abs(beamValues[ch*4+p]);
-					}
-					std::cout << "DONE (avg inv beam:";
-					for(size_t p=0; p!=4; ++p)
-						std::cout << ' ' << beamSum[p]/partChannelCount;
-					std::cout << '\n';
-				}
-				
 				predicter.reset(new MSPredicter(_ms, _threadCount, _model));
 				predicter->SetStartRow(intervalRowStart);
 				predicter->SetEndRow(intervalRowEnd);
@@ -231,7 +234,7 @@ void Calibrator::Perform()
 				}
 				if(antenna1 != antenna2)
 				{
-					boost::mutex::scoped_lock lock(predicter->IOMutex());
+					std::unique_lock<std::mutex> lock(predicter->IOMutex());
 					dataColumn.get(rowIndex, data);
 					weightColumn.get(rowIndex, weights);
 					flagColumn.get(rowIndex, flags);
@@ -253,25 +256,20 @@ void Calibrator::Perform()
 					else
 						notSelected++;
 				
-					for(size_t ch = 0; ch!=partChannelCount; ++ch)
+					for(size_t cb = 0; cb!=partChBlockCount; ++cb)
 					{
-						size_t chIndex = (ch + startChannel) * 4;
-						for(size_t p=0; p!=4; ++p)
+						size_t cbStartCh = (cb + startChBlock)*channelCount/chBlockCount;
+						size_t cbEndCh = (cb + 1 + startChBlock)*channelCount/chBlockCount;
+						size_t cbChCount = cbEndCh - cbStartCh;
+						for(size_t ch = 0; ch!=cbChCount; ++ch)
 						{
-							modelValues[chIndex+p] = rowData.modelData[chIndex+p];
-							if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
-						}
-						if(_beamOnSource)
-						{
-							std::complex<double>
-								tempResult[4],
-								doubleData[4] = {dataPtr[chIndex],dataPtr[chIndex+1],dataPtr[chIndex+2],dataPtr[chIndex+3]};
-							Matrix2x2::ATimesB(tempResult, &beamValues[ch*4], doubleData);
-							Matrix2x2::ATimesHermB(doubleData, tempResult, &beamValues[ch*4]);
-							calMethods[ch]->AddData(doubleData, &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
-						}
-						else {
-							calMethods[ch]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
+							size_t chIndex = (ch + cbStartCh) * 4;
+							for(size_t p=0; p!=4; ++p)
+							{
+								modelValues[chIndex+p] = rowData.modelData[chIndex+p];
+								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
+							}
+							_calMethods[cb]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
 						}
 					}
 				}
@@ -281,34 +279,22 @@ void Calibrator::Perform()
 			if(_verbose)
 				std::cout << "DONE (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected)\nCalibrating...\n";
 		
-			std::queue<size_t> tasks;
-			for(size_t ch=0; ch!=partChannelCount; ++ch)
-				tasks.push(ch);
-			boost::thread_group threadGroup;
-			boost::mutex mutex;
-			for(size_t i=0; i!=_threadCount; ++i)
-			{
-				ThreadData threadData;
-				threadData.mutex = &mutex;
-				threadData.tasks = &tasks;
-				threadData.calMethods = &calMethods;
-				threadGroup.add_thread(new boost::thread(&Calibrator::threadFunction, this, threadData));
-			}
-			threadGroup.join_all();
+			ParallelFor<size_t> loop(_threadCount);
+			loop.Run(0, partChBlockCount, std::bind(&Calibrator::calibrateChannelBlock, this, std::placeholders::_1, std::placeholders::_2));
 
 			// Save solutions
 			for(size_t ant=0; ant!=antennaCount; ++ant)
 			{
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
+				for(size_t cb=0; cb!=partChBlockCount; ++cb)
 				{
 					std::complex<double> val[4];
 					for(size_t p=0; p!=4; ++p)
-						val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+						val[p] = _calMethods[cb]->JonesSolution(ant, 0, p);
 					Matrix2x2::Invert(val);
 					
 					for(size_t p=0; p!=4; ++p)
 					{
-						_solutionFile.WriteSolution(val[p], intervalIndex, ant, ch+startChannel, p);
+						_solutionFile.WriteSolution(val[p], intervalIndex, ant, cb+startChBlock, p);
 					}
 				}
 			}
@@ -316,13 +302,13 @@ void Calibrator::Perform()
 			if(_savePlotFiles)
 			{
 				std::ofstream phasePlotStream(_phasePlotFilename.c_str()), gainPlotStream(_gainPlotFilename.c_str());
-				phasePlotStream << antennaCount << ' ' << partChannelCount << " 4\n";
-				gainPlotStream << antennaCount << ' ' << partChannelCount << " 4\n";
+				phasePlotStream << antennaCount << ' ' << partChBlockCount << " 4\n";
+				gainPlotStream << antennaCount << ' ' << partChBlockCount << " 4\n";
 				
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
+				for(size_t cb=0; cb!=partChBlockCount; ++cb)
 				{
-					phasePlotStream << (ch+startChannel) << '\t';
-					gainPlotStream << (ch+startChannel) << '\t';
+					phasePlotStream << (cb+startChBlock) << '\t';
+					gainPlotStream << (cb+startChBlock) << '\t';
 					
 					for(size_t p=0; p!=4; ++p)
 					{
@@ -330,7 +316,7 @@ void Calibrator::Perform()
 						{
 							std::complex<double> val[4];
 							for(size_t p2=0; p2!=4; ++p2)
-								val[p2] = calMethods[ch]->JonesSolution(ant, 0, p2);
+								val[p2] = _calMethods[cb]->JonesSolution(ant, 0, p2);
 							Matrix2x2::Invert(val);
 					
 							double s1, s2;
@@ -353,15 +339,15 @@ void Calibrator::Perform()
 			{
 				std::ofstream faradayPlotStream(_faradayPlotFilename.c_str());
 				
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
+				for(size_t cb=0; cb!=partChBlockCount; ++cb)
 				{
-					faradayPlotStream << (ch+startChannel) << '\t';
+					faradayPlotStream << (cb+startChBlock) << '\t';
 					
 					for(size_t ant=0; ant!=antennaCount; ++ant)
 					{
 						std::complex<double> val[4];
 						for(size_t p=0; p!=4; ++p)
-							val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+							val[p] = _calMethods[cb]->JonesSolution(ant, 0, p);
 				
 						faradayPlotStream << '\t' << -Matrix2x2::RotationAngle(val);
 					}
@@ -373,15 +359,15 @@ void Calibrator::Perform()
 			{
 				std::ofstream crossTermPlotStream(_crossTermsPlotFilename.c_str());
 				
-				for(size_t ch=0; ch!=partChannelCount; ++ch)
+				for(size_t cb=0; cb!=partChBlockCount; ++cb)
 				{
-					crossTermPlotStream << (ch+startChannel) << '\t';
+					crossTermPlotStream << (cb+startChBlock) << '\t';
 					
 					for(size_t ant=0; ant!=antennaCount; ++ant)
 					{
 						std::complex<double> val[4];
 						for(size_t p=0; p!=4; ++p)
-							val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+							val[p] = _calMethods[cb]->JonesSolution(ant, 0, p);
 						Matrix2x2::Invert(val);
 						double totalPower = std::abs(val[0]) + std::abs(val[1]) + std::abs(val[2]) + std::abs(val[3]);
 						crossTermPlotStream << '\t' << (std::abs(val[1]) + std::abs(val[2]))*100.0/totalPower;
@@ -390,60 +376,54 @@ void Calibrator::Perform()
 				}
 			}
 			
-			for(size_t ch=0; ch!=partChannelCount; ++ch)
-				delete calMethods[ch];
+			_calMethods.clear(); // destructs calibration methods
 		}
 	}
-
 }
 
-void Calibrator::threadFunction(ThreadData data)
+void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIndex)
 {
-	boost::mutex::scoped_lock lock(*data.mutex);
-	size_t lastSuccessfulChannel = data.tasks->front();
-	while(!data.tasks->empty()) {
-		size_t taskIndex = data.tasks->front();
-		data.tasks->pop();
-		lock.unlock();
-		if(lastSuccessfulChannel != taskIndex)
-			(*(data.calMethods))[taskIndex]->InitSolutions(*(*(data.calMethods))[lastSuccessfulChannel]);
-		size_t iters = _nIter;
-		double limit = _stoppingAccuracy;
-		(*(data.calMethods))[taskIndex]->Execute(limit, iters);
-		if((iters >= _nIter || !std::isfinite(limit)) && !(*(data.calMethods))[taskIndex]->OnlySolveRotation())
-		{
-			std::cout << "Recalculating channel " << taskIndex << " (accuracy=" << limit << ").\n";
-			(*(data.calMethods))[taskIndex]->InitSolutionsToUnity();
-			iters = _nIter;
-			limit = _stoppingAccuracy;
-			(*(data.calMethods))[taskIndex]->Execute(limit, iters);
+	size_t lastSuccessfulChannel = _threadData[threadIndex].lastSuccesfulChannel;
+	
+	CalibrationMethod& method = *_calMethods[channelBlockIndex];
+	
+	if(lastSuccessfulChannel < channelBlockIndex)
+		method.InitSolutions(*_calMethods[lastSuccessfulChannel]);
+	size_t iters = _nIter;
+	double limit = _stoppingAccuracy;
+	method.Execute(limit, iters);
+	if((iters >= _nIter || !std::isfinite(limit)) && !method.OnlySolveRotation())
+	{
+		std::cout << "Recalculating channel " << channelBlockIndex << " (accuracy=" << limit << ").\n";
+		method.InitSolutionsToUnity();
+		iters = _nIter;
+		limit = _stoppingAccuracy;
+		method.Execute(limit, iters);
 
-			if((iters >= _nIter && limit > _minAccuracy) || !std::isfinite(limit))
-			{
-				std::cout << "Channel " << taskIndex << " did not converge (accuracy=" << limit << "), setting gains to NaN.\n";
-				(*(data.calMethods))[taskIndex]->InitSolutionsToNaN();
-			}
-			else {
-				if(iters >= _nIter && limit > _stoppingAccuracy)
-				{
-					std::cout << "Channel " << taskIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
-				}
-				lastSuccessfulChannel = taskIndex;
-			}
+		if((iters >= _nIter && limit > _minAccuracy) || !std::isfinite(limit))
+		{
+			std::cout << "Channel " << channelBlockIndex << " did not converge (accuracy=" << limit << "), setting gains to NaN.\n";
+			method.InitSolutionsToNaN();
 		}
 		else {
-			lastSuccessfulChannel = taskIndex;
+			if(iters >= _nIter && limit > _stoppingAccuracy)
+			{
+				std::cout << "Channel " << channelBlockIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
+			}
+			_threadData[threadIndex].lastSuccesfulChannel = channelBlockIndex;
 		}
-		lock.lock();
-		if(taskIndex<=16)
-		{
-			if(_verbose)
-				std::cout << "Current value of Jones matrix for ant 1, ch " << taskIndex << ":\n"
-			<< CalibrationMethod::MatrixToString(& (*(data.calMethods))[taskIndex]->JonesSolution(1, 0, 0));
-		}
-	
-		if(_verbose)
-			std::cout << "Finished calibrating channel " << taskIndex << " in " << iters << " iterations, precision=" << limit << ".\n";
 	}
+	else {
+		_threadData[threadIndex].lastSuccesfulChannel = channelBlockIndex;
+	}
+	if(channelBlockIndex<=16)
+	{
+		if(_verbose)
+			std::cout << "Current value of Jones matrix for ant " << _followAntenna << ", ch " << channelBlockIndex << ":\n"
+		<< CalibrationMethod::MatrixToString(& method.JonesSolution(_followAntenna, 0, 0));
+	}
+
+	if(_verbose)
+		std::cout << "Finished calibrating channel " << channelBlockIndex << " in " << iters << " iterations, precision=" << limit << ".\n";
 }
 

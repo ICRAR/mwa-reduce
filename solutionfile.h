@@ -5,6 +5,7 @@
 #include <string>
 #include <fstream>
 #include <complex>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -47,18 +48,12 @@ class SolutionFile
 	/** Empty constructor. After constructing, either @ref OpenForReading() should be called or the parameters should
 	 * be initialized and @ref OpenForWriting() or @ref OpenInMemory() should be called.
 	 */
-  SolutionFile() : _outputStream(0), _inputStream(0), _readPointer(nullptr)
+  SolutionFile() : _outputStream(), _inputStream(), _readPointer(nullptr)
   {
     strcpy(_header.intro, "MWAOCAL");
     _header.fileType = 0; // Complex jones solutions
     _header.structureType = 0; // ordered real/imag, polarization, channel, antenna, time
     _header.intervalCount = 1;
-  }
-
-  /** Destructor. */
-  ~SolutionFile() {
-    delete _outputStream;
-    delete _inputStream;
   }
 
   /** Number of antennas stored in file. */
@@ -92,8 +87,7 @@ class SolutionFile
 	 */
   void OpenForWriting(const char *filename)
   {
-		delete _outputStream;
-		_outputStream = new std::ofstream(filename);    
+		_outputStream.reset(new std::ofstream(filename));
 		_data.clear();
 		
 		_outputStream->write(reinterpret_cast<const char*>(&_header), sizeof(_header));
@@ -109,8 +103,7 @@ class SolutionFile
 	 */
   void OpenInMemory()
 	{
-		delete _outputStream;
-		_outputStream = 0;
+		_outputStream.reset();
 		
 		_data.resize(_header.intervalCount * _header.antennaCount * _header.channelCount * _header.polarizationCount);
 		_readPointer = &_data[0];
@@ -123,8 +116,7 @@ class SolutionFile
 	 */
 	void OpenForReading(const char *filename)
 	{
-		delete _inputStream;
-		_inputStream = new std::ifstream(filename);
+		_inputStream.reset(new std::ifstream(filename));
 		if(_inputStream->bad())
 			throw std::runtime_error("Error reading input solutions file");
 		_inputStream->read(reinterpret_cast<char*>(&_header), sizeof(_header));
@@ -140,7 +132,7 @@ class SolutionFile
 	 * will give one Jones matrix.
 	 */
   std::complex<double> ReadNextSolution() {
-		if(_inputStream == 0)
+		if(_inputStream == nullptr)
 		{
 			std::complex<double> val = *_readPointer;
 			++_readPointer;
@@ -159,7 +151,7 @@ class SolutionFile
   void WriteSolution(const std::complex<double> &val, size_t interval, size_t antenna, size_t channel, size_t polarization)
   {
 		size_t index = ((interval * _header.antennaCount + antenna) * _header.channelCount + channel) * _header.polarizationCount + polarization;
-		if(_outputStream == 0)
+		if(_outputStream == nullptr)
 		{
 			_data[index] = val;
 		}
@@ -177,8 +169,8 @@ class SolutionFile
     uint32_t structureType;
     uint32_t intervalCount, antennaCount, channelCount, polarizationCount;
   } _header;
-  std::ofstream *_outputStream;
-  std::ifstream *_inputStream;
+  std::unique_ptr<std::ofstream> _outputStream;
+  std::unique_ptr<std::ifstream> _inputStream;
 	std::vector<std::complex<double> > _data;
 	std::complex<double>* _readPointer;
 };

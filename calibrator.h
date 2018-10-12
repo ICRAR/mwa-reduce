@@ -2,14 +2,16 @@
 #define CALIBRATOR_H
 
 #include "solutionfile.h"
+#include "msselection.h"
 
 #include "model/model.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <boost/thread/mutex.hpp>
-
+#include <memory>
+#include <mutex>
 #include <queue>
+#include <vector>
 
 class Calibrator
 {
@@ -18,11 +20,6 @@ public:
 	
 	void Perform();
 
-	void SetBeamOnSource(bool beamOnSource)
-	{
-		_beamOnSource = beamOnSource;
-	}
-	
 	void SetApplyBeam(bool applyBeam)
 	{
 		_applyBeam = applyBeam;
@@ -89,6 +86,11 @@ public:
 		_solutionInterval = solutionInterval;
 	}
 	
+	void SetSolutionChannels(size_t nChannels)
+	{
+		_solutionChannels = nChannels;
+	}
+	
 	void SetVerbose(bool verbose)
 	{
 		_verbose = verbose;
@@ -109,6 +111,16 @@ public:
 	{
 	  _absmem = absmem;
 	}
+
+	void SetInterval(size_t startTimestep, size_t endTimestep)
+	{
+		_selection.SetInterval(startTimestep, endTimestep);
+	}
+
+	void SetFollowAntenna(size_t followAntenna)
+	{
+		_followAntenna = followAntenna;
+	}
 	
 	void SetMWAPath(const std::string& path)
 	{
@@ -121,26 +133,26 @@ public:
 private:
 	struct ThreadData
 	{
-		ThreadData() { }
-		
-		boost::mutex *mutex;
-		std::queue<size_t> *tasks;
-		std::vector<class CalibrationMethod*> *calMethods;
+		size_t lastSuccesfulChannel;
 	};
+	std::vector<ThreadData> _threadData;
+	std::vector<std::unique_ptr<class CalibrationMethod>> _calMethods;
 	
-	void threadFunction(ThreadData data);
+	void calibrateChannelBlock(size_t channelBlockIndex, size_t threadIndex);
 
 	casacore::MeasurementSet _ms;
 	SolutionFile _solutionFile;
 	std::string _modelFilename, _solutionFilename, _dataColumnName;
 	Model _model;
 	double _minAccuracy, _stoppingAccuracy;
-	size_t _nIter, _solutionInterval, _threadCount;
+	size_t _nIter, _solutionInterval, _solutionChannels, _threadCount;
 	bool _onlyScalar, _onlyDiag, _onlyRotation;
-	bool _beamOnSource, _applyBeam;
+	bool _applyBeam;
 	double _minUVW, _maxUVW, _absmem;
 	bool _savePlotFiles, _saveFaradayPlotFiles, _saveCrossTermsPlotFile, _verbose;
 	std::string _phasePlotFilename, _gainPlotFilename, _faradayPlotFilename, _crossTermsPlotFilename, _mwaPath;
+	MSSelection _selection;
+	size_t _followAntenna;
 };
 
 #endif
