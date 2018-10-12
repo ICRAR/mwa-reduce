@@ -167,7 +167,7 @@ void Peeler::Perform()
 			}
 			else {
 				size_t rowIndex = rowData.rowIndex;
-				boost::mutex::scoped_lock lock(predicter->IOMutex());
+				std::unique_lock<std::mutex> lock(predicter->IOMutex());
 				dataColumn.get(rowIndex, data);
 				weightColumn.get(rowIndex, weights);
 				flagColumn.get(rowIndex, flags);
@@ -306,7 +306,7 @@ void Peeler::Perform()
 			size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
 			if(antenna1 != antenna2)
 			{
-				boost::mutex::scoped_lock lock(predicter->IOMutex());
+				std::unique_lock<std::mutex> lock(predicter->IOMutex());
 				dataColumn.get(rowIndex, data);
 				flagColumn.get(rowIndex, flags);
 				lock.unlock();

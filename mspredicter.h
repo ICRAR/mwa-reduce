@@ -10,10 +10,9 @@
 
 #include "model/model.h"
 
-#include <boost/thread/thread.hpp>
-
 #include <complex>
 #include <memory>
+#include <mutex>
 
 class MSPredicter
 {
@@ -70,7 +69,7 @@ public:
 		_availableBufferLane.write(data);
 	}
 	
-	boost::mutex &IOMutex() { return _mutex; }
+	std::mutex &IOMutex() { return _mutex; }
 	
 	void SetApplyBeam(bool applyBeam) { _applyBeam = applyBeam; }
 	void SetStartRow(size_t startRow) { _startRow = startRow; }
@@ -86,13 +85,13 @@ private:
 	bool _applyBeam, _useModelColumn;
 	
 	Model _model;
-	boost::mutex _mutex;
+	std::mutex _mutex;
 	
 	const size_t _laneSize;
 	ao::lane<RowData> _workLane, _outputLane, _availableBufferLane;
 	
-	std::unique_ptr<boost::thread> _readThread;
-	std::unique_ptr<boost::thread_group> _workThreadGroup;
+	std::unique_ptr<std::thread> _readThread;
+	std::vector<std::thread> _workThreadGroup;
 	std::unique_ptr<Predicter> _predicter;
 	std::vector<std::complex<double>*> _buffers;
 	std::unique_ptr<BandData> _bandData;

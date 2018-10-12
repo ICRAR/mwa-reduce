@@ -74,7 +74,7 @@ public:
 		{
 			size_t rowIndex = rowData.rowIndex;
 			
-			boost::mutex::scoped_lock lock(predicter.IOMutex());
+			std::unique_lock<std::mutex> lock(predicter.IOMutex());
 			progress.SetProgress(rowIndex, ms.nrow());
 			dataColumn.get(rowIndex, data);
 			lock.unlock();

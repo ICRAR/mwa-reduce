@@ -18,7 +18,7 @@ void MSPredicter::clearBuffers()
 
 void MSPredicter::Start(bool reportSources)
 {
-	boost::mutex::scoped_lock lock(_mutex);
+	std::lock_guard<std::mutex> lock(_mutex);
 	if(_ms.nrow() == 0) throw std::runtime_error("Table has no rows (no data)");
 	
 	casacore::ROArrayColumn<casacore::Complex> dataColumn(_ms, _ms.columnName(casacore::MSMainEnums::DATA));
@@ -71,8 +71,8 @@ void MSPredicter::Start(bool reportSources)
 
 	// Start all threads
 	if(!_useModelColumn)
-		_workThreadGroup.reset(new boost::thread_group());
-	_readThread.reset(new boost::thread(&MSPredicter::ReadThreadFunc, this));
+		_workThreadGroup.clear();
+	_readThread.reset(new std::thread(&MSPredicter::ReadThreadFunc, this));
 }
 	
 void MSPredicter::ReadThreadFunc()
@@ -83,10 +83,10 @@ void MSPredicter::ReadThreadFunc()
 		if(_model.SourceCount() == 0)
 			actualThreadCount = 1;
 		for(size_t i=0; i!=actualThreadCount; ++i)
-			_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
+			_workThreadGroup.emplace_back(&MSPredicter::PredictThreadFunc, this);
 	}
 	
-	boost::mutex::scoped_lock lock(_mutex);
+	std::unique_lock<std::mutex> lock(_mutex);
 
 	casacore::ROScalarColumn<int> ant1Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA1));
 	casacore::ROScalarColumn<int> ant2Column(_ms, _ms.columnName(casacore::MSMainEnums::ANTENNA2));
@@ -131,14 +131,15 @@ void MSPredicter::ReadThreadFunc()
 			{
 				// Stop all threads, then update beam values, then restart threads.
 				_workLane.write_end();
-				_workThreadGroup->join_all();
+				for(std::thread& t : _workThreadGroup)
+					t.join();
 				
 				_workLane.clear();
 				_beamEvaluator->SetTime(time);
 				_predicter->UpdateBeam(_model);
-				_workThreadGroup.reset(new boost::thread_group());
+				_workThreadGroup.clear();
 				for(size_t i=0; i!=actualThreadCount; ++i)
-					_workThreadGroup->add_thread(new boost::thread(&MSPredicter::PredictThreadFunc, this));
+					_workThreadGroup.emplace_back(&MSPredicter::PredictThreadFunc, this);
 			}
 			
 			_availableBufferLane.read(rowData);
@@ -172,7 +173,8 @@ void MSPredicter::ReadThreadFunc()
 	if(!_useModelColumn)
 	{
 		_workLane.write_end();
-		_workThreadGroup->join_all();
+		for(std::thread& t : _workThreadGroup)
+			t.join();
 	}
 	_outputLane.write_end();
 }
