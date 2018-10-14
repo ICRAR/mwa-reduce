@@ -212,7 +212,7 @@ void Calibrator::Perform()
 			}
 			predicter->SetStartRow(intervalRowStart);
 			predicter->SetEndRow(intervalRowEnd);
-			predicter->SetChannelRange(startChBlock, endChBlock);
+			predicter->SetChannelRange(startChBlock*channelCount/chBlockCount, endChBlock*channelCount/chBlockCount);
 			predicter->SetMWAPath(_mwaPath);
 			
 			std::vector<std::complex<double> > modelValues(4 * channelCount);
@@ -220,7 +220,7 @@ void Calibrator::Perform()
 			casacore::Array<float> weights(dataShape);
 			casacore::Array<bool> flags(dataShape);
 			time = timeColumn(intervalRowStart);
-			size_t selectedCount = 0, notSelected = 0, previousTime = 0;
+			size_t selectedCount = 0, notSelected = 0;
 			MSPredicter::RowData rowData;
 			
 			predicter->Start(_verbose);
@@ -233,12 +233,6 @@ void Calibrator::Perform()
 				{
 					progress->SetProgress(
 						rowData.rowIndex - intervalRowStart, intervalRowEnd - intervalRowStart);
-				}
-				if(previousTime < rowData.timeIndex)
-				{
-					previousTime = rowData.timeIndex;
-					if(progress)
-						std::cout << '.' << std::flush;
 				}
 				if(antenna1 != antenna2)
 				{
