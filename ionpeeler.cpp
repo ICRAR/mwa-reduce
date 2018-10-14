@@ -215,7 +215,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 			std::cout << "Evaluating beam...\n";
 			beamEvaluator.SetTime(timeMColumn(_curStartRow));
 			for(size_t s=0; s!=_predictionModels.size(); ++s)
-				_predicters[s]->UpdateBeam(_predictionModels[s]);
+				_predicters[s]->UpdateBeam(_predictionModels[s], 0, channelCount);
 		}
 		
 		std::cout << "Reading (T " << _startTimestep << "-" << _endTimestep << "/" << timestepCount << ", rows " << _curStartRow << '-' << _curEndRow << '/' << ms.nrow() << ")...\n";

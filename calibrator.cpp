@@ -4,6 +4,7 @@
 #include "banddata.h"
 #include "matrix2x2.h"
 #include "parallelfor.h"
+#include "progressbar.h"
 
 #include "beamevaluator.h"
 #include "mspredicter.h"
@@ -193,11 +194,11 @@ void Calibrator::Perform()
 			std::unique_ptr<MSPredicter> predicter;
 			std::unique_ptr<BeamEvaluator> beamEvaluator;
 			std::vector<std::complex<double>> beamValues;
+			std::unique_ptr<ProgressBar> progress;
 			if(_model.Empty()) {
-				std::cout << "Reading data and model column...\n";
+				if(_verbose)
+					progress.reset(new ProgressBar("Reading data and model column"));
 				predicter.reset(new MSPredicter(_ms, _threadCount));
-				predicter->SetStartRow(intervalRowStart);
-				predicter->SetEndRow(intervalRowEnd);
 			}
 			else {
 				if(_applyBeam)
@@ -205,13 +206,14 @@ void Calibrator::Perform()
 					beamEvaluator.reset(new BeamEvaluator(_ms, _verbose, _mwaPath));
 				}
 				predicter.reset(new MSPredicter(_ms, _threadCount, _model));
-				predicter->SetStartRow(intervalRowStart);
-				predicter->SetEndRow(intervalRowEnd);
 				predicter->SetApplyBeam(_applyBeam);
-				predicter->SetMWAPath(_mwaPath);
 				if(_verbose)
-					std::cout << "Reading data & predicting model...\n";
+					progress.reset(new ProgressBar("Reading data & predicting model..."));
 			}
+			predicter->SetStartRow(intervalRowStart);
+			predicter->SetEndRow(intervalRowEnd);
+			predicter->SetChannelRange(startChBlock, endChBlock);
+			predicter->SetMWAPath(_mwaPath);
 			
 			std::vector<std::complex<double> > modelValues(4 * channelCount);
 			casacore::Array<complex_t> data(dataShape);
@@ -227,10 +229,15 @@ void Calibrator::Perform()
 				size_t rowIndex = rowData.rowIndex;
 				// Cross correlation?
 				size_t antenna1 = rowData.a1, antenna2 = rowData.a2;
+				if(progress)
+				{
+					progress->SetProgress(
+						rowData.rowIndex - intervalRowStart, intervalRowEnd - intervalRowStart);
+				}
 				if(previousTime < rowData.timeIndex)
 				{
 					previousTime = rowData.timeIndex;
-					if(_verbose)
+					if(progress)
 						std::cout << '.' << std::flush;
 				}
 				if(antenna1 != antenna2)

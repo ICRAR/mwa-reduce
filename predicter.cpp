@@ -52,7 +52,7 @@ void Predicter::initialize(ModelComponent& component)
 		Polarization::StokesToLinear(stokesValues, &parameters->brightness[ch*4]);
 	}
 
-	updateBeam(component);
+	updateBeam(component, 0, _channelCount);
 	
 	for(size_t ch=0;ch!=_channelCount;++ch)
 	{
@@ -83,7 +83,7 @@ void Predicter::Initialize(Model& model, const std::string& solutionFile, BeamEv
 		readSolutions(solutionFile);
 }
 
-void Predicter::updateBeam(ModelComponent& component)
+void Predicter::updateBeam(ModelComponent& component, size_t startChannel, size_t endChannel)
 {
 	SourceParameters *parameters = reinterpret_cast<SourceParameters *>(component.UserData());
 	BeamEvaluator::PrecalcPosInfo posInfo;
@@ -91,7 +91,7 @@ void Predicter::updateBeam(ModelComponent& component)
 		_beamEvaluator->PrecalculatePositionInfo(posInfo, component.PosRA(), component.PosDec());
 	}
 	
-	_threads.For(0, _channelCount, [&](size_t ch, size_t /*thread*/)
+	_threads.For(startChannel, endChannel, [&](size_t ch, size_t /*thread*/)
 	{
 		if(_beamEvaluator != nullptr)
 		{
@@ -110,12 +110,12 @@ void Predicter::updateBeam(ModelComponent& component)
 	});
 }
 
-void Predicter::UpdateBeam(Model& model)
+void Predicter::UpdateBeam(Model& model, size_t startChannel, size_t endChannel)
 {
 	for(Model::iterator src=model.begin(); src!=model.end(); ++src)
 	{
 		for(ModelSource::iterator i=src->begin(); i!=src->end(); ++i)
-			updateBeam(*i);
+			updateBeam(*i, startChannel, endChannel);
 	}
 }
 

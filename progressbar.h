@@ -6,14 +6,16 @@
 class ProgressBar
 {
 	public:
-		ProgressBar(const std::string &taskDescription);
+		explicit ProgressBar(const std::string &taskDescription);
 		~ProgressBar();
 	
 		void SetProgress(size_t taskIndex, size_t taskCount);
 		
+		ProgressBar& operator=(ProgressBar&& rhs);
+		
 	private:
-		const std::string _taskDescription;
-		unsigned _displayedDots;
+		std::string _taskDescription;
+		int _displayedDots;
 };
 
 #endif

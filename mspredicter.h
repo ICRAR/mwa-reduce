@@ -29,6 +29,9 @@ public:
 	
 	explicit MSPredicter(casacore::MeasurementSet &ms, size_t threadCount) :
 		_ms(ms),
+		_channelCount(0),
+		_startChannel(0),
+		_endChannel(0),
 		_applyBeam(false),
 		_useModelColumn(true),
 		_model(),
@@ -75,6 +78,11 @@ public:
 	void SetStartRow(size_t startRow) { _startRow = startRow; }
 	void SetEndRow(size_t endRow) { _endRow = endRow; }
 	void SetMWAPath(const std::string& mwaPath) { _mwaPath = mwaPath; }
+	void SetChannelRange(size_t startChannel, size_t endChannel)
+	{
+		_startChannel = startChannel;
+		_endChannel = endChannel;
+	}
 
 private:
 	void ReadThreadFunc();
@@ -83,7 +91,7 @@ private:
 	
 	casacore::MeasurementSet &_ms;
 	std::unique_ptr<BeamEvaluator> _beamEvaluator;
-	size_t _channelCount;
+	size_t _channelCount, _startChannel, _endChannel;
 	bool _applyBeam, _useModelColumn;
 	
 	Model _model;

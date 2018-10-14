@@ -27,7 +27,7 @@ class Predicter
 		void Initialize(class ModelSource &source, class BeamEvaluator *beamEvaluator = 0);
 		void Initialize(class Model &model, const std::string &solutionFile = std::string(), class BeamEvaluator *beamEvaluator = 0);
 		void ReportSources(class Model& model);
-		void UpdateBeam(class Model& model);
+		void UpdateBeam(class Model& model, size_t startChannel, size_t endChannel);
 		
 		//CNumType Predict(const class ModelSource &source, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
 		//CNumType Predict(const class Model &model, NumType u, NumType v, NumType w, size_t channelIndex, size_t polarizationIndex);
@@ -38,7 +38,7 @@ class Predicter
 		NumType TotalFlux(size_t p) { return std::fabs(_totalFlux[p]); }
 	private:
 		void initialize(class ModelComponent &source);
-		void updateBeam(class ModelComponent &source);
+		void updateBeam(class ModelComponent &source, size_t startChannel, size_t endChannel);
 		
 		void predict4(CNumType *dest, const class ModelComponent& component, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);
 		struct SourceParameters

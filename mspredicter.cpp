@@ -29,6 +29,11 @@ void MSPredicter::Start(bool reportSources)
 	
 	_bandData.reset(new BandData(_ms.spectralWindow()));
 	_channelCount = _bandData->ChannelCount();
+	if(_endChannel == 0)
+	{
+		_startChannel = 0;
+		_endChannel = _channelCount;
+	}
 	
 	casacore::MSField fieldTable = _ms.field();
 	casacore::ROArrayColumn<double> phaseDirColumn(fieldTable, fieldTable.columnName(casacore::MSFieldEnums::PHASE_DIR));
@@ -136,7 +141,7 @@ void MSPredicter::ReadThreadFunc()
 				
 				_workLane.clear();
 				_beamEvaluator->SetTime(time);
-				_predicter->UpdateBeam(_model);
+				_predicter->UpdateBeam(_model, _startChannel, _endChannel);
 				_workThreadGroup.clear();
 				for(size_t i=0; i!=actualThreadCount; ++i)
 					_workThreadGroup.emplace_back(&MSPredicter::PredictThreadFunc, this);
@@ -184,8 +189,8 @@ void MSPredicter::PredictThreadFunc()
 	RowData rowData;
 	while(_workLane.read(rowData))
 	{
-		std::complex<double> *valIter = rowData.modelData;
-		for(size_t ch=0; ch!=_channelCount; ++ch)
+		std::complex<double> *valIter = rowData.modelData + 4*_startChannel;
+		for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
 		{
 			double lambda = _bandData->ChannelWavelength(ch);
 			_predicter->Predict4(valIter, _model, rowData.u/lambda, rowData.v/lambda, rowData.w/lambda, ch, rowData.a1, rowData.a2);

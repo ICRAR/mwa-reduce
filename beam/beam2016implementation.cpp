@@ -140,7 +140,7 @@ JonesMatrix Beam2016Implementation::CalcJonesDirect( double az_rad, double za_ra
 
 JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int freq_hz_param, bool bZenithNorm )
 {
-	recursive_lock<std::mutex> lock(_mutex, false);
+	recursive_lock<std::mutex> lock(_mutex, std::defer_lock);
 	return CalcJones(az_deg, za_deg, freq_hz_param, _delays, _amps, lock, bZenithNorm);
 }
 
