@@ -208,7 +208,7 @@ void Calibrator::Perform()
 				predicter.reset(new MSPredicter(_ms, _threadCount, _model));
 				predicter->SetApplyBeam(_applyBeam);
 				if(_verbose)
-					progress.reset(new ProgressBar("Reading data & predicting model..."));
+					progress.reset(new ProgressBar("Reading data & predicting model"));
 			}
 			predicter->SetStartRow(intervalRowStart);
 			predicter->SetEndRow(intervalRowEnd);
