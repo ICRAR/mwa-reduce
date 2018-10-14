@@ -21,6 +21,7 @@
 #include <H5Cpp.h>
 
 #include "factorialtable.h"
+#include "recursive_lock.h"
 
 /*
   Structure for Jones matrix :
@@ -80,7 +81,7 @@ public :
    //         bZenithNorm     - normalise to zenith (>0) or not (<=0)
    // OUTPUT : Jones matrix (normalised or not - depending on the parameter bZenithNorm )
    JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, bool bZenithNorm=true );
-   JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays, const double* amps, bool bZenithNorm=true );
+   JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays, const double* amps, recursive_lock<std::mutex>& lock, bool bZenithNorm=true );
 
    // Calculation of Jones matrix for an image passed in the arrays azimuth and zenith angles maps. 
    // This function calls the single direction one (above) for all pixel in the input image.
@@ -140,19 +141,19 @@ private:
    std::vector<double> _calcModesLastAmps;
    
    // function comparing current parameters : frequency, delays and amplitudes with those previously used to calculate spherical waves coefficients (stored in the 3 variables above)
-   bool IsCalcModesRequired( int freq_hz, int n_ant, const double* delays, const double* amps );
+   bool IsCalcModesRequired(int freq_hz, int n_ant, const double* delays, const double* amps);
    
    // Calculation of modes Q1 and Q2 and coefficients N and M and some derived variables (MabsM_X,MabsM_Y,Nmax_X and Nmax_Y) to make it once for a given pointing and 
    // then re-use for many different (azim,za) angles:
    
    // function calculating coefficients for X and Y and storing parameters frequency, delays and amplitudes 
-   void GetModes(int freq_hz, size_t n_ant, const double* delays, const double* amps, Coefficients& coefsX,  Coefficients& coefsY);
+   void GetModes(int freq_hz, size_t n_ant, const double* delays, const double* amps, Coefficients& coefsX,  Coefficients& coefsY, recursive_lock<std::mutex>& lock);
    
    // function calculating all coefficients Q1, Q2, N, M and derived MabsM, Nmax for a given polarisation ("X" or "Y") - perhaps enum should be used here 
-   double CalcModes(int freq_hz, size_t n_ant, const double* delays, const double* amp, char pol, Coefficients& coefs);
+   double CalcModes(int freq_hz, size_t n_ant, const double* delays, const double* amp, char pol, Coefficients& coefs, recursive_lock<std::mutex>& lock);
 
    // Calculation of normalisation matrix :
-   JonesMatrix CalcZenithNormMatrix(int freq_hz);
+   JonesMatrix CalcZenithNormMatrix(int freq_hz, recursive_lock<std::mutex>& lock);
 
    std::map<int,JonesMatrix> _normJonesCache;
 	 
@@ -169,7 +170,7 @@ private:
 	// Read data from H5 file, file name is specified in the object constructor 
 	void Read();
 	
-	const std::vector<std::vector<double>>& GetDataSet(const DataSetIndex& index);
+	const std::vector<std::vector<double>>& GetDataSet(const DataSetIndex& index, recursive_lock<std::mutex>& lock);
 	
 	// Read dataset_name from H5 file 
 	void ReadDataSet(const std::string& dataset_name, std::vector<std::vector<double>>& out_vector, H5::H5File& h5File);
