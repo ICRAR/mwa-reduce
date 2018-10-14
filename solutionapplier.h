@@ -125,7 +125,7 @@ public:
 		/**
 		 * Read the solutions file
 		 */
-		size_t channelBlockCount = 0;
+		size_t channelBlockCount;
 		if(_preset)
 		{
 			channelBlockCount = channelCount;

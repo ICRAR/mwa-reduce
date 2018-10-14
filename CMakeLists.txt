@@ -120,8 +120,7 @@ add_executable(render render.cpp modelrenderer.cpp fftconvolver.cpp fitsiochecke
 add_executable(editmodel editmodel.cpp beamevaluator.cpp fitsreader.cpp fitsiochecker.cpp model/model.cpp nlplfitter.cpp polynomialfitter.cpp rmsynthesis.cpp spectrumft.cpp deconvolution/spectralfitter.cpp ${BEAMFILES})
 add_executable(storetime storetime.cpp stopwatch.cpp)
 add_executable(subtrmodel beamevaluator.cpp subtrmodel.cpp model/model.cpp nlplfitter.cpp predicter.cpp ${BEAMFILES} mspredicter.cpp progressbar.cpp)
-#add_executable(subtrspectrum subtrspectrum.cpp spectrumsubtractor.cpp beamevaluator.cpp model/model.cpp predicter.cpp ${BEAMFILES})
-#add_executable(spectrum beamevaluator.cpp spectrum.cpp spectrummaker.cpp imageweights.cpp model/model.cpp predicter.cpp mspredicter.cpp progressbar.cpp ${BEAMFILES})
+add_executable(solutiontool solutiontool.cpp)
 add_executable(tests tests.cpp nlplfitter.cpp ${BEAMFILES})
 
 if(LIBXML2_FOUND)
@@ -167,9 +166,7 @@ target_link_libraries(peel ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREA
 target_link_libraries(phasecal ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(regridimg ${CASA_LIBS} ${FITSIO_LIB})
 target_link_libraries(render ${FITSIO_LIB} ${CASA_LIBS} ${FFTW3_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
-#target_link_libraries(spectrum ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(subtrmodel ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
-#target_link_libraries(subtrspectrum ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(tests ${BEAM_LIBS} ${CASA_LIBS} ${FITSIO_LIB})
 
 add_executable(beam2016test EXCLUDE_FROM_ALL beam/beam2016implementation.cpp beam/beam2016test.cpp beam/system.cpp )
