@@ -44,7 +44,7 @@ void CalibrationMethod::InitSolutions(const CalibrationMethod &source)
 {
 	_jonesSolutions = source._jonesSolutions;
 	ao::uvector<std::complex<double>>::iterator ptr = _jonesSolutions.begin();
-	for(size_t i=0; i!=_nChannels; ++i)
+	for(size_t i=0; i!=_nAntenna; ++i)
 	{
 		bool isFlagged = false;
 		for(size_t p=0; p!=4; ++p)
@@ -153,8 +153,8 @@ double CalibrationMethod::totalDistance(size_t antenna)
 				const bool isConjTranspose = antenna > antenna1;
 				const std::complex<double> *data = _data.ValuePtr(antenna, antenna1, timestep);
 				const std::complex<double> *model = _model.ValuePtr(antenna, antenna1, timestep);
-				const std::complex<double> *jones1 = &_jonesSolutions[antenna * _nChannels * 4];
-				const std::complex<double> *jones2 = &_jonesSolutions[antenna1 * _nChannels * 4];
+				const std::complex<double> *jones1 = &_jonesSolutions[antenna * 4];
+				const std::complex<double> *jones2 = &_jonesSolutions[antenna1 * 4];
 				
 				std::complex<double> j1TimesD[4], j1DJ2[4], distances[4];
 				for(size_t ch=0; ch!=_nChannels; ++ch)
@@ -381,8 +381,6 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 				std::complex<double> *dataPtr = _data.ValuePtr(ant, k, t);
 				std::complex<double> *modelPtr = _model.ValuePtr(ant, k, t);
 				std::complex<double> *jonesPtr = &_jonesSolutions[k * 4];
-				std::complex<double> *rTermPtr = &rTerm[0];
-				std::complex<double> *nextJonesPtr = &solutions[0];
 			
 				for(size_t ch=0; ch!=_nChannels; ++ch)
 				{
@@ -393,12 +391,12 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 						
 						Matrix2x2::ATimesB(jTimesHermM, jonesPtr, modelPtr);
 						
-						Matrix2x2::PlusHermATimesB(nextJonesPtr, dataPtr, jTimesHermM);
+						Matrix2x2::PlusHermATimesB(solutions, dataPtr, jTimesHermM);
 						
 						std::complex<double> mTimesHermJ[4];
 						Matrix2x2::HermATimesHermB(mTimesHermJ, modelPtr, jonesPtr);
 						
-						Matrix2x2::PlusATimesB(rTermPtr, mTimesHermJ, jTimesHermM);
+						Matrix2x2::PlusATimesB(rTerm, mTimesHermJ, jTimesHermM);
 						
 					} else { // non-herm conjugate case
 						// sum(D J M^H) sum(M J^H J M^H)
@@ -406,12 +404,12 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 						
 						Matrix2x2::ATimesHermB(jTimesHermM, jonesPtr, modelPtr);
 						
-						Matrix2x2::PlusATimesB(nextJonesPtr, dataPtr, jTimesHermM);
+						Matrix2x2::PlusATimesB(solutions, dataPtr, jTimesHermM);
 						
 						std::complex<double> mTimesHermJ[4];
 						Matrix2x2::ATimesHermB(mTimesHermJ, modelPtr, jonesPtr);
 						
-						Matrix2x2::PlusATimesB(rTermPtr, mTimesHermJ, jTimesHermM);
+						Matrix2x2::PlusATimesB(rTerm, mTimesHermJ, jTimesHermM);
 					}
 					
 					// Move to next channel
