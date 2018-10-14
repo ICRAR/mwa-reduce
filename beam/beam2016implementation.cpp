@@ -36,12 +36,12 @@ static const double deg2rad = M_PI/180.00;
 #define DEFAULT_H5_FILE_PATH "mwapy/data/"
 #define N_ANT_COUNT 16
 
-bool Beam2016Implementation::has_freq(int freq_hz)
+bool Beam2016Implementation::has_freq(int freq_hz) const
 {
 	return std::find(m_freq_list.begin(), m_freq_list.end(), freq_hz) != m_freq_list.end();
 }
 
-int Beam2016Implementation::find_closest_freq(int freq_hz)
+int Beam2016Implementation::find_closest_freq(int freq_hz) const
 {
    double min_diff=1e20;
    int best_idx=-1;
@@ -145,11 +145,9 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int
 
 JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int freq_hz, const double* delays, const double* amps, bool bZenithNorm )
 {
-	std::unique_lock<std::mutex> lock(_mutex);
 	if( !has_freq(freq_hz) ) {
 		freq_hz = find_closest_freq( freq_hz );
 	}
-	lock.unlock();
 	
 	Coefficients coefsX, coefsY;
 	GetModes( freq_hz , N_ANT_COUNT, delays, amps, coefsX, coefsY );   
@@ -160,20 +158,18 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int
 	{
 		JonesMatrix normMatrix;
 		
-		lock.lock();
+		std::unique_lock<std::mutex> lock(_mutex);
 		std::map<int, JonesMatrix>::const_iterator
 			iter = _normJonesCache.find(freq_hz);
 		if(iter == _normJonesCache.end())
 		{
-			lock.unlock();
 			normMatrix = CalcZenithNormMatrix(freq_hz);
-			lock.lock();
 			_normJonesCache.insert(std::make_pair(freq_hz, normMatrix));
-			lock.unlock();
 		}
 		else {
 			normMatrix = iter->second;
 		}
+		lock.unlock();
 		
 		result.j00 = result.j00 / normMatrix.j00;
 		result.j01 = result.j01 / normMatrix.j01;
@@ -186,7 +182,7 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int
 
 JonesMatrix Beam2016Implementation::CalcZenithNormMatrix(int freq_hz)
 {	
-	std::cout << "INFO : calculating Jones matrix for frequency = " << freq_hz << " Hz\n";
+	//std::cout << "INFO : calculating Jones matrix for frequency = " << freq_hz << " Hz\n";
 
 	// Azimuth angles at which Jones components are maximum (see beam_full_EE.py for comments):
 	//  max_phis=[[math.pi/2,math.pi],[0,math.pi/2]] #phi where each Jones vector is max

@@ -63,7 +63,7 @@ public :
 	};
 	
 	Beam2016Implementation(const double* delays, const double* amps, const std::string& searchPath );      
-   
+
    //-------------------------------------------------------------------- Calculation of Jones matrix ------------------------------------------------------------------------------------------------------------------
    // Calculate jones matrix in a specified direction for a given frequency, delays and amplitudes. Zenith normalisation can also be disabled - but by default is enabled :
    // This function will  :
@@ -160,8 +160,8 @@ private:
 
    // ----------------------------------------------------------------
    // Checking frequences included in the H5 file (stored in vector m_freq_list) :
-   bool has_freq(int freq_hz);
-   int find_closest_freq(int freq_hz);
+   bool has_freq(int freq_hz) const;
+   int find_closest_freq(int freq_hz) const;
 
 	// HDF5 File interface and data structures for H5 data
 	// Interface to HDF5 file format and structures to store H5 data 
