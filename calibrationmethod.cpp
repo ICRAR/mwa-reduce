@@ -11,7 +11,7 @@ CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t n
 	_model(nChannels, nAntenna, nTimesteps),
 	_weights(nChannels, nAntenna, nTimesteps),
 	_weightSums(1, nAntenna, 1),
-	_jonesSolutions(nAntenna * 4 * nChannels, 0.0),
+	_jonesSolutions(nAntenna * 4, 0.0),
 	_nChannels(nChannels),
 	_nAntenna(nAntenna),
 	_nTimesteps(nTimesteps),
@@ -24,8 +24,8 @@ CalibrationMethod::CalibrationMethod(size_t nChannels, size_t nAntenna, size_t n
 
 void CalibrationMethod::InitSolutionsToUnity()
 {
-	std::complex<double> *_jonesPtr = &_jonesSolutions[0];
-	for(size_t i=0; i!=_nAntenna * _nChannels; ++i)
+	std::complex<double> *_jonesPtr = _jonesSolutions.data();
+	for(size_t i=0; i!=_nAntenna; ++i)
 	{
 		*_jonesPtr = std::complex<double>(1.0, 0.0); ++_jonesPtr;
 		*_jonesPtr = std::complex<double>(0.0, 0.0); ++_jonesPtr;
@@ -36,22 +36,15 @@ void CalibrationMethod::InitSolutionsToUnity()
 
 void CalibrationMethod::InitSolutionsToNaN()
 {
-	std::complex<double> *_jonesPtr = &_jonesSolutions[0];
 	const std::complex<double> nan(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
-	for(size_t i=0; i!=_nAntenna * _nChannels; ++i)
-	{
-		*_jonesPtr = nan; ++_jonesPtr;
-		*_jonesPtr = nan; ++_jonesPtr;
-		*_jonesPtr = nan; ++_jonesPtr;
-		*_jonesPtr = nan; ++_jonesPtr;
-	}
+	_jonesSolutions.assign(_nAntenna*4, nan);
 }
 
 void CalibrationMethod::InitSolutions(const CalibrationMethod &source)
 {
 	_jonesSolutions = source._jonesSolutions;
 	ao::uvector<std::complex<double>>::iterator ptr = _jonesSolutions.begin();
-	for(size_t i=0; i!=_nChannels*_nAntenna; ++i)
+	for(size_t i=0; i!=_nChannels; ++i)
 	{
 		bool isFlagged = false;
 		for(size_t p=0; p!=4; ++p)
@@ -253,39 +246,30 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 	_weightSums.SetAll(_nChannels * _nTimesteps);
 	//reportDistances();
 	
-	//std::cout << "Weighting data.\n";
 	applyWeightsToData();
 	
 	double globalChangeSizes[4] = {0.0,0.0,0.0,0.0};
 	double stepsize = 0.25;
-	ao::uvector<bool> antennaResults(_nAntenna * _nChannels, false);
+	ao::uvector<bool> antennaResults(_nAntenna, false);
 	do
 	{
 		++iterationNumber;
-		//std::cout << "Iteration " << iterationNumber << '\n';
-		
-		//reportDistances();
 		
 		ao::uvector<std::complex<double> > nextJones(_jonesSolutions);
 		
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
-			calculateNextIter(ant, &nextJones[ant*4*_nChannels], &antennaResults[ant*_nChannels]);
+			calculateNextIter(ant, &nextJones[ant*4], &antennaResults[ant]);
 			if(_onlySolveScalar) {
-				for(size_t ch=0; ch!=_nChannels; ++ch)
-				{
-					nextJones[(ant*_nChannels+ch)*4 + 0] = (nextJones[(ant*_nChannels+ch)*4 + 0] + nextJones[(ant*_nChannels+ch)*4 + 3]) * 0.5;
-					nextJones[(ant*_nChannels+ch)*4 + 1] = 0;
-					nextJones[(ant*_nChannels+ch)*4 + 2] = 0;
-					nextJones[(ant*_nChannels+ch)*4 + 3] = nextJones[(ant*_nChannels+ch)*4 + 0];
-				}
+				nextJones[(ant)*4 + 0] = 
+					(nextJones[ant*4 + 0] + nextJones[ant*4 + 3]) * 0.5;
+				nextJones[ant*4 + 1] = 0;
+				nextJones[ant*4 + 2] = 0;
+				nextJones[ant*4 + 3] = nextJones[ant*4 + 0];
 			}
 			else if(_onlySolveDiag) {
-				for(size_t ch=0; ch!=_nChannels; ++ch)
-				{
-					nextJones[(ant*_nChannels+ch)*4 + 1] = 0;
-					nextJones[(ant*_nChannels+ch)*4 + 2] = 0;
-				}
+				nextJones[ant*4 + 1] = 0;
+				nextJones[ant*4 + 2] = 0;
 			}
 		}
 		
@@ -296,38 +280,28 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		//stepsize *= 0.99;
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
 		{
-			for(size_t ch=0; ch!=_nChannels; ++ch)
-			{
-				if(_onlySolveRotation) {
-					double alpha = Matrix2x2::RotationAngle(nextJonesPtr);
-					std::complex<double> temp[4];
-					Matrix2x2::RotationMatrix(temp, alpha);
-					for(size_t p=0; p!=4; ++p)
-					{
-						*jonesPtr = *jonesPtr * (1.0-stepsize) + temp[p] * stepsize;
-						changeSizes[p+ant*4] += std::norm(*jonesPtr - temp[p]);
-						++jonesPtr;
-					}
-					nextJonesPtr += 4;
-				}
-				else {
-					for(size_t p=0; p!=4; ++p)
-					{
-						changeSizes[p+ant*4] += std::norm(*jonesPtr - *nextJonesPtr);
-						
-						*jonesPtr = *jonesPtr * (1.0-stepsize) + *nextJonesPtr * stepsize;
-						
-						++jonesPtr;
-						++nextJonesPtr;
-					}
-				}
-				
-
-				/*if(ant==1 && (ch==15 || ch==14 || ch==13))
+			if(_onlySolveRotation) {
+				double alpha = Matrix2x2::RotationAngle(nextJonesPtr);
+				std::complex<double> temp[4];
+				Matrix2x2::RotationMatrix(temp, alpha);
+				for(size_t p=0; p!=4; ++p)
 				{
-					std::cout << "Current value of Jones matrix for ant 1, ch " << ch << ":\n"
-					<< matrixToString(jonesPtr-4);
-				}*/
+					*jonesPtr = *jonesPtr * (1.0-stepsize) + temp[p] * stepsize;
+					changeSizes[p+ant*4] += std::norm(*jonesPtr - temp[p]);
+					++jonesPtr;
+				}
+				nextJonesPtr += 4;
+			}
+			else {
+				for(size_t p=0; p!=4; ++p)
+				{
+					changeSizes[p+ant*4] += std::norm(*jonesPtr - *nextJonesPtr);
+					
+					*jonesPtr = *jonesPtr * (1.0-stepsize) + *nextJonesPtr * stepsize;
+					
+					++jonesPtr;
+					++nextJonesPtr;
+				}
 			}
 		}
 		
@@ -338,7 +312,6 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		{
 			for(size_t p=0; p!=4; ++p)
 			{
-				changeSizes[p+ant*4] /= _nChannels;
 				globalChangeSizes[p] += changeSizes[p+ant*4];
 			}
 		}
@@ -348,10 +321,6 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 			if(globalChangeSizes[p] > precisionLimit)
 				continueIterating = true;
 		}
-		
-		//std::cout << "Average change to Jones solutions: \n"
-		//	" (" << globalChangeSizes[0] << " " << globalChangeSizes[1] << ")\n"
-		//	" (" << globalChangeSizes[2] << " " << globalChangeSizes[3] << ")\n";
 		
 	} while(continueIterating && iterationNumber<nIter);
 
@@ -365,19 +334,16 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 	const std::complex<double> nan(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
 	for(size_t ant=0; ant!=_nAntenna; ++ant)
 	{
-		for(size_t ch=0; ch!=_nChannels; ++ch)
+		if(!antennaResults[ant])
 		{
-			if(!antennaResults[ant*_nChannels + ch])
+			for(size_t p=0; p!=4; ++p)
 			{
-				for(size_t p=0; p!=4; ++p)
-				{
-					*jonesPtr = nan;
-					++jonesPtr;
-				}
+				*jonesPtr = nan;
+				++jonesPtr;
 			}
-			else {
-				jonesPtr += 4;
-			}
+		}
+		else {
+			jonesPtr += 4;
 		}
 	}
 }
@@ -403,9 +369,8 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	//            ( SUM_{k!=ant in Nant} DATA[ant,k] JONES^H[k] JONES[k] DATA^H[ant,k] )^-1
 	// (From Mitchel et al., 2008)
 	
-	std::vector<std::complex<double> > solutions(4 * _nChannels);
-	
-	std::vector<std::complex<double> > rTerm(4 * _nChannels);
+	std::complex<double> solutions[4];
+	std::complex<double> rTerm[4];
 	for(size_t t=0; t!=_nTimesteps; ++t)
 	{
 		for(size_t k=0; k!=_nAntenna; ++k)
@@ -415,7 +380,7 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 				const bool isConjTranspose = ant > k;
 				std::complex<double> *dataPtr = _data.ValuePtr(ant, k, t);
 				std::complex<double> *modelPtr = _model.ValuePtr(ant, k, t);
-				std::complex<double> *jonesPtr = &_jonesSolutions[k * 4 * _nChannels];
+				std::complex<double> *jonesPtr = &_jonesSolutions[k * 4];
 				std::complex<double> *rTermPtr = &rTerm[0];
 				std::complex<double> *nextJonesPtr = &solutions[0];
 			
@@ -450,29 +415,23 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 					}
 					
 					// Move to next channel
-					nextJonesPtr += 4;
 					dataPtr += 4;
 					modelPtr += 4;
-					jonesPtr += 4;
-					rTermPtr += 4;
 				}
 			}
 		}
 	}
 	
-	for(size_t ch=0; ch!=_nChannels; ++ch)
+	if(Matrix2x2::MultiplyWithInverse(solutions, rTerm))
 	{
-		if(Matrix2x2::MultiplyWithInverse(&solutions[ch * 4], &rTerm[ch * 4]))
-		{
-			antennaResults[ch] = true;
-			for(size_t i=0; i!=4; ++i)
-				nextJones[ch * 4 + i] = solutions[ch * 4 + i];
-		}
-		else antennaResults[ch] = false;
+		antennaResults[0] = true;
+		for(size_t i=0; i!=4; ++i)
+			nextJones[i] = solutions[i];
 	}
+	else antennaResults[0] = false;
 }
 
-void CalibrationMethod::SolutionSingularValue(size_t antenna, size_t channel, double &s1, double &s2) const
+void CalibrationMethod::SolutionSingularValue(size_t antenna, double &s1, double &s2) const
 {
-	Matrix2x2::SingularValues(&_jonesSolutions[(antenna * _nChannels + channel) * 4], s1, s2);
+	Matrix2x2::SingularValues(&_jonesSolutions[antenna * 4], s1, s2);
 }

@@ -291,7 +291,7 @@ void Calibrator::Perform()
 				{
 					std::complex<double> val[4];
 					for(size_t p=0; p!=4; ++p)
-						val[p] = _calMethods[cb]->JonesSolution(ant, 0, p);
+						val[p] = _calMethods[cb]->JonesSolution(ant, p);
 					Matrix2x2::Invert(val);
 					
 					for(size_t p=0; p!=4; ++p)
@@ -318,7 +318,7 @@ void Calibrator::Perform()
 						{
 							std::complex<double> val[4];
 							for(size_t p2=0; p2!=4; ++p2)
-								val[p2] = _calMethods[cb]->JonesSolution(ant, 0, p2);
+								val[p2] = _calMethods[cb]->JonesSolution(ant, p2);
 							Matrix2x2::Invert(val);
 					
 							double s1, s2;
@@ -349,7 +349,7 @@ void Calibrator::Perform()
 					{
 						std::complex<double> val[4];
 						for(size_t p=0; p!=4; ++p)
-							val[p] = _calMethods[cb]->JonesSolution(ant, 0, p);
+							val[p] = _calMethods[cb]->JonesSolution(ant, p);
 				
 						faradayPlotStream << '\t' << -Matrix2x2::RotationAngle(val);
 					}
@@ -369,7 +369,7 @@ void Calibrator::Perform()
 					{
 						std::complex<double> val[4];
 						for(size_t p=0; p!=4; ++p)
-							val[p] = _calMethods[cb]->JonesSolution(ant, 0, p);
+							val[p] = _calMethods[cb]->JonesSolution(ant, p);
 						Matrix2x2::Invert(val);
 						double totalPower = std::abs(val[0]) + std::abs(val[1]) + std::abs(val[2]) + std::abs(val[3]);
 						crossTermPlotStream << '\t' << (std::abs(val[1]) + std::abs(val[2]))*100.0/totalPower;
@@ -422,7 +422,7 @@ void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIn
 	{
 		if(_verbose)
 			std::cout << "Current value of Jones matrix for ant " << _followAntenna << ", ch " << channelBlockIndex << ":\n"
-		<< CalibrationMethod::MatrixToString(& method.JonesSolution(_followAntenna, 0, 0));
+		<< CalibrationMethod::MatrixToString(& method.JonesSolution(_followAntenna, 0));
 	}
 
 	if(_verbose)

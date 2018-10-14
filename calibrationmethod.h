@@ -23,12 +23,12 @@ class CalibrationMethod
 		
 		void Execute(double& precisionLimit, size_t& nIter);
 		
-		const std::complex<double> &JonesSolution(size_t antenna, size_t channel, size_t polarization) const
+		const std::complex<double> &JonesSolution(size_t antenna, size_t polarization) const
 		{
-			return _jonesSolutions[(antenna * _nChannels + channel) * 4 + polarization];
+			return _jonesSolutions[antenna * 4 + polarization];
 		}
 		
-		void SolutionSingularValue(size_t antenna, size_t channel, double &s1, double &s2) const;
+		void SolutionSingularValue(size_t antenna, double &s1, double &s2) const;
 
 		static std::string MatrixToString(const std::complex<double> *matrix);
 		

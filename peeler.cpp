@@ -262,7 +262,7 @@ void Peeler::Perform()
 				{
 					std::complex<double> val[4];
 					for(size_t p=0; p!=4; ++p)
-						val[p] = calMethods[ch]->JonesSolution(ant, 0, p);
+						val[p] = calMethods[ch]->JonesSolution(ant, p);
 					Matrix2x2::Invert(val);
 					if(std::isfinite(val[0].real()) && std::isfinite(val[3].real()) &&
 						std::isfinite(val[0].imag()) && std::isfinite(val[3].imag()))
@@ -320,8 +320,8 @@ void Peeler::Perform()
 					std::complex<double> solutionsA[4], solutionsB[4];
 					for(size_t p=0; p!=4; ++p)
 					{
-						solutionsA[p] = calMethods[ch]->JonesSolution(antenna1, 0, p);
-						solutionsB[p] = calMethods[ch]->JonesSolution(antenna2, 0, p);
+						solutionsA[p] = calMethods[ch]->JonesSolution(antenna1, p);
+						solutionsB[p] = calMethods[ch]->JonesSolution(antenna2, p);
 					}
 					if(Matrix2x2::IsFinite(solutionsA) && Matrix2x2::IsFinite(solutionsB))
 					{
