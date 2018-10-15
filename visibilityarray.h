@@ -21,6 +21,7 @@ public:
 	
 	T *ValuePtr(size_t antenna1, size_t antenna2, size_t timeIndex)
 	{
+#ifndef NDEBUG
 		if(antenna1 == antenna2 || antenna1 >= _nAntenna || antenna2 >=_nAntenna || timeIndex >= _nTimesteps)
 		{
 			std::ostringstream errMsg;
@@ -35,6 +36,7 @@ public:
 			if(timeIndex >= _nTimesteps)
 				throw std::runtime_error(s+"Requested index value for time index out of bounds");
 		}
+#endif
 		if(antenna1 > antenna2)
 			std::swap(antenna1, antenna2);
 		return &_values[NPol * _nChannels * (BaselineIndex(antenna1, antenna2) + timeIndex * _nBaselines)];

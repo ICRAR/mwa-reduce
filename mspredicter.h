@@ -46,6 +46,9 @@ public:
 	
 	MSPredicter(casacore::MeasurementSet &ms, size_t threadCount, const Model &model, const std::string solutionFile = "") :
 		_ms(ms),
+		_channelCount(0),
+		_startChannel(0),
+		_endChannel(0),
 		_applyBeam(true),
 		_useModelColumn(false),
 		_model(model),
