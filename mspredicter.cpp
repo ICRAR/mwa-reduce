@@ -5,7 +5,7 @@
 
 MSPredicter::~MSPredicter()
 {
-	if(_readThread != 0)
+	if(_readThread != nullptr)
 		_readThread->join();
 	clearBuffers();
 }
@@ -27,12 +27,11 @@ void MSPredicter::Start(bool reportSources)
 	if(polarizationCount != 4)
 		throw std::runtime_error("Expecting MS with 4 polarizations");
 	
-	_bandData.reset(new BandData(_ms.spectralWindow()));
-	_channelCount = _bandData->ChannelCount();
+	_bandData = BandData(_ms.spectralWindow());
 	if(_endChannel == 0)
 	{
 		_startChannel = 0;
-		_endChannel = _channelCount;
+		_endChannel = _bandData.ChannelCount();
 	}
 	
 	casacore::MSField fieldTable = _ms.field();
@@ -48,15 +47,15 @@ void MSPredicter::Start(bool reportSources)
 	{
 		casacore::MEpoch::ROScalarColumn timeColumn(_ms, _ms.columnName(casacore::MSMainEnums::TIME));
 		casacore::MEpoch startTime = timeColumn(_startRow);
-		_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData->LowestFrequency(), _bandData->HighestFrequency(), _channelCount));
+		_predicter.reset(new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), _bandData.ChannelCount()));
 		if(_applyBeam)
 		{
 			_beamEvaluator.reset(new BeamEvaluator(_ms, false, _mwaPath));
 			_beamEvaluator->SetTime(startTime);
-			_predicter->Initialize(_model, _solutionFile, &*_beamEvaluator);
+			_predicter->Initialize(_model, &*_beamEvaluator);
 		}
 		else
-			_predicter->Initialize(_model, _solutionFile);
+			_predicter->Initialize(_model);
 		if(reportSources)
 			_predicter->ReportSources(_model);
 	}
@@ -68,7 +67,7 @@ void MSPredicter::Start(bool reportSources)
 		for(size_t i=0; i!=_laneSize; ++i)
 		{
 			RowData rowData;
-			_buffers[i] = new std::complex<double>[_channelCount*4];
+			_buffers[i] = new std::complex<double>[_bandData.ChannelCount()*4];
 			rowData.modelData = _buffers[i];
 			_availableBufferLane.write(rowData);
 		}
@@ -88,7 +87,9 @@ void MSPredicter::ReadThreadFunc()
 		if(_model.SourceCount() == 0)
 			actualThreadCount = 1;
 		for(size_t i=0; i!=actualThreadCount; ++i)
+		{
 			_workThreadGroup.emplace_back(&MSPredicter::PredictThreadFunc, this);
+		}
 	}
 	
 	std::unique_lock<std::mutex> lock(_mutex);
@@ -159,7 +160,7 @@ void MSPredicter::ReadThreadFunc()
 			{
 				std::complex<double> *outptr = rowData.modelData;
 				casacore::Complex* inptr = modelData.cbegin();
-				for(size_t ch=0; ch!=_channelCount*4; ++ch)
+				for(size_t ch=0; ch!=_bandData.ChannelCount()*4; ++ch)
 				{
 					*outptr = *inptr;
 					++outptr; ++inptr;
@@ -192,7 +193,7 @@ void MSPredicter::PredictThreadFunc()
 		std::complex<double> *valIter = rowData.modelData + 4*_startChannel;
 		for(size_t ch=_startChannel; ch!=_endChannel; ++ch)
 		{
-			double lambda = _bandData->ChannelWavelength(ch);
+			double lambda = _bandData.ChannelWavelength(ch);
 			_predicter->Predict4(valIter, _model, rowData.u/lambda, rowData.v/lambda, rowData.w/lambda, ch, rowData.a1, rowData.a2);
 			valIter += 4;
 		}

@@ -115,7 +115,7 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		
 		_predicters[clusterIter] = new Predicter(phaseCentreRA, phaseCentreDec, _bandData.LowestFrequency(), _bandData.HighestFrequency(), channelCount);
 		if(_applyBeam)
-			_predicters[clusterIter]->Initialize(_predictionModels[clusterIter], "", &beamEvaluator);
+			_predicters[clusterIter]->Initialize(_predictionModels[clusterIter], &beamEvaluator);
 		else
 			_predicters[clusterIter]->Initialize(_predictionModels[clusterIter]);
 		

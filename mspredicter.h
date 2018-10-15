@@ -29,7 +29,6 @@ public:
 	
 	explicit MSPredicter(casacore::MeasurementSet &ms, size_t threadCount) :
 		_ms(ms),
-		_channelCount(0),
 		_startChannel(0),
 		_endChannel(0),
 		_applyBeam(false),
@@ -46,7 +45,6 @@ public:
 	
 	MSPredicter(casacore::MeasurementSet &ms, size_t threadCount, const Model &model, const std::string solutionFile = "") :
 		_ms(ms),
-		_channelCount(0),
 		_startChannel(0),
 		_endChannel(0),
 		_applyBeam(true),
@@ -56,7 +54,6 @@ public:
 		_workLane(_laneSize),
 		_outputLane(_laneSize),
 		_availableBufferLane(_laneSize),
-		_solutionFile(solutionFile),
 		_startRow(0),
 		_endRow(ms.nrow()),
 		_threadCount(threadCount)
@@ -94,7 +91,7 @@ private:
 	
 	casacore::MeasurementSet &_ms;
 	std::unique_ptr<BeamEvaluator> _beamEvaluator;
-	size_t _channelCount, _startChannel, _endChannel;
+	size_t _startChannel, _endChannel;
 	bool _applyBeam, _useModelColumn;
 	
 	Model _model;
@@ -107,8 +104,8 @@ private:
 	std::vector<std::thread> _workThreadGroup;
 	std::unique_ptr<Predicter> _predicter;
 	std::vector<std::complex<double>*> _buffers;
-	std::unique_ptr<BandData> _bandData;
-	std::string _solutionFile, _mwaPath;
+	BandData _bandData;
+	std::string _mwaPath;
 	size_t _startRow, _endRow, _threadCount;
 };
 

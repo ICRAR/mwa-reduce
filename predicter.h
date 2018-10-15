@@ -24,8 +24,8 @@ class Predicter
 		/**
 		 * Initializes the l and m position(s) of the source.
 		 */
-		void Initialize(class ModelSource &source, class BeamEvaluator *beamEvaluator = 0);
-		void Initialize(class Model &model, const std::string &solutionFile = std::string(), class BeamEvaluator *beamEvaluator = 0);
+		void Initialize(class ModelSource &source, class BeamEvaluator *beamEvaluator = nullptr);
+		void Initialize(class Model &model, class BeamEvaluator *beamEvaluator = nullptr);
 		void ReportSources(class Model& model);
 		void UpdateBeam(class Model& model, size_t startChannel, size_t endChannel);
 		
@@ -47,13 +47,11 @@ class Predicter
 			CNumType *brightness, *beamValues, *appBrightness;
 			NumType gausTransf[4];
 		};
-		void readSolutions(const std::string& solutionFile);
 		
 		NumType _ra0, _dec0, _startFrequency, _endFrequency;
 		size_t _channelCount;
 		class BeamEvaluator *_beamEvaluator;
 		CNumType _totalFlux[4];
-		std::vector<std::complex<double>> _rhsSolutions;
 		ThreadPool _threads;
 };
 
