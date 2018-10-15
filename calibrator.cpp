@@ -270,8 +270,8 @@ void Calibrator::Perform()
 								modelValues[chIndex+p] = rowData.modelData[chIndex+p];
 								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
 							}
-							_calMethods[cb - startChBlock]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
 						}
+						_calMethods[cb - startChBlock]->AddData(&dataPtr[cbStartCh], &weightsPtr[cbStartCh], &modelValues[cbStartCh], antenna1, antenna2, rowData.timeIndex);
 					}
 				}
 				
@@ -283,7 +283,9 @@ void Calibrator::Perform()
 		
 			ParallelFor<size_t> loop(_threadCount);
 			_threadData.assign(loop.NThreads(), ThreadData(chBlockCount));
-			loop.Run(0, partChBlockCount, std::bind(&Calibrator::calibrateChannelBlock, this, std::placeholders::_1, std::placeholders::_2));
+			loop.Run(0, partChBlockCount, [&](size_t cb, size_t threadIndex) {
+				calibrateChannelBlock(cb, threadIndex);
+			});
 
 			// Save solutions
 			for(size_t ant=0; ant!=antennaCount; ++ant)
@@ -404,13 +406,13 @@ void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIn
 
 		if((iters >= _nIter && limit > _minAccuracy) || !std::isfinite(limit))
 		{
-			std::cout << "Channel " << channelBlockIndex << " did not converge (accuracy=" << limit << "), setting gains to NaN.\n";
+			std::cout << "Chanblock " << channelBlockIndex << " did not converge (accuracy=" << limit << "), setting gains to NaN.\n";
 			method.InitSolutionsToNaN();
 		}
 		else {
 			if(iters >= _nIter && limit > _stoppingAccuracy)
 			{
-				std::cout << "Channel " << channelBlockIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
+				std::cout << "Chanblock " << channelBlockIndex << " converged (accuracy=" << limit << ") but did not reach stopping accuracy.\n";
 			}
 			_threadData[threadIndex].lastSuccesfulChBlock = channelBlockIndex;
 		}
@@ -426,6 +428,6 @@ void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIn
 	}
 
 	if(_verbose)
-		std::cout << "Finished calibrating channel " << channelBlockIndex << " in " << iters << " iterations, precision=" << limit << ".\n";
+		std::cout << "Finished calibrating chanblock " << channelBlockIndex << " in " << iters << " iterations, precision=" << limit << ".\n";
 }
 

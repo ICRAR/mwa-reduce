@@ -328,7 +328,7 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 		std::max(globalChangeSizes[0], globalChangeSizes[1]),
 		std::max(globalChangeSizes[2], globalChangeSizes[3]));
 	
-	std::complex<double> *jonesPtr = &_jonesSolutions[0];
+	std::complex<double> *jonesPtr = _jonesSolutions.data();
 	const std::complex<double> nan(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
 	for(size_t ant=0; ant!=_nAntenna; ++ant)
 	{
@@ -367,8 +367,8 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	//            ( SUM_{k!=ant in Nant} DATA[ant,k] JONES^H[k] JONES[k] DATA^H[ant,k] )^-1
 	// (From Mitchel et al., 2008)
 	
-	std::complex<double> solutions[4];
-	std::complex<double> rTerm[4];
+	std::complex<double> solutions[4] = {0.0, 0.0, 0.0, 0.0};
+	std::complex<double> rTerm[4] = {0.0, 0.0, 0.0, 0.0};
 	for(size_t t=0; t!=_nTimesteps; ++t)
 	{
 		for(size_t k=0; k!=_nAntenna; ++k)
