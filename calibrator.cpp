@@ -258,28 +258,28 @@ void Calibrator::Perform()
 					else
 						notSelected++;
 				
-					for(size_t cb = 0; cb!=partChBlockCount; ++cb)
+					for(size_t cb = startChBlock; cb!=endChBlock; ++cb)
 					{
-						size_t cbStartCh = (cb + startChBlock)*channelCount/chBlockCount;
-						size_t cbEndCh = (cb + 1 + startChBlock)*channelCount/chBlockCount;
-						size_t cbChCount = cbEndCh - cbStartCh;
-						for(size_t ch = 0; ch!=cbChCount; ++ch)
+						size_t cbStartCh = cb*channelCount/chBlockCount;
+						size_t cbEndCh = (cb + 1)*channelCount/chBlockCount;
+						for(size_t ch = cbStartCh; ch!=cbEndCh; ++ch)
 						{
-							size_t chIndex = (ch + cbStartCh) * 4;
+							size_t chIndex = ch * 4;
 							for(size_t p=0; p!=4; ++p)
 							{
 								modelValues[chIndex+p] = rowData.modelData[chIndex+p];
 								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
 							}
-							_calMethods[cb]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
+							_calMethods[cb - startChBlock]->AddData(&dataPtr[chIndex], &weightsPtr[chIndex], &modelValues[chIndex], antenna1, antenna2, rowData.timeIndex);
 						}
 					}
 				}
 				
 				predicter->FinishRow(rowData);
 			}
+			progress.reset();
 			if(_verbose)
-				std::cout << "DONE (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected)\nCalibrating...\n";
+				std::cout << "Finished reading/predicting (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected).\nCalibrating...\n";
 		
 			ParallelFor<size_t> loop(_threadCount);
 			_threadData.assign(loop.NThreads(), ThreadData(chBlockCount));
@@ -422,7 +422,7 @@ void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIn
 	if(channelBlockIndex<=16)
 	{
 		if(_verbose)
-			std::cout << "Current value of Jones matrix for ant " << _followAntenna << ", ch " << channelBlockIndex << ":\n"
+			std::cout << "Current value of Jones matrix for ant " << _followAntenna << ", cb " << channelBlockIndex << ":\n"
 		<< CalibrationMethod::MatrixToString(& method.JonesSolution(_followAntenna, 0));
 	}
 

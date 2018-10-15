@@ -166,7 +166,7 @@ public:
 		
 		if(channelBlockCount != channelCount)
 		{
-			std::cout << "Applying each solution to " << channelCount / channelBlockCount << "channels.\n";
+			std::cout << "Applying each solution to " << channelCount / channelBlockCount << " channels.\n";
 		}
 		
 		/**

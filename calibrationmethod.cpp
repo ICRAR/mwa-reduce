@@ -73,7 +73,7 @@ void CalibrationMethod::AddData(const std::complex<DataFloatType>* data, const f
 	while(data != dataEndPtr)
 	{
 		double minWeight = *weights;
-		for(size_t i=0; i!=4; ++i)
+		for(size_t p=0; p!=4; ++p)
 		{
 			if(std::isfinite(data->real()) && std::isfinite(data->imag()))
 			{
@@ -273,9 +273,9 @@ void CalibrationMethod::Execute(double& precisionLimit, size_t& nIter)
 			}
 		}
 		
-		std::complex<double> *jonesPtr = &_jonesSolutions[0];
-		std::complex<double> *nextJonesPtr = &nextJones[0];
-		std::vector<double> changeSizes(_nAntenna*4);
+		std::complex<double> *jonesPtr = _jonesSolutions.data();
+		std::complex<double> *nextJonesPtr = nextJones.data();
+		ao::uvector<double> changeSizes(_nAntenna*4, 0);
 		// TODO stepsize based on something
 		//stepsize *= 0.99;
 		for(size_t ant=0; ant!=_nAntenna; ++ant)
@@ -423,8 +423,8 @@ void CalibrationMethod::calculateNextIter(size_t ant, std::complex<double> *next
 	if(Matrix2x2::MultiplyWithInverse(solutions, rTerm))
 	{
 		antennaResults[0] = true;
-		for(size_t i=0; i!=4; ++i)
-			nextJones[i] = solutions[i];
+		for(size_t p=0; p!=4; ++p)
+			nextJones[p] = solutions[p];
 	}
 	else antennaResults[0] = false;
 }
