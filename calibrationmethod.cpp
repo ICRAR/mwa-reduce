@@ -200,8 +200,6 @@ double CalibrationMethod::totalDistance(size_t antenna)
 					
 					data += 4;
 					model += 4;
-					jones1 += 4;
-					jones2 += 4;
 				}
 				
 				weightSum += *_weightSums.ValuePtr(antenna, antenna1, 0);

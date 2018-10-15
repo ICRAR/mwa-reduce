@@ -386,10 +386,9 @@ void Calibrator::Perform()
 
 void Calibrator::calibrateChannelBlock(size_t channelBlockIndex, size_t threadIndex)
 {
-	size_t lastSuccessfulChBlock = _threadData[threadIndex].lastSuccesfulChBlock;
-	
 	CalibrationMethod& method = *_calMethods[channelBlockIndex];
 	
+	size_t lastSuccessfulChBlock = _threadData[threadIndex].lastSuccesfulChBlock;
 	if(lastSuccessfulChBlock < channelBlockIndex)
 		method.InitSolutions(*_calMethods[lastSuccessfulChBlock]);
 	size_t iters = _nIter;

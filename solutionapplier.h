@@ -194,7 +194,7 @@ public:
 				intervalRowStart = timestepRows[intervalTimestepStart],
 				intervalRowEnd = timestepRows[intervalTimestepEnd];
 			std::cout << "- Interval " << (interval+1) << '/' << solutionFile.IntervalCount() << " (" << intervalRowStart << '-' << intervalRowEnd << ")\n";
-			std::cout << "  Antenna1: " << values[1][(channelCount/2)*4] << "\n";
+			std::cout << "  Antenna1: " << values[1][(channelBlockCount/2)*4] << "\n";
 			for(size_t rowIndex=intervalRowStart; rowIndex!=intervalRowEnd; ++rowIndex)
 			{
 				// Cross correlation?
