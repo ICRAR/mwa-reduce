@@ -271,7 +271,7 @@ void Calibrator::Perform()
 								if(flagPtr[chIndex+p] || !selected) weightsPtr[chIndex+p] = 0.0;
 							}
 						}
-						_calMethods[cb - startChBlock]->AddData(&dataPtr[cbStartCh], &weightsPtr[cbStartCh], &modelValues[cbStartCh], antenna1, antenna2, rowData.timeIndex);
+						_calMethods[cb - startChBlock]->AddData(&dataPtr[cbStartCh*4], &weightsPtr[cbStartCh*4], &modelValues[cbStartCh*4], antenna1, antenna2, rowData.timeIndex);
 					}
 				}
 				
