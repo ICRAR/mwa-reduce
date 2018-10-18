@@ -43,7 +43,7 @@ public:
 		_threadCount(threadCount)
 	{ }
 	
-	MSPredicter(casacore::MeasurementSet &ms, size_t threadCount, const Model &model, const std::string solutionFile = "") :
+	MSPredicter(casacore::MeasurementSet &ms, size_t threadCount, const Model &model) :
 		_ms(ms),
 		_startChannel(0),
 		_endChannel(0),

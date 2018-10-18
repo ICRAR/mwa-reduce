@@ -94,6 +94,13 @@ void Image::reset()
 	_allocator = nullptr;
 }
 
+Image& Image::operator+=(const Image& other)
+{
+	for(size_t i=0; i!=_width*_height; ++i)
+		_data[i] += other[i];
+	return *this;
+}
+
 Image& Image::operator*=(double factor)
 {
 	for(size_t i=0; i!=_width*_height; ++i)

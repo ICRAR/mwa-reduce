@@ -6,13 +6,16 @@
 #include "../banddata.h"
 #include "../dftpredictionalgorithm.h"
 #include "../lane.h"
+#include "../buffered_lane.h"
 
 #include "lbeamevaluator.h"
 
-#include <boost/thread/thread.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/thread/barrier.hpp>
 
 #include <complex>
 #include <memory>
+#include <thread>
 
 class LMSPredicter
 {

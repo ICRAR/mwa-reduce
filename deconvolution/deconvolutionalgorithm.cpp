@@ -9,6 +9,7 @@
 
 DeconvolutionAlgorithm::DeconvolutionAlgorithm() :
 	_threshold(0.0),
+	_majorIterThreshold(0.0),
 	_gain(0.1),
 	_mGain(1.0),
 	_cleanBorderRatio(0.05),
@@ -40,44 +41,6 @@ void DeconvolutionAlgorithm::GetModelFromImage(Model &model, const double* image
 				std::stringstream nameStr;
 				nameStr << "component" << model.SourceCount();
 				component.SetSED(MeasuredSED(value, refFreq, spectralIndex, polarization));
-				component.SetPosRA(ra);
-				component.SetPosDec(dec);
-				
-				ModelSource source;
-				source.SetName(nameStr.str());
-				source.AddComponent(component);
-				model.AddSource(source);
-			}
-		}
-	}
-}
-
-void DeconvolutionAlgorithm::GetModelFromIQUVImage(Model &model, const double* images[4], size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double phaseCentreDL, double phaseCentreDM, double spectralIndex, double refFreq)
-{
-	for(size_t y=0; y!=height; ++y)
-	{
-		for(size_t x=0; x!=width; ++x)
-		{
-			bool isNonZero = false;
-			double values[4];
-			for(size_t p=0; p!=4; ++p)
-			{
-				values[p] = images[p][y*width + x];
-				if(values[p] != 0.0 && std::isfinite(values[p]))
-					isNonZero = true;
-			}
-			if(isNonZero)
-			{
-				long double l, m;
-				ImageCoordinates::XYToLM<long double>(x, y, pixelSizeX, pixelSizeY, width, height, l, m);
-				l += phaseCentreDL; m += phaseCentreDM;
-				ModelComponent component;
-				long double ra, dec;
-				ImageCoordinates::LMToRaDec<long double>(l, m, phaseCentreRA, phaseCentreDec, ra, dec);
-				std::stringstream nameStr;
-				nameStr << "component" << model.SourceCount();
-				MeasuredSED sed;
-				component.SetSED(MeasuredSED(values, refFreq));
 				component.SetPosRA(ra);
 				component.SetPosDec(dec);
 				

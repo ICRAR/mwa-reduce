@@ -58,6 +58,7 @@ public:
 	double ReferenceFrequency() const {
 		return _frequencies[_frequencies.size()/2];
 	}
+	
 private:
 	enum SpectralFittingMode _mode;
 	size_t _nTerms;

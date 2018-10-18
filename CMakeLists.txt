@@ -116,7 +116,7 @@ add_executable(pbcorrect pbcorrect.cpp fitsiochecker.cpp fitsreader.cpp fitswrit
 add_executable(peel peel.cpp peeler.cpp beamevaluator.cpp calibrationmethod.cpp model/model.cpp predicter.cpp mspredicter.cpp nlplfitter.cpp ${BEAMFILES})
 add_executable(phasecal beamevaluator.cpp phasecal.cpp model/model.cpp nlplfitter.cpp predicter.cpp ${BEAMFILES})
 add_executable(regridimg regridimg.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
-add_executable(render render.cpp modelrenderer.cpp fftconvolver.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp model/model.cpp nlplfitter.cpp)
+add_executable(render render.cpp modelrenderer.cpp fftconvolver.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp image.cpp model/model.cpp nlplfitter.cpp)
 add_executable(editmodel editmodel.cpp beamevaluator.cpp fitsreader.cpp fitsiochecker.cpp model/model.cpp nlplfitter.cpp polynomialfitter.cpp rmsynthesis.cpp spectrumft.cpp deconvolution/spectralfitter.cpp ${BEAMFILES})
 add_executable(storetime storetime.cpp stopwatch.cpp)
 add_executable(subtrmodel beamevaluator.cpp subtrmodel.cpp model/model.cpp nlplfitter.cpp predicter.cpp ${BEAMFILES} mspredicter.cpp progressbar.cpp)

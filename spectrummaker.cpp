@@ -72,7 +72,7 @@ void SpectrumMaker::measure(const string& filename, const string& solutionsFile)
 		measFlux(channelCount * _sources.size() * 4),
 		measWeights(channelCount * _sources.size() * 4);
 	
-	MSPredicter modelPredicter(ms, _threadCount, _subtractedModel, solutionsFile);
+	MSPredicter modelPredicter(ms, _threadCount, _subtractedModel);
 	modelPredicter.SetApplyBeam(_applyBeam);
 	
 	std::vector<std::unique_ptr<Predicter>> predicters;

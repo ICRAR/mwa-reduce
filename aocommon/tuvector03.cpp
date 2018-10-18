@@ -631,5 +631,5 @@ void exampleA()
 
 void exampleB()
 {
-	char* buffer = new char[1024];
+	//char* buffer = new char[1024];
 }

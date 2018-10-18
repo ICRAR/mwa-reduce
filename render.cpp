@@ -6,6 +6,7 @@
 #include "fitsreader.h"
 #include "fitswriter.h"
 #include "ioninterpolator.h"
+#include "image.h"
 #include "modelrenderer.h"
 #include "banddata.h"
 
@@ -18,8 +19,7 @@ void meanPos(const std::vector<ModelSource*>& sources, double& ra, double& dec);
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-n <noiselevel>] [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r [-beam <maj> <min> <pa>]] [-a] [-centre <ra> <dec>] [-gaussians] <model>\n"
-		"\t-gaussians will render Gaussian sources as Gaussians. This does not preserve flux properly at this point!\n";
+		std::cout << "syntax: render [-n <noiselevel>] [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r [-beam <maj> <min> <pa>]] [-a] [-centre <ra> <dec>] [-size <width> <height>] [-frequency <valueHz>] <model>\n";
 	else {
 		std::string templateFits;
 		std::string outputFitsName;
@@ -34,7 +34,8 @@ int main(int argc, char* argv[])
 			beamMaj = 2.0*(M_PI/180.0/60.0),
 			beamMin = 2.0*(M_PI/180.0/60.0),
 			beamPA = 0.0;
-		bool gaussians = false;
+		size_t sizeWidth = 0, sizeHeight = 0;
+		double setFrequency = 0.0;
 		while(argi < argc && argv[argi][0] == '-')
 		{
 			std::string param(&argv[argi][1]);
@@ -80,9 +81,16 @@ int main(int argc, char* argv[])
 				++argi;
 				dec = RaDecCoord::ParseDec(argv[argi]);
 			}
-			else if(param == "gaussians")
+			else if(param == "size")
 			{
-				gaussians = true;
+				sizeWidth = atoi(argv[argi+1]);
+				sizeHeight = atoi(argv[argi+2]);
+				argi += 2;
+			}
+			else if(param == "frequency")
+			{
+				++argi;
+				setFrequency = atof(argv[argi]);
 			}
 			else throw std::runtime_error("Invalid param");
 			++argi;
@@ -93,16 +101,17 @@ int main(int argc, char* argv[])
 		size_t width = 4096, height = 4096;
 		double bandwidth = 1000000.0, dateObs = 0.0, frequency = 150000000.0;
 		
+		ImageBufferAllocator allocator;
 		std::unique_ptr<FitsWriter> writer;
 		std::unique_ptr<FitsReader> reader;
-		std::vector<double> image;
+		Image image;
 		if(!templateFits.empty())
 		{
 			double wscImgWeight = 0.0;
 			reader.reset(new FitsReader(templateFits));
 			width = reader->ImageWidth();
 			height = reader->ImageHeight();
-			image.resize(width * height);
+			image = Image(width, height, allocator);
 			ra = reader->PhaseCentreRA();
 			dec = reader->PhaseCentreDec();
 			dl = reader->PhaseCentreDL();
@@ -127,10 +136,26 @@ int main(int argc, char* argv[])
 				writer->SetExtraKeyword("WSCIMGWG", wscImgWeight);
 		}
 		else {
-			image.resize(width * height);
+			image = Image(width, height, allocator);
 			writer.reset(new FitsWriter());
 		}
 		
+		if(sizeWidth!=0 && sizeHeight!=0)
+		{
+			if(sizeWidth > width && sizeHeight > height)
+			{
+				image = image.Untrim(sizeWidth, sizeHeight);
+				width = sizeWidth;
+				height = sizeHeight;
+			}
+		}
+		
+		if(setFrequency != 0.0)
+		{
+			frequency = setFrequency;
+			writer->SetFrequency(setFrequency, writer->Bandwidth());
+		}
+			
 		if(!outputFitsName.empty())
 		{
 			ModelRenderer renderer(ra, dec, pixelSizeX, pixelSizeY, dl, dm);
@@ -141,14 +166,6 @@ int main(int argc, char* argv[])
 				std::normal_distribution<double> dist(0.0, noise);
 				for(size_t i=0; i!=width*height; ++i)
 					image[i] += dist(rnd);
-			}
-			if(!gaussians)
-			{
-				for(ModelSource& s : model)
-				{
-					for(ModelComponent& c : s)
-						c.SetType(ModelComponent::PointSource);
-				}
 			}
 			if(restore)
 			{

@@ -1,6 +1,11 @@
 #include "lbeamevaluator.h"
 
+#ifdef HAVE_LOFAR_BEAM
+
 #include "../banddata.h"
+
+#include "../wsclean/logger.h"
+#include "../units/radeccoord.h"
 
 #include <casacore/measures/TableMeasures/ArrayMeasColumn.h>
 
@@ -27,10 +32,10 @@ LBeamEvaluator::LBeamEvaluator(casacore::MeasurementSet& ms) : _ms(ms)
 		casacore::ROArrayMeasColumn<casacore::MDirection> tileBeamDirColumn(fieldTable, "LOFAR_TILE_BEAM_DIR");
 		_tileBeamDir = *(tileBeamDirColumn(0).data());
 	} else {
-		throw std::runtime_error("LOFAR_TILE_BEAM_DIR column not found");
+		_tileBeamDir = _delayDir;
 	}
 	
-	_j2000ToITRFRef = casacore::MDirection::Convert(_j2000Ref, _itrfRef);
+	Logger::Debug << "Using delay direction: " << RaDecCoord::RaDecToString(_tileBeamDir.getValue().getVector()[0], _tileBeamDir.getValue().getVector()[1]) << '\n';
 	
 	_stations.resize(aTable.nrow());
 	readStations(ms, _stations.begin());
@@ -42,7 +47,7 @@ LBeamEvaluator::~LBeamEvaluator()
 void LBeamEvaluator::SetTime(const casacore::MEpoch& time)
 {
 	_time = time;
-	_timeAsDouble = _time.getValue().get()*86400.0;	
+	_timeAsDouble = _time.getValue().get()*86400.0;
 	
 	_frame = casacore::MeasFrame(_arrayPos, _time);
 	_j2000Ref = casacore::MDirection::Ref(casacore::MDirection::J2000, _frame);
@@ -73,10 +78,10 @@ void LBeamEvaluator::Evaluate(double ra, double dec, double frequency, size_t an
 void LBeamEvaluator::Evaluate(const LBeamEvaluator::PrecalcPosInfo& posInfo, double frequency, size_t antennaIndex, MC2x2& beamValues)
 {
 	matrix22c_t gainMatrix = _stations[antennaIndex]->response(_timeAsDouble, frequency, posInfo.itrfDirection, _subbandFrequency, _station0, _tile0);
-	beamValues.Data()[0] = gainMatrix[0][0];
-	beamValues.Data()[1] = gainMatrix[0][1];
-	beamValues.Data()[2] = gainMatrix[1][0];
-	beamValues.Data()[3] = gainMatrix[1][1];
+	beamValues[0] = gainMatrix[0][0];
+	beamValues[1] = gainMatrix[0][1];
+	beamValues[2] = gainMatrix[1][0];
+	beamValues[3] = gainMatrix[1][1];
 }
 
 void LBeamEvaluator::EvaluateFullArray(const LBeamEvaluator::PrecalcPosInfo& posInfo, double frequency, MC2x2& beamValues)
@@ -85,10 +90,10 @@ void LBeamEvaluator::EvaluateFullArray(const LBeamEvaluator::PrecalcPosInfo& pos
 	for(Station::Ptr s : _stations)
 	{
 		matrix22c_t gainMatrix = s->response(_timeAsDouble, frequency, posInfo.itrfDirection, _subbandFrequency, _station0, _tile0);
-		beamValues.Data()[0] += gainMatrix[0][0];
-		beamValues.Data()[1] += gainMatrix[0][1];
-		beamValues.Data()[2] += gainMatrix[1][0];
-		beamValues.Data()[3] += gainMatrix[1][1];
+		beamValues[0] = beamValues[0] + gainMatrix[0][0];
+		beamValues[1] = beamValues[1] + gainMatrix[0][1];
+		beamValues[2] = beamValues[2] + gainMatrix[1][0];
+		beamValues[3] = beamValues[3] + gainMatrix[1][1];
 	}
 	beamValues /= double(_stations.size());
 }
@@ -103,3 +108,37 @@ void LBeamEvaluator::PrecalculatePositionInfo(LBeamEvaluator::PrecalcPosInfo& po
 
 	dirToITRF(imageDir, posInfo.itrfDirection);
 }
+
+void LBeamEvaluator::EvaluateFullCorrection(casacore::MeasurementSet& ms, double ra, double dec, const class BandData& band, MC2x2* beamValues)
+{
+	LBeamEvaluator evaluator(ms);
+	
+	casacore::MEpoch::ROScalarColumn timeColumn(ms, ms.columnName(casacore::MSMainEnums::TIME));
+	size_t nrow = ms.nrow();
+	std::vector<size_t> count(band.ChannelCount(), 0);
+	for(size_t ch=0; ch!=band.ChannelCount(); ++ch)
+		beamValues[ch] = MC2x2::Zero();
+	
+	for(size_t i=0; i!=nrow; ++i)
+	{
+		casacore::MEpoch time = timeColumn(i);
+		if(time.getValue().get() != evaluator.Time().getValue().get())
+		{
+			evaluator.SetTime(time);
+			LBeamEvaluator::PrecalcPosInfo posInfo;
+			evaluator.PrecalculatePositionInfo(posInfo, ra, dec);
+			for(size_t ch=0; ch!=band.ChannelCount(); ++ch)
+			{
+				MC2x2 timeStepValue;
+				evaluator.EvaluateFullArray(posInfo, band.ChannelFrequency(ch), timeStepValue);
+				beamValues[ch] += timeStepValue;
+				++count[ch];
+			}
+		}
+	}
+	for(size_t ch=0; ch!=band.ChannelCount(); ++ch)
+		beamValues[ch] /= double(count[ch]);
+}
+
+
+#endif

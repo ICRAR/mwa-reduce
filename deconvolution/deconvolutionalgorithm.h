@@ -19,11 +19,15 @@ class DeconvolutionAlgorithm
 public:
 	virtual ~DeconvolutionAlgorithm() { }
 	
-	virtual void ExecuteMajorIteration(class ImageSet& dataImage, class ImageSet& modelImage, const ao::uvector<const double*>& psfImages, size_t width, size_t height, bool& reachedMajorThreshold) = 0;
+	virtual double ExecuteMajorIteration(class ImageSet& dataImage, class ImageSet& modelImage, const ao::uvector<const double*>& psfImages, size_t width, size_t height, bool& reachedMajorThreshold) = 0;
+	
+	virtual std::unique_ptr<DeconvolutionAlgorithm> Clone() const = 0;
 	
 	void SetMaxNIter(size_t nIter) { _maxIter = nIter; }
 	
 	void SetThreshold(double threshold) { _threshold = threshold; }
+	
+	void SetMajorIterThreshold(double mThreshold) { _majorIterThreshold = mThreshold; }
 	
 	void SetGain(double gain) { _gain = gain; }
 	
@@ -39,6 +43,7 @@ public:
 	
 	size_t MaxNIter() const { return _maxIter; }
 	double Threshold() const { return _threshold; }
+	double MajorIterThreshold() const { return _majorIterThreshold; }
 	double Gain() const { return _gain; }
 	double MGain() const { return _mGain; }
 	double CleanBorderRatio() const { return _cleanBorderRatio; }
@@ -53,14 +58,11 @@ public:
 	
 	static void ResizeImage(double* dest, size_t newWidth, size_t newHeight, const double* source, size_t width, size_t height);
 	
+	// This is used in the 'fitsmodel' executable. Might need to find a better place for it, or remove it.
 	static void GetModelFromImage(class Model &model, const double* image, size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double phaseCentreDL, double phaseCentreDM, double spectralIndex, double refFreq, 
 																PolarizationEnum polarization = Polarization::StokesI);
 	
-	static void GetModelFromIQUVImage(Model &model, const double* images[4], size_t width, size_t height, double phaseCentreRA, double phaseCentreDec, double pixelSizeX, double pixelSizeY, double phaseCentreDL, double phaseCentreDM, double spectralIndex, double refFreq);
-
 	static void RemoveNaNsInPSF(double* psf, size_t width, size_t height);
-	
-	//static void CalculateFastCleanPSFSize(size_t& psfWidth, size_t& psfHeight, size_t imageWidth, size_t imageHeight);
 	
 	void CopyConfigFrom(const DeconvolutionAlgorithm& source)
 	{
@@ -92,10 +94,13 @@ public:
 	const Image& RMSFactorImage() const { return _rmsFactorImage; }
 protected:
 	DeconvolutionAlgorithm();
+
+	DeconvolutionAlgorithm(const DeconvolutionAlgorithm& source) = default;
+	DeconvolutionAlgorithm& operator=(const DeconvolutionAlgorithm& source) = default;
 	
 	void PerformSpectralFit(double* values);
 	
-	double _threshold, _gain, _mGain, _cleanBorderRatio;
+	double _threshold, _majorIterThreshold, _gain, _mGain, _cleanBorderRatio;
 	size_t _maxIter, _iterationNumber, _threadCount;
 	bool _allowNegativeComponents, _stopOnNegativeComponent;
 	const bool* _cleanMask;

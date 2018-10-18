@@ -268,6 +268,11 @@ void test()
 	iter = vec.erase(vec.begin()+1, vec.end()-1);
 	assert(iter == vec.begin()+1, "vec.erase(vec.begin()+1, vec.end()-1) == vec.begin()+1");
 	assert(vec.size() == 2, "vec.size() == 2");
+
+	vec.erase(vec.begin());
+	iter = vec.erase(vec.begin());
+	assert(iter == vec.begin(), "vec.erase(vec.begin()) == vec.begin()");
+	assert(vec.empty(), "vec.empty() after erase");
 	
 	// Swap
 	temp = Vec{5, 6, 7};
@@ -398,10 +403,12 @@ void testBadAllocs()
 	typedef typename std::allocator_traits<typename Vec::allocator_type>::propagate_on_container_copy_assignment DoCopy;
 	typedef typename std::allocator_traits<typename Vec::allocator_type>::propagate_on_container_move_assignment DoMove;
 	typedef typename std::allocator_traits<typename Vec::allocator_type>::propagate_on_container_swap DoSwap;
+	typedef typename std::allocator_traits<typename Vec::allocator_type>::is_always_equal AlwaysEqual;
 	std::cout <<
 		"Propogate on copy assignment: " << DoCopy().value << "\n"
 		"Propogate on move assignment: " << DoMove().value << "\n"
-		"Propogate on swap: " << DoSwap().value << "\n";
+		"Propogate on swap: " << DoSwap().value << "\n"
+		"Always equal: " << AlwaysEqual().value << "\n";
 	
 	Vec(5, 0, FailingAllocator<int>(false));
 	try {
@@ -438,7 +445,8 @@ void testBadAllocs()
 	vec.get_allocator().SetFailAllocation(true);
 	try {
 		vec.shrink_to_fit();
-		assert(false, "shrink_to_fit throws");
+		// This is of course ok...
+		// assert(false, "shrink_to_fit throws");
 	} catch(...) { 
 		assert(true, "shrink_to_fit throws");
 	}
@@ -587,7 +595,7 @@ int main(int argc, char **argv) {
 	
 	testExtensions<ao::uvector<int>>();
 	
-	std::cout << "is_pod<int> = " << std::is_pod<int>() << '\n';
+	std::cout << "\nis_pod<int> = " << std::is_pod<int>() << '\n';
 	std::cout << "is_pod<std::pair<int,int> > = " << std::is_pod<std::pair<int,int> >() << '\n';
 	std::cout << "is_trivial<std::pair<int,int> > = " << std::is_trivial<std::pair<int,int> >() << '\n';
 	std::cout << "is_standard_layout<std::pair<int,int> > = " << std::is_standard_layout<std::pair<int,int> >() << '\n';
@@ -614,5 +622,5 @@ void exampleA()
 
 void exampleB()
 {
-	char* buffer = new char[1024];
+
 }

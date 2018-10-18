@@ -140,7 +140,8 @@ public:
 	
 	double* Allocate(size_t size)
 	{
-		if(size%2==1) ++size;
+		if(size == 0) size=2;
+		else if(size%2==1) ++size;
 		std::lock_guard<std::mutex> guard(_mutex);
 		
 		if(size != _previousSize)
@@ -174,7 +175,8 @@ public:
 	
 	std::complex<double>* AllocateComplex(size_t size)
 	{
-		if(size%2==1) ++size;
+		if(size == 0) size=2;
+		else if(size%2==1) ++size;
 		std::lock_guard<std::mutex> guard(_mutex);
 		
 		if(size != _previousSize)
@@ -324,6 +326,73 @@ private:
 class ImageBufferAllocator
 {
 public:
+	class Ptr
+	{
+	public:
+		friend class ImageBufferAllocator;
+		/** Construct empty pointer */
+		Ptr()
+			: _data(nullptr), _allocator(nullptr) { }
+		/** Construct initialized pointer
+			* @param data databuffer
+			* @param allocator corresponding allocator
+			*/
+		Ptr(double* data, ImageBufferAllocator& allocator) 
+			: _data(data), _allocator(&allocator) { }
+			
+		Ptr(Ptr&& source)
+		  : _data(source._data), _allocator(source._allocator)
+		{
+			source._data = nullptr;
+			source._allocator = nullptr;
+		}
+		/** Destructor */
+		~Ptr()
+		{
+			reset();
+		}
+		Ptr& operator=(Ptr&& rhs)
+		{
+			reset(rhs._data, *rhs._allocator);
+			rhs._data = nullptr;
+			rhs._data = nullptr;
+			return *this;
+		}
+		bool operator==(std::nullptr_t) const { return _data == nullptr; }
+		/** Is the ptr set? */
+		operator bool() const { return _data != nullptr; }
+		/** @returns pointer to data */
+		double* data() const { return _data; }
+		/** @returns reference to data */ 
+		double& operator*() const { return *_data; }
+		/** Destructs buffer if set. */
+		void reset()
+		{
+			// We have to check for nullptr, because the _allocator might not be set.
+			if(_data != nullptr) _allocator->Free(_data);
+			_data = nullptr;
+		}
+		/** Destructs buffer if set and assign new contents.
+			* @param data databuffer
+			* @param allocator corresponding allocator
+			*/
+		void reset(double* data, ImageBufferAllocator& allocator)
+		{
+			// We have to check for nullptr, because the _allocator might not be set.
+			if(_data != nullptr) _allocator->Free(_data);
+			_data = data;
+			_allocator = &allocator;
+		}
+		/** Retrieve image element with given index. */
+		double& operator[](size_t index) const { return _data[index]; }
+	private:
+		Ptr(const Ptr&) = delete;
+		void operator=(const Ptr&) = delete;
+		
+		double* _data;
+		ImageBufferAllocator* _allocator;
+	};
+	
 	void ReportStatistics() const
 	{
 	}
@@ -331,6 +400,11 @@ public:
 	double* Allocate(size_t size)
 	{
 		return new double[size];
+	}
+	
+	void Allocate(size_t size, Ptr& ptr)
+	{
+		ptr.reset(Allocate(size), *this);
 	}
 	
 	std::complex<double>* AllocateComplex(size_t size)
@@ -347,6 +421,8 @@ public:
 	{
 		delete[] buffer;
 	}
+	
+	void FreeUnused() { }
 };
 
 #endif // USE_DIRECT_ALLOCATOR
