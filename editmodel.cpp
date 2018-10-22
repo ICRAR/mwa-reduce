@@ -17,6 +17,7 @@
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -1617,7 +1618,17 @@ int main(int argc, char *argv[])
 				<< std::setprecision(std::numeric_limits<double>::digits10 + 1)
 				<< name << " "
 				<< compIter->PosRA()/M_PI*12.0 << " "
-				<< compIter->PosDec()/M_PI*180.0 << '\n'
+				<< compIter->PosDec()/M_PI*180.0 << '\n';
+			if(compIter->Type() == ModelComponent::GaussianSource)
+			{
+				double
+					rtsMaj = sqrt(M_PI*M_PI / (2.0*M_LN2)) * compIter->MajorAxis() * (180.0*60.0/M_PI),
+					rtsMin = sqrt(M_PI*M_PI / (2.0*M_LN2)) * compIter->MinorAxis() * (180.0*60.0/M_PI),
+					rtsRot = compIter->PositionAngle()*(180.0/M_PI);
+				rtsStream <<
+					"GAUSSIAN " << rtsRot << ' ' << rtsMaj << ' ' << rtsMin << '\n';
+			}
+			rtsStream
 				<< "FREQ 150.0e6 "
 				<< compIter->SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
 				<< "FREQ 200.0e6 "
@@ -1626,13 +1637,23 @@ int main(int argc, char *argv[])
 			while(compIter!=s.end())
 			{
 				rtsStream << "COMPONENT "
-				<< compIter->PosRA()/M_PI*12.0 << " "
-				<< compIter->PosDec()/M_PI*180.0 << '\n'
-				<< "FREQ 150.0e6 "
-				<< compIter->SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
-				<< "FREQ 200.0e6 "
-				<< compIter->SED().FluxAtFrequency(200e6, Polarization::StokesI) << " 0 0 0\n"
-				"ENDCOMPONENT\n";
+					<< compIter->PosRA()/M_PI*12.0 << " "
+					<< compIter->PosDec()/M_PI*180.0 << '\n';
+				if(compIter->Type() == ModelComponent::GaussianSource)
+				{
+					double
+						rtsMaj = sqrt(M_PI*M_PI / (2.0*M_LN2)) * compIter->MajorAxis() * (180.0*60.0/M_PI),
+						rtsMin = sqrt(M_PI*M_PI / (2.0*M_LN2)) * compIter->MinorAxis() * (180.0*60.0/M_PI),
+						rtsRot = compIter->PositionAngle()*(180.0/M_PI);
+					rtsStream <<
+						"GAUSSIAN " << rtsRot << ' ' << rtsMaj << ' ' << rtsMin << '\n';
+				}
+				rtsStream
+					<< "FREQ 150.0e6 "
+					<< compIter->SED().FluxAtFrequency(150e6, Polarization::StokesI) << " 0 0 0\n"
+					<< "FREQ 200.0e6 "
+					<< compIter->SED().FluxAtFrequency(200e6, Polarization::StokesI) << " 0 0 0\n"
+					"ENDCOMPONENT\n";
 				++compIter;
 			}
 			rtsStream << "ENDSOURCE\n";
