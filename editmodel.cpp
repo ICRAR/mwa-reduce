@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral energy distribution. Usage:\n"
-		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near/outside <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] [-min-separation <angle>] [-replace-si <si>] [-set-cluster <name>] "
-		"[-rts <filename>] "
+		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near/outside <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-uncollect] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] [-min-separation <angle>] [-replace-si <si>] [-set-cluster <name>] "
+		"[-rts <filename>] [-to-powerlaw <n>]"
 		"<model> [<more models...>]\n";
 		return 0;
 	}
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0, sagecalFirstClusterChunkSize = 1;
 	std::string outputModel, collectName, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, skyModelFilename, sortBeamPrefix;
-	bool nearFilter = false, outsideFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false;
+	bool nearFilter = false, outsideFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false, uncollect = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0, setFrequencyValue = 0.0, powerSumLimit = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
 	bool logNlogS = false, sourceStats = false;
@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
 	double replaceSIvalue = 0.0;
 	std::string setClusterName;
 	std::string rtsFilename;
+	size_t toPowerlaw = 0;
 	
 	std::string selectSourceName;
 	while(argi!=argc && argv[argi][0]=='-')
@@ -174,6 +175,9 @@ int main(int argc, char *argv[])
 			rndDec = RaDecCoord::ParseDec(argv[argi]);
 			++argi;
 			rndDist = Angle::Parse(argv[argi], "rnd", Angle::Degrees);
+		} else if(option == "uncollect")
+		{
+			uncollect = true;
 		} else if(option == "collect")
 		{
 			doCollect = true;
@@ -362,6 +366,10 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			rtsFilename = argv[argi];
+		} else if(option == "to-powerlaw")
+		{
+			++argi;
+			toPowerlaw = atoi(argv[argi]);
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
@@ -839,6 +847,25 @@ int main(int argc, char *argv[])
 		model = std::move(newModel);
 	}
 	
+	if(uncollect)
+	{
+		Model newModel;
+		for(Model::const_iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		{
+			std::string name = sourcePtr->Name();
+			ModelSource templateSource(*sourcePtr);
+			templateSource.ClearComponents();
+			for(size_t i=0; i!=sourcePtr->ComponentCount(); ++i)
+			{
+				ModelSource newSource(templateSource);
+				newSource.AddComponent(sourcePtr->Component(i));
+				newSource.SetName(name + std::to_string(i));
+				newModel.AddSource(std::move(newSource));
+			}
+		}
+		model = std::move(newModel);
+	}
+	
 	if(doCollect)
 	{
 		ModelSource newSource;
@@ -1038,6 +1065,38 @@ int main(int argc, char *argv[])
 		model.SetUnpolarized();
 	}
 	
+	if(toPowerlaw != 0)
+	{
+		Model newModel;
+		for(const ModelSource& source : model)
+		{
+			ModelSource plSource(source);
+			plSource.ClearComponents();
+			for(const ModelComponent& comp : source)
+			{
+				if(comp.HasMeasuredSED())
+				{
+					const MeasuredSED& sed = comp.MSED();
+					double freq = sed.CentreFrequency();
+					ao::uvector<double> terms;
+					sed.FitLogPolynomial(terms, toPowerlaw, Polarization::StokesI, freq);
+					
+					PowerLawSED plSed;
+					plSed.SetFromStokesIFit(freq, terms);
+					
+					ModelComponent plComp(comp);
+					plComp.SetSED(plSed);
+					plSource.AddComponent(std::move(plComp));
+				}
+				else {
+					plSource.AddComponent(comp);
+				}
+			}
+			newModel.AddSource(std::move(plSource));
+		}
+		model = std::move(newModel);
+	}
+	
 	if(minMeasurements != 0)
 	{
 		Model newModel;
@@ -1062,7 +1121,7 @@ int main(int argc, char *argv[])
 				std::cout << "Removing source " << sourcePtr->Name() << ": a component has only " << measCount << " measurements.\n";
 			}
 		}
-		model = newModel;
+		model = std::move(newModel);
 	}
 	
 	if(setFrequency)
