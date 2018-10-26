@@ -2,26 +2,26 @@
 #define FFT_CONVOLVER_H
 
 #include <cstring>
-
-#include <boost/thread/thread.hpp>
+#include <mutex>
 
 class FFTConvolver {
 	
 public:
+	
 	/**
 	 * Convolve an image with a smaller kernel. No preparation of either image is needed.
 	 * 
 	 * This function assumes that (n+1)/2 is the middle pixel for uneven image sizes. In
 	 * the case of even image sizes, the middle falls between two pixels.
 	 */
-	static void Convolve(double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize);
+	static void Convolve(class FFTWManager& fftw, double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize);
 	
 	/**
 	 * Convolve an image with a smaller kernel. No preparation of either image is needed.
 	 * 
 	 * This function assumes that n/2 is the middle pixel, and reverses the kernel.
 	 */
-	static void ReverseAndConvolve(double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize);
+	static void ReverseAndConvolve(class FFTWManager& fftw, double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize);
 	
 	/**
 	 * Prepare a smaller kernel for convolution with ConvolveSameSize. When the kernel is used
@@ -39,11 +39,10 @@ public:
 	/**
 	 * Convolve an image with an already prepared kernel of the same size.
 	 */
-	static void ConvolveSameSize(double* image, const double* kernel, size_t imgWidth, size_t imgHeight);
+	static void ConvolveSameSize(class FFTWManager& fftw, double* image, const double* kernel, size_t imgWidth, size_t imgHeight);
 	
 	static void Reverse(double* image, size_t imgWidth, size_t imgHeight);
 private:
-	static boost::mutex _mutex;
 };
 
 #endif

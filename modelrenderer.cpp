@@ -7,6 +7,7 @@
 #include "units/imagecoordinates.h"
 #include "uvector.h"
 #include "fftconvolver.h"
+#include "fftwmanager.h"
 
 template<typename T>
 T ModelRenderer::gaus(T x, T sigma)
@@ -73,21 +74,17 @@ void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHe
 	}
 }
 
-void ModelRenderer::renderGaussianComponent(double* imageData, size_t imageWidth, size_t imageHeight, long double posRA, long double posDec, long double gausMaj, long double gausMin, long double gausPA, long double flux, bool normalizeIntegratedFlux)
+void ModelRenderer::renderGaussianComponent(double* imageData, size_t imageWidth, size_t imageHeight, long double posRA, long double posDec, long double gausMaj, long double gausMin, long double gausPA, long double flux)
 {
 	// Using the FWHM formula for a Gaussian:
 	long double sigmaMaj = gausMaj / (2.0L * sqrtl(2.0L * logl(2.0L)));
 	long double sigmaMin = gausMin / (2.0L * sqrtl(2.0L * logl(2.0L)));
 	// TODO this won't work for non-equally spaced dimensions
 	long double minPixelScale = std::min(_pixelScaleL, _pixelScaleM);
-	// ...And this is not accurate, as the correlation between beam and source PA has
-	// to be taken into account
-	if(normalizeIntegratedFlux)
-	{
-		double factor = 2.0L * M_PI * sigmaMaj * sigmaMin / (minPixelScale * minPixelScale);
-		if(factor > 1.0)
-			flux /= factor;
-	}
+	// It is better to actually integrate the flux under the gaussian after
+	// gridding, since a small gaussian might blow up with the following way.
+	// double factor = 2.0L * M_PI * sigmaMaj * sigmaMin / (minPixelScale * minPixelScale);
+	// flux /= factor;
 	
 	// Make rotation matrix
 	long double transf[4];
@@ -124,9 +121,10 @@ void ModelRenderer::renderGaussianComponent(double* imageData, size_t imageWidth
 	if(yBottom < yTop) yBottom = yTop;
 	if(yBottom > (int) imageHeight) yBottom = (int) imageHeight;
 	
+	ao::uvector<double> values;
+	double fluxSum = 0.0;
 	for(int y=yTop; y!=yBottom; ++y)
 	{
-		double *imageDataPtr = imageData + y*imageWidth+xLeft;
 		for(int x=xLeft; x!=xRight; ++x)
 		{
 			long double l, m;
@@ -136,9 +134,21 @@ void ModelRenderer::renderGaussianComponent(double* imageData, size_t imageWidth
 				lTransf = (l-sourceL)*transf[0] + (m-sourceM)*transf[1],
 				mTransf = (l-sourceL)*transf[2] + (m-sourceM)*transf[3];
 			long double dist = sqrt(lTransf*lTransf + mTransf*mTransf);
-			long double g = gaus(dist, 1.0L);
-			(*imageDataPtr) += double(g * flux);
+			long double v = gaus(dist, 1.0L) * flux;
+			fluxSum += double(v);
+			values.emplace_back(v);
+		}
+	}
+	const double* iter = values.data();
+	double factor = flux / fluxSum;
+	for(int y=yTop; y!=yBottom; ++y)
+	{
+		double *imageDataPtr = imageData + y*imageWidth+xLeft;
+		for(int x=xLeft; x!=xRight; ++x)
+		{
+			(*imageDataPtr) += *iter * factor;
 			++imageDataPtr;
+			++iter;
 		}
 	}
 }
@@ -163,7 +173,7 @@ void ModelRenderer::renderPointComponent(double* imageData, size_t imageWidth, s
 void ModelRenderer::Restore(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double beamMaj, long double beamMin, long double beamPA, long double startFrequency, long double endFrequency, PolarizationEnum polarization)
 {
 	ao::uvector<double> renderedWithoutBeam(imageWidth * imageHeight, 0.0);
-	renderModel(renderedWithoutBeam.data(), imageWidth, imageHeight, model, startFrequency, endFrequency, polarization, true);
+	renderModel(renderedWithoutBeam.data(), imageWidth, imageHeight, model, startFrequency, endFrequency, polarization);
 	Restore(imageData, renderedWithoutBeam.data(), imageWidth, imageHeight, beamMaj, beamMin, beamPA, _pixelScaleL, _pixelScaleM);
 }
 
@@ -220,7 +230,8 @@ void ModelRenderer::Restore(double* imageData, const double* modelData, size_t i
 		ao::uvector<double> convolvedModel(imageWidth*imageHeight);
 		memcpy(convolvedModel.data(), modelData, sizeof(double)*imageWidth*imageHeight);
 		
-		FFTConvolver::Convolve(convolvedModel.data(), imageWidth, imageHeight, kernel.data(), boundingBoxSize);
+		FFTWManager fftw;
+		FFTConvolver::Convolve(fftw, convolvedModel.data(), imageWidth, imageHeight, kernel.data(), boundingBoxSize);
 		for(size_t j=0; j!=imageWidth*imageHeight; ++j)
 			imageData[j] += convolvedModel[j];
 	}
@@ -229,7 +240,7 @@ void ModelRenderer::Restore(double* imageData, const double* modelData, size_t i
 /**
 * Render without beam convolution, such that each point-source is one pixel.
 */
-void ModelRenderer::renderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization, bool normalizeIntegratedFlux)
+void ModelRenderer::renderModel(double* imageData, size_t imageWidth, size_t imageHeight, const Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization)
 {
 	for(Model::const_iterator src=model.begin(); src!=model.end(); ++src)
 	{
@@ -246,7 +257,7 @@ void ModelRenderer::renderModel(double* imageData, size_t imageWidth, size_t ima
 					gausMaj = comp->MajorAxis(),
 					gausMin = comp->MinorAxis(),
 					gausPA = comp->PositionAngle();
-				renderGaussianComponent(imageData, imageWidth, imageHeight, posRA, posDec, gausMaj, gausMin, gausPA, intFlux, normalizeIntegratedFlux);
+				renderGaussianComponent(imageData, imageWidth, imageHeight, posRA, posDec, gausMaj, gausMin, gausPA, intFlux);
 			}
 			else
 				renderPointComponent(imageData, imageWidth, imageHeight, posRA, posDec, intFlux);

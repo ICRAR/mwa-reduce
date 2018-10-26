@@ -40,7 +40,7 @@ class ModelRenderer
 		 */
 		void RenderModel(double* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization)
 		{
-			renderModel(imageData, imageWidth, imageHeight, model, startFrequency, endFrequency, polarization, false);
+			renderModel(imageData, imageWidth, imageHeight, model, startFrequency, endFrequency, polarization);
 		}
 		
 		/**
@@ -51,9 +51,9 @@ class ModelRenderer
 	private:
 		void renderPointComponent(double* imageData, size_t imageWidth, size_t imageHeight, long double posRA, long double posDec, long double flux);
 		
-		void renderGaussianComponent(double* imageData, size_t imageWidth, size_t imageHeight, long double posRA, long double posDec, long double gausMaj, long double gausMin, long double gausPA, long double flux, bool normalizeIntegratedFlux);
+		void renderGaussianComponent(double* imageData, size_t imageWidth, size_t imageHeight, long double posRA, long double posDec, long double gausMaj, long double gausMin, long double gausPA, long double flux);
 		
-		void renderModel(double* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization, bool normalizeIntegratedFlux);
+		void renderModel(double* imageData, size_t imageWidth, size_t imageHeight, const class Model& model, long double startFrequency, long double endFrequency, PolarizationEnum polarization);
 		
 		long double _phaseCentreRA;
 		long double _phaseCentreDec;

@@ -1,5 +1,6 @@
 #include "fftconvolver.h"
 
+#include "fftwmanager.h"
 #include "uvector.h"
 
 #include <fftw3.h>
@@ -7,21 +8,19 @@
 #include <complex>
 #include <stdexcept>
 
-boost::mutex FFTConvolver::_mutex;
-
-void FFTConvolver::Convolve(double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
+void FFTConvolver::Convolve(FFTWManager& fftw, double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
 {
 	ao::uvector<double> scaledKernel(imgWidth * imgHeight, 0.0);
 	PrepareSmallKernel(scaledKernel.data(), imgWidth, imgHeight, kernel, kernelSize);
-	ConvolveSameSize(image, scaledKernel.data(), imgWidth, imgHeight);
+	ConvolveSameSize(fftw, image, scaledKernel.data(), imgWidth, imgHeight);
 }
 
-void FFTConvolver::ReverseAndConvolve(double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
+void FFTConvolver::ReverseAndConvolve(class FFTWManager& fftw, double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
 {
 	ao::uvector<double> scaledKernel(imgWidth * imgHeight, 0.0);
 	
 	PrepareSmallKernel(scaledKernel.data(), imgWidth, imgHeight, kernel, kernelSize);
-	ConvolveSameSize(image, scaledKernel.data(), imgWidth, imgHeight);
+	ConvolveSameSize(fftw, image, scaledKernel.data(), imgWidth, imgHeight);
 }
 
 void FFTConvolver::PrepareSmallKernel(double* dest, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
@@ -110,7 +109,7 @@ void FFTConvolver::PrepareKernel(double* dest, const double* source, size_t imgW
 	}
 }
 
-void FFTConvolver::ConvolveSameSize(double* image, const double* kernel, size_t imgWidth, size_t imgHeight)
+void FFTConvolver::ConvolveSameSize(FFTWManager& fftw, double* image, const double* kernel, size_t imgWidth, size_t imgHeight)
 {
 	const size_t imgSize = imgWidth * imgHeight;
 	const size_t complexSize = (imgWidth/2+1) * imgHeight;
@@ -118,7 +117,7 @@ void FFTConvolver::ConvolveSameSize(double* image, const double* kernel, size_t 
 	fftw_complex* fftImageData = reinterpret_cast<fftw_complex*>(fftw_malloc(complexSize * sizeof(fftw_complex)));
 	fftw_complex* fftKernelData = reinterpret_cast<fftw_complex*>(fftw_malloc(complexSize * sizeof(fftw_complex)));
 	
-	boost::mutex::scoped_lock lock(_mutex);
+	std::unique_lock<std::mutex> lock(fftw.Mutex());
 	fftw_plan inToFPlan = fftw_plan_dft_r2c_2d(imgHeight, imgWidth, tempData, fftImageData, FFTW_ESTIMATE);
 	fftw_plan fToOutPlan = fftw_plan_dft_c2r_2d(imgHeight, imgWidth, fftImageData, tempData, FFTW_ESTIMATE);
 	lock.unlock();
