@@ -4,6 +4,7 @@
 #include "units/imagecoordinates.h"
 #include "units/radeccoord.h"
 
+#include <memory>
 #include <vector>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,7 @@ class ImageInfo
 		ImageInfo() :
 			width(0), height(0),
 			ra(0.0), dec(0.0),
+			dl(0.0), dm(0.0),
 			pixelSizeX(0.0), pixelSizeY(0.0),
 			frequency(0.0), bandwidth(0.0)
 		{
@@ -24,6 +26,7 @@ class ImageInfo
 			values(size), weights(size),
 			width(0), height(0),
 			ra(0.0), dec(0.0),
+			dl(0.0), dm(0.0),
 			pixelSizeX(0.0), pixelSizeY(0.0),
 			frequency(0.0), bandwidth(0.0)
 		{
@@ -31,7 +34,7 @@ class ImageInfo
 		
 		std::vector<double> values, weights;
 		size_t width, height;
-		double ra, dec, pixelSizeX, pixelSizeY;
+		double ra, dec, dl, dm, pixelSizeX, pixelSizeY;
 		double frequency, bandwidth, dateObs;
 };
 
@@ -47,9 +50,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 	{
 		// Determine RA,DEC for top edge position in source image
 		ImageCoordinates::XYToLM<long double>(x, 0, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		l += sourceImage.dl; m += sourceImage.dm;
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
+		destL -= destImage.dl; destM -= destImage.dm;
 		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
@@ -73,9 +78,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		
 		// Determine RA,DEC for bottom edge position in source image
 		ImageCoordinates::XYToLM<long double>(x, sourceImage.height-1, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		l += sourceImage.dl; m += sourceImage.dm;
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
+		destL -= destImage.dl; destM -= destImage.dm;
 		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
@@ -94,9 +101,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 	{
 		// Determine RA,DEC for left edge position in source image
 		ImageCoordinates::XYToLM<long double>(0, y, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		l += sourceImage.dl; m += sourceImage.dm;
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
+		destL -= destImage.dl; destM -= destImage.dm;
 		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
@@ -111,9 +120,11 @@ void getBoundingBox(const ImageInfo &destImage, const ImageInfo &sourceImage, si
 		
 		// Determine RA,DEC for right edge position in source image
 		ImageCoordinates::XYToLM<long double>(sourceImage.width-1, y, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, l, m);
+		l += sourceImage.dl; m += sourceImage.dm;
 		ImageCoordinates::LMToRaDec<long double>(l, m, sourceImage.ra, sourceImage.dec, ra, dec);
 		// Conv RA,DEC to dest image positions
 		ImageCoordinates::RaDecToLM<long double>(ra, dec, destImage.ra, destImage.dec, destL, destM);
+		destL -= destImage.dl; destM -= destImage.dm;
 		ImageCoordinates::LMToXY<long double>(destL, destM, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, destX, destY);
 		
 		if(destX >= (int) destImage.width) destX = destImage.width-1;
@@ -145,11 +156,13 @@ void Regrid(ImageInfo &destImage, const ImageInfo &sourceImage)
 			long double l, m;
 			ImageCoordinates::XYToLM<long double>(x, y, destImage.pixelSizeX, destImage.pixelSizeY, destImage.width, destImage.height, l, m);
 			long double ra, dec;
+			l += destImage.dl; m += destImage.dm;
 			ImageCoordinates::LMToRaDec<long double>(l, m, destImage.ra, destImage.dec, ra, dec);
 			
 			long double sourceL, sourceM;
 			int sourceX, sourceY;
 			ImageCoordinates::RaDecToLM<long double>(ra, dec, sourceImage.ra, sourceImage.dec, sourceL, sourceM);
+			sourceL -= sourceImage.dl; sourceM -= sourceImage.dm;
 			ImageCoordinates::LMToXY<long double>(sourceL, sourceM, sourceImage.pixelSizeX, sourceImage.pixelSizeY, sourceImage.width, sourceImage.height, sourceX, sourceY);
 			
 			if(sourceX >= 0 && sourceX < (int) sourceImage.width && sourceY >= 0 && sourceY < (int) sourceImage.height)
@@ -188,14 +201,15 @@ int main(int argc, char *argv[])
 		long double altRA = 0.0, altDec = 0.0;
 		while(argv[argi][0] == '-')
 		{
-			if(strcmp(argv[argi], "-s") == 0)
+			std::string p(&argv[argi][1]);
+			if(p == "s")
 			{
 				overrideSize = true;
 				width = atoi(argv[argi+1]);
 				height = atoi(argv[argi+2]);
 				argi += 3;
 			}
-			else if(strcmp(argv[argi], "-c") == 0)
+			else if(p == "c")
 			{
 				overrideCentre = true;
 				altRA = RaDecCoord::ParseRA(argv[argi+1]);
@@ -223,9 +237,13 @@ int main(int argc, char *argv[])
 		{
 			outImage.ra = altRA;
 			outImage.dec = altDec;
+			outImage.dl = 0.0;
+			outImage.dm = 0.0;
 		} else {
 			outImage.ra = templateReader.PhaseCentreRA();
 			outImage.dec = templateReader.PhaseCentreDec();
+			outImage.dl = templateReader.PhaseCentreDL();
+			outImage.dm = templateReader.PhaseCentreDM();
 		}
 		outImage.pixelSizeX = templateReader.PixelSizeX();
 		outImage.pixelSizeY = templateReader.PixelSizeY();
@@ -250,9 +268,13 @@ int main(int argc, char *argv[])
 			std::cout << "Regridding " << inpImageName << "... (" << ((argi-argStart)/2) << '/' << ((argc-argStart)/2) << ")\n";
 			
 			FitsReader inpReader(inpImageName);
-			FitsReader weightsReader(inpWeightName);
-			if(weightsReader.ImageWidth() != inpReader.ImageWidth() || weightsReader.ImageHeight() != inpReader.ImageHeight())
-				throw std::runtime_error("Weights and image do not have same size");
+			std::unique_ptr<FitsReader> weightsReader;
+			if(std::string(inpWeightName) != "-1")
+			{
+				weightsReader.reset(new FitsReader(inpWeightName));
+				if(weightsReader->ImageWidth() != inpReader.ImageWidth() || weightsReader->ImageHeight() != inpReader.ImageHeight())
+					throw std::runtime_error("Weights and image do not have same size");
+			}
 			
 			frequencyMin = std::min(inpReader.Frequency() - inpReader.Bandwidth()/2, frequencyMin);
 			frequencyMax = std::max(inpReader.Frequency() + inpReader.Bandwidth()/2, frequencyMax);
@@ -260,12 +282,18 @@ int main(int argc, char *argv[])
 			ImageInfo inpImage(inpReader.ImageWidth() * inpReader.ImageHeight());
 			
 			inpReader.Read<double>(&inpImage.values[0]);
-			weightsReader.Read<double>(&inpImage.weights[0]);
+			if(weightsReader)
+				weightsReader->Read<double>(&inpImage.weights[0]);
+			else {
+				inpImage.weights.assign(inpReader.ImageWidth()*inpReader.ImageHeight(), 1.0);
+			}
 			
 			inpImage.width = inpReader.ImageWidth(),
 			inpImage.height = inpReader.ImageHeight();
 			inpImage.ra = inpReader.PhaseCentreRA();
 			inpImage.dec = inpReader.PhaseCentreDec();
+			inpImage.dl = inpReader.PhaseCentreDL();
+			inpImage.dm = inpReader.PhaseCentreDM();
 			inpImage.pixelSizeX = inpReader.PixelSizeX();
 			inpImage.pixelSizeY = inpReader.PixelSizeY();
 			inpImage.frequency = inpReader.Frequency();
