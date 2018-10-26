@@ -120,6 +120,8 @@ inline size_t Angle::findNumberEnd(const std::string& s)
 	size_t pos = 0;
 	while(isWhitespace(c[pos]))
 		++pos;
+	if(c[pos] == '-')
+		++pos;
 	while(isDigit(c[pos]))
 		++pos;
 	if(c[pos]=='.')

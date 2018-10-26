@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral energy distribution. Usage:\n"
 		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near/outside <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-uncollect] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] [-min-separation <angle>] [-replace-si <si>] [-set-cluster <name>] "
-		"[-rts <filename>] [-to-powerlaw <n>]"
+		"[-rts <filename>] [-to-powerlaw <n>] [-shift <ra-angle> <dec-angle>] "
 		"<model> [<more models...>]\n";
 		return 0;
 	}
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	size_t newChannelCount = 0, logNlogSBinCount = 0, sagecalFirstClusterChunkSize = 1;
 	std::string outputModel, collectName, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, skyModelFilename, sortBeamPrefix;
 	bool nearFilter = false, outsideFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false, uncollect = false;
-	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0, setFrequencyValue = 0.0, powerSumLimit = 0.0;
+	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0, setFrequencyValue = 0.0, powerSumLimit = 0.0, shiftRA = 0.0, shiftDec = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
 	bool logNlogS = false, sourceStats = false;
 	size_t rndN = 0, minMeasurements = 0, thresholdIndex = 0;
@@ -371,6 +371,11 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			toPowerlaw = atoi(argv[argi]);
+		} else if(option == "shift")
+		{
+			shiftRA = Angle::Parse(argv[argi+1], "shift RA", Angle::Degrees);
+			shiftDec = Angle::Parse(argv[argi+2], "shift Dec",  Angle::Degrees);
+			argi += 2;
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
@@ -462,6 +467,17 @@ int main(int argc, char *argv[])
 				ao::uvector<double> newTerms;
 				fitter.Fit(newTerms, fitValues.data());
 				sed.SetFromStokesIFit(refFreq, newTerms);
+			}
+		}
+	}
+	if(shiftRA != 0.0 || shiftDec != 0.0)
+	{
+		for(ModelSource& source : model)
+		{
+			for(ModelComponent& component : source)
+			{
+				component.SetPosRA(component.PosRA() + shiftRA);
+				component.SetPosDec(component.PosDec() + shiftDec);
 			}
 		}
 	}
