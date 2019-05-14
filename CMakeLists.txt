@@ -189,8 +189,8 @@ if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   target_link_libraries(render ${GSL_LIB} ${GSL_CBLAS_LIB})
   target_link_libraries(vo2model ${GSL_LIB} ${GSL_CBLAS_LIB})
   
-	add_executable(sedcombine sedcombine.cpp sedanalyser.cpp model/model.cpp nlplfitter.cpp rmsynthesis.cpp progressbar.cpp spectrumft.cpp subbandpassband.cpp)
-  target_link_libraries(sedcombine ${FFTW3_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
+  add_executable(sedcombine sedcombine.cpp sedanalyser.cpp model/model.cpp nlplfitter.cpp rmsynthesis.cpp progressbar.cpp spectrumft.cpp subbandpassband.cpp)
+  target_link_libraries(sedcombine ${CASA_LIBS} ${FFTW3_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
   
 else(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   message("GNU scientific library (gsl) not found: some features will be disabled (this is not an error).")
