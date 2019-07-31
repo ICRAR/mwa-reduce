@@ -27,11 +27,6 @@
 
 #include "serializable.h"
 
-//# pow10 seems to be undefined on OS-X
-#ifdef __APPLE__
-# define pow10(x) pow(10., (x))
-#endif
-
 class LogHistogram : public Serializable
 {
 	private:
@@ -387,7 +382,7 @@ class LogHistogram : public Serializable
 		class const_iterator
 		{
 			public:
-				const_iterator(const LogHistogram &histogram, std::map<double, AmplitudeBin>::const_iterator iter) :
+				const_iterator(std::map<double, AmplitudeBin>::const_iterator iter) :
 					_iterator(iter)
 				{ }
 				const_iterator(const const_iterator &source) :
@@ -424,12 +419,12 @@ class LogHistogram : public Serializable
 		
 		const_iterator begin() const
 		{
-			return const_iterator(*this, _amplitudes.begin());
+			return const_iterator(_amplitudes.begin());
 		}
 		
 		const_iterator end() const
 		{
-			return const_iterator(*this, _amplitudes.end());
+			return const_iterator(_amplitudes.end());
 		}
 		
 		virtual void Serialize(std::ostream &stream) const

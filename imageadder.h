@@ -22,7 +22,7 @@ public:
 		_frequencySum(0.0), _lowestFreq(0.0), _highestFreq(0.0),
 		_normalizationFactorSum(0.0), _normalizationFactorWeightSum(0.0),
 		_totalImageWeight(0.0), _totalImageWeightWeightSum(0.0),
-		_threshold(0.0)
+		_threshold(0.0), _weighting(true)
 	{
 	}
 	
@@ -61,16 +61,18 @@ public:
 		ao::uvector<double> inpImage(_width*_height), beamImage(_width*_height);
 		
 		inpReader.Read<double>(&inpImage[0]);
-		double wscImageWeight;
-		if(!inpReader.ReadDoubleKeyIfExists("WSCIMGWG", wscImageWeight))
+		double wscImageWeight = 1.0;
+		if(_weighting) 
 		{
-			std::cerr << "Warning: Keyword WSCIMGWG not found!\n";
-			wscImageWeight = 1.0;
+			if(!inpReader.ReadDoubleKeyIfExists("WSCIMGWG", wscImageWeight))
+			{
+				std::cerr << "Warning: Keyword WSCIMGWG not found!\n";
+			}
 		}
 		double wscNormalizationFactor;
 		if(!inpReader.ReadDoubleKeyIfExists("WSCNORMF", wscNormalizationFactor))
 		{
-			std::cerr << "Warning: Keyword WSCNORMF not found!\n";
+			std::cerr << "Warning: Keyword WSCNORM not found!\n";
 			wscNormalizationFactor = 1.0;
 		}
 		
@@ -159,6 +161,12 @@ public:
 	}
 	
 	void SetThreshold(double threshold) { _threshold = threshold; }
+	
+	void SetWeighting(bool weighting) { _weighting = weighting; }
+	
+	void SetSICorrection(std::vector<double>&& siCorrection)
+	{ _siCorrection = std::move(siCorrection); }
+
 private:
 	size_t _width, _height, _count;
 	ao::uvector<double> _outImage, _outWeights;
@@ -167,6 +175,8 @@ private:
 	double _normalizationFactorSum, _normalizationFactorWeightSum;
 	double _totalImageWeight, _totalImageWeightWeightSum;
 	double _threshold;
+	bool _weighting;
+	std::vector<double> _siCorrection;
 };
 
 #endif

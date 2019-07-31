@@ -9,7 +9,7 @@ _bandData(spwTable.nrow())
 		_bandData[spw] = BandData(spwTable, spw);
 	}
 	
-	casacore::ROScalarColumn<int> spwColumn(	dataDescTable, casacore::MSDataDescription::columnName(casacore::MSDataDescriptionEnums::SPECTRAL_WINDOW_ID));
+	casacore::ScalarColumn<int> spwColumn(dataDescTable, casacore::MSDataDescription::columnName(casacore::MSDataDescriptionEnums::SPECTRAL_WINDOW_ID));
 	for(size_t id=0; id!=_dataDescToBand.size(); ++id)
 		_dataDescToBand[id] = spwColumn(id);
 }

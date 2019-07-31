@@ -2,7 +2,7 @@
 #include "banddata.h"
 #include "multibanddata.h"
 
-#include "msprovider/msprovider.h"
+#include "msproviders/msprovider.h"
 
 #include <cmath>
 #include <iostream>

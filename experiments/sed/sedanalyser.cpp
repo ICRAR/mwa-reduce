@@ -1,9 +1,9 @@
 #include "sedanalyser.h"
 
-#include "gnuplot.h"
-#include "spectrumft.h"
-#include "gnustatplot.h"
-#include "logbinnedplot.h"
+#include "../../gnuplot.h"
+#include "../../spectrumft.h"
+#include "../../gnustatplot.h"
+#include "../../logbinnedplot.h"
 
 void SEDAnalyser::Process()
 {
@@ -26,6 +26,7 @@ void SEDAnalyser::Process()
 		removeEdgeChannels();
 	if(_flaggedEndChannels != 0)
 		removeEndChannels();
+	removeBadChannels();
 	
 	ProgressBar progress("Analysing SEDs");
 	for(size_t i=0; i!=model.SourceCount(); ++i)
@@ -45,7 +46,7 @@ void SEDAnalyser::Process()
 		if(!std::isfinite(newSource.diffRMS))
 			newSource.diffRMS = newSource.rms;
 		newSource.maxStep = maxStep(sed);
-		newSource.stokesVFrac = std::fabs(sed.AverageFlux(Polarization::StokesV) / sed.AverageFlux(Polarization::StokesI));
+		newSource.stokesVFrac = std::abs(sed.AverageFlux(Polarization::StokesV) / sed.AverageFlux(Polarization::StokesI));
 		newSource.distance = ImageCoordinates::AngularDistance<long double>(meanRA, meanDec, source.MeanRA(), source.MeanDec());
 		
 		sed.FitLogPolynomial(newSource.terms, _nTermsInPS, Polarization::StokesI, _referenceFrequency);
@@ -69,7 +70,7 @@ void SEDAnalyser::Process()
 			double err = absErr / newSource.rms;
 			//bool edgeChannel =
 			//	channel%32<=2 || channel%32>=29;
-			if(fabs(err) > fabs(newSource.maxError))// && !edgeChannel)
+			if(std::abs(err) > std::abs(newSource.maxError))// && !edgeChannel)
 			{
 				newSource.maxError = err;
 				newSource.maxErrorFrequency = m->first;
@@ -135,7 +136,6 @@ void SEDAnalyser::SaveResults()
 	
 	std::cout << "Name\tcomplex?\tS" << CentralFrequency()*1e-6 << "\tSI\tRMS\n";
 	
-	std::vector<std::pair<size_t,double>> siAverages;
 	double spectralIndexSum = 0.0;
 	size_t siAvgCount = 0;
 	
@@ -552,8 +552,8 @@ void SEDAnalyser::write_csv_file()
 			<< sInfo.rms/sInfo.modalFlux << ','
 			<< sInfo.rms2ndOrder << ','
 			<< sInfo.pl2ndOrder << ','
-			<< std::fabs(sInfo.maxError) << ','
-			<< std::fabs(sInfo.maxError)/sInfo.modalFlux << ','
+			<< std::abs(sInfo.maxError) << ','
+			<< std::abs(sInfo.maxError)/sInfo.modalFlux << ','
 			<< sInfo.maxStep << ','
 			<< sInfo.maxStep/sInfo.modalFlux << ','
 			<< sInfo.subbandCorrelation << ','
@@ -576,7 +576,7 @@ double SEDAnalyser::maxStep(const MeasuredSED& sed)
 		double l = m->second.FluxDensityFromIndex(0);
 		MeasuredSED::const_iterator mr = std::next(m);
 		double r = mr->second.FluxDensityFromIndex(0);
-		double step = std::fabs(l-r);
+		double step = std::abs(l-r);
 		if(step > maxStepValue)
 			maxStepValue = step;
 	}
@@ -609,8 +609,8 @@ void SEDAnalyser::MakePSPlot()
 	ftStatBinnedPlot.SetDrawStdDev(true, false);
 	ftSmoothPlot.SetXValues(xValues);
 	SpectrumFT sft(xValues.size()), sftSmooth(xValues.size());
-	sft.SetMetaData(firstSED, 2900.0, 4.4, model.SourceCount());
-	sftSmooth.SetMetaData(firstSED, 2900.0, 4.4, model.SourceCount());
+	sft.SetMetaData(firstSED, 2900.0, model.SourceCount());
+	sftSmooth.SetMetaData(firstSED, 2900.0, model.SourceCount());
 	sftSmooth.SetOutputFit(true);
 	//sft.SetOutputFit(true); //testing
 	for(size_t i=0; i!=model.SourceCount(); ++i)
@@ -822,7 +822,7 @@ void SEDAnalyser::MakeAveragedPSPlot()
 			++sedIter;
 		}
 		SpectrumFT sft(xValues.size());
-		sft.SetMetaData(frequencies, 2900.0, 4.4, model.SourceCount());
+		sft.SetMetaData(frequencies, 2900.0, model.SourceCount());
 		//sft.SetOutputFit(true); //testing
 		ao::uvector<double> power, powerSigma;
 		getAveragedPSData(power, powerSigma, _nTermsInPS, sft, doImgSmooth);
@@ -961,7 +961,7 @@ void SEDAnalyser::MakeNoisePSPlot()
 	}
 	
 	SpectrumFT sft(xValues.size());
-	sft.SetMetaData(frequencies, 2900.0, 4.4, model.SourceCount());
+	sft.SetMetaData(frequencies, 2900.0, model.SourceCount());
 	//sft.SetOutputFit(true); //testing
 	for(size_t i=0; i!=noisePower.size(); ++i)
 		noisePower[i] *= noisePower[i] * 2.0;
@@ -1049,7 +1049,6 @@ void SEDAnalyser::removeEdgeChannels()
 	for(size_t i=0; i!=_model->SourceCount(); ++i)
 	{
 		ModelSource& source = _model->Source(i);
-		SourceInfo newSource;
 		for(ModelSource::iterator c=source.begin(); c!=source.end(); ++c)
 		{
 			MeasuredSED& sed = c->MSED();
@@ -1074,7 +1073,6 @@ void SEDAnalyser::removeEndChannels()
 	for(size_t i=0; i!=_model->SourceCount(); ++i)
 	{
 		ModelSource& source = _model->Source(i);
-		SourceInfo newSource;
 		for(ModelSource::iterator c=source.begin(); c!=source.end(); ++c)
 		{
 			MeasuredSED& sed = c->MSED();
@@ -1088,6 +1086,27 @@ void SEDAnalyser::removeEndChannels()
 					meas.SetFluxDensityFromIndex(0, std::numeric_limits<long double>::quiet_NaN());
 				}
 				++channel;
+			}
+		}
+	}
+}
+
+void SEDAnalyser::removeBadChannels()
+{
+	for(size_t i=0; i!=_model->SourceCount(); ++i)
+	{
+		ModelSource& source = _model->Source(i);
+		for(ModelSource::iterator c=source.begin(); c!=source.end(); ++c)
+		{
+			MeasuredSED& sed = c->MSED();
+			for(MeasuredSED::iterator m=sed.begin(); m!=sed.end(); ++m)
+			{
+				Measurement& meas = m->second;
+				bool isBad = std::abs(meas.FluxDensity(Polarization::StokesI)) > 100.0;
+				if(isBad)
+				{
+					meas.SetFluxDensityFromIndex(0, std::numeric_limits<long double>::quiet_NaN());
+				}
 			}
 		}
 	}
@@ -1193,7 +1212,7 @@ void SEDAnalyser::measureSourceCountNoise()
 
 	MeasuredSED firstSED = _model->Source(0).GetIntegratedMSED();
 	SpectrumFT sft(firstSED.MeasurementCount());
-	sft.SetMetaData(firstSED, 2900.0, 4.4, sourceCount);
+	sft.SetMetaData(firstSED, 2900.0, sourceCount);
 			
 	while(sourceCount <= _sources.size())
 	{
@@ -1270,7 +1289,7 @@ void SEDAnalyser::measureSourceCountNoise()
 	
 	std::ostringstream s1;
 	s1 << fittedRMS << "/sqrt(x/" << fittedRMSSourceCount << ")";
-	plot.AddFunction(s1.str(), "{/Symbol \265} 1/\{/Symbol \326}t");
+	plot.AddFunction(s1.str(), "{/Symbol \265} 1/\\{/Symbol \326}t");
 	
 	std::ostringstream s2;
 	s2 << fittedPower << "/sqrt(x/" << fittedPowerSourceCount << ")";

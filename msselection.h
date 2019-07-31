@@ -7,15 +7,17 @@
 class MSSelection
 {
 public:
+	enum EvenOddSelection { AllTimesteps, EvenTimesteps, OddTimesteps };
+	
 	MSSelection() :
 		_fieldId(0),
 		_bandId(0),
 		_startChannel(0), _endChannel(0),
 		_startTimestep(0), _endTimestep(0),
 		_minUVWInM(0.0), _maxUVWInM(0.0),
-		_autoCorrelations(false)
-	{
-	}
+		_autoCorrelations(false),
+		_evenOddSelection(AllTimesteps)
+	{ }
 	
 	bool HasChannelRange() const { return _endChannel != 0; }
 	bool HasInterval() const { return _endTimestep != 0; }
@@ -57,8 +59,14 @@ public:
 			return false;
 		else if(HasMaxUVWInM() && uvwInMeters > _maxUVWInM)
 			return false;
-		else
-			return true;
+		else if(_evenOddSelection!=AllTimesteps)
+		{
+			if(_evenOddSelection==EvenTimesteps && timestep%2!=0)
+				return false;
+			else if(_evenOddSelection==OddTimesteps && timestep%2!=1)
+				return false;
+		}
+		return true;
 	}
 	
 	bool IsFieldSelected(size_t fieldId) const
@@ -70,8 +78,14 @@ public:
 	{
 		if(HasInterval() && (timestep < _startTimestep || timestep >= _endTimestep))
 			return false;
-		else
-			return true;
+		else if(_evenOddSelection!=AllTimesteps)
+		{
+			if(_evenOddSelection==EvenTimesteps && timestep%2!=0)
+				return false;
+			else if(_evenOddSelection==OddTimesteps && timestep%2!=1)
+				return false;
+		}
+		return true;
 	}
 	
 	void SetFieldId(size_t fieldId)
@@ -105,6 +119,10 @@ public:
 	{
 		_maxUVWInM = maxUVW;
 	}
+	void SetEvenOrOddTimesteps(EvenOddSelection evenOrOdd)
+	{
+		_evenOddSelection = evenOrOdd;
+	}
 	static MSSelection Everything() { return MSSelection(); }
 private:
 	size_t _fieldId, _bandId;
@@ -112,6 +130,7 @@ private:
 	size_t _startTimestep, _endTimestep;
 	double _minUVWInM, _maxUVWInM;
 	bool _autoCorrelations;
+	enum EvenOddSelection _evenOddSelection;
 };
 
 #endif

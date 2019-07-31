@@ -116,7 +116,7 @@ private:
 			bin -= _binsPerOrderOfMagnitude;
 			val *= 10.0;
 		}
-		double valStep = pow(10.0, 1.0/_binsPerOrderOfMagnitude);
+		double valStep = exp10(1.0/_binsPerOrderOfMagnitude);
 		while(val >= valStep)
 		{
 			++bin;
@@ -130,7 +130,7 @@ private:
 		int base = int(floor(double(bin)/_binsPerOrderOfMagnitude));
 		bin -= base*_binsPerOrderOfMagnitude;
 		double baseVal = exp10(base);
-		double valStep = pow(10.0, 1.0/_binsPerOrderOfMagnitude);
+		double valStep = exp10(1.0/_binsPerOrderOfMagnitude);
 		while(bin > 0)
 		{
 			baseVal *= valStep;

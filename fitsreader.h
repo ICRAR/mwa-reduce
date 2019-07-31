@@ -15,57 +15,58 @@ class FitsReader : public FitsIOChecker
 		explicit FitsReader(const std::string &filename) 
 		: FitsReader(filename, true, false)
 		{ }
-		explicit FitsReader(const std::string &filename, bool checkCType, bool allowMultiFreq=false) :
-			_filename(filename), _hasBeam(false),
-			_checkCType(checkCType), _allowMultiFreq(allowMultiFreq)
+		explicit FitsReader(const std::string &filename, bool checkCType, bool allowMultipleImages=false) :
+			_meta(filename, checkCType, allowMultipleImages)
 		{
-			initialize(); 
+			initialize();
 		}
 		FitsReader(const FitsReader& source);
+		FitsReader(FitsReader&& source);
 		~FitsReader();
 		
 		FitsReader& operator=(const FitsReader& rhs);
+		FitsReader& operator=(FitsReader&& rhs);
 		
-		template<typename NumType> void ReadFrequency(NumType *image, size_t index);
+		template<typename NumType> void ReadIndex(NumType *image, size_t index);
 		
 		template<typename NumType> void Read(NumType *image)
 		{
-			ReadFrequency(image, 0);
+			ReadIndex(image, 0);
 		}
 		
-		size_t ImageWidth() const { return _imgWidth; }
-		size_t ImageHeight() const { return _imgHeight; }
+		size_t ImageWidth() const { return _meta.imgWidth; }
+		size_t ImageHeight() const { return _meta.imgHeight; }
 		
-		double PhaseCentreRA() const { return _phaseCentreRA; }
-		double PhaseCentreDec() const { return _phaseCentreDec; }
+		double PhaseCentreRA() const { return _meta.phaseCentreRA; }
+		double PhaseCentreDec() const { return _meta.phaseCentreDec; }
 		
-		double PixelSizeX() const { return _pixelSizeX; }
-		double PixelSizeY() const { return _pixelSizeY; }
+		double PixelSizeX() const { return _meta.pixelSizeX; }
+		double PixelSizeY() const { return _meta.pixelSizeY; }
 		
-		double PhaseCentreDL() const { return _phaseCentreDL; }
-		double PhaseCentreDM() const { return _phaseCentreDM; }
+		double PhaseCentreDL() const { return _meta.phaseCentreDL; }
+		double PhaseCentreDM() const { return _meta.phaseCentreDM; }
 		
-		double Frequency() const { return _frequency; }
-		double Bandwidth() const { return _bandwidth; }
+		double Frequency() const { return _meta.frequency; }
+		double Bandwidth() const { return _meta.bandwidth; }
 		
-		double DateObs() const { return _dateObs; }
-		PolarizationEnum Polarization() const { return _polarization; }
+		double DateObs() const { return _meta.dateObs; }
+		PolarizationEnum Polarization() const { return _meta.polarization; }
 		
-		FitsIOChecker::Unit Unit() const { return _unit; }
+		FitsIOChecker::Unit Unit() const { return _meta.unit; }
 		
-		bool HasBeam() const { return _hasBeam; }
-		double BeamMajorAxisRad() const { return _beamMajorAxisRad; }
-		double BeamMinorAxisRad() const { return _beamMinorAxisRad; }
-		double BeamPositionAngle() const { return _beamPositionAngle; }
+		bool HasBeam() const { return _meta.hasBeam; }
+		double BeamMajorAxisRad() const { return _meta.beamMajorAxisRad; }
+		double BeamMinorAxisRad() const { return _meta.beamMinorAxisRad; }
+		double BeamPositionAngle() const { return _meta.beamPositionAngle; }
 		
-		const std::string& TelescopeName() const { return _telescopeName; }
-		const std::string& Observer() const { return _observer; }
-		const std::string& ObjectName() const { return _objectName; }
+		const std::string& TelescopeName() const { return _meta.telescopeName; }
+		const std::string& Observer() const { return _meta.observer; }
+		const std::string& ObjectName() const { return _meta.objectName; }
 		
-		const std::string& Origin() const { return _origin; }
-		const std::string& OriginComment() const { return _originComment; }
+		const std::string& Origin() const { return _meta.origin; }
+		const std::string& OriginComment() const { return _meta.originComment; }
 		
-		const std::vector<std::string>& History() const { return _history; }
+		const std::vector<std::string>& History() const { return _meta.history; }
 		
 		bool ReadDoubleKeyIfExists(const char* key, double& dest);
 		bool ReadStringKeyIfExists(const char* key, std::string& dest) {
@@ -77,11 +78,21 @@ class FitsReader : public FitsIOChecker
 		
 		static double ParseFitsDateToMJD(const char* valueStr);
 		
-		const std::string& Filename() const { return _filename; }
+		const std::string& Filename() const { return _meta.filename; }
 		
 		fitsfile* FitsHandle() const { return _fitsPtr; }
 		
-		size_t NFrequencies() const { return _nFrequencies; }
+		size_t NMatrixElements() const { return _meta.nMatrixElements; }
+		size_t NFrequencies() const { return _meta.nFrequencies; }
+		size_t NAntennas() const { return _meta.nAntennas; }
+		size_t NTimesteps() const { return _meta.nTimesteps; }
+		
+		double TimeDimensionStart() const { return _meta.timeDimensionStart; }
+		double TimeDimensionIncr() const { return _meta.timeDimensionIncr; }
+		
+		double FrequencyDimensionStart() const { return _meta.frequency; }
+		double FrequencyDimensionIncr() const { return _meta.bandwidth; }
+		
 	private:
 		double readDoubleKey(const char* key);
 		std::string readStringKey(const char* key);
@@ -90,25 +101,34 @@ class FitsReader : public FitsIOChecker
 		
 		void initialize();
 		
-		std::string _filename;
-		fitsfile *_fitsPtr;
+		fitsfile* _fitsPtr;
 		
-		size_t _imgWidth, _imgHeight;
-		size_t _nFrequencies;
-		double _phaseCentreRA, _phaseCentreDec;
-		double _pixelSizeX, _pixelSizeY;
-		double _phaseCentreDL, _phaseCentreDM;
-		double _frequency, _bandwidth, _dateObs;
-		bool _hasBeam;
-		double _beamMajorAxisRad, _beamMinorAxisRad, _beamPositionAngle;
-		
-		PolarizationEnum _polarization;
-		FitsIOChecker::Unit _unit;
-		std::string _telescopeName, _observer, _objectName;
-		std::string _origin, _originComment;
-		std::vector<std::string> _history;
-		
-		bool _checkCType, _allowMultiFreq;
+		struct MetaData {
+			MetaData(const std::string &filename_, bool checkCType_, bool allowMultipleImages_) :
+				filename(filename_),
+				hasBeam(false),
+				checkCType(checkCType_),
+				allowMultipleImages(allowMultipleImages_)
+			{ }
+			std::string filename;
+			size_t imgWidth, imgHeight;
+			size_t nMatrixElements, nAntennas, nFrequencies, nTimesteps;
+			double phaseCentreRA, phaseCentreDec;
+			double pixelSizeX, pixelSizeY;
+			double phaseCentreDL, phaseCentreDM;
+			double frequency, bandwidth, dateObs;
+			bool hasBeam;
+			double beamMajorAxisRad, beamMinorAxisRad, beamPositionAngle;
+			double timeDimensionStart, timeDimensionIncr;
+			
+			PolarizationEnum polarization;
+			FitsIOChecker::Unit unit;
+			std::string telescopeName, observer, objectName;
+			std::string origin, originComment;
+			std::vector<std::string> history;
+			
+			bool checkCType, allowMultipleImages;
+		} _meta;
 };
 
 #endif

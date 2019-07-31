@@ -2,7 +2,7 @@
 #include "banddata.h"
 
 RMSynthesis::RMSynthesis(const MeasuredSED& sed) :
-	_sed(sed)
+	_sed(sed), _maxLSq(0.0)
 {
 }
 

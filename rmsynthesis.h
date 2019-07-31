@@ -8,7 +8,7 @@
 class RMSynthesis
 {
 public:
-	RMSynthesis(const MeasuredSED& sed);
+	explicit RMSynthesis(const MeasuredSED& sed);
 	
 	void Synthesize();
 	

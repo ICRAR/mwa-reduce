@@ -23,7 +23,7 @@ void Logger::SetVerbosity(VerbosityLevel verbosityLevel)
 	switch(verbosityLevel)
 	{
 		case QuietVerbosity:
-			_coutLevel = NoLevel;
+			_coutLevel = ErrorLevel;
 			break;
 		case NormalVerbosity:
 			_coutLevel = InfoLevel;

@@ -8,7 +8,11 @@ int main(int argc, char *argv[])
 	if(argc < 5)
 	{
 		std::cerr << "Syntax: addimg [options] <outimage> <outweights> <inpimage1> <inpbeam1> [<inpimage2> <inpbeam2> ...]\n"
-			"All images should be fits files. Use -1 as inpweight for unity weight, or \"-c inpbeam-real inpbeam-imag\" for complex beam.\n";
+			"All images should be fits files. Use -1 as inpweight for unity weight, or \"-c inpbeam-real inpbeam-imag\" for complex beam. Options:\n"
+			"-threshold <value>\n"
+			"  Apply threshold\n"
+			"-no-weighting\n"
+			"  Don't use WSCIMGWG values.\n";
 	}
 	else {
 		int argi = 1;
@@ -20,6 +24,10 @@ int main(int argc, char *argv[])
 			{
 				++argi;
 				adder.SetThreshold(atof(argv[argi]));
+			}
+			else if(p == "no-weighting")
+			{
+				adder.SetWeighting(false);
 			}
 			else throw std::runtime_error("Invalid parameter");
 			++argi;

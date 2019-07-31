@@ -33,7 +33,7 @@ public:
 		
 		if(matchingType == FindNewMatching)
 		{
-			matchNew(distanceInRad, weight, baseModel, addedModel, outputModel);
+			matchNew(distanceInRad, baseModel, addedModel, outputModel);
 		}
 		else {
 			matchCombine(matchingType, distanceInRad, weight, baseModel, addedModel, outputModel);
@@ -41,7 +41,7 @@ public:
 	}
 	
 private:
-	void matchNew(double distanceInRad, double weight, Model& baseModel, Model& addedModel, Model& outputModel)
+	void matchNew(double distanceInRad, Model& baseModel, Model& addedModel, Model& outputModel)
 	{
 		size_t matchedCount = 0;
 		ProgressBar progress("Matching");

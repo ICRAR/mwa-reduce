@@ -95,8 +95,8 @@ public:
 protected:
 	DeconvolutionAlgorithm();
 
-	DeconvolutionAlgorithm(const DeconvolutionAlgorithm& source) = default;
-	DeconvolutionAlgorithm& operator=(const DeconvolutionAlgorithm& source) = default;
+	DeconvolutionAlgorithm(const DeconvolutionAlgorithm&) = default;
+	DeconvolutionAlgorithm& operator=(const DeconvolutionAlgorithm&) = default;
 	
 	void PerformSpectralFit(double* values);
 	

@@ -10,9 +10,9 @@
 #include <casacore/tables/Tables/ArrColDesc.h>
 
 #include "banddata.h"
-#include "matrix2x2.h"
 #include "solutionfile.h"
 #include "uvector.h"
+#include "matrix2x2.h"
 
 class SolutionApplier
 {

@@ -47,41 +47,42 @@ class Tokenizer
 				{
 					switch(state)
 					{
-						case StateStart:
-							if(!(c == ' ' || c == '\t' || c == '\n'))
-							{
-								if(c == '/')
-									state = StateEscaped;
-								else
-								{
-									s << c;
-									if(c == '\"')
-										state = StateInString;
-									else
-										state = StateInToken;
-								}
-							}
-							break;
-						case StateInString:
-							s << c;
-							if(c == '\"')
-								finished = true;
-							break;
-						case StateInToken:
-							if(c == ' ' || c == '\t' || c == '\n' || c == ';')
-								finished = true;
-							else
-								s << c;
-							break;
-						case StateEscaped:
+					case StateStart:
+						if(!(c == ' ' || c == '\t' || c == '\n'))
+						{
 							if(c == '/')
-								state = StateInLineComment;
+								state = StateEscaped;
 							else
-								throw std::runtime_error("Incorrect /");
-						case StateInLineComment:
-							if(c == '\n')
-								state = StateStart;
-							break;
+							{
+								s << c;
+								if(c == '\"')
+									state = StateInString;
+								else
+									state = StateInToken;
+							}
+						}
+						break;
+					case StateInString:
+						s << c;
+						if(c == '\"')
+							finished = true;
+						break;
+					case StateInToken:
+						if(c == ' ' || c == '\t' || c == '\n' || c == ';')
+							finished = true;
+						else
+							s << c;
+						break;
+					case StateEscaped:
+						if(c == '/')
+							state = StateInLineComment;
+						else
+							throw std::runtime_error("Incorrect /");
+						break;
+					case StateInLineComment:
+						if(c == '\n')
+							state = StateStart;
+						break;
 					}
 				}
 				else {

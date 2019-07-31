@@ -837,10 +837,10 @@ public:
 	}
 	
 	// Remove copy constructor
-	Delaunay(const Delaunay& delaunay) { }
+	Delaunay(const Delaunay&) = delete;
 	
 	// Remove assignment operator
-	void operator=(const Delaunay& delaunay) { }
+	void operator=(const Delaunay&) = delete;
 	
 	std::vector<Vertex*> _vertices;
 	std::vector<Edge*> _convexHull;

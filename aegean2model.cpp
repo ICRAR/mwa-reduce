@@ -15,12 +15,12 @@ using namespace std;
 int main(int argc, char* argv[])
 {
 	if(argc < 4) {
-		cout << "Syntax: aegean2model [-fitsfreq <fitsfile>] [-use-peak] [-correct beam <maj> <min>] <aegean-file> <output-model> <src-prefix>\n";
+		cout << "Syntax: aegean2model [-fitsfreq <fitsfile>] [-use-peak] [-correct beam <maj> <min>] [-ncp] <aegean-file> <output-model> <src-prefix>\n";
 	}
 	else {
 		std::string freqfitsfile;
 		size_t argi = 1;
-		bool usePeak = false, correctBeam = false;
+		bool usePeak = false, correctBeam = false, ncp = false;
 		double beamMaj = 0.0, beamMin = 0.0, beamIntegral = 0.0;
 		while(argv[argi][0] == '-')
 		{
@@ -44,6 +44,10 @@ int main(int argc, char* argv[])
 				long double sigmaMin = beamMin / (2.0L * sqrtl(2.0L * logl(2.0L)));
 				beamIntegral = 2.0L * M_PI * sigmaMaj * sigmaMin;
 				argi+=2;
+			}
+			else if(p == "ncp")
+			{
+				ncp = true;
 			}
 			else {
 				throw std::runtime_error("Unknown parameter");
@@ -72,6 +76,8 @@ int main(int argc, char* argv[])
 				boost::tokenizer<boost::char_delimiters_separator<char> >::iterator beg=tok.begin();
 				for(size_t i=0; i!=5; ++i) ++beg;
 				double ra = atof(beg->c_str());
+				if(ncp)
+					ra += 180.0;
 				++beg; ++beg;
 				double dec = atof(beg->c_str());
 				++beg; ++beg;

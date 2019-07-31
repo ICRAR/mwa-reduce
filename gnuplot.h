@@ -24,7 +24,7 @@ public:
 			_file << x << '\t' << y << '\t' << yErr << '\n';
 		}
 	private:
-		Line(const std::string& filename) : _file(filename)
+		explicit Line(const std::string& filename) : _file(filename)
 		{ }
 		
 		std::ofstream _file;

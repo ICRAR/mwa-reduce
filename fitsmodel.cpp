@@ -4,7 +4,6 @@
 #include <sstream>
 #include <set>
 
-#include "model/areaparser.h"
 #include "model/model.h"
 
 #include "fitsreader.h"
@@ -76,40 +75,6 @@ int main(int argc, char **argv)
 			height = fitsReader.ImageHeight();
 		ao::uvector<double> image(width * height);
 		fitsReader.Read(&image[0]);
-		
-		if(!insideFilename.empty() || !outsideFilename.empty())
-		{
-			std::cout << "Applying areas... " << std::flush;
-			AreaParser parser;
-			AreaSet areaIn, areaOut;
-			if(!insideFilename.empty())
-				parser.Parse(areaIn, insideFilename);
-			if(!outsideFilename.empty())
-				parser.Parse(areaOut, outsideFilename);
-			for(size_t y=0; y!=height; ++y)
-			{
-				double* imageRow = &image[y*width];
-				for(size_t x=0; x!=width; ++x)
-				{
-					if(imageRow[x] != 0.0)
-					{
-						long double l, m;
-						ImageCoordinates::XYToLM<long double>(x, y, fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), width, height, l, m);
-						l += fitsReader.PhaseCentreDL(); m += fitsReader.PhaseCentreDM();
-					
-						ModelComponent component;
-						long double ra, dec;
-						ImageCoordinates::LMToRaDec<long double>(l, m, fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), ra, dec);
-						
-						bool isIn = insideFilename.empty() || areaIn.IsInArea(ra, dec);
-						bool isOut = areaOut.IsInArea(ra, dec);
-						if(!isIn || isOut)
-							imageRow[x] = 0.0;
-					}
-				}
-			}
-			std::cout << "DONE\n";
-		}
 		
 		Model model;
 		DeconvolutionAlgorithm::GetModelFromImage(model, &image[0], width, height, fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(), fitsReader.PixelSizeX(), fitsReader.PixelSizeY(), fitsReader.PhaseCentreDL(), fitsReader.PhaseCentreDM(), spectralIndex, refFreq);

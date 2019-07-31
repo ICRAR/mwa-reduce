@@ -94,7 +94,7 @@ public:
 		ConvertFluxToTemperature(data, _frequencies.data(), _sBeamOmegas.data());
 	}
 	
-	void SetMetaData(const MeasuredSED& sed, double maximumBaselineInM, double elementSizeInM, size_t sourceCount)
+	void SetMetaData(const MeasuredSED& sed, double maximumBaselineInM, size_t sourceCount)
 	{
 		ao::uvector<double>
 			frequencies(sed.MeasurementCount());
@@ -104,10 +104,10 @@ public:
 			frequencies[i] = sedIter->first;
 			++sedIter;
 		}
-		SetMetaData(frequencies, maximumBaselineInM, elementSizeInM, sourceCount);
+		SetMetaData(frequencies, maximumBaselineInM, sourceCount);
 	}
 	
-	void SetMetaData(const ao::uvector<double>& frequencies, double maximumBaselineInM, double elementSizeInM, size_t sourceCount)
+	void SetMetaData(const ao::uvector<double>& frequencies, double maximumBaselineInM, size_t sourceCount)
 	{
 		_frequencies = frequencies;
 		_sBeamOmegas.resize(_frequencies.size());

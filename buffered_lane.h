@@ -39,16 +39,24 @@ public:
 		_buffer.clear();
 	}
 		
-	void write(const value_type &element)
+	void write(const value_type& element)
 	{
 		_buffer.push_back(element);
 		if(_buffer.size() == _buffer_size)
 			flush();
 	}
 	
-	void write(value_type &&element)
+	void write(value_type&& element)
 	{
 		_buffer.push_back(std::move(element));
+		if(_buffer.size() == _buffer_size)
+			flush();
+	}
+	
+	template<typename... Args>
+	void emplace(Args&&... args)
+	{
+		_buffer.emplace_back(args...);
 		if(_buffer.size() == _buffer_size)
 			flush();
 	}

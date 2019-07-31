@@ -20,7 +20,7 @@ struct BBSParseException : public std::runtime_error
 struct Headers
 {
 	int
-		nameInd=-1, typeInd=-1, raInd=-1, decInd=-1, iInd=-1, spectrInd=-1,
+		nameInd=-1, typeInd=-1, patchInd=-1, raInd=-1, decInd=-1, iInd=-1, spectrInd=-1,
 		referenceFrequency=-1,
 		majAxisInd=-1, minAxisInd=-1, orientationInd=-1, logSIInd=-1;
 };
@@ -77,6 +77,8 @@ void bbs2model(const std::string& input, const std::string& output, const std::s
 		line = line.substr(8);
 	else
 		throw BBSParseException("BBS model does not start with format line");
+	if(line.size()>=8 && boost::to_lower_copy(line.substr(line.size()-8)) == "= format")
+		line = line.substr(0, line.size()-8);
 	boost::char_separator<char> sep(" ,()");
 	boost::tokenizer<boost::char_separator<char>> tok(line, sep);
 	Headers h;
@@ -94,7 +96,7 @@ void bbs2model(const std::string& input, const std::string& output, const std::s
 		}
 		
 		if(key == "patch")
-			; // skip
+			h.patchInd = index; // skip
 		else if(key == "name")
 			h.nameInd = index;
 		else if(key == "type")
@@ -115,12 +117,12 @@ void bbs2model(const std::string& input, const std::string& output, const std::s
 			h.minAxisInd = index;
 		else if(key == "orientation")
 			h.orientationInd = index;
-		else if(key == "format")
+		else if(key == "format" || key == "q" || key == "u" || key == "v")
 			; // skip
 		else if(key == "logarithmicsi")
 			h.logSIInd = index;
 		else
-			throw BBSParseException("Unknown header: " + key);
+			throw BBSParseException("Unknown header: '" + key + "'");
 		++index;
 	}
 	
@@ -141,62 +143,67 @@ void bbs2model(const std::string& input, const std::string& output, const std::s
 		index = 0;
 		
 		BBSLine bbsLine(line);
-		while(bbsLine.MoveToNext())
+		if(!line.empty() && line[0]!='#')
 		{
-			std::string val = bbsLine.Value();
-			if(index == h.nameInd)
-				source.SetName(val);
-			else if(index == h.raInd)
-				component.SetPosRA(RaDecCoord::ParseRA(val));
-			else if(index == h.decInd)
-				component.SetPosDec(RaDecCoord::ParseDec(val));
-			else if(index == h.typeInd)
+			while(bbsLine.MoveToNext())
 			{
-				std::string typeStr(val);
-				boost::algorithm::to_lower(typeStr);
-				if(typeStr == "point")
-					component.SetType(ModelComponent::PointSource);
-				else if (typeStr == "gaussian")
-					component.SetType(ModelComponent::GaussianSource);
-				else if(typeStr == "")
-					isPatch = true;
-				else
-					throw BBSParseException("Unknown source type: " + val);
-			} else if(index == h.spectrInd)
+				std::string val = bbsLine.Value();
+				if(index == h.nameInd)
+					source.SetName(val);
+				else if(index == h.patchInd)
+					source.SetClusterName(val);
+				else if(index == h.raInd)
+					component.SetPosRA(RaDecCoord::ParseRA(val));
+				else if(index == h.decInd)
+					component.SetPosDec(RaDecCoord::ParseDec(val));
+				else if(index == h.typeInd)
+				{
+					std::string typeStr(val);
+					boost::algorithm::to_lower(typeStr);
+					if(typeStr == "point")
+						component.SetType(ModelComponent::PointSource);
+					else if (typeStr == "gaussian")
+						component.SetType(ModelComponent::GaussianSource);
+					else if(typeStr == "")
+						isPatch = true;
+					else
+						throw BBSParseException("Unknown source type: " + val);
+				} else if(index == h.spectrInd)
+				{
+					boost::char_separator<char> freqsep("[,] ");
+					boost::tokenizer<boost::char_separator<char>> freqtok(val, freqsep);
+					for(auto fval : freqtok)
+						frequencyTerms.push_back(atof(fval.c_str()));
+				} else if(index == h.majAxisInd)
+					component.SetMajorAxis(atof(val.c_str())*(M_PI/180.0/60.0/60.0));
+				else if(index == h.minAxisInd)
+					component.SetMinorAxis(atof(val.c_str())*(M_PI/180.0/60.0/60.0));
+				else if(index == h.orientationInd)
+					component.SetPositionAngle(atof(val.c_str())*(M_PI/180.0));
+				else if(index == h.referenceFrequency)
+					refFreq = atof(val.c_str());
+				else if(index == h.iInd)
+					stokesI = atof(val.c_str());
+				else if(index == h.logSIInd)
+					sed.SetIsLogarithmic(val != "false");
+				++index;
+			}
+			double brightness[] = { stokesI, 0.0, 0.0, 0.0 };
+			sed.SetData(refFreq, brightness, frequencyTerms);
+			component.SetSED(sed);
+			if(!isPatch)
 			{
-				boost::char_separator<char> freqsep("[,] ");
-				boost::tokenizer<boost::char_separator<char>> freqtok(val, freqsep);
-				for(auto fval : freqtok)
-					frequencyTerms.push_back(atof(fval.c_str()));
-			} else if(index == h.majAxisInd)
-				component.SetMajorAxis(atof(val.c_str())*(M_PI/180.0/60.0/60.0));
-			else if(index == h.minAxisInd)
-				component.SetMinorAxis(atof(val.c_str())*(M_PI/180.0/60.0/60.0));
-			else if(index == h.orientationInd)
-				component.SetPositionAngle(atof(val.c_str())*(M_PI/180.0));
-			else if(index == h.referenceFrequency)
-				refFreq = atof(val.c_str());
-			else if(index == h.iInd)
-				stokesI = atof(val.c_str());
-			else if(index == h.logSIInd)
-				sed.SetIsLogarithmic(val != "false");
-			++index;
+				if(sourceName.empty())
+				{
+					source.AddComponent(component);
+					model.AddSource(source);
+				}
+				else {
+					globalSource.AddComponent(component);
+				}
+			}
 		}
 		std::getline(inFile, line);
-		double brightness[] = { stokesI, 0.0, 0.0, 0.0 };
-		sed.SetData(refFreq, brightness, frequencyTerms);
-		component.SetSED(sed);
-		if(!isPatch)
-		{
-			if(sourceName.empty())
-			{
-				source.AddComponent(component);
-				model.AddSource(source);
-			}
-			else {
-				globalSource.AddComponent(component);
-			}
-		}
 	}
 	if(!sourceName.empty())
 		model.AddSource(globalSource);

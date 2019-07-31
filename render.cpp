@@ -19,7 +19,7 @@ void meanPos(const std::vector<ModelSource*>& sources, double& ra, double& dec);
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
-		std::cout << "syntax: render [-n <noiselevel>] [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r [-beam <maj> <min> <pa>]] [-a] [-centre <ra> <dec>] [-size <width> <height>] [-frequency <valueHz>] <model>\n";
+		std::cout << "syntax: render [-n <noiselevel>] [-ion <solutionfile> <outprefix>] [-t templatefits] [-o <outputfits>] [-b] [-r [-beam <maj> <min> <pa>]] [-a] [-centre <ra> <dec>] [-size <width> <height>] [-scale <scale>] [-frequency <valueHz>] <model>\n";
 	else {
 		std::string templateFits;
 		std::string outputFitsName;
@@ -86,6 +86,12 @@ int main(int argc, char* argv[])
 				sizeWidth = atoi(argv[argi+1]);
 				sizeHeight = atoi(argv[argi+2]);
 				argi += 2;
+			}
+			else if(param == "scale")
+			{
+				++argi;
+				pixelSizeX = Angle::Parse(argv[argi], "scale", Angle::Degrees);
+				pixelSizeY = pixelSizeX;
 			}
 			else if(param == "frequency")
 			{

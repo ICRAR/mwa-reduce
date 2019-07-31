@@ -3,11 +3,12 @@
 #include "calibrationmethod.h"
 #include "banddata.h"
 #include "matrix2x2.h"
-#include "parallelfor.h"
 #include "progressbar.h"
 
 #include "beamevaluator.h"
 #include "mspredicter.h"
+
+#include "aocommon/parallelfor.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
@@ -281,7 +282,7 @@ void Calibrator::Perform()
 			if(_verbose)
 				std::cout << "Finished reading/predicting (" << selectedCount<< "/" << (selectedCount+notSelected) << " rows selected).\nCalibrating...\n";
 		
-			ParallelFor<size_t> loop(_threadCount);
+			ao::ParallelFor<size_t> loop(_threadCount);
 			_threadData.assign(loop.NThreads(), ThreadData(chBlockCount));
 			loop.Run(0, partChBlockCount, [&](size_t cb, size_t threadIndex) {
 				calibrateChannelBlock(cb, threadIndex);

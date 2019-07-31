@@ -9,8 +9,9 @@
 class NumberList
 {
 public:
-	static void ParseIntList(const std::string& str, ao::uvector<int>& list)
+	static ao::uvector<int> ParseIntList(const std::string& str)
 	{
+		ao::uvector<int> list;
 		std::string temp = str;
 		size_t pos = temp.find(",");
 		while(pos != std::string::npos)
@@ -23,10 +24,12 @@ public:
 		}
 		int num = atoi(temp.c_str());
 		list.push_back(num);
+		return list;
 	}
 	
-	static void ParseDoubleList(const std::string& str, ao::uvector<double>& list)
+	static ao::uvector<double> ParseDoubleList(const std::string& str)
 	{
+		ao::uvector<double> list;
 		std::string temp = str;
 		size_t pos = temp.find(",");
 		while(pos != std::string::npos)
@@ -39,6 +42,7 @@ public:
 		}
 		double num = atof(temp.c_str());
 		list.push_back(num);
+		return list;
 	}
 };
 

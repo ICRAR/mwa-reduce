@@ -112,7 +112,7 @@ void SpectrumFT::applyWindow(ao::uvector<double>& data) const
 	for(size_t i=0; i!=data.size(); ++i)
 	{
 		double windowValue =
-			WindowFunction::blackmanNutallWindow(data.size(), i);
+			WindowFunction::EvaluateBlackmanNutall(data.size(), i);
 		windowSum += windowValue;
 		data[i] *= windowValue;
 	}

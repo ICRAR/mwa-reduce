@@ -5,10 +5,10 @@
 #include <memory>
 #include <random>
 
-#include "model/model.h"
-#include "progressbar.h"
-#include "rmsynthesis.h"
-#include "subbandpassband.h"
+#include "../../model/model.h"
+#include "../../progressbar.h"
+#include "../../rmsynthesis.h"
+#include "../../subbandpassband.h"
 
 class SEDAnalyser
 {
@@ -248,6 +248,7 @@ private:
 	
 	void removeEdgeChannels();
 	void removeEndChannels();
+	void removeBadChannels();
 	
 	std::string psYAxisDesc()
 	{

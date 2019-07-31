@@ -10,80 +10,73 @@
 #include <casacore/measures/Measures/MeasConvert.h>
 
 FitsReader::FitsReader(const FitsReader& source) :
-	_filename(source._filename),
-	_fitsPtr(0),
-	_imgWidth(source._imgWidth), _imgHeight(source._imgHeight),
-	_nFrequencies(source._nFrequencies),
-	_phaseCentreRA(source._phaseCentreRA), _phaseCentreDec(source._phaseCentreDec),
-	_pixelSizeX(source._pixelSizeX), _pixelSizeY(source._pixelSizeY),
-	_phaseCentreDL(source._phaseCentreDL), _phaseCentreDM(source._phaseCentreDM),
-	_frequency(source._frequency), _bandwidth(source._bandwidth), _dateObs(source._dateObs),
-	_hasBeam(source._hasBeam),
-	_beamMajorAxisRad(source._beamMajorAxisRad), _beamMinorAxisRad(source._beamMinorAxisRad), _beamPositionAngle(source._beamPositionAngle),
-	_polarization(source._polarization),
-	_unit(source._unit),
-	_telescopeName(source._telescopeName), _observer(source._observer), _objectName(source._objectName),
-	_origin(source._origin), _originComment(source._originComment),
-	_history(source._history),
-	_checkCType(source._checkCType)
+	_fitsPtr(nullptr),
+	_meta(source._meta)
 {
 	int status = 0;
-	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
-	checkStatus(status, _filename);
+	fits_open_file(&_fitsPtr, _meta.filename.c_str(), READONLY, &status);
+	checkStatus(status, _meta.filename);
 	
 	// Move to first HDU
 	int hduType;
 	fits_movabs_hdu(_fitsPtr, 1, &hduType, &status);
-	checkStatus(status, _filename);
+	checkStatus(status, _meta.filename);
 	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
+}
+
+FitsReader::FitsReader(FitsReader&& source) :
+	_fitsPtr(source._fitsPtr),
+	_meta(std::move(source._meta))
+{
+	source._fitsPtr = nullptr;
 }
 
 FitsReader::~FitsReader()
 {
-	int status = 0;
-	fits_close_file(_fitsPtr, &status);
+	if(_fitsPtr != nullptr)
+	{
+		int status = 0;
+		fits_close_file(_fitsPtr, &status);
+	}
+}
+
+FitsReader& FitsReader::operator=(FitsReader&& rhs)
+{
+	if(_fitsPtr != nullptr)
+	{
+		int status = 0;
+		fits_close_file(_fitsPtr, &status);
+		checkStatus(status, _meta.filename);
+	}
+	_meta = std::move(rhs._meta);
+	_fitsPtr = rhs._fitsPtr;
+	rhs._fitsPtr = nullptr;
+	
+	return *this;
 }
 
 FitsReader& FitsReader::operator=(const FitsReader& rhs)
 {
-	_filename = rhs._filename;
-	_imgWidth = rhs._imgWidth;
-	_imgHeight = rhs._imgHeight;
-	_nFrequencies = rhs._nFrequencies;
-	_phaseCentreRA = rhs._phaseCentreRA;
-	_phaseCentreDec = rhs._phaseCentreDec;
-	_pixelSizeX = rhs._pixelSizeX;
-	_pixelSizeY = rhs._pixelSizeY;
-	_phaseCentreDL = rhs._phaseCentreDL;
-	_phaseCentreDM = rhs._phaseCentreDM;
-	_frequency = rhs._frequency;
-	_bandwidth = rhs._bandwidth;
-	_dateObs = rhs._dateObs;
-	_hasBeam = rhs._hasBeam;
-	_beamMajorAxisRad = rhs._beamMajorAxisRad;
-	_beamMinorAxisRad = rhs._beamMinorAxisRad;
-	_beamPositionAngle = rhs._beamPositionAngle;
-	_polarization = rhs._polarization;
-	_unit = rhs._unit;
-	_telescopeName = rhs._telescopeName;
-	_observer = rhs._observer;
-	_objectName = rhs._objectName;
-	_origin = rhs._origin;
-	_originComment = rhs._originComment;
-	_history = rhs._history;
+	if(_fitsPtr != nullptr)
+	{
+		int status = 0;
+		fits_close_file(_fitsPtr, &status);
+		checkStatus(status, _meta.filename);
+	}
 	
-	int status = 0;
-	fits_close_file(_fitsPtr, &status);
-	checkStatus(status, _filename);
+	if(rhs._fitsPtr != nullptr)
+	{
+		int status = 0;
+		fits_open_file(&_fitsPtr, _meta.filename.c_str(), READONLY, &status);
+		checkStatus(status, _meta.filename);
+		
+		// Move to first HDU
+		int hduType;
+		fits_movabs_hdu(_fitsPtr, 1, &hduType, &status);
+		checkStatus(status, _meta.filename);
+		if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
+	}
 	
-	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
-	checkStatus(status, _filename);
-	
-	// Move to first HDU
-	int hduType;
-	fits_movabs_hdu(_fitsPtr, 1, &hduType, &status);
-	checkStatus(status, _filename);
-	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
 	return *this;
 }
 
@@ -92,7 +85,7 @@ double FitsReader::readDoubleKey(const char *key)
 	int status = 0;
 	double value;
 	fits_read_key(_fitsPtr, TDOUBLE, key, &value, 0, &status);
-	checkStatus(status, _filename, std::string("Read float key ") + key);
+	checkStatus(status, _meta.filename, std::string("Read float key ") + key);
 	return value;
 }
 
@@ -134,7 +127,7 @@ std::string FitsReader::readStringKey(const char *key)
 	int status = 0;
 	char keyStr[256];
 	fits_read_key(_fitsPtr, TSTRING, key, keyStr, 0, &status);
-	checkStatus(status, _filename, std::string("Read string key ") + key);
+	checkStatus(status, _meta.filename, std::string("Read string key ") + key);
 	return std::string(keyStr);
 }
 
@@ -153,28 +146,41 @@ bool FitsReader::ReadStringKeyIfExists(const char *key, std::string& value, std:
 
 void FitsReader::initialize()
 {
+	_meta.nMatrixElements = 1;
+	_meta.nFrequencies = 1;
+	_meta.nAntennas = 1;
+	_meta.nTimesteps = 1;
+	_meta.phaseCentreRA = 0.0;
+	_meta.pixelSizeX = 0.0;
+	_meta.phaseCentreDec = 0.0;
+	_meta.pixelSizeY = 0.0;
+	_meta.dateObs = 0.0;
+	_meta.frequency = 0.0;
+	_meta.bandwidth = 0.0;
+	_meta.polarization = Polarization::StokesI;
+	_meta.unit = JanskyPerBeam;
+	
 	int status = 0;
-	fits_open_file(&_fitsPtr, _filename.c_str(), READONLY, &status);
-	checkStatus(status, _filename);
+	fits_open_file(&_fitsPtr, _meta.filename.c_str(), READONLY, &status);
+	checkStatus(status, _meta.filename);
 	
 	// Move to first HDU
 	int hduType;
 	fits_movabs_hdu(_fitsPtr, 1, &hduType, &status);
-	checkStatus(status, _filename);
+	checkStatus(status, _meta.filename);
 	if(hduType != IMAGE_HDU) throw std::runtime_error("First HDU is not an image");
 	
 	int naxis = 0;
 	fits_get_img_dim(_fitsPtr, &naxis, &status);
-	checkStatus(status, _filename);
+	checkStatus(status, _meta.filename);
 	if(naxis < 2) throw std::runtime_error("NAxis in image < 2");
 	
 	std::vector<long> naxes(naxis);
 	fits_get_img_size(_fitsPtr, naxis, &naxes[0], &status);
-	checkStatus(status, _filename);
+	checkStatus(status, _meta.filename);
 	
-	_imgWidth = naxes[0];
-	_imgHeight = naxes[1];
-	_nFrequencies = 1;
+	_meta.imgWidth = naxes[0];
+	_meta.imgHeight = naxes[1];
 	
 	std::string tmp;
 	for(int i=2;i!=naxis;++i)
@@ -183,15 +189,62 @@ void FitsReader::initialize()
 		name << "CTYPE" << (i+1);
 		if(ReadStringKeyIfExists(name.str().c_str(), tmp))
 		{
-			if(tmp == "FREQ")
-				_nFrequencies = naxes[i];
+			std::ostringstream crval, cdelt;
+			crval << "CRVAL" << (i+1);
+			cdelt << "CDELT" << (i+1);
+			if(tmp == "FREQ" || tmp == "VRAD")
+			{
+				_meta.nFrequencies = naxes[i];
+				_meta.frequency = readDoubleKey(crval.str().c_str());
+				_meta.bandwidth = readDoubleKey(cdelt.str().c_str());
+			}
+			else if(tmp == "ANTENNA")
+				_meta.nAntennas = naxes[i];
+			else if(tmp == "TIME")
+			{
+				_meta.nTimesteps = naxes[i];
+				_meta.timeDimensionStart = readDoubleKey(crval.str().c_str());
+				_meta.timeDimensionIncr = readDoubleKey(cdelt.str().c_str());
+			}
+			else if(tmp == "STOKES")
+			{
+				double val = readDoubleKey(crval.str().c_str());
+				switch(int(val))
+				{
+					default: throw std::runtime_error("Unknown polarization specified in fits file");
+					case 1: _meta.polarization = Polarization::StokesI; break;
+					case 2: _meta.polarization = Polarization::StokesQ; break;
+					case 3: _meta.polarization = Polarization::StokesU; break;
+					case 4: _meta.polarization = Polarization::StokesV; break;
+					case -1: _meta.polarization = Polarization::RR; break;
+					case -2: _meta.polarization = Polarization::LL; break;
+					case -3: _meta.polarization = Polarization::RL; break;
+					case -4: _meta.polarization = Polarization::LR; break;
+					case -5: _meta.polarization = Polarization::XX; break;
+					case -6: _meta.polarization = Polarization::YY; break;
+					case -7: _meta.polarization = Polarization::XY; break;
+					case -8: _meta.polarization = Polarization::YX; break;
+				}
+				if(naxes[i]!=1 && !_meta.allowMultipleImages)
+					throw std::runtime_error("Multiple polarizations given in fits file");
+			}
+			else if(tmp == "MATRIX")
+			{
+				_meta.nMatrixElements = naxes[i];
+			}
 			else if(naxes[i] != 1)
 				throw std::runtime_error("Multiple images given in fits file");
 		}
 	}
 	
-	if(_nFrequencies != 1 && !_allowMultiFreq)
+	if(_meta.nMatrixElements != 1 && !_meta.allowMultipleImages)
+		throw std::runtime_error("Multiple matrix elements given in fits file");
+	if(_meta.nFrequencies != 1 && !_meta.allowMultipleImages)
 		throw std::runtime_error("Multiple frequencies given in fits file");
+	if(_meta.nAntennas != 1 && !_meta.allowMultipleImages)
+		throw std::runtime_error("Multiple antennas given in fits file");
+	if(_meta.nTimesteps != 1 && !_meta.allowMultipleImages)
+		throw std::runtime_error("Multiple timesteps given in fits file");
 	
 	double bScale = 1.0, bZero = 0.0, equinox = 2000.0;
 	ReadDoubleKeyIfExists("BSCALE", bScale);
@@ -204,127 +257,89 @@ void FitsReader::initialize()
 	if(equinox != 2000.0)
 		throw std::runtime_error("Invalid value for EQUINOX: "+readStringKey("EQUINOX"));
 	
-	if(ReadStringKeyIfExists("CTYPE1", tmp) && tmp != "RA---SIN" && _checkCType)
+	if(ReadStringKeyIfExists("CTYPE1", tmp) && tmp != "RA---SIN" && _meta.checkCType)
 		throw std::runtime_error("Invalid value for CTYPE1");
 	
-	_phaseCentreRA = 0.0;
-	ReadDoubleKeyIfExists("CRVAL1", _phaseCentreRA);
-	_phaseCentreRA *= M_PI / 180.0;
-	_pixelSizeX = 0.0;
-	ReadDoubleKeyIfExists("CDELT1", _pixelSizeX);
-	_pixelSizeX *= -M_PI / 180.0;
-	if(ReadStringKeyIfExists("CUNIT1", tmp) && tmp != "deg" && _checkCType)
+	ReadDoubleKeyIfExists("CRVAL1", _meta.phaseCentreRA);
+	_meta.phaseCentreRA *= M_PI / 180.0;
+	ReadDoubleKeyIfExists("CDELT1", _meta.pixelSizeX);
+	_meta.pixelSizeX *= -M_PI / 180.0;
+	if(ReadStringKeyIfExists("CUNIT1", tmp) && tmp != "deg" && _meta.checkCType)
 		throw std::runtime_error("Invalid value for CUNIT1");
 	double centrePixelX = 0.0;
 	if(ReadDoubleKeyIfExists("CRPIX1", centrePixelX))
-		_phaseCentreDL = (centrePixelX - ((_imgWidth / 2.0)+1.0)) * _pixelSizeX;
+		_meta.phaseCentreDL = (centrePixelX - ((_meta.imgWidth / 2.0)+1.0)) * _meta.pixelSizeX;
 	else
-		_phaseCentreDL = 0.0;
+		_meta.phaseCentreDL = 0.0;
 
-	if(ReadStringKeyIfExists("CTYPE2",tmp) && tmp != "DEC--SIN" && _checkCType)
+	if(ReadStringKeyIfExists("CTYPE2",tmp) && tmp != "DEC--SIN" && _meta.checkCType)
 		throw std::runtime_error("Invalid value for CTYPE2");
-	_phaseCentreDec = 0.0;
-	ReadDoubleKeyIfExists("CRVAL2", _phaseCentreDec);
-	_phaseCentreDec *= M_PI / 180.0;
-	_pixelSizeY = 0.0;
-	ReadDoubleKeyIfExists("CDELT2", _pixelSizeY);
-	_pixelSizeY *= M_PI / 180.0;
-	if(ReadStringKeyIfExists("CUNIT2", tmp) && tmp != "deg" && _checkCType)
+	ReadDoubleKeyIfExists("CRVAL2", _meta.phaseCentreDec);
+	_meta.phaseCentreDec *= M_PI / 180.0;
+	ReadDoubleKeyIfExists("CDELT2", _meta.pixelSizeY);
+	_meta.pixelSizeY *= M_PI / 180.0;
+	if(ReadStringKeyIfExists("CUNIT2", tmp) && tmp != "deg" && _meta.checkCType)
 		throw std::runtime_error("Invalid value for CUNIT2");
 	double centrePixelY = 0.0;
 	if(ReadDoubleKeyIfExists("CRPIX2", centrePixelY))
-		_phaseCentreDM = ((_imgHeight / 2.0)+1.0 - centrePixelY) * _pixelSizeY;
+		_meta.phaseCentreDM = ((_meta.imgHeight / 2.0)+1.0 - centrePixelY) * _meta.pixelSizeY;
 	else
-		_phaseCentreDM = 0.0;
+		_meta.phaseCentreDM = 0.0;
 	
-	_dateObs = 0.0;
-	readDateKeyIfExists("DATE-OBS", _dateObs);
+	readDateKeyIfExists("DATE-OBS", _meta.dateObs);
 	
-	if(naxis >= 3 && readStringKey("CTYPE3") == "FREQ")
-	{
-		_frequency = readDoubleKey("CRVAL3");
-		_bandwidth = readDoubleKey("CDELT3");
-	}
-	else {
-		_frequency = 0.0;
-		_bandwidth = 0.0;
-	}
-	
-	if(naxis >= 4 && readStringKey("CTYPE4") == "STOKES")
-	{
-		double val = readDoubleKey("CRVAL4");
-		switch(int(val))
-		{
-			default: throw std::runtime_error("Unknown polarization specified in fits file");
-			case 1: _polarization = Polarization::StokesI; break;
-			case 2: _polarization = Polarization::StokesQ; break;
-			case 3: _polarization = Polarization::StokesU; break;
-			case 4: _polarization = Polarization::StokesV; break;
-			case -1: _polarization = Polarization::RR; break;
-			case -2: _polarization = Polarization::LL; break;
-			case -3: _polarization = Polarization::RL; break;
-			case -4: _polarization = Polarization::LR; break;
-			case -5: _polarization = Polarization::XX; break;
-			case -6: _polarization = Polarization::YY; break;
-			case -7: _polarization = Polarization::XY; break;
-			case -8: _polarization = Polarization::YX; break;
-		}
-	}
-	else {
-		_polarization = Polarization::StokesI;
-	}
 	double bMaj=0.0, bMin=0.0, bPa=0.0;
 	if(ReadDoubleKeyIfExists("BMAJ", bMaj) && ReadDoubleKeyIfExists("BMIN", bMin) && ReadDoubleKeyIfExists("BPA", bPa))
 	{
-		_hasBeam = true;
-		_beamMajorAxisRad = bMaj * (M_PI / 180.0);
-		_beamMinorAxisRad = bMin * (M_PI / 180.0);
-		_beamPositionAngle = bPa * (M_PI / 180.0);
+		_meta.hasBeam = true;
+		_meta.beamMajorAxisRad = bMaj * (M_PI / 180.0);
+		_meta.beamMinorAxisRad = bMin * (M_PI / 180.0);
+		_meta.beamPositionAngle = bPa * (M_PI / 180.0);
 	}
 	else {
-		_hasBeam = false;
-		_beamMajorAxisRad = 0.0;
-		_beamMinorAxisRad = 0.0;
-		_beamPositionAngle = 0.0;
+		_meta.hasBeam = false;
+		_meta.beamMajorAxisRad = 0.0;
+		_meta.beamMinorAxisRad = 0.0;
+		_meta.beamPositionAngle = 0.0;
 	}
 	
-	_telescopeName = std::string();
-	ReadStringKeyIfExists("TELESCOP", _telescopeName);
-	_observer = std::string();
-	ReadStringKeyIfExists("OBSERVER", _observer);
-	_objectName = std::string();
-	ReadStringKeyIfExists("OBJECT", _objectName);
+	_meta.telescopeName = std::string();
+	ReadStringKeyIfExists("TELESCOP", _meta.telescopeName);
+	_meta.observer = std::string();
+	ReadStringKeyIfExists("OBSERVER", _meta.observer);
+	_meta.objectName = std::string();
+	ReadStringKeyIfExists("OBJECT", _meta.objectName);
 	
-	_origin = std::string();
-	_originComment = std::string();
-	ReadStringKeyIfExists("ORIGIN", _origin, _originComment);
+	_meta.origin = std::string();
+	_meta.originComment = std::string();
+	ReadStringKeyIfExists("ORIGIN", _meta.origin, _meta.originComment);
 	
-	_history.clear();
+	_meta.history.clear();
 	readHistory();
 }
 
-template void FitsReader::ReadFrequency(float* image, size_t index);
-template void FitsReader::ReadFrequency(double* image, size_t index);
+template void FitsReader::ReadIndex(float* image, size_t index);
+template void FitsReader::ReadIndex(double* image, size_t index);
 
 template<typename NumType>
-void FitsReader::ReadFrequency(NumType* image, size_t index)
+void FitsReader::ReadIndex(NumType* image, size_t index)
 {
 	int status = 0;
 	int naxis = 0;
 	fits_get_img_dim(_fitsPtr, &naxis, &status);
-	checkStatus(status, _filename);
+	checkStatus(status, _meta.filename);
 	std::vector<long> firstPixel(naxis);
 	for(int i=0;i!=naxis;++i) firstPixel[i] = 1;
 	if(naxis > 2)
 		firstPixel[2] = index+1;
 	
 	if(sizeof(NumType)==8)
-		fits_read_pix(_fitsPtr, TDOUBLE, &firstPixel[0], _imgWidth*_imgHeight, 0, image, 0, &status);
+		fits_read_pix(_fitsPtr, TDOUBLE, &firstPixel[0], _meta.imgWidth*_meta.imgHeight, 0, image, 0, &status);
 	else if(sizeof(NumType)==4)
-		fits_read_pix(_fitsPtr, TFLOAT, &firstPixel[0], _imgWidth*_imgHeight, 0, image, 0, &status);
+		fits_read_pix(_fitsPtr, TFLOAT, &firstPixel[0], _meta.imgWidth*_meta.imgHeight, 0, image, 0, &status);
 	else
 		throw std::runtime_error("sizeof(NumType)!=8 || 4 not implemented");
-	checkStatus(status, _filename);
+	checkStatus(status, _meta.filename);
 }
 
 void FitsReader::readHistory()
@@ -332,14 +347,14 @@ void FitsReader::readHistory()
 	int status = 0;
 	int npos, moreKeys;
 	fits_get_hdrspace(_fitsPtr, &npos, &moreKeys, &status);
-	checkStatus(status, _filename);
+	checkStatus(status, _meta.filename);
 	char keyCard[256];
 	for(int pos=1; pos<=npos; ++pos)
 	{
 		fits_read_record(_fitsPtr, pos, keyCard, &status);
 		keyCard[7] = 0;
 		if(std::string("HISTORY") == keyCard) {
-			_history.push_back(&keyCard[8]);
+			_meta.history.push_back(&keyCard[8]);
 		}
 	}
 }

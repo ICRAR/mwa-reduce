@@ -24,7 +24,7 @@ namespace ao {
 
 /**
  * @brief A container similar to std::vector, but one that allows construction without initializing its elements.
- * @details This container is similar to a std::vector, except that it can be constructor without
+ * @details This container is similar to a std::vector, except that it can be constructed without
  * initializing its elements. This saves the overhead of initialization, hence the
  * constructor @ref uvector(size_t) is significantly faster than the corresponding std::vector
  * constructor, and has no overhead compared to a manually allocated array.

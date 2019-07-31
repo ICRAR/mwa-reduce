@@ -227,8 +227,7 @@ void ModelRenderer::Restore(double* imageData, const double* modelData, size_t i
 			}
 		}
 		
-		ao::uvector<double> convolvedModel(imageWidth*imageHeight);
-		memcpy(convolvedModel.data(), modelData, sizeof(double)*imageWidth*imageHeight);
+		ao::uvector<double> convolvedModel(modelData, modelData+imageWidth*imageHeight);
 		
 		FFTWManager fftw;
 		FFTConvolver::Convolve(fftw, convolvedModel.data(), imageWidth, imageHeight, kernel.data(), boundingBoxSize);

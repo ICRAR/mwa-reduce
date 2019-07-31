@@ -1,6 +1,6 @@
 #include "fluxaccumulator.h"
 
-FluxAccumulator::FluxAccumulator(double l, double m, double lambda, const std::complex<double>* modelFlux) :
+FluxAccumulator::FluxAccumulator(double l, double m, double /*lambda*/, const std::complex<double>* modelFlux) :
 	_accVisWeightBeforeBeamChange(0.0),
 	_l(l), _m(m),
 	_ionG(0.0), _movedL(0.0), _movedM(0.0), _movedLMSqrt(0.0)
@@ -15,7 +15,7 @@ FluxAccumulator::FluxAccumulator(double l, double m, double lambda, const std::c
 	memcpy(_modelFlux, modelFlux, sizeof(std::complex<double>)*4);
 }
 
-FluxAccumulator::FluxAccumulator(double lambda) :
+FluxAccumulator::FluxAccumulator(double /*lambda*/) :
 	_accVisWeightBeforeBeamChange(0.0),
 	_l(0.0), _m(0.0),
 	_ionG(0.0), _movedL(0.0), _movedM(0.0), _movedLMSqrt(0.0)

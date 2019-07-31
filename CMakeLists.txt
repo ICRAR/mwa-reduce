@@ -92,7 +92,6 @@ add_executable(apparently apparently.cpp model/model.cpp nlplfitter.cpp fitsioch
 add_executable(applybeam applybeam.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(applyion applyion.cpp fftconvolver.cpp fftwmanager.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp model/model.cpp modelrenderer.cpp nlplfitter.cpp)
 add_executable(applysolutions applysolutions.cpp)
-add_executable(areas areas.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp)
 add_executable(autoprocess autoprocess.cpp calibrator.cpp model/model.cpp beamevaluator.cpp peeler.cpp calibrationmethod.cpp mspredicter.cpp nlplfitter.cpp predicter.cpp progressbar.cpp ${BEAMFILES})
 add_executable(bbs2model bbs2model.cpp model/model.cpp nlplfitter.cpp)
 add_executable(beam beam.cpp fitsiochecker.cpp fitsreader.cpp fitswriter.cpp mwa/metafitsfile.cpp mwa/mwaconfig.cpp progressbar.cpp ${BEAMFILES})
@@ -143,7 +142,6 @@ target_link_libraries(addimg ${CFITSIO_LIBRARY} ${CASA_LIBS} ${Boost_DATE_TIME_L
 target_link_libraries(aegean2model ${CFITSIO_LIBRARY} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(applybeam ${CFITSIO_LIBRARY} ${CASA_LIBS})
 target_link_libraries(apparently ${CFITSIO_LIBRARY} ${CASA_LIBS} ${GSL_LIB} ${GSL_CBLAS_LIB} )
-target_link_libraries(areas ${CFITSIO_LIBRARY} ${CASA_LIBS})
 
 target_link_libraries(applyion ${CFITSIO_LIBRARY} ${CASA_LIBS} ${FFTW3_LIB} ${FFTW3_THREADS_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(applysolutions ${CASA_LIBS})
@@ -191,8 +189,10 @@ if(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   target_link_libraries(render ${GSL_LIB} ${GSL_CBLAS_LIB})
   target_link_libraries(vo2model ${GSL_LIB} ${GSL_CBLAS_LIB})
   
-  add_executable(sedcombine sedcombine.cpp sedanalyser.cpp model/model.cpp nlplfitter.cpp rmsynthesis.cpp progressbar.cpp spectrumft.cpp subbandpassband.cpp)
-  target_link_libraries(sedcombine ${CASA_LIBS} ${FFTW3_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB})
+  add_executable(sedcombine experiments/sed/sedcombine.cpp experiments/sed/sedanalyser.cpp model/model.cpp
+    fitsiochecker.cpp fitsreader.cpp fitswriter.cpp
+    nlplfitter.cpp rmsynthesis.cpp progressbar.cpp spectrumft.cpp subbandpassband.cpp)
+  target_link_libraries(sedcombine ${CASA_LIBS} ${FFTW3_LIB} ${GSL_LIB} ${GSL_CBLAS_LIB} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
   
 else(GSL_LIB AND GSL_CBLAS_LIB AND GSL_INCLUDE_DIR)
   message("GNU scientific library (gsl) not found: some features will be disabled (this is not an error).")

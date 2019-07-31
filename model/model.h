@@ -15,14 +15,14 @@ class Model
 		Model()
 		{ }
 
-		Model(const Model& source) = default;
-		Model(Model&& source) = default;
+		Model(const Model&) = default;
+		Model(Model&&) = default;
 		
 		explicit Model(const char *filename) { read(filename); }
 		explicit Model(const std::string& filename) { read(filename.c_str()); }
 		
-		Model& operator=(const Model& source) = default;
-		Model& operator=(Model&& source) = default;
+		Model& operator=(const Model&) = default;
+		Model& operator=(Model&&) = default;
 		
 		void operator+=(const Model &rhs);
 		

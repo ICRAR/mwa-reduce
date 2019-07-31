@@ -60,14 +60,33 @@ bool compareWithBeam(const ModelSource& lhs, const ModelSource& rhs)
 	return lhsVal < rhsVal;
 }
 
+struct SplitLine
+{
+	double ra1, dec1;
+	double ra2, dec2;
+	
+	bool IsPointAboveLine(double ra, double dec) const
+	{
+		if(ra1 == ra2)
+			return ( dec2 >= dec1 && ra > ra1 )  ||  ( dec1 > dec2 && ra <= ra1 );
+		else {
+			double alpha = (dec2 - dec1) / (ra2 - ra1);
+			if(ra2 > ra1)
+				return dec >= alpha * (ra - ra1) + dec1;
+			else
+				return dec < alpha * (ra - ra1) + dec1;
+		}
+	}
+};
+
 int main(int argc, char *argv[])
 {
 	if(argc == 1)
 	{
 		std::cout << "editmodel -- Interpolation, extrapolation, plotting and scaling of the \n"
 		"spectral energy distribution. Usage:\n"
-		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near/outside <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-uncollect] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] [-min-separation <angle>] [-replace-si <si>] [-set-cluster <name>] "
-		"[-rts <filename>] [-to-powerlaw <n>] [-shift <ra-angle> <dec-angle>] "
+		"\teditmodel [-p [-ft]] [-rmp] [-m <output model>] [-o] [-s <scale>] [-s-to <freq> <flux>] [-sp <peakflux A> <freq A> <peakflux B> <freq B>] [-sc <intflux A> <freq A> <intflux B> <freq B>] [-set0/1/2/3 <flux>] [-unpolarized] [-pl] [-t <threshold>] [-tbeam <beamprefix> <threshold>] [-tc <compthreshold>] [-tcl <cluster threshold] [-r <new-nr-channels>] [-ravg <new-nr-channels>] [-near/outside <ra> <dec> <dist>] [-combine-diff-meas] [-collect <name>] [-uncollect] [-rnd <n> <ra> <dec> <dist>] [-sort] [-sortbeam <beamprefix>] [-lognlogs <frequency> <bincount>] [-stats] [-setfrequency <val>] [-delnans] [-sagecal <prefix> <chunksize>] [-dppp-model <filename>] [-skymodel <filename>] [-toapp <beamprefix>] [-save-clusters <clusters.ann>] [-list] [-evaluate <freq>] [-scale-to <model> <freq-start> <freq-end> <terms>] [-select <name>] [-search <count> <ra> <dec>] [-simuniform N RA Dec dist flux] [-simpopulation RA Dec dist lowflux highflux] [-min-separation <angle>] [-replace-si <n> <si> <terms...>] [-set-cluster <name>] "
+		"[-rts <filename>] [-to-powerlaw <n>] [-shift <ra-angle> <dec-angle>] [-kvis <kvis .ann file>] [-split/-split2 <ra1> <dec1> <ra2> <dec2>] "
 		"<model> [<more models...>]\n";
 		return 0;
 	}
@@ -76,10 +95,10 @@ int main(int argc, char *argv[])
 	double evaluateFrequency = 0.0;
 	bool setPolarization[4] = {false, false, false, false};
 	long double setPolFlux[4] = {0.0, 0.0, 0.0, 0.0};
-	long double scale = 1.0, threshold = 0.0, logNlogSFrequency = 0.0;
+	long double scale = 1.0, scaleToFreq = 0.0, scaleToFlux = 0.0, threshold = 0.0, logNlogSFrequency = 0.0;
 	long double scalePeakA = 1.0, scaleFreqA = 0.0, scalePeakB = 1.0, scaleFreqB = 0.0;
 	size_t newChannelCount = 0, logNlogSBinCount = 0, sagecalFirstClusterChunkSize = 1;
-	std::string outputModel, collectName, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, skyModelFilename, sortBeamPrefix;
+	std::string outputModel, collectName, csvFilename, plotTitle, sagecalPrefix, toAppBeamPrefix, dpppModelFilename, kvisAnnFile, sortBeamPrefix;
 	bool nearFilter = false, outsideFilter = false, scalePeak = false, scaleSource = false, scaleWithSI = false, doCollect = false, doSort = false, setFrequency = false, uncollect = false;
 	long double nearFilterRA = 0.0, nearFilterDec = 0.0, nearFilterDist = 0.0, setFrequencyValue = 0.0, powerSumLimit = 0.0, shiftRA = 0.0, shiftDec = 0.0;
 	enum { AddFluxes, AverageFluxes, DifferentFrequencies } combineStrategy = AddFluxes;
@@ -99,10 +118,11 @@ int main(int argc, char *argv[])
 	size_t scaleToNTerms = 0;
 	double minSeparation = 0.0;
 	bool replaceSI = false;
-	double replaceSIvalue = 0.0;
+	ao::uvector<double> replaceSIvalues;
 	std::string setClusterName;
 	std::string rtsFilename;
 	size_t toPowerlaw = 0;
+	std::vector<SplitLine> splits;
 	
 	std::string selectSourceName;
 	while(argi!=argc && argv[argi][0]=='-')
@@ -192,6 +212,12 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			scale = atof(argv[argi]);
+		} else if(option == "s-to")
+		{
+			++argi;
+			scaleToFreq = atof(argv[argi]);
+			++argi;
+			scaleToFlux = atof(argv[argi]);
 		} else if(option == "sp") // scale w.r.t. peak flux
 		{
 			scalePeak = true;
@@ -317,10 +343,14 @@ int main(int argc, char *argv[])
 			sagecalPrefix = argv[argi];
 			++argi;
 			sagecalFirstClusterChunkSize = atoi(argv[argi]);
-		} else if(option == "skymodel")
+		} else if(option == "skymodel" || option == "dppp-model")
 		{
 			++argi;
-			skyModelFilename = argv[argi];
+			dpppModelFilename = argv[argi];
+		} else if(option == "kvis")
+		{
+			++argi;
+			kvisAnnFile = argv[argi];
 		} else if(option == "toapp")
 		{
 			++argi;
@@ -358,7 +388,12 @@ int main(int argc, char *argv[])
 		{
 			++argi;
 			replaceSI = true;
-			replaceSIvalue = atof(argv[argi]);
+			size_t n = atoi(argv[argi]);
+			for(size_t i=0; i!=n; ++i)
+			{
+				++argi;
+				replaceSIvalues.emplace_back(atof(argv[argi]));
+			}
 		} else if(option == "set-cluster")
 		{
 			++argi;
@@ -376,6 +411,24 @@ int main(int argc, char *argv[])
 			shiftRA = Angle::Parse(argv[argi+1], "shift RA", Angle::Degrees);
 			shiftDec = Angle::Parse(argv[argi+2], "shift Dec",  Angle::Degrees);
 			argi += 2;
+		} else if(option == "split")
+		{
+			splits.emplace_back();
+			SplitLine& line = splits.back();
+			line.ra1 = RaDecCoord::ParseRA(argv[argi+1]);
+			line.dec1 = RaDecCoord::ParseDec(argv[argi+2]);
+			line.ra2 = RaDecCoord::ParseRA(argv[argi+3]);
+			line.dec2 = RaDecCoord::ParseDec(argv[argi+4]);
+			argi += 4;
+		} else if(option == "split2")
+		{
+			splits.emplace_back();
+			SplitLine& line = splits.back();
+			line.ra2 = RaDecCoord::ParseRA(argv[argi+1]);
+			line.dec2 = RaDecCoord::ParseDec(argv[argi+2]);
+			line.ra1 = RaDecCoord::ParseRA(argv[argi+3]);
+			line.dec1 = RaDecCoord::ParseDec(argv[argi+4]);
+			argi += 4;
 		} else {
 			throw std::runtime_error(std::string("Unknown option given: -") + option);
 		}
@@ -490,13 +543,12 @@ int main(int argc, char *argv[])
 				if(component.HasPowerLawSED())
 				{
 					PowerLawSED& sed = static_cast<PowerLawSED&>(component.SED());
-					if(!sed.IsLogarithmic())
-						throw std::runtime_error("Can only set SI of sources with a logarithmic SED");
-					double refFreq, brightness[4];
-					std::vector<double> siTerms;
-					sed.GetData(refFreq, brightness, siTerms);
-					siTerms.assign(1, replaceSIvalue);
-					sed.SetData(refFreq, brightness, siTerms);
+					long double refFreq = sed.ReferenceFrequencyHz();
+					double brightness[4];
+					for(size_t p=0; p!=4; ++p)
+						brightness[p] = sed.FluxAtFrequencyFromIndex(refFreq, p);
+					sed.SetIsLogarithmic(true);
+					sed.SetData(refFreq, brightness, replaceSIvalues);
 				}
 				else throw std::runtime_error("Can only set SI of sources with a power law SED");
 			}
@@ -551,11 +603,11 @@ int main(int argc, char *argv[])
 				double u = dist(rnd);
 				double loTerm = pow(simPopulationFluxLo, popExp+1.0);
 				flux = pow((pow(simPopulationFluxHi, popExp+1.0) - loTerm) * u + loTerm, 1.0/(popExp+1.0));
-				std::cout << ra << "," << dec << ": " << flux << "Jy\n";
+				//std::cout << ra << "," << dec << ": " << flux << "Jy\n";
 			}
 			else {
 				flux = simUniformFlux;
-				std::cout << ra << "," << dec << "\n";
+				//std::cout << ra << "," << dec << "\n";
 			}
 			
 			double b[] = {flux, 0.0, 0.0, 0.0};
@@ -904,6 +956,23 @@ int main(int argc, char *argv[])
 			source.SetClusterName(setClusterName);
 	}
 	
+	if(!splits.empty())
+	{
+		for(const SplitLine& split : splits)
+		{
+			Model newModel;
+			for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+			{
+				double ra = sourcePtr->MeanRA(), dec = sourcePtr->MeanDec();
+				if(split.IsPointAboveLine(ra, dec))
+				{
+					newModel.AddSource(*sourcePtr);
+				}
+			}
+			model = std::move(newModel);
+		}
+	}
+	
 	if(powerlaw || resample || resampleByAveraging)
 	{
 		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
@@ -990,11 +1059,25 @@ int main(int argc, char *argv[])
 	}
 	if(scale != 1.0)
 	{
-		for(Model::iterator sourcePtr = model.begin(); sourcePtr!=model.end(); ++sourcePtr)
+		for(ModelSource& source : model)
 		{
-			for(ModelSource::iterator compPtr = sourcePtr->begin(); compPtr!=sourcePtr->end(); ++compPtr)
+			for(ModelComponent& comp : source)
 			{
-				compPtr->MSED() *= scale;
+				comp.SED() *= scale;
+			}
+		}
+	}
+	if(scaleToFreq != 0.0)
+	{
+		std::cout << "Source\tScale factor\n";
+		for(ModelSource& source : model)
+		{
+			double flux = source.TotalFlux(scaleToFreq, Polarization::StokesI);
+			double factor = scaleToFlux / flux;
+			std::cout << source.Name() << '\t' << std::setprecision(15) << factor << '\n';
+			for(ModelComponent& comp : source)
+			{
+				comp.SED() *= factor;
 			}
 		}
 	}
@@ -1261,9 +1344,21 @@ int main(int argc, char *argv[])
 		std::cout << "Total power sum = " << powerSum << " Jy^2.\n";
 	}
 	
-	if(!skyModelFilename.empty())
+	if(!dpppModelFilename.empty())
 	{
-		NDPPP::SaveSkyModel(skyModelFilename, model, true);
+		NDPPP::SaveSkyModel(dpppModelFilename, model, true);
+	}
+	
+	if(!kvisAnnFile.empty())
+	{
+		std::ofstream str(kvisAnnFile);
+		for(const ModelSource& source : model)
+		{
+			str << "TEXT "
+				<< source.MeanRA()*180.0/M_PI
+				<< " " << source.MeanDec()*180.0/M_PI
+				<< " " << source.Name() << "\n";
+		}
 	}
 	
 	if(!sagecalPrefix.empty())
@@ -1684,7 +1779,7 @@ int main(int argc, char *argv[])
 			std::cout
 				<< source.Name() << " "
 				<< RaDecCoord::RAToString(source.MeanRA()) << " "
-				<< RaDecCoord::DecToString(source.MeanDec()) << " "
+				<< RaDecCoord::DecToString(source.MeanDec()) << " " << std::setprecision(15)
 				<< source.TotalFlux(evaluateFrequency, Polarization::StokesI) << '\n';
 		}
 	}

@@ -18,6 +18,9 @@
 class MultiBandData
 {
 	public:
+		using iterator = std::vector<BandData>::iterator;
+		using const_iterator = std::vector<BandData>::const_iterator;
+		
 		/**
 		 * Construct an empty MultiBandData.
 		 */
@@ -173,6 +176,12 @@ class MultiBandData
 		 * @returns Set of used dataDescIds.
 		 */
 		std::set<size_t> GetUsedDataDescIds(casacore::MeasurementSet& mainTable) const;
+		
+		iterator begin() { return _bandData.begin(); }
+		const_iterator begin() const { return _bandData.begin(); }
+		
+		iterator end() { return _bandData.end(); }
+		const_iterator end() const { return _bandData.end(); }
 		
 	private:
 		std::vector<size_t> _dataDescToBand;

@@ -142,8 +142,7 @@ int main(int argc, char *argv[])
 		else if(param == "delays")
 		{
 			++argi;
-			ao::uvector<int> list;
-			NumberList::ParseIntList(argv[argi], list);
+			ao::uvector<int> list = NumberList::ParseIntList(argv[argi]);
 			if(list.size() != 16) {
 				std::cerr << "Need 16 delays\n";
 			  exit(1);
