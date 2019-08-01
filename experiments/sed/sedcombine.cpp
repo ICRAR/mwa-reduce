@@ -1,5 +1,6 @@
-#include "../../sourcematcher.h"
 #include "sedanalyser.h"
+
+#include "../../sourcematcher.h"
 #include "../../imageadder.h"
 
 #include <iostream>

@@ -3,19 +3,23 @@
 #include "multibanddata.h"
 
 #include "msproviders/msprovider.h"
+#include "fitswriter.h"
+#include "units/angle.h"
+#include "wsclean/logger.h"
 
 #include <cmath>
 #include <iostream>
 #include <cstring>
 
-ImageWeights::ImageWeights(const WeightMode& weightMode, size_t imageWidth, size_t imageHeight, double pixelScaleX, double pixelScaleY, double superWeight) :
+ImageWeights::ImageWeights(const WeightMode& weightMode, size_t imageWidth, size_t imageHeight, double pixelScaleX, double pixelScaleY, bool weightsAsTaper, double superWeight) :
 	_weightMode(weightMode),
 	_imageWidth(round(double(imageWidth) / superWeight)),
 	_imageHeight(round(double(imageHeight) / superWeight)),
 	_pixelScaleX(pixelScaleX),
 	_pixelScaleY(pixelScaleY),
 	_totalSum(0.0),
-	_isGriddingFinished(false)
+	_isGriddingFinished(false),
+	_weightsAsTaper(weightsAsTaper)
 {
 	if(_imageWidth%2 != 0) ++_imageWidth;
 	if(_imageHeight%2 != 0) ++_imageHeight;
@@ -59,14 +63,13 @@ void ImageWeights::Grid(casacore::MeasurementSet& ms, const MSSelection& selecti
 	
 	const casacore::IPosition shape(flagColumn.shape(0));
 	
-	bool isWeightDefined = weightColumn.isDefined(0);
 	bool hasWeights = false;
-	if(isWeightDefined)
+	if(weightColumn.isDefined(0) && !_weightsAsTaper)
 	{
-		casacore::IPosition modelShape = weightColumn.shape(0);
-		hasWeights = (modelShape == shape);
+		casacore::IPosition weightShape = weightColumn.shape(0);
+		hasWeights = (weightShape == shape);
 	}
-		
+	
 	const size_t polarizationCount = shape[0];
 	
 	casacore::Array<casacore::Complex> dataArr(shape);
@@ -120,18 +123,17 @@ void ImageWeights::Grid(casacore::MeasurementSet& ms, const MSSelection& selecti
 				double
 					u = uInM / curBand.ChannelWavelength(ch),
 					v = vInM / curBand.ChannelWavelength(ch);
-				double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
-				double y = round(v*_imageHeight*_pixelScaleY);
-					
-				if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
+				int x, y;
+				uvToXY(u, v, x, y);
+				if(isWithinLimits(x, y))
 				{
 					for(size_t p=0; p!=polarizationCount; ++p)
 					{
 						if(!*flagIter)
 						{
-								size_t index = (size_t) x + (size_t) y*_imageWidth;
-								_grid[index] += *weightIter;
-								_totalSum += *weightIter;
+							size_t index = (size_t) x + (size_t) y*_imageWidth;
+							_grid[index] += *weightIter;
+							_totalSum += *weightIter;
 						}
 						++flagIter;
 						++weightIter;
@@ -153,23 +155,33 @@ void ImageWeights::Grid(MSProvider& msProvider, const MSSelection& selection)
 {
 	if(_isGriddingFinished)
 		throw std::runtime_error("Grid() called after a call to FinishGridding()");
+	size_t polarizationCount = (msProvider.Polarization() == Polarization::Instrumental) ? 4 : 1;
 	if(_weightMode.RequiresGridding())
 	{
-		const MultiBandData bandData(msProvider.MS().spectralWindow(), msProvider.MS().dataDescription());
+		SynchronizedMS ms(msProvider.MS());
+		const MultiBandData bandData(ms->spectralWindow(), ms->dataDescription());
 		MultiBandData selectedBand;
 		if(selection.HasChannelRange())
 			selectedBand = MultiBandData(bandData, selection.ChannelRangeStart(), selection.ChannelRangeEnd());
 		else
 			selectedBand = bandData;
-		std::vector<float> weightBuffer(selectedBand.MaxChannels());
+		ao::uvector<float> weightBuffer(selectedBand.MaxChannels()*polarizationCount);
 		
 		msProvider.Reset();
-		do
+		while(msProvider.CurrentRowAvailable())
 		{
 			double uInM, vInM, wInM;
 			size_t dataDescId;
 			msProvider.ReadMeta(uInM, vInM, wInM, dataDescId);
 			msProvider.ReadWeights(weightBuffer.data());
+			if(_weightsAsTaper)
+			{
+				for(float& w : weightBuffer)
+				{
+					if(w != 0.0)
+						w = 1.0;
+				}
+			}
 			const BandData& curBand = selectedBand[dataDescId];
 			if(vInM < 0.0)
 			{
@@ -183,18 +195,15 @@ void ImageWeights::Grid(MSProvider& msProvider, const MSSelection& selection)
 				double
 					u = uInM / curBand.ChannelWavelength(ch),
 					v = vInM / curBand.ChannelWavelength(ch);
-				double x = round(u*_imageWidth*_pixelScaleX + _imageWidth/2);
-				double y = round(v*_imageHeight*_pixelScaleY);
-					
-				if(x >= 0.0 && x < _imageWidth && y < _imageHeight/2)
+				for(size_t p=0; p!=polarizationCount; ++p)
 				{
-					size_t index = (size_t) x + (size_t) y*_imageWidth;
-					_grid[index] += *weightIter;
-					_totalSum += *weightIter;
+					Grid(u, v, *weightIter);
+					++weightIter;
 				}
-				++weightIter;
 			}
-		} while(msProvider.NextRow());
+			
+			msProvider.NextRow();
+		}
 	}
 }
 
@@ -233,7 +242,11 @@ void ImageWeights::FinishGridding()
 		break;
 		case WeightMode::NaturalWeighted:
 		{
-			_grid.assign(_imageWidth*_imageHeight/2, 1.0);
+			for(ao::uvector<double>::iterator i=_grid.begin(); i!=_grid.end(); ++i)
+			{
+				if(*i != 0.0)
+					*i = 1.0;
+			}
 		}
 		break;
 	}
@@ -301,4 +314,208 @@ void ImageWeights::SetMaxUVRange(double maxUVInLambda)
 			++i;
 		}
 	}
+}
+
+void ImageWeights::SetTukeyTaper(double transitionSizeInLambda, double maxUVInLambda)
+{
+	ao::uvector<double>::iterator i = _grid.begin();
+	const double maxUVSq = maxUVInLambda * maxUVInLambda;
+	const double transitionDistSq = (maxUVInLambda-transitionSizeInLambda) * (maxUVInLambda-transitionSizeInLambda);
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double u, v;
+			xyToUV(x, y, u, v);
+			double distSq = u*u + v*v;
+			if(distSq > maxUVSq)
+				*i = 0.0;
+			else if(distSq > transitionDistSq)
+			{
+				*i *= tukeyFrom0ToN(maxUVInLambda - sqrt(distSq), transitionSizeInLambda);
+			}
+			++i;
+		}
+	}
+}
+
+void ImageWeights::SetTukeyInnerTaper(double transitionSizeInLambda, double minUVInLambda)
+{
+	ao::uvector<double>::iterator i = _grid.begin();
+	const double minUVSq = minUVInLambda * minUVInLambda;
+	const double totalSizeSq = (minUVInLambda+transitionSizeInLambda) * (minUVInLambda+transitionSizeInLambda);
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double u, v;
+			xyToUV(x, y, u, v);
+			double distSq = u*u + v*v;
+			if(distSq < minUVSq)
+				*i = 0.0;
+			else if(distSq < totalSizeSq)
+			{
+				*i *= tukeyFrom0ToN(sqrt(distSq) - minUVInLambda, transitionSizeInLambda);
+			}
+			++i;
+		}
+	}
+}
+
+void ImageWeights::SetEdgeTaper(double sizeInLambda)
+{
+	ao::uvector<double>::iterator i = _grid.begin();
+	double maxU, maxV;
+	xyToUV(_imageWidth, _imageHeight/2, maxU, maxV);
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double u, v;
+			xyToUV(x, y, u, v);
+			if(maxU-std::fabs(u) < sizeInLambda || maxV-std::fabs(v) < sizeInLambda)
+				*i = 0.0;
+			++i;
+		}
+	}
+}
+
+void ImageWeights::SetEdgeTukeyTaper(double transitionSizeInLambda, double edgeSizeInLambda)
+{
+	ao::uvector<double>::iterator i = _grid.begin();
+	double maxU, maxV;
+	xyToUV(_imageWidth, _imageHeight/2, maxU, maxV);
+	double totalSize = transitionSizeInLambda + edgeSizeInLambda;
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double u, v;
+			xyToUV(x, y, u, v);
+			double uDist = maxU-std::fabs(u);
+			double vDist = maxV-std::fabs(v);
+			if(uDist < edgeSizeInLambda || vDist < edgeSizeInLambda)
+				*i = 0.0;
+			else if(uDist < totalSize || vDist < totalSize)
+			{
+				double ru = uDist - edgeSizeInLambda;
+				double rv = vDist - edgeSizeInLambda;
+				if(ru > transitionSizeInLambda) ru = transitionSizeInLambda;
+				if(rv > transitionSizeInLambda) rv = transitionSizeInLambda;
+				*i *= tukeyFrom0ToN(ru, transitionSizeInLambda) * tukeyFrom0ToN(rv, transitionSizeInLambda);
+			}
+			++i;
+		}
+	}
+}
+
+void ImageWeights::GetGrid(double* image) const
+{
+	const double* srcPtr = _grid.data();
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		size_t yUpper = _imageHeight/2 - 1 - y;
+		size_t yLower = _imageHeight/2 + y;
+		double* upperRow = &image[yUpper*_imageWidth];
+		double* lowerRow = &image[yLower*_imageWidth];
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			upperRow[_imageWidth-x-1] = *srcPtr;
+			lowerRow[x] = *srcPtr;
+			++srcPtr;
+		}
+	}
+}
+
+void ImageWeights::Save(const string& filename) const
+{
+	ao::uvector<double> image(_imageWidth*_imageHeight);
+	GetGrid(&image[0]);
+	FitsWriter writer;
+	writer.SetImageDimensions(_imageWidth, _imageHeight);
+	writer.Write(filename, image.data());
+}
+
+void ImageWeights::RankFilter(double rankLimit, size_t windowSize)
+{
+	ao::uvector<double> newGrid(_grid);
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double w = _grid[y*_imageWidth + x];
+			if(w != 0.0)
+			{
+				double mean = windowMean(x, y, windowSize);
+				if(w > mean*rankLimit)
+					newGrid[y*_imageWidth + x] = mean*rankLimit;
+			}
+		}
+	}
+	_grid = newGrid;
+}
+
+void ImageWeights::SetGaussianTaper(double beamSize)
+{
+	Logger::Debug << "Applying " << Angle::ToNiceString(beamSize) << " Gaussian taper...\n";
+	double halfPowerUV = 1.0 / (beamSize * 2.0 * M_PI);
+	const long double sigmaToHP = 2.0L * sqrtl(2.0L * logl(2.0L));
+	double minusTwoSigmaSq = halfPowerUV * sigmaToHP;
+	Logger::Debug << "UV taper: " << minusTwoSigmaSq << '\n';
+	minusTwoSigmaSq *= -2.0 * minusTwoSigmaSq;
+	for(size_t y=0; y!=_imageHeight/2; ++y)
+	{
+		for(size_t x=0; x!=_imageWidth; ++x)
+		{
+			double val = _grid[y*_imageWidth + x];
+			if(val != 0.0)
+			{
+				double u, v;
+				xyToUV(x, y, u, v);
+				double gaus = exp((u*u + v*v) / minusTwoSigmaSq);
+				_grid[y*_imageWidth + x] = val * gaus;
+			}
+		}
+	}
+}
+
+double ImageWeights::windowMean(size_t x, size_t y, size_t windowSize)
+{
+	size_t d = windowSize/2;
+	size_t x1, y1, x2, y2;
+	if(x <= d)
+		x1 = 0;
+	else
+		x1 = x - d;
+	
+	if(y <= d)
+		y1 = 0;
+	else
+		y1 = y - d;
+	
+	if(x+d >= _imageWidth)
+		x2 = _imageWidth;
+	else
+		x2 = x + d;
+	
+	if(y+d >= _imageHeight/2)
+		y2 = _imageHeight/2;
+	else
+		y2 = y + d;
+	
+	size_t windowCount = 0;
+	double windowSum = 0.0;
+	for(size_t yi=y1; yi<y2; ++yi)
+	{
+		for(size_t xi=x1; xi<x2; ++xi)
+		{
+			double w = _grid[yi*_imageWidth + xi];
+			if(w != 0.0)
+			{
+				++windowCount;
+				windowSum += w;
+			}
+		}
+	}
+	return windowSum / double(windowCount);
 }

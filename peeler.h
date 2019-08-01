@@ -3,9 +3,10 @@
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 
-#include <boost/thread/thread.hpp>
+#include <mutex>
 
 #include <queue>
+
 #include "banddata.h"
 #include "lane.h"
 
@@ -94,7 +95,7 @@ private:
 	{
 		ThreadData() { }
 		
-		boost::mutex *mutex;
+		std::mutex *mutex;
 		std::queue<size_t> *tasks;
 		std::vector<class CalibrationMethod*> *calMethods;
 	};

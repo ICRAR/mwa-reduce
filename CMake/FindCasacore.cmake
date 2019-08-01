@@ -2,8 +2,8 @@
 # Usage:
 #   find_package(Casacore [REQUIRED] [COMPONENTS components...])
 # Valid components are:
-#   casa, coordinates, derivedmscal, fits, images, lattices,
-#   meas, measures, mirlib, ms, msfits, python, scimath, scimath_f, tables
+#   casa, coordinates, derivedmscal, fits, images, lattices, meas, 
+#   measures, mirlib, ms, msfits, python, scimath, scimath_f, tables
 #
 # Note that most components are dependent on other (more basic) components.
 # In that case, it suffices to specify the "top-level" components; dependent
@@ -13,7 +13,7 @@
 # For this, you need to have a complete casacore installation, built with shared
 # libraries, at your disposal.
 #
-# The dependencies in this macro were generated against casacore release 1.7.0.
+# The dependencies in this macro were generated against casacore release 2.0.
 #
 # Variables used by this module:
 #  CASACORE_ROOT_DIR         - Casacore root directory. 
@@ -38,7 +38,7 @@
 # ATTENTION: The component names need to be in lower case, just as the
 # casacore library names. However, the CMake variables use all upper case.
 
-# Copyright (C) 2009
+# Copyright (C) 2009-2015
 # ASTRON (Netherlands Institute for Radio Astronomy)
 # P.O.Box 2, 7990 AA Dwingeloo, The Netherlands
 #
@@ -56,7 +56,7 @@
 # You should have received a copy of the GNU General Public License along
 # with the LOFAR software suite. If not, see <http://www.gnu.org/licenses/>.
 #
-# $Id: FindCasacore.cmake 31487 2015-04-16 11:28:17Z dijkema $
+# $Id: FindCasacore.cmake 31570 2015-05-07 09:49:56Z loose $
 
 # - casacore_resolve_dependencies(_result)
 #
@@ -164,7 +164,7 @@ set(Casacore_casa_DEPENDENCIES)
 set(Casacore_coordinates_DEPENDENCIES   fits measures casa)
 set(Casacore_derivedmscal_DEPENDENCIES  ms measures tables casa)
 set(Casacore_fits_DEPENDENCIES          measures tables casa)
-set(Casacore_images_DEPENDENCIES        mirlib lattices coordinates fits measures scimath tables casa)
+set(Casacore_images_DEPENDENCIES        coordinates mirlib lattices fits measures scimath tables casa)
 set(Casacore_lattices_DEPENDENCIES      tables scimath casa)
 set(Casacore_meas_DEPENDENCIES          measures tables casa)
 set(Casacore_measures_DEPENDENCIES      tables casa)

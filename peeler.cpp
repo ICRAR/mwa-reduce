@@ -236,17 +236,18 @@ void Peeler::Perform()
 		for(size_t ch=0; ch!=channelCount; ++ch)
 			tasks.push(ch);
 		size_t cpuCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
-		boost::thread_group threadGroup;
-		boost::mutex mutex;
+		std::vector<std::thread> threadGroup;
+		std::mutex mutex;
 		for(size_t i=0; i!=cpuCount; ++i)
 		{
 			ThreadData threadData;
 			threadData.mutex = &mutex;
 			threadData.tasks = &tasks;
 			threadData.calMethods = &calMethods;
-			threadGroup.add_thread(new boost::thread(&Peeler::calibrateThreadFunction, this, threadData));
+			threadGroup.emplace_back(&Peeler::calibrateThreadFunction, this, threadData);
 		}
-		threadGroup.join_all();
+		for(std::thread& t : threadGroup)
+			t.join();
 
 		if(_saveSolutionsFiles)
 		{
@@ -359,7 +360,7 @@ void Peeler::Perform()
 
 void Peeler::calibrateThreadFunction(Peeler::ThreadData data)
 {
-	boost::mutex::scoped_lock lock(*data.mutex);
+	std::unique_lock<std::mutex> lock(*data.mutex);
 	size_t lastSuccessfulChannel = data.tasks->front();
 	while(!data.tasks->empty()) {
 		size_t taskIndex = data.tasks->front();

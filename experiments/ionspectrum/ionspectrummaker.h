@@ -2,19 +2,20 @@
 #define ION_SPECTRUM_MAKER_H
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
-#include <boost/thread/thread.hpp>
 
 #include <casacore/measures/Measures/MEpoch.h>
 #include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
-#include "banddata.h"
-#include "fluxaccumulator.h"
-#include "fluxspectrumaccumulator.h"
-#include "lane.h"
-#include "imageweights.h"
-#include "ionsolutionfile.h"
-#include "uvector.h"
-#include "buffered_lane.h"
+#include <thread>
+
+#include "../../banddata.h"
+#include "../../fluxaccumulator.h"
+#include "../../fluxspectrumaccumulator.h"
+#include "../../lane.h"
+#include "../../imageweights.h"
+#include "../../ionsolutionfile.h"
+#include "../../uvector.h"
+#include "../../buffered_lane.h"
 
 #define ION_SPECTRUM_ROW_LANE_SIZE 512
 #define ION_SPECTRUM_ROW_BUFFER_SIZE 256
@@ -172,7 +173,7 @@ public:
 		size_t timeIndex = 0, interval = 0;
 		updateBeam(timeColumn(0), _ionSolutionFile, interval);
 		std::cout << "Starting timestep " << timeIndex << '/' << timestepCount << " of interval " << interval << '/' << _ionSolutionFile.IntervalCount() << "..." << std::endl;
-		std::unique_ptr<boost::thread> processRowThread(new boost::thread(&IonSpectrumMaker::processRows, this, &internalLane));
+		std::unique_ptr<std::thread> processRowThread(new std::thread(&IonSpectrumMaker::processRows, this, &internalLane));
 		for(size_t rowIndex=0; rowIndex!=_ms.nrow(); ++rowIndex)
 		{
 			size_t
@@ -195,7 +196,7 @@ public:
 					
 					bufferedLane.clear();
 					updateBeam(time, _ionSolutionFile, interval);
-					processRowThread.reset(new boost::thread(&IonSpectrumMaker::processRows, this, &internalLane));
+					processRowThread.reset(new std::thread(&IonSpectrumMaker::processRows, this, &internalLane));
 					
 					++timeIndex;
 					size_t nextIntervalStartTimestep = ((interval+1)*timestepCount) / _ionSolutionFile.IntervalCount();
@@ -383,12 +384,14 @@ private:
 		lane_read_buffer<RowData> bufferedInputLane(lane, ION_SPECTRUM_ROW_BUFFER_SIZE);
 		std::vector<ao::lane<SampleData>*> outLanesInternal(_threadCount);
 		std::vector<lane_write_buffer<SampleData>> bufferedOutLanes(_threadCount);
-		boost::thread_group threadGroup;
+		std::vector<std::thread> threadGroup;
 		for(size_t c=0; c!=_threadCount; ++c)
 		{
 			outLanesInternal[c] = new ao::lane<SampleData>(ION_SPECTRUM_SAMPLE_LANE_SIZE);
 			bufferedOutLanes[c].reset(outLanesInternal[c], ION_SPECTRUM_SAMPLE_BUFFER_SIZE);
-			threadGroup.add_thread(new boost::thread(&IonSpectrumMaker::processSamples, this, outLanesInternal[c], c, _threadCount));
+			threadGroup.emplace_back([&]() {
+				processSamples(outLanesInternal[c], c, _threadCount);
+			} );
 		}
 		RowData rowData;
 		ao::uvector<double> wavelengths(_bandData.ChannelCount());
@@ -432,7 +435,8 @@ private:
 		
 		for(size_t c=0; c!=_threadCount; ++c)
 			bufferedOutLanes[c].write_end();
-		threadGroup.join_all();
+		for(std::thread& t : threadGroup)
+			t.join();
 		for(size_t c=0; c!=_threadCount; ++c)
 			delete outLanesInternal[c];
 	}
@@ -457,7 +461,7 @@ private:
 		if(_weightMode.RequiresGridding())
 		{
 			std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
-			_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
+			_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale, false, 1.0));
 			_imageWeights->Grid(_ms, MSSelection::Everything());
 			_imageWeights->FinishGridding();
 		}

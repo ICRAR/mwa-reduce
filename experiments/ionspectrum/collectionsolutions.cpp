@@ -1,9 +1,9 @@
-#include "uvector.h"
-#include "ionsolutionfile.h"
-#include "beamevaluator.h"
-#include "banddata.h"
+#include "../../uvector.h"
+#include "../../ionsolutionfile.h"
+#include "../../beamevaluator.h"
+#include "../../banddata.h"
 
-#include "model/model.h"
+#include "../../model/model.h"
 
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include <casacore/measures/Measures/MEpoch.h>

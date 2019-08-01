@@ -15,6 +15,16 @@ namespace ao {
 	{
 	public:
 		/**
+		* Construct barrier for n threads without a completion function.
+		* @param n Number of threads to wait for
+		* @param completionFunction void function that is called when all threads have
+		* arrived, just before the threads are released.
+		*/
+		Barrier(size_t n) : _n(n), _count(_n), _cycle(0), _completionFunction(&Barrier::nop)
+		{
+		}
+		
+		/**
 		* Construct barrier for n threads with the given completion function.
 		* @param n Number of threads to wait for
 		* @param completionFunction void function that is called when all threads have
@@ -46,6 +56,8 @@ namespace ao {
 		}
 		
 	private:
+		static void nop() { }
+		
 		std::mutex _mutex;
 		std::condition_variable _condition;
 		size_t _n, _count, _cycle;

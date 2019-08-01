@@ -15,8 +15,6 @@
 #include <casacore/measures/Measures/MEpoch.h>
 #include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 
-#include <boost/thread/thread.hpp>
-
 #ifdef HAVE_GSL
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multifit_nlin.h>
@@ -38,7 +36,7 @@ void IonPeeler::initWeighting(casacore::MeasurementSet& ms)
 {
 	if(_weightGridSize > 0)
 	{
-		_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale));
+		_imageWeights.reset(new ImageWeights(_weightMode, _weightGridSize, _weightGridSize, _weightPixelScale, _weightPixelScale, false, _weightPixelScale));
 		if(_weightMode.RequiresGridding())
 		{
 			std::cout << "Precalculating weights for " << _weightMode.ToString() << " weighting...\n";
@@ -300,10 +298,11 @@ void IonPeeler::Peel(const char* msName, const char* modelName, const char* solu
 		for(size_t cb=0; cb!=_channelBlockCount; ++cb)
 			tasks.push_back(_channelBlockCount - cb - 1);
 		std::mutex mutex;
-		boost::thread_group threads;
+		std::vector<std::thread> threads;
 		for(size_t i=0; i!=_cpuCount; ++i)
-			threads.add_thread(new boost::thread(&IonPeeler::processingThreadFunction, this, &mutex, &tasks));
-		threads.join_all();
+			threads.emplace_back(&IonPeeler::processingThreadFunction, this, &mutex, &tasks);
+		for(size_t i=0; i!=_cpuCount; ++i)
+			threads[i].join();
 		
 		// Write back
 		for(size_t rowIndex=_curStartRow; rowIndex!=_curEndRow; ++rowIndex)
