@@ -3,6 +3,7 @@
  * and Sokolowski et al (2016) paper
  * Implemented by Marcin Sokolowski (May 2017) - marcin.sokolowski@curtin.edu.au
  * 20 May 2017 : Somewhat optimized by André Offringa.
+ * 202008 : GPU version of beam2016 model added (developed by Maciej Cytowski and Di Pietrantonio from PAWSEY)
  */
 
 #include <algorithm>

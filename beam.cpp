@@ -5,6 +5,8 @@
 #endif
 #include "beam/tilebeam2016.h"
 
+// 202008 : GPU version of beam2016 model added (developed by Maciej Cytowski and Di Pietrantonio from PAWSEY)
+
 #include "fitsreader.h"
 #include "fitswriter.h"
 #include "banddata.h"

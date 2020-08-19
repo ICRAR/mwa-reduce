@@ -1,5 +1,7 @@
 #include <stdexcept>
 
+// 202008 : GPU version of beam2016 model added (developed by Maciej Cytowski and Di Pietrantonio from PAWSEY)
+
 #include <casacore/measures/TableMeasures/ScalarMeasColumn.h>
 #include <casacore/measures/Measures/MPosition.h>
 #include <casacore/measures/Measures/MEpoch.h>

@@ -3,6 +3,8 @@
 #include "tilebeam2014.h"
 #include "tilebeam2013.h"
 
+// 202008 : GPU version of beam2016 model added (developed by Maciej Cytowski and Di Pietrantonio from PAWSEY)
+
 #include <casacore/measures/Measures/MDirection.h>
 #include <casacore/measures/Measures/MEpoch.h>
 #include <casacore/measures/Measures/MPosition.h>

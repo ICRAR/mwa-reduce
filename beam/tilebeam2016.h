@@ -27,7 +27,11 @@ public:
 		else
 			getTabulatedResponse(azimuth, zenithAngle, frequencyHz, gain);
 	}
-	
+	#ifdef CUDA_SUPPORT
+	void ArrayResponse(double *zenithAngle, double *azimuth, size_t npos, std::complex<double> *gain, size_t startChannel, size_t endChannel, size_t channelCount, size_t startFrequency, size_t endFrequency){
+		getTabulatedResponse(azimuth, zenithAngle, npos, gain, startChannel, endChannel, channelCount, startFrequency, endFrequency);
+	}
+	#endif
 private:
 	bool _frequencyInterpolation;
 	
@@ -38,6 +42,9 @@ private:
 	 */
 	void getTabulatedResponse(double az, double za, double freq, std::complex<double>* result);
 	
+	#ifdef CUDA_SUPPORT
+	void getTabulatedResponse(double *az, double *za, size_t npos, std::complex<double>* result, size_t startChannel, size_t endChannel, size_t channelCount, size_t startFrequency, size_t endFrequency);
+	#endif
 	/**
 	 * Create a few tabulated responses and interpolated over these.
 	 */

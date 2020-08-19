@@ -1,6 +1,8 @@
 #ifndef BEAM_EVALUATOR_H
 #define BEAM_EVALUATOR_H
 
+// 202008 : GPU version of beam2016 model added (developed by Maciej Cytowski and Di Pietrantonio from PAWSEY)
+
 #include <casacore/ms/MeasurementSets/MeasurementSet.h>
 #include <casacore/measures/Measures/MPosition.h>
 #include <casacore/measures/Measures/MEpoch.h>

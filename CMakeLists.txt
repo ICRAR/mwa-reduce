@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(mwa-reduce)
 
+
+# enable CUDA version of the MWA-2016 beam model 
+if(CUDA_SUPPORT)
+enable_language(CUDA)
+endif(CUDA_SUPPORT)
+
 # Add CMake subdirectory to module search path
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
 
@@ -118,6 +124,18 @@ add_executable(editmodel editmodel.cpp beamevaluator.cpp fftwmanager.cpp fitsrea
 add_executable(storetime storetime.cpp stopwatch.cpp)
 add_executable(subtrmodel beamevaluator.cpp fftwmanager.cpp subtrmodel.cpp model/model.cpp nlplfitter.cpp predicter.cpp ${BEAMFILES} mspredicter.cpp progressbar.cpp)
 add_executable(solutiontool solutiontool.cpp)
+
+if(CUDA_SUPPORT)
+  target_compile_definitions(calibrate PUBLIC -DCUDA_SUPPORT)
+  target_compile_definitions(mwareducebeam PUBLIC -DCUDA_SUPPORT)
+  set_property(TARGET calibrate PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+  add_library(jones_cuda beam/gpu/factorial.c beam/gpu/jones_gpu.cu beam/gpu/legendre.c)
+  target_compile_definitions(jones_cuda PUBLIC -DCUDA_SUPPORT)
+  set_target_properties(jones_cuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  target_link_libraries(mwareducebeam jones_cuda)
+  set_target_properties(mwareducebeam PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_target_properties(beam PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+endif(CUDA_SUPPORT)
 
 #Experiments
 add_executable(ionspectrum EXCLUDE_FROM_ALL experiments/ionspectrum/ionspectrum.cpp beamevaluator.cpp fluxaccumulator.cpp imageweights.cpp model/model.cpp multibanddata.cpp nlplfitter.cpp ${BEAMFILES})

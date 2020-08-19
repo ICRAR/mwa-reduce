@@ -50,7 +50,11 @@ public:
 			gain
 		);
 	}
-	
+	#ifdef CUDA_SUPPORT
+	void ArrayResponse(double *zenithAngle, double *azimuth, size_t npos, std::complex<double> *gain, size_t startchannel, size_t endchannel, size_t channelCount, size_t startFrequency, size_t endFrequency){
+        Implementation::ArrayResponse(zenithAngle, azimuth, npos, gain, startchannel, endchannel, channelCount, startFrequency, endFrequency);
+    }
+	#endif
 private:
 	const static double MWA_LATTITUDE; // Array latitude. degrees North
 	const static double MWA_LONGITUDE; // Array longitude. degrees East
