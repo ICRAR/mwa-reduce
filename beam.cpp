@@ -1,6 +1,8 @@
 #include "beam/tilebeam.h"
+#ifndef CUDA_SUPPORT
 #include "beam/tilebeam2013.h"
 #include "beam/tilebeam2014.h"
+#endif
 #include "beam/tilebeam2016.h"
 
 #include "fitsreader.h"
@@ -326,6 +328,7 @@ int main(int argc, char *argv[])
 
 	if(doSquare)
 	{
+		#ifndef CUDA_SUPPORT
 		if(use2016) {
 			MakeBeam<TileBeam2016,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
 		} else if(use2013) {
@@ -333,8 +336,12 @@ int main(int argc, char *argv[])
 		} else {
 			MakeBeam<TileBeam2014,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
 		}
+		#else
+			MakeBeam<TileBeam2016,true>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
+		#endif
 	}
 	else {
+		#ifndef CUDA_SUPPORT
 		if(use2016) {
 			MakeBeam<TileBeam2016,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);	        	
 		} else if(use2013) {
@@ -342,6 +349,9 @@ int main(int argc, char *argv[])
 		} else {
 			MakeBeam<TileBeam2014,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);
 		}
+		#else
+		MakeBeam<TileBeam2016,false>(imgPtr, width, height, pixelSizeX, pixelSizeY, refRA, refDec, arrLatitude, zenithHa, zenithDec, centralFrequency, delays, frame, phaseCentreDL, phaseCentreDM, doInterpolate);	        	
+		#endif
 	}
 	
 	std::cout << "\nWriting...\n";

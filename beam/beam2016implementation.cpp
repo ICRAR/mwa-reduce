@@ -152,9 +152,12 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int
 	
 	Coefficients coefsX, coefsY;
 	GetModes( freq_hz , N_ANT_COUNT, delays, amps, coefsX, coefsY, lock );   
-	
+	#ifndef CUDA_SUPPORT
 	JonesMatrix result = CalcJonesDirect( az_deg*deg2rad, za_deg*deg2rad, coefsX, coefsY );   
-	
+	#else
+	JonesMatrix result = CalcJonesDirect( az_deg, za_deg, coefsX, coefsY );
+	#endif
+
 	if(bZenithNorm)
 	{
 		JonesMatrix normMatrix;
@@ -180,6 +183,137 @@ JonesMatrix Beam2016Implementation::CalcJones( double az_deg, double za_deg, int
 	return result;
 }
 
+#ifdef CUDA_SUPPORT
+void Beam2016Implementation::CalcJones(double *az_deg, double *za_deg, size_t npos, bool bZenithNorm, std::complex<double>* result, size_t startChannel, size_t endChannel, size_t channelCount, size_t startFrequency, size_t endFrequency){
+	recursive_lock<std::mutex> lock(_mutex, std::defer_lock);
+	CalcJones(az_deg, za_deg, npos, bZenithNorm, _delays, _amps, lock, result, startChannel, endChannel, channelCount, startFrequency, endFrequency);
+
+}
+
+void Beam2016Implementation::CalcJones(double *az_deg, double *za_deg, size_t npos, bool bZenithNorm,const double* delays, const double* amps, recursive_lock<std::mutex>& lock, std::complex<double>* result, size_t startChannel, size_t endChannel, size_t channelCount, size_t startFrequency, size_t endFrequency){
+	size_t nCh = endChannel - startChannel;
+	Coefficients *coefsX = new Coefficients[nCh];
+	Coefficients *coefsY = new Coefficients[nCh];
+	JonesMatrix *normMatrix = new JonesMatrix[nCh];
+
+	for(size_t ch = startChannel; ch < endChannel; ch++){
+		size_t i = ch - startChannel;
+		int freq = (int) (channelCount>1) ? (startFrequency + (long double) ch * (endFrequency - startFrequency) / (long double) (channelCount-1)) : startFrequency;
+		if( !has_freq(freq) ) {
+			freq = find_closest_freq(freq);
+		}
+		GetModes(freq, N_ANT_COUNT, delays, amps, coefsX[i], coefsY[i], lock);   
+		if(bZenithNorm){
+			std::lock_guard<recursive_lock<std::mutex>> glock(lock);
+			std::map<int, JonesMatrix>::const_iterator
+				iter = _normJonesCache.find(freq);
+			if(iter == _normJonesCache.end())
+			{
+				normMatrix[i] = CalcZenithNormMatrix(freq, lock);
+				_normJonesCache.insert(std::make_pair(freq, normMatrix[i]));
+			}
+			else {
+				normMatrix[i] = iter->second;
+			}
+		}
+	}
+	
+	dJonesMatrix *norm_jones = new dJonesMatrix[nCh];
+	memcpy(norm_jones, normMatrix, sizeof(dJonesMatrix) * nCh);
+	JonesData jdatax, jdatay;
+	jdatax.nElements = nCh;
+	jdatax.q1_offsets = new size_t[nCh + 1];
+	jdatax.q1_offsets[0] = 0;
+	jdatax.q2_offsets = new size_t[nCh + 1];
+	jdatax.q2_offsets[0] = 0;
+	jdatax.m_accum_offsets = new size_t[nCh + 1];
+	jdatax.m_accum_offsets[0] = 0;
+	jdatax.n_accum_offsets = new size_t[nCh + 1];
+	jdatax.n_accum_offsets[0] = 0;
+	jdatax.mabsm_offsets = new size_t[nCh + 1];
+	jdatax.mabsm_offsets[0] = 0;
+	jdatax.nmax = new double[nCh];
+	jdatay.nElements = nCh;
+	jdatay.q1_offsets = new size_t[nCh + 1];
+	jdatay.q1_offsets[0] = 0;
+	jdatay.q2_offsets = new size_t[nCh + 1];
+	jdatay.q2_offsets[0] = 0;
+	jdatay.m_accum_offsets = new size_t[nCh + 1];
+	jdatay.m_accum_offsets[0] = 0;
+	jdatay.n_accum_offsets = new size_t[nCh + 1];
+	jdatay.n_accum_offsets[0] = 0;
+	jdatay.mabsm_offsets = new size_t[nCh + 1];
+	jdatay.mabsm_offsets[0] = 0;
+	jdatay.nmax = new double[nCh];
+	// compute offsets and hence memory required
+	for(size_t i = 0; i < nCh; i++){
+		jdatax.q1_offsets[i + 1] = jdatax.q1_offsets[i] + coefsX[i].Q1_accum.size();
+		jdatax.q2_offsets[i + 1] = jdatax.q2_offsets[i] + coefsX[i].Q2_accum.size();
+		jdatax.m_accum_offsets[i + 1] = jdatax.m_accum_offsets[i] + coefsX[i].M_accum.size();
+		jdatax.n_accum_offsets[i + 1] = jdatax.n_accum_offsets[i] + coefsX[i].N_accum.size();
+		jdatax.mabsm_offsets[i + 1] = jdatax.mabsm_offsets[i] + coefsX[i].MabsM.size();
+
+		jdatay.q1_offsets[i + 1] = jdatay.q1_offsets[i] + coefsY[i].Q1_accum.size();
+		jdatay.q2_offsets[i + 1] = jdatay.q2_offsets[i] + coefsY[i].Q2_accum.size();
+		jdatay.m_accum_offsets[i + 1] = jdatay.m_accum_offsets[i] + coefsY[i].M_accum.size();
+		jdatay.n_accum_offsets[i + 1] = jdatay.n_accum_offsets[i] + coefsY[i].N_accum.size();
+		jdatay.mabsm_offsets[i + 1] = jdatax.mabsm_offsets[i] + coefsY[i].MabsM.size();
+	}
+	jdatax.q1_accum = new cuDoubleComplex[jdatax.q1_offsets[nCh]];
+	jdatax.q2_accum = new cuDoubleComplex[jdatax.q2_offsets[nCh]];
+	jdatax.m_accum = new double[jdatax.m_accum_offsets[nCh]];
+	jdatax.n_accum = new double[jdatax.n_accum_offsets[nCh]];
+	jdatax.mabsm = new double[jdatax.mabsm_offsets[nCh]];
+	jdatay.q1_accum = new cuDoubleComplex[jdatay.q1_offsets[nCh]];
+	jdatay.q2_accum = new cuDoubleComplex[jdatay.q2_offsets[nCh]];
+	jdatay.m_accum = new double[jdatay.m_accum_offsets[nCh]];
+	jdatay.n_accum = new double[jdatay.n_accum_offsets[nCh]];
+	jdatay.mabsm = new double[jdatay.mabsm_offsets[nCh]];
+	
+	for(size_t i = 0; i < nCh; i++){
+		jdatax.nmax[i] = coefsX[i].Nmax;
+		memcpy(jdatax.q1_accum + jdatax.q1_offsets[i], coefsX[i].Q1_accum.data(), sizeof(cuDoubleComplex) * (jdatax.q1_offsets[i+1] - jdatax.q1_offsets[i]));
+		memcpy(jdatax.q2_accum + jdatax.q2_offsets[i], coefsX[i].Q2_accum.data(), sizeof(cuDoubleComplex) * (jdatax.q2_offsets[i+1] - jdatax.q2_offsets[i]));
+		memcpy(jdatax.m_accum + jdatax.m_accum_offsets[i], coefsX[i].M_accum.data(), sizeof(double) * (jdatax.m_accum_offsets[i+1] - jdatax.m_accum_offsets[i]));
+		memcpy(jdatax.n_accum + jdatax.n_accum_offsets[i], coefsX[i].N_accum.data(), sizeof(double) * (jdatax.n_accum_offsets[i+1] - jdatax.n_accum_offsets[i]));
+		memcpy(jdatax.mabsm + jdatax.mabsm_offsets[i], coefsX[i].MabsM.data(), sizeof(double) * (jdatax.mabsm_offsets[i+1] - jdatax.mabsm_offsets[i]));
+		jdatay.nmax[i] = coefsY[i].Nmax;
+		memcpy(jdatay.q1_accum + jdatay.q1_offsets[i], coefsY[i].Q1_accum.data(), sizeof(cuDoubleComplex) * (jdatay.q1_offsets[i+1] - jdatay.q1_offsets[i]));
+		memcpy(jdatay.q2_accum + jdatay.q2_offsets[i], coefsY[i].Q2_accum.data(), sizeof(cuDoubleComplex) * (jdatay.q2_offsets[i+1] - jdatay.q2_offsets[i]));
+		memcpy(jdatay.m_accum + jdatay.m_accum_offsets[i], coefsY[i].M_accum.data(), sizeof(double) * (jdatay.m_accum_offsets[i+1] - jdatay.m_accum_offsets[i]));
+		memcpy(jdatay.n_accum + jdatay.n_accum_offsets[i], coefsY[i].N_accum.data(), sizeof(double) * (jdatay.n_accum_offsets[i+1] - jdatay.n_accum_offsets[i]));
+		memcpy(jdatay.mabsm + jdatay.mabsm_offsets[i], coefsY[i].MabsM.data(), sizeof(double) * (jdatay.mabsm_offsets[i+1] - jdatay.mabsm_offsets[i]));
+	}
+	
+	//std::cerr << "inside computejones cpu, adter memcpy.\n"<< std::endl;
+	jones_compute_gpu(1, az_deg, za_deg, jdatax, jdatay, npos, norm_jones, result);
+
+	delete[] jdatax.q1_accum;
+	delete[] jdatax.q2_accum;
+	delete[] jdatax.m_accum;
+	delete[] jdatax.n_accum;
+	delete[] jdatax.mabsm;
+	delete[] jdatay.q1_accum;
+	delete[] jdatay.q2_accum;
+	delete[] jdatay.m_accum;
+	delete[] jdatay.n_accum;
+	delete[] jdatay.mabsm;
+	delete[] jdatax.q1_offsets;
+	delete[] jdatax.q2_offsets;
+	delete[] jdatax.m_accum_offsets;
+	delete[] jdatax.n_accum_offsets;
+	delete[] jdatax.mabsm_offsets;
+	delete[] jdatay.q1_offsets;
+	delete[] jdatay.q2_offsets;
+	delete[] jdatay.m_accum_offsets;
+	delete[] jdatay.n_accum_offsets;
+	delete[] jdatay.mabsm_offsets;
+	delete[] jdatax.nmax;
+	delete[] jdatay.nmax;
+		
+}
+#endif
+
 JonesMatrix Beam2016Implementation::CalcZenithNormMatrix(int freq_hz, recursive_lock<std::mutex>& lock)
 {	
 	//std::cout << "INFO : calculating Jones matrix for frequency = " << freq_hz << " Hz\n";
@@ -197,7 +331,7 @@ JonesMatrix Beam2016Implementation::CalcZenithNormMatrix(int freq_hz, recursive_
 	// default delays at zenith
 	const double defaultDelays[N_ANT_COUNT]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	const double defaultAmps[N_ANT_COUNT]={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-
+	#ifndef CUDA_SUPPORT
 	// j00 :
 	tmp_jones = CalcJones( j00_max_az, 0, freq_hz, defaultDelays, defaultAmps, lock, false );
 	jonesMatrix.j00 = abs( tmp_jones.j00 );
@@ -212,7 +346,24 @@ JonesMatrix Beam2016Implementation::CalcZenithNormMatrix(int freq_hz, recursive_
 
 	// j11 :
 	tmp_jones = CalcJones( j11_max_az, 0, freq_hz, defaultDelays, defaultAmps, lock, false );
-	jonesMatrix.j11 = abs( tmp_jones.j11 );               
+	jonesMatrix.j11 = abs( tmp_jones.j11 );
+	#else
+	// j00 :
+	tmp_jones = CalcJones( j00_max_az* deg2rad, 0, freq_hz, defaultDelays, defaultAmps, lock, false );
+	jonesMatrix.j00 = abs( tmp_jones.j00 );
+
+	// j01 :
+	tmp_jones = CalcJones( j01_max_az* deg2rad, 0, freq_hz, defaultDelays, defaultAmps, lock, false );
+	jonesMatrix.j01 = abs( tmp_jones.j01 );
+
+	// j10 :
+	tmp_jones = CalcJones( j10_max_az* deg2rad, 0, freq_hz, defaultDelays, defaultAmps, lock, false );      
+	jonesMatrix.j10 = abs( tmp_jones.j10 );
+
+	// j11 :
+	tmp_jones = CalcJones( j11_max_az* deg2rad, 0, freq_hz, defaultDelays, defaultAmps, lock, false );
+	jonesMatrix.j11 = abs( tmp_jones.j11 );  
+	#endif
 
 	return jonesMatrix;
 }

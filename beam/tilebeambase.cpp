@@ -101,7 +101,8 @@ void TileBeamBase<Implementation>::PrecalculatePositionInfo(TileBeamBase::Precal
 }
 
 template class TileBeamBase<TileBeam2016>;
-
+#ifndef CUDA_SUPPORT
 template class TileBeamBase<TileBeam2014>;
 
 template class TileBeamBase<TileBeam2013>;
+#endif

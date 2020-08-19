@@ -21,3 +21,9 @@ void TileBeam2016::getTabulatedResponse(double az, double za, double freq, std::
 	result[2] = jones.j10;
 	result[3] = jones.j11;
 }
+
+#ifdef CUDA_SUPPORT
+void TileBeam2016::getTabulatedResponse(double *az, double *za, size_t npos, std::complex<double>* result,  size_t startChannel, size_t endChannel, size_t channelCount, size_t startFrequency, size_t endFrequency){
+	Beam2016Implementation::CalcJones(az, za, npos, 1, result, startChannel, endChannel, channelCount,  startFrequency, endFrequency);
+}
+#endif

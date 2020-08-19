@@ -37,9 +37,14 @@ class Predicter
 		
 		NumType TotalFlux(size_t p) { return std::fabs(_totalFlux[p]); }
 	private:
+		#ifndef CUDA_SUPPORT
 		void initialize(class ModelComponent &source);
 		void updateBeam(class ModelComponent &source, size_t startChannel, size_t endChannel);
-		
+		#else
+		void initialize_one(class ModelComponent &source);
+		void initialize_three(std::vector<ModelComponent*>& all_components);
+		void updateBeam(std::vector<ModelComponent*>& all_components, size_t startChannel, size_t endChannel);
+		#endif
 		void predict4(CNumType *dest, const class ModelComponent& component, NumType u, NumType v, NumType w, size_t channelIndex, size_t a1, size_t a2);
 		struct SourceParameters
 		{

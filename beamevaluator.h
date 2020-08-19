@@ -114,6 +114,7 @@ class BeamEvaluator
 			_tileBeam->PrecalculatePositionInfo(posInfo, _time, _ant1Pos, raRad, decRad);
 		}
 		
+		#ifndef CUDA_SUPPORT
 		void EvaluateApparentToAbsGain(const PrecalcPosInfo& posInfo, double frequency, std::complex<double> *gains)
 		{
 			EvaluateAbsToApparentGain(posInfo, frequency, gains);
@@ -124,6 +125,9 @@ class BeamEvaluator
 		{
 			_tileBeam->ArrayResponse(posInfo, frequency, gains);
 		}
+		#else
+			void EvaluateAbsToApparentGain(const std::vector<PrecalcPosInfo>& posInfo, std::complex<double> *gains, size_t channelStart, size_t endChannel, size_t channelCount, size_t startFrequency, size_t endFrequency);
+		#endif
 	
 	private:
 		std::unique_ptr<TileBeam> _tileBeam;

@@ -54,3 +54,19 @@ void BeamEvaluator::EvaluateAbsToApparentGain(double ra, double dec, double freq
 {
 	_tileBeam->ArrayResponse(_time, _ant1Pos, ra, dec, frequency, gains);
 }
+
+#ifdef CUDA_SUPPORT
+void BeamEvaluator::EvaluateAbsToApparentGain(const std::vector<PrecalcPosInfo>& posInfo, std::complex<double> *gains, size_t startChannel, size_t endChannel, size_t channelCount, size_t startFrequency, size_t endFrequency){
+	
+	size_t n_components = posInfo.size();
+	double *az = new double[n_components];
+	double *ze = new double[n_components];
+	for(size_t i = 0; i < n_components; i++){
+		az[i] = posInfo[i].azimuth;
+		ze[i] = posInfo[i].zenithAngle;
+	}
+	_tileBeam->ArrayResponse(ze, az, n_components, gains, startChannel, endChannel, channelCount, startFrequency, endFrequency);
+	delete[] az;
+	delete[] ze;
+}
+#endif

@@ -23,6 +23,9 @@
 #include "factorialtable.h"
 #include "recursive_lock.h"
 
+#ifdef CUDA_SUPPORT
+#include "gpu/jones_gpu.cuh"
+#endif
 /*
   Structure for Jones matrix :
   j00 j01
@@ -80,6 +83,10 @@ public :
    //         amps            - amplitudes 
    //         bZenithNorm     - normalise to zenith (>0) or not (<=0)
    // OUTPUT : Jones matrix (normalised or not - depending on the parameter bZenithNorm )
+   #ifdef CUDA_SUPPORT
+   void CalcJones(double *az_deg, double *za_deg, size_t npos, bool bZenithNorm, std::complex<double>* result, size_t, size_t, size_t channelCount, size_t startFrequency, size_t endFrequency);
+   void CalcJones(double *az_deg, double *za_deg, size_t npos, bool bZenithNorm,const double* delays, const double* amps, recursive_lock<std::mutex>& lock, std::complex<double>* result, size_t, size_t, size_t channelCount, size_t startFrequency, size_t endFrequency);
+   #endif
    JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, bool bZenithNorm=true );
    JonesMatrix CalcJones( double az_deg, double za_deg, int freq_hz_param, const double* delays, const double* amps, recursive_lock<std::mutex>& lock, bool bZenithNorm=true );
 
