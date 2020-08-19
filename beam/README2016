@@ -21,3 +21,10 @@ Note on testing 2016 beam model (Full Embedded Element - FE model)
 	-0.14375553 + -0.66621239j     |     -0.13099902 + -0.67083994j
 
         
+2020-08 - added GPU version of the beam2016 model. In order to enable it compile as :
+      mkdir build_gpu/
+      cd build_gpu/
+      cmake -DCUDA_SUPPORT=1 .. 
+      make calibrate 
+      make beam
+      make 
