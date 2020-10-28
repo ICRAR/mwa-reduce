@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <memory>
 #include <mutex>
 
 #include <boost/math/special_functions/legendre.hpp>

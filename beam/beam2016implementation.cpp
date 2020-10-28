@@ -245,15 +245,7 @@ void Beam2016Implementation::CalcSigmas( double phi, double theta, const Coeffic
          
       double c_mn_sqr = (0.5*(2*N+1)*_factorial(N-abs(M))/_factorial(N+abs(M)));
       double c_mn = sqrt( c_mn_sqr );
-      // Optimisation comment :
-      // Possibly this might be a faster version - but does not seem so, so I leave it as it was 
-      // MS tested it (2017-05-17), but does not seem to give a significant speed up, so for now the old version left 
-      // If tested again comment the 2 lines above and uncomment the line below , 
-      // also verify that lines in CalcModes ( after comment "Intialisation of Cmn vector :") are un-commented - FOR NOW THEY ARE COMMENTED OUT NOT TO CALCULATE SOMETHING WHICH IS NOT USED 
-      // I've tested it on 2017-05-19 and the version with line below and lines at the end of CalcModes uncommented runs in ~9m30sec and the current one was ~9m40sec so I leave the current 
-      // version as I've tested it for longer time (MS), but it can be restored if some further optimisation is needed (but it will not be a breaktrough).
-      // double c_mn = Cmn[i];
-               
+ 
       complex<double> ejm_phi( cos(M*phi), sin(M*phi) );
       complex<double> phi_comp = ( ejm_phi*c_mn ) / ( sqrt(N*(N+1)) ) * m_abs_m;
 
@@ -456,8 +448,8 @@ int Beam2016Implementation::P1sin( int nmax, double theta, vector<double>& p1sin
 	p1sin_out.resize(size);
 	p1_out.resize(size);
 
-	double sin_th, u;
-	sincos(theta, &sin_th, &u);
+	double sin_th = std::sin(theta);
+	double u = std::cos(theta);
 	double delu=1e-6;
 	
 	vector<double> P, Pm1, Pm_sin, Pu_mdelu, Pm_sin_merged, Pm1_merged;
@@ -564,7 +556,7 @@ void Beam2016Implementation::lpmv( vector<double>& output, int n, double x )
 
 //----------------------------------------------------------------------------------- HDF5 File interface and data structures for H5 data -----------------------------------------------------------------------------------
 // This function goes thorugh all dataset names and records them info list of strings : Beam2016Implementation::m_obj_list
-herr_t Beam2016Implementation::list_obj_iterate(hid_t loc_id, const char *name, const H5O_info_t *info, void *operator_data)
+herr_t Beam2016Implementation::list_obj_iterate(hid_t /*loc_id*/, const char *name, const H5O_info_t *info, void *operator_data)
 {
 	string szTmp;
 	Beam2016Implementation* pBeamModelPtr = (Beam2016Implementation*) operator_data;  
