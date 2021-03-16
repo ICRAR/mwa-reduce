@@ -15,89 +15,91 @@
 class Peeler
 {
 public:
-	Peeler(casacore::MeasurementSet& ms, size_t threadCount);
-	
+	Peeler(casacore::MeasurementSet &ms, size_t threadCount);
+
 	void Perform();
-	
+
 	void SetBeamOnSource(bool beamOnSource)
 	{
 		_beamOnSource = beamOnSource;
 	}
-	
+
+	void SetMWAPath(const std::string &path) { _mwaPath = path; }
+
 	void SetApplyBeam(bool applyBeam)
 	{
 		_applyBeam = applyBeam;
 	}
-	
+
 	void SetOnlyScalar(bool onlyScalar)
 	{
 		_onlyScalar = onlyScalar;
 	}
-	
+
 	void SetOnlyDiag(bool onlyDiag)
 	{
 		_onlyDiag = onlyDiag;
 	}
-	
+
 	void SetOnlyRotation(bool onlyRotation)
 	{
 		_onlyRotation = onlyRotation;
 	}
-	
-	void SetModelFilename(const std::string& modelFilename)
+
+	void SetModelFilename(const std::string &modelFilename)
 	{
 		_modelFilename = modelFilename;
 	}
-	
-	void SetModel(const Model& model)
+
+	void SetModel(const Model &model)
 	{
 		_model = model;
 	}
-	
-	void SetRHSSolutionFile(const std::string& rhsSolutionFile)
+
+	void SetRHSSolutionFile(const std::string &rhsSolutionFile)
 	{
 		_rhsSolutionFile = rhsSolutionFile;
 	}
-	
-	void SetDataColumnName(const std::string& dataColumnName)
+
+	void SetDataColumnName(const std::string &dataColumnName)
 	{
 		_dataColumnName = dataColumnName;
 	}
-	
+
 	void SetNIter(size_t nIter)
 	{
 		_nIter = nIter;
 	}
-	
+
 	void SetAccuracy(double minAccuracy, double stoppingAccuracy)
 	{
 		_minAccuracy = minAccuracy;
 		_stoppingAccuracy = stoppingAccuracy;
 	}
-	
+
 	void SetMinUVW(double minUVW)
 	{
 		_minUVW = minUVW;
 	}
-	
+
 	void SetSolutionInterval(size_t solutionInterval)
 	{
 		_solutionInterval = solutionInterval;
 	}
-	
+
 	void SetSaveSolutionFiles(bool saveSolutionFiles)
 	{
 		_saveSolutionsFiles = saveSolutionFiles;
 	}
-	
+
 private:
 	struct ThreadData
 	{
-		ThreadData() { }
-		
+		ThreadData() {}
+
 		std::mutex *mutex;
 		std::queue<size_t> *tasks;
-		std::vector<class CalibrationMethod*> *calMethods;
+		std::vector<class CalibrationMethod *> *calMethods;
 	};
 	struct SubtractThreadInfo
 	{
@@ -109,10 +111,10 @@ private:
 	};
 
 	void calibrateThreadFunction(ThreadData data);
-	
-	casacore::MeasurementSet& _ms;
+
+	casacore::MeasurementSet &_ms;
 	BandData _bandData;
-	
+
 	bool
 		_beamOnSource,
 		_applyBeam,
@@ -123,7 +125,8 @@ private:
 	std::string
 		_modelFilename,
 		_rhsSolutionFile,
-		_dataColumnName;
+		_dataColumnName,
+		_mwaPath;
 	size_t _nIter;
 	double _minAccuracy, _stoppingAccuracy, _minUVW;
 	size_t _solutionInterval;
