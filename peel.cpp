@@ -94,8 +94,8 @@ int main(int argc, char *argv[])
 			}
 			else if (strcmp(argv[argi], "-mwapath") == 0)
 			{
-				++argi;
-				mwaPath = argv[argi];
+				mwaPath = argv[argi + 1];
+				argi += 2;
 			}
 			else
 				throw std::runtime_error(std::string("Invalid parameter ") + argv[argi]);
