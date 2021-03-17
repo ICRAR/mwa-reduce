@@ -11,65 +11,98 @@ using namespace casacore;
 
 int main(int argc, char **argv)
 {
-	if(argc < 3)
+	if (argc < 3)
 	{
-		std::cout << "Usage: subtrmodel [-usemodelcol] [-datacolumn <COLUMN>] [-applybeam] [-r / -s] [-n <σ>] <model> <ms>\n"
-			"Subtracts the model from the visibilities. This 'peels' the\n"
-			"sources out. Only affects cross-correlations. -r to revert or -s to set.\n";
-	} else {
-		bool revert = false , setvis = false, addNoise = false, applyBeam = false, useModelCol = false;
+		std::cout << "Usage: subtrmodel [-usemodelcol] [-mwapath <PATH>] [-datacolumn <COLUMN>] [-applybeam] [-r / -s] [-n <σ>] <model> <ms>\n"
+					 "Subtracts the model from the visibilities. This 'peels' the\n"
+					 "sources out. Only affects cross-correlations. -r to revert or -s to set.\n"
+					 "mwapath is used to specify the path the FEE beam model of MWA.\n";
+	}
+	else
+	{
+		bool revert = false, setvis = false, addNoise = false, applyBeam = false, useModelCol = false;
 		double noiseSigma = 1.0;
 		size_t argi = 1;
-		size_t threadCount = (size_t) sysconf(_SC_NPROCESSORS_ONLN);
+		size_t threadCount = (size_t)sysconf(_SC_NPROCESSORS_ONLN);
 		std::string dataColumnName = "DATA";
-		
-		while(argv[argi][0] == '-')
+		std::string mwaPath;
+
+		while (argv[argi][0] == '-')
 		{
-			if(strcmp(argv[argi], "-r") == 0) { revert=true; }
-			else if(strcmp(argv[argi], "-s") == 0) { setvis=true; }
-			else if(strcmp(argv[argi], "-n") == 0) { addNoise=true; ++argi; noiseSigma = atof(argv[argi]); }
-			else if(strcmp(argv[argi], "-applybeam") == 0) { applyBeam=true; }
-			else if(strcmp(argv[argi], "-datacolumn") == 0) { ++argi; dataColumnName=argv[argi]; }
-			else if(strcmp(argv[argi], "-usemodelcol") == 0) { useModelCol=true; }
-			else throw std::runtime_error("Invalid param");
+			if (strcmp(argv[argi], "-r") == 0)
+			{
+				revert = true;
+			}
+			else if (strcmp(argv[argi], "-s") == 0)
+			{
+				setvis = true;
+			}
+			else if (strcmp(argv[argi], "-n") == 0)
+			{
+				addNoise = true;
+				++argi;
+				noiseSigma = atof(argv[argi]);
+			}
+			else if (strcmp(argv[argi], "-applybeam") == 0)
+			{
+				applyBeam = true;
+			}
+			else if (strcmp(argv[argi], "-datacolumn") == 0)
+			{
+				++argi;
+				dataColumnName = argv[argi];
+			}
+			else if (strcmp(argv[argi], "-usemodelcol") == 0)
+			{
+				useModelCol = true;
+			}
+			else if (strcmp(argv[argi], "-mwapath") == 0)
+			{
+				++argi;
+				mwaPath = argv[argi];
+			}
+			else
+				throw std::runtime_error("Invalid param");
 			++argi;
 		}
-		
+
 		std::cout << "Opening measurement set... " << std::flush;
-		MeasurementSet ms(argv[argi+1], Table::Update);
+		MeasurementSet ms(argv[argi + 1], Table::Update);
 		std::cout << "DONE\n";
-		
-		if(useModelCol)
+
+		if (useModelCol)
 		{
 			ProgressBar progress("Subtracting model column");
 			casacore::ArrayColumn<casacore::Complex> dataColumn(ms, dataColumnName);
 			casacore::ROArrayColumn<casacore::Complex> modelColumn(ms, casacore::MeasurementSet::columnName(casacore::MeasurementSet::MODEL_DATA));
 			casacore::Array<casacore::Complex>
 				dataArr(dataColumn.shape(0)), modelArr(modelColumn.shape(0));
-			for(size_t i=0; i!=ms.nrow(); ++i)
+			for (size_t i = 0; i != ms.nrow(); ++i)
 			{
 				dataColumn.get(i, dataArr);
 				modelColumn.get(i, modelArr);
-				
-				casacore::Array<casacore::Complex>::contiter d=dataArr.cbegin();
-				for(casacore::Array<casacore::Complex>::const_contiter m=modelArr.cbegin(); m!=modelArr.cend(); ++m, ++d)
+
+				casacore::Array<casacore::Complex>::contiter d = dataArr.cbegin();
+				for (casacore::Array<casacore::Complex>::const_contiter m = modelArr.cbegin(); m != modelArr.cend(); ++m, ++d)
 				{
 					*d -= *m;
 				}
 				dataColumn.put(i, dataArr);
-				progress.SetProgress(i+1, ms.nrow());
+				progress.SetProgress(i + 1, ms.nrow());
 			}
 		}
-		else {
+		else
+		{
 			std::cout << "Reading model... " << std::flush;
 			Model model(argv[argi]);
 			std::cout << "DONE\n";
-		
+
 			Subtractor subtractor(threadCount);
 			subtractor.SetRevert(revert);
 			subtractor.SetToModel(setvis);
 			subtractor.SetAddNoise(addNoise);
 			subtractor.SetApplyBeam(applyBeam);
+			subtractor.SetMWAPath(mwaPath);
 			subtractor.SetNoiseSigma(noiseSigma);
 			subtractor.SetDataColumn(dataColumnName);
 			subtractor.Subtract(ms, model);
