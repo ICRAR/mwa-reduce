@@ -1,7 +1,7 @@
 #include "metafitsfile.h"
 #include "mwaconfig.h"
 
-#include "../fitsreader.h"
+#include <aocommon/fits/fitsreader.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -356,5 +356,5 @@ double MetaFitsFile::parseFitsDateToMJD(const char* valueStr)
 		if(!str.empty()) str.resize(str.size()-1);
 	}
 	else str = valueStr;
-	return FitsReader::ParseFitsDateToMJD(str.c_str());
+	return aocommon::FitsReader::ParseFitsDateToMJD(str.c_str());
 }

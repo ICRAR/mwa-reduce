@@ -2,8 +2,8 @@
 #define SPECTRUM_MAKER_H
 
 #include "lane.h"
-#include "banddata.h"
-#include "matrix2x2.h"
+#include <aocommon/banddata.h>
+#include <aocommon/matrix2x2.h>
 #include "serializable.h"
 #include "weightmode.h"
 #include "imageweights.h"

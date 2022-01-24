@@ -394,7 +394,7 @@ private:
 			} );
 		}
 		RowData rowData;
-		ao::uvector<double> wavelengths(_bandData.ChannelCount());
+		aocommon::UVector<double> wavelengths(_bandData.ChannelCount());
 		for(size_t ch=0; ch!=_bandData.ChannelCount(); ++ch)
 			wavelengths[ch] = _bandData.ChannelWavelength(ch);
 		
@@ -469,7 +469,7 @@ private:
 
 	void clear()
 	{
-		for(ao::uvector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
+		for(aocommon::UVector<FluxSpectrumAccumulator*>::iterator i=_accumulatorPerSource.begin(); i!=_accumulatorPerSource.end(); ++i)
 			delete *i;
 		_accumulatorPerSource.clear();
 	}
@@ -482,9 +482,9 @@ private:
 	Model _model;
 	BandData _bandData;
 	std::unique_ptr<LBeamEvaluator> _beamEvaluator;
-	ao::uvector<FluxSpectrumAccumulator*> _accumulatorPerSource;
-	ao::uvector<double> _gSolutions, _dlSolutions, _dmSolutions;
-	ao::uvector<size_t> _sourceToClusterIndex;
+	aocommon::UVector<FluxSpectrumAccumulator*> _accumulatorPerSource;
+	aocommon::UVector<double> _gSolutions, _dlSolutions, _dmSolutions;
+	aocommon::UVector<size_t> _sourceToClusterIndex;
 	size_t _threadCount;
 	WeightMode _weightMode;
 	size_t _weightGridSize;

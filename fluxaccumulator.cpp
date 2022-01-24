@@ -1,63 +1,71 @@
 #include "fluxaccumulator.h"
 
-FluxAccumulator::FluxAccumulator(double l, double m, double /*lambda*/, const std::complex<double>* modelFlux) :
-	_accVisWeightBeforeBeamChange(0.0),
-	_l(l), _m(m),
-	_ionG(0.0), _movedL(0.0), _movedM(0.0), _movedLMSqrt(0.0)
-{
-	for(size_t p=0; p!=4; ++p)
-	{
-		_accFluxesBeforeBeamChange[p] = 0.0;
-		_accFluxes[p] = 0.0;
-		_accWeights[p] = 0.0;
-		_beamGains[p] = 0.0;
-	}
-	memcpy(_modelFlux, modelFlux, sizeof(std::complex<double>)*4);
+FluxAccumulator::FluxAccumulator(double l, double m, double /*lambda*/,
+                                 const std::complex<double>* modelFlux)
+    : _accVisWeightBeforeBeamChange(0.0),
+      _l(l),
+      _m(m),
+      _ionG(0.0),
+      _movedL(0.0),
+      _movedM(0.0),
+      _movedLMSqrt(0.0) {
+  for (size_t p = 0; p != 4; ++p) {
+    _accFluxesBeforeBeamChange[p] = 0.0;
+    _accFluxes[p] = 0.0;
+    _accWeights[p] = 0.0;
+    _beamGains[p] = 0.0;
+  }
+  memcpy(_modelFlux, modelFlux, sizeof(std::complex<double>) * 4);
 }
 
-FluxAccumulator::FluxAccumulator(double /*lambda*/) :
-	_accVisWeightBeforeBeamChange(0.0),
-	_l(0.0), _m(0.0),
-	_ionG(0.0), _movedL(0.0), _movedM(0.0), _movedLMSqrt(0.0)
-{
-	for(size_t p=0; p!=4; ++p)
-	{
-		_accFluxesBeforeBeamChange[p] = 0.0;
-		_accFluxes[p] = 0.0;
-		_accWeights[p] = 0.0;
-		_beamGains[p] = 0.0;
-		_modelFlux[p] = 0.0;
-	}
+FluxAccumulator::FluxAccumulator(double /*lambda*/)
+    : _accVisWeightBeforeBeamChange(0.0),
+      _l(0.0),
+      _m(0.0),
+      _ionG(0.0),
+      _movedL(0.0),
+      _movedM(0.0),
+      _movedLMSqrt(0.0) {
+  for (size_t p = 0; p != 4; ++p) {
+    _accFluxesBeforeBeamChange[p] = 0.0;
+    _accFluxes[p] = 0.0;
+    _accWeights[p] = 0.0;
+    _beamGains[p] = 0.0;
+    _modelFlux[p] = 0.0;
+  }
 }
 
-void FluxAccumulator::UpdateBeam(const MC2x2& beamGains, double ionG, double ionDL, double ionDM)
-{
-	accumulateBeforeBeamChange();
-	
-	_movedL = _l+ionDL;
-	_movedM = _m+ionDM;
-	_movedLMSqrt = sqrt(1.0 - _movedL*_movedL - _movedM*_movedM);
-	_ionG = ionG;
-	
-	beamGains.CopyValues(_beamGains);
-	//_beamGains[0] = 1.0; _beamGains[1] = 0.0;
-	//_beamGains[2] = 0.0; _beamGains[3] = 1.0;
+void FluxAccumulator::UpdateBeam(const MC2x2& beamGains, double ionG,
+                                 double ionDL, double ionDM) {
+  accumulateBeforeBeamChange();
+
+  _movedL = _l + ionDL;
+  _movedM = _m + ionDM;
+  _movedLMSqrt = sqrt(1.0 - _movedL * _movedL - _movedM * _movedM);
+  _ionG = ionG;
+
+  beamGains.CopyValues(_beamGains);
+  //_beamGains[0] = 1.0; _beamGains[1] = 0.0;
+  //_beamGains[2] = 0.0; _beamGains[3] = 1.0;
 }
 
-void FluxAccumulator::Add(const std::complex<double>* vis, const double visWeight, double u, double v, double w)
-{
-	if(std::isfinite(_ionG))
-	{
-		double angle = 2.0*M_PI*(u*_movedL + v*_movedM + w*(_movedLMSqrt-1.0));
-		
-		double sinAngle, cosAngle;
-		sincos(angle, &sinAngle, &cosAngle);
-		std::complex<double>
-			phaseAndWeight(std::complex<double>(cosAngle, sinAngle) * (visWeight*_movedLMSqrt)),
-			predict[4] = { phaseAndWeight, std::complex<double>(0.0), std::complex<double>(0.0), phaseAndWeight };
-		Matrix2x2::PlusATimesHermB(_accFluxesBeforeBeamChange, vis, predict);
-		Matrix2x2::PlusHermATimesB(_accFluxesBeforeBeamChange, vis, predict);
-		// Weight is multiplied by factor of 2 because we add both normal and conjugate at once
-		_accVisWeightBeforeBeamChange += 2.0 * visWeight;
-	}
+void FluxAccumulator::Add(const std::complex<double>* vis,
+                          const double visWeight, double u, double v,
+                          double w) {
+  if (std::isfinite(_ionG)) {
+    double angle =
+        2.0 * M_PI * (u * _movedL + v * _movedM + w * (_movedLMSqrt - 1.0));
+
+    double sinAngle, cosAngle;
+    sincos(angle, &sinAngle, &cosAngle);
+    std::complex<double> phaseAndWeight(
+        std::complex<double>(cosAngle, sinAngle) * (visWeight * _movedLMSqrt)),
+        predict[4] = {phaseAndWeight, std::complex<double>(0.0),
+                      std::complex<double>(0.0), phaseAndWeight};
+    Matrix2x2::PlusATimesHermB(_accFluxesBeforeBeamChange, vis, predict);
+    Matrix2x2::PlusHermATimesB(_accFluxesBeforeBeamChange, vis, predict);
+    // Weight is multiplied by factor of 2 because we add both normal and
+    // conjugate at once
+    _accVisWeightBeforeBeamChange += 2.0 * visWeight;
+  }
 }

@@ -3,11 +3,9 @@
 
 #include <string>
 
-class System
-{
-public:
-	static std::string FindPythonFilePath(const std::string& filename);
-	
+class System {
+ public:
+  static std::string FindPythonFilePath(const std::string& filename);
 };
 
 #endif

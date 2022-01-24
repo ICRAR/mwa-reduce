@@ -3,7 +3,7 @@
 
 #include <boost/math/special_functions/factorials.hpp>
 
-#include "../uvector.h"
+#include <aocommon/uvector.h>
 
 class FactorialTable
 {
@@ -28,7 +28,7 @@ public:
 	}	
 	
 private:
-	ao::uvector<double> _table;
+	aocommon::UVector<double> _table;
 };
 
 #endif

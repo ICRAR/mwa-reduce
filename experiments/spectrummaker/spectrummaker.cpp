@@ -1,7 +1,7 @@
 #include "spectrummaker.h"
 
 #include "mspredicter.h"
-#include "banddata.h"
+#include <aocommon/banddata.h>
 #include "beamevaluator.h"
 #include "progressbar.h"
 #include "predicter.h"

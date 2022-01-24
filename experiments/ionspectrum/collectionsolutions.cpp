@@ -26,7 +26,7 @@ Finally:
 */
 
 std::map<std::string, size_t> sourceNameToIndex;
-ao::uvector<std::complex<double>> gainPerSource, weightsPerSource;
+aocommon::UVector<std::complex<double>> gainPerSource, weightsPerSource;
 double centralFrequency = 0.0;
 
 void addSolutionFile(Model& model, const char* solutionFilename, const char* msFilename)

@@ -7,9 +7,9 @@
 #include <set>
 #include <vector>
 
-#include "../fitsiochecker.h"
+#include <aocommon/fits/fitsbase.h>
 
-class TileImpedance : private FitsIOChecker
+class TileImpedance : private aocommon::FitsBase
 {
 public:
 	static void Initialize()

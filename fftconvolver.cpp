@@ -1,161 +1,193 @@
 #include "fftconvolver.h"
+#include "fftkernels.h"
 
 #include "fftwmanager.h"
-#include "uvector.h"
+#include <aocommon/uvector.h>
+#include <aocommon/staticfor.h>
 
 #include <fftw3.h>
 
 #include <complex>
 #include <stdexcept>
 
-void FFTConvolver::Convolve(FFTWManager& fftw, double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
-{
-	ao::uvector<double> scaledKernel(imgWidth * imgHeight, 0.0);
-	PrepareSmallKernel(scaledKernel.data(), imgWidth, imgHeight, kernel, kernelSize);
-	ConvolveSameSize(fftw, image, scaledKernel.data(), imgWidth, imgHeight);
+void FFTConvolver::Convolve(FFTWManager& fftw, float* image, size_t imgWidth,
+                            size_t imgHeight, const float* kernel,
+                            size_t kernelSize, size_t threadCount) {
+  aocommon::UVector<float> scaledKernel(imgWidth * imgHeight, 0.0);
+  PrepareSmallKernel(scaledKernel.data(), imgWidth, imgHeight, kernel,
+                     kernelSize, threadCount);
+  ConvolveSameSize(fftw, image, scaledKernel.data(), imgWidth, imgHeight,
+                   threadCount);
 }
 
-void FFTConvolver::ReverseAndConvolve(class FFTWManager& fftw, double* image, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
-{
-	ao::uvector<double> scaledKernel(imgWidth * imgHeight, 0.0);
-	
-	PrepareSmallKernel(scaledKernel.data(), imgWidth, imgHeight, kernel, kernelSize);
-	ConvolveSameSize(fftw, image, scaledKernel.data(), imgWidth, imgHeight);
+void FFTConvolver::ReverseAndConvolve(class FFTWManager& fftw, float* image,
+                                      size_t imgWidth, size_t imgHeight,
+                                      const float* kernel, size_t kernelSize,
+                                      size_t threadCount) {
+  aocommon::UVector<float> scaledKernel(imgWidth * imgHeight, 0.0);
+
+  PrepareSmallKernel(scaledKernel.data(), imgWidth, imgHeight, kernel,
+                     kernelSize, threadCount);
+  ConvolveSameSize(fftw, image, scaledKernel.data(), imgWidth, imgHeight,
+                   threadCount);
 }
 
-void FFTConvolver::PrepareSmallKernel(double* dest, size_t imgWidth, size_t imgHeight, const double* kernel, size_t kernelSize)
-{
-	if(kernelSize > imgWidth || kernelSize > imgHeight)
-		throw std::runtime_error("Kernel size > image dimension");
-	const double* kernelIter = kernel;
-	for(size_t y=0; y!=kernelSize/2; ++y)
-	{
-		size_t destY = imgHeight - kernelSize/2 + y;
-		size_t firstX = imgWidth - kernelSize/2;
-		double *destIter = &dest[destY * imgWidth + firstX];
-		for(size_t x=0; x!=kernelSize/2; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-		destIter = &dest[destY * imgWidth];
-		for(size_t x=kernelSize/2; x!=kernelSize; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-	}
-	for(size_t y=kernelSize/2; y!=kernelSize; ++y)
-	{
-		size_t firstX = imgWidth - kernelSize/2;
-		double *destIter = &dest[firstX + (y-kernelSize/2)*imgWidth];
-		for(size_t x=0; x!=kernelSize/2; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-		destIter = &dest[(y-kernelSize/2)*imgWidth];
-		for(size_t x=kernelSize/2; x!=kernelSize; ++x)
-		{
-			*destIter = *kernelIter;
-			++kernelIter;
-			++destIter;
-		}
-	}
+void FFTConvolver::PrepareSmallKernel(float* dest, size_t imgWidth,
+                                      size_t imgHeight, const float* kernel,
+                                      size_t kernelSize, size_t threadCount) {
+  if (kernelSize > imgWidth || kernelSize > imgHeight)
+    throw std::runtime_error("Kernel size > image dimension");
+  aocommon::StaticFor<size_t> loop(threadCount);
+  loop.Run(0, kernelSize / 2, [&](size_t yStart, size_t yEnd) {
+    const float* kernelIter = &kernel[yStart * kernelSize];
+    for (size_t y = yStart; y != yEnd; ++y) {
+      size_t destY = imgHeight - kernelSize / 2 + y;
+      size_t firstX = imgWidth - kernelSize / 2;
+      float* destIter = &dest[destY * imgWidth + firstX];
+      for (size_t x = 0; x != kernelSize / 2; ++x) {
+        *destIter = *kernelIter;
+        ++kernelIter;
+        ++destIter;
+      }
+      destIter = &dest[destY * imgWidth];
+      for (size_t x = kernelSize / 2; x != kernelSize; ++x) {
+        *destIter = *kernelIter;
+        ++kernelIter;
+        ++destIter;
+      }
+    }
+  });
+  loop.Run(kernelSize / 2, kernelSize, [&](size_t yStart, size_t yEnd) {
+    const float* kernelIter = &kernel[yStart * kernelSize];
+    for (size_t y = yStart; y != yEnd; ++y) {
+      size_t firstX = imgWidth - kernelSize / 2;
+      float* destIter = &dest[firstX + (y - kernelSize / 2) * imgWidth];
+      for (size_t x = 0; x != kernelSize / 2; ++x) {
+        *destIter = *kernelIter;
+        ++kernelIter;
+        ++destIter;
+      }
+      destIter = &dest[(y - kernelSize / 2) * imgWidth];
+      for (size_t x = kernelSize / 2; x != kernelSize; ++x) {
+        *destIter = *kernelIter;
+        ++kernelIter;
+        ++destIter;
+      }
+    }
+  });
 }
 
-void FFTConvolver::PrepareKernel(double* dest, const double* source, size_t imgWidth, size_t imgHeight)
-{
-	const double* sourceIter = source;
-	for(size_t y=0; y!=imgHeight/2; ++y)
-	{
-		size_t destY = imgHeight - imgHeight/2 + y;
-		size_t firstX = imgWidth - imgWidth/2;
-		double *destIter = &dest[destY * imgWidth + firstX];
-		for(size_t x=0; x!=imgWidth/2; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-		destIter = &dest[destY * imgWidth];
-		for(size_t x=imgWidth/2; x!=imgWidth; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-	}
-	for(size_t y=imgHeight/2; y!=imgHeight; ++y)
-	{
-		size_t firstX = imgWidth - imgWidth/2;
-		double *destIter = &dest[firstX + (y-imgHeight/2)*imgWidth];
-		for(size_t x=0; x!=imgWidth/2; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-		destIter = &dest[(y-imgHeight/2)*imgWidth];
-		for(size_t x=imgWidth/2; x!=imgWidth; ++x)
-		{
-			*destIter = *sourceIter;
-			++sourceIter;
-			++destIter;
-		}
-	}
+void FFTConvolver::PrepareKernel(float* dest, const float* source,
+                                 size_t imgWidth, size_t imgHeight,
+                                 size_t threadCount) {
+  aocommon::StaticFor<size_t> loop(threadCount);
+  loop.Run(0, imgHeight / 2, [&](size_t yStart, size_t yEnd) {
+    const float* sourceIter = &source[yStart * imgWidth];
+    for (size_t y = yStart; y != yEnd; ++y) {
+      size_t destY = imgHeight - imgHeight / 2 + y;
+      size_t firstX = imgWidth - imgWidth / 2;
+      float* destIter = &dest[destY * imgWidth + firstX];
+      for (size_t x = 0; x != imgWidth / 2; ++x) {
+        *destIter = *sourceIter;
+        ++sourceIter;
+        ++destIter;
+      }
+      destIter = &dest[destY * imgWidth];
+      for (size_t x = imgWidth / 2; x != imgWidth; ++x) {
+        *destIter = *sourceIter;
+        ++sourceIter;
+        ++destIter;
+      }
+    }
+  });
+  loop.Run(imgHeight / 2, imgHeight, [&](size_t yStart, size_t yEnd) {
+    const float* sourceIter = &source[yStart * imgWidth];
+    for (size_t y = yStart; y != yEnd; ++y) {
+      size_t firstX = imgWidth - imgWidth / 2;
+      float* destIter = &dest[firstX + (y - imgHeight / 2) * imgWidth];
+      for (size_t x = 0; x != imgWidth / 2; ++x) {
+        *destIter = *sourceIter;
+        ++sourceIter;
+        ++destIter;
+      }
+      destIter = &dest[(y - imgHeight / 2) * imgWidth];
+      for (size_t x = imgWidth / 2; x != imgWidth; ++x) {
+        *destIter = *sourceIter;
+        ++sourceIter;
+        ++destIter;
+      }
+    }
+  });
 }
 
-void FFTConvolver::ConvolveSameSize(FFTWManager& fftw, double* image, const double* kernel, size_t imgWidth, size_t imgHeight)
-{
-	const size_t imgSize = imgWidth * imgHeight;
-	const size_t complexSize = (imgWidth/2+1) * imgHeight;
-	double* tempData = reinterpret_cast<double*>(fftw_malloc(imgSize * sizeof(double)));
-	fftw_complex* fftImageData = reinterpret_cast<fftw_complex*>(fftw_malloc(complexSize * sizeof(fftw_complex)));
-	fftw_complex* fftKernelData = reinterpret_cast<fftw_complex*>(fftw_malloc(complexSize * sizeof(fftw_complex)));
-	
-	std::unique_lock<std::mutex> lock(fftw.Mutex());
-	fftw_plan inToFPlan = fftw_plan_dft_r2c_2d(imgHeight, imgWidth, tempData, fftImageData, FFTW_ESTIMATE);
-	fftw_plan fToOutPlan = fftw_plan_dft_c2r_2d(imgHeight, imgWidth, fftImageData, tempData, FFTW_ESTIMATE);
-	lock.unlock();
-	
-	memcpy(tempData, image, imgSize * sizeof(double));
-	fftw_execute_dft_r2c(inToFPlan, tempData, fftImageData);
-	
-	memcpy(tempData, kernel, imgSize * sizeof(double));
-	fftw_execute_dft_r2c(inToFPlan, tempData, fftKernelData);
-	
-	double fact = 1.0/imgSize;
-	for(size_t i=0; i!=complexSize; ++i)
-		reinterpret_cast<std::complex<double>*>(fftImageData)[i] *= fact * reinterpret_cast<std::complex<double>*>(fftKernelData)[i];
-		
-	fftw_execute_dft_c2r(fToOutPlan, reinterpret_cast<fftw_complex*>(fftImageData), tempData);
-	memcpy(image, tempData, imgSize * sizeof(double));
-		
-	fftw_free(fftImageData);
-	fftw_free(fftKernelData);
-	fftw_free(tempData);
-	
-	lock.lock();
-	fftw_destroy_plan(inToFPlan);
-	fftw_destroy_plan(fToOutPlan);
-	lock.unlock();
+void FFTConvolver::ConvolveSameSize(FFTWManager& fftw, float* image,
+                                    const float* kernel, size_t imgWidth,
+                                    size_t imgHeight, size_t threadCount) {
+  const size_t imgSize = imgWidth * imgHeight;
+  const size_t complexWidth = imgWidth / 2 + 1;
+  const size_t complexSize = complexWidth * imgHeight;
+  float* tempData = fftwf_alloc_real(imgSize);
+  fftwf_complex* fftImageData = fftwf_alloc_complex(complexSize);
+  fftwf_complex* fftKernelData = fftwf_alloc_complex(complexSize);
+
+  std::unique_lock<std::mutex> lock(fftw.Mutex());
+  fftwf_plan plan_r2c =
+      fftwf_plan_dft_r2c_1d(imgWidth, nullptr, nullptr, FFTW_ESTIMATE);
+  fftwf_plan plan_c2c_forward = fftwf_plan_dft_1d(imgHeight, nullptr, nullptr,
+                                                  FFTW_FORWARD, FFTW_ESTIMATE);
+  fftwf_plan plan_c2c_backward = fftwf_plan_dft_1d(
+      imgHeight, nullptr, nullptr, FFTW_BACKWARD, FFTW_ESTIMATE);
+  fftwf_plan plan_c2r =
+      fftwf_plan_dft_c2r_1d(imgWidth, nullptr, nullptr, FFTW_ESTIMATE);
+  lock.unlock();
+
+  aocommon::StaticFor<size_t> loop(threadCount);
+
+  fft2f_r2c_composite(plan_r2c, plan_c2c_forward, imgHeight, imgWidth, image,
+                      fftImageData, loop);
+
+  std::copy_n(kernel, imgSize, tempData);
+  fft2f_r2c_composite(plan_r2c, plan_c2c_forward, imgHeight, imgWidth, tempData,
+                      fftKernelData, loop);
+
+  float fact = 1.0 / imgSize;
+  loop.Run(0, imgHeight, [&](size_t yStart, size_t yEnd) {
+    for (size_t y = yStart; y != yEnd; ++y) {
+      for (size_t x = 0; x != complexWidth; ++x) {
+        size_t i = y * complexWidth + x;
+        reinterpret_cast<std::complex<float>*>(fftImageData)[i] *=
+            fact * reinterpret_cast<std::complex<float>*>(fftKernelData)[i];
+      }
+    }
+  });
+
+  fft2f_c2r_composite(plan_c2c_backward, plan_c2r, imgHeight, imgWidth,
+                      fftImageData, image, loop);
+
+  fftwf_free(fftImageData);
+  fftwf_free(fftKernelData);
+  fftwf_free(tempData);
+
+  lock.lock();
+  fftwf_destroy_plan(plan_r2c);
+  fftwf_destroy_plan(plan_c2c_forward);
+  fftwf_destroy_plan(plan_c2c_backward);
+  fftwf_destroy_plan(plan_c2r);
+  lock.unlock();
 }
 
-void FFTConvolver::Reverse(double* image, size_t imgWidth, size_t imgHeight)
-{
-	for(size_t y=0; y!=imgHeight/2; ++y)
-	{
-		size_t destY = imgHeight-1 - y;
-		double* sourcePtr = &image[y*imgWidth];
-		double* destPtr = &image[destY*imgWidth];
-		for(size_t x=0; x!=imgWidth/2; ++x)
-		{
-			size_t destX = imgWidth-1 - x;
-			std::swap(sourcePtr[x], destPtr[destX]);
-		}
-	}
+void FFTConvolver::Reverse(float* image, size_t imgWidth, size_t imgHeight,
+                           size_t threadCount) {
+  aocommon::StaticFor<size_t> loop(threadCount);
+  loop.Run(0, imgHeight / 2, [&](size_t yStart, size_t yEnd) {
+    for (size_t y = yStart; y != yEnd; ++y) {
+      size_t destY = imgHeight - 1 - y;
+      float* sourcePtr = &image[y * imgWidth];
+      float* destPtr = &image[destY * imgWidth];
+      for (size_t x = 0; x != imgWidth / 2; ++x) {
+        size_t destX = imgWidth - 1 - x;
+        std::swap(sourcePtr[x], destPtr[destX]);
+      }
+    }
+  });
 }

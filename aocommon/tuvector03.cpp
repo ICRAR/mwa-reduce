@@ -14,7 +14,7 @@ void assert(bool test, const char* descr)
 }
 
 template<typename Tp>
-typename ao::uvector<Tp>::iterator insert_uninitialized(ao::uvector<Tp>& vec, typename ao::uvector<Tp>::const_iterator i, size_t count)
+typename aocommon::UVector<Tp>::iterator insert_uninitialized(aocommon::UVector<Tp>& vec, typename aocommon::UVector<Tp>::const_iterator i, size_t count)
 {
 	return vec.insert_uninitialized(i, count);
 }
@@ -422,7 +422,7 @@ void testBadAllocs()
 		assert(true, "constructor throws");
 	}
 	
-	ao::uvector<int> goodVec;
+	aocommon::UVector<int> goodVec;
 	
 	const int ListA[] = {6, 7, 8, 9};
 	Vec vec(FailingAllocator<int>(false));
@@ -592,17 +592,17 @@ int main(int argc, char **argv) {
 	std::cout << "== std::vector<int> ==\n";
 	test<std::vector<int>>();
 	std::cout << "\n== uvector<int> ==\n";
-	test<ao::uvector<int>>();
+	test<aocommon::UVector<int>>();
 	std::cout << "\n== uvector<long int> ==\n";
-	test<ao::uvector<long int>>();
+	test<aocommon::UVector<long int>>();
 	std::cout << "\n== std::vector<int> allocator ==\n";
 	testBadAllocs<std::vector<int,FailingAllocator<int>>>();
 	testAllocater<std::vector<int, IdAllocater<int>>>();
 	std::cout << "\n== uvector<int> allocator ==\n";
-	testBadAllocs<ao::uvector<int,FailingAllocator<int>>>();
-	testAllocater<ao::uvector<int, IdAllocater<int>>>();
+	testBadAllocs<aocommon::UVector<int,FailingAllocator<int>>>();
+	testAllocater<aocommon::UVector<int, IdAllocater<int>>>();
 	
-	testExtensions<ao::uvector<int>>();
+	testExtensions<aocommon::UVector<int>>();
 	
 	std::cout << "is_pod<int> = " << std::is_pod<int>() << '\n';
 	std::cout << "is_pod<std::pair<int,int> > = " << std::is_pod<std::pair<int,int> >() << '\n';

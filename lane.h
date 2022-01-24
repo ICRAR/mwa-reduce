@@ -3,4 +3,4 @@
 
 #include "aocommon/lane.h"
 
-#endif // LANE_H
+#endif  // LANE_H

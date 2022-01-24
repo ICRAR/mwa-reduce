@@ -255,27 +255,27 @@ void reportMeasurement(const Measurement& m)
 
 int main(int argc, char* argv[])
 {
-	ao::uvector<Measurement> measurements(15);
-	measure<doConstruct<ao::uvector<int>>, doConstruct<std::vector<int>>>(measurements[0], "constructor");
-	measure<doConstructFill<ao::uvector<int>>, doConstructFill<std::vector<int>>>(measurements[1], "constructor fill");
-	measure<doConstruct<ao::uvector<int>>, doCopyConstruct<std::vector<int>>>(measurements[2], "copy constructor");
-	measure<doAssignCopy<ao::uvector<int>>, doAssignCopy<std::vector<int>>>(measurements[3], "assign copy");
-	measure<doAssignMove<ao::uvector<int>>, doAssignMove<std::vector<int>>>(measurements[4], "assign move");
-	measure<doPushback<ao::uvector<int>>, doPushback<std::vector<int>>>(measurements[5], "push_back");
-	measure<doPushbackNInitialized<ao::uvector<int>>, doPushbackNInitializedImpl<std::vector<int>>>(measurements[6], "push_back size initialized");
-	measure<doPushbackNUninitialized<ao::uvector<int>>, doPushbackNInitializedImpl<std::vector<int>>>(measurements[7], "push_back_uninitialized");
-	measure<doInsert<ao::uvector<int>>, doInsert<std::vector<int>>>(measurements[8], "insert");
-	measure<doInsertUninitialized<ao::uvector<int>>, doInsertInitialized<std::vector<int>>>(measurements[9], "insert_uninitialized");
-	measure<doErase<ao::uvector<int>>, doErase<std::vector<int>>>(measurements[10], "erase");
-	measure<doIterate<ao::uvector<int>>, doIterate<std::vector<int>>>(measurements[11], "iterate");
-	measure<doEquality<ao::uvector<int>>, doEquality<std::vector<int>>>(measurements[12], "equality");
-	measure<doSmallerThan<ao::uvector<int>>, doSmallerThan<std::vector<int>>>(measurements[13], "smaller than");
-	measure<doSmallerEqualThan<ao::uvector<int>>, doSmallerEqualThan<std::vector<int>>>(measurements[14], "smaller or equal than");
+	aocommon::UVector<Measurement> measurements(15);
+	measure<doConstruct<aocommon::UVector<int>>, doConstruct<std::vector<int>>>(measurements[0], "constructor");
+	measure<doConstructFill<aocommon::UVector<int>>, doConstructFill<std::vector<int>>>(measurements[1], "constructor fill");
+	measure<doConstruct<aocommon::UVector<int>>, doCopyConstruct<std::vector<int>>>(measurements[2], "copy constructor");
+	measure<doAssignCopy<aocommon::UVector<int>>, doAssignCopy<std::vector<int>>>(measurements[3], "assign copy");
+	measure<doAssignMove<aocommon::UVector<int>>, doAssignMove<std::vector<int>>>(measurements[4], "assign move");
+	measure<doPushback<aocommon::UVector<int>>, doPushback<std::vector<int>>>(measurements[5], "push_back");
+	measure<doPushbackNInitialized<aocommon::UVector<int>>, doPushbackNInitializedImpl<std::vector<int>>>(measurements[6], "push_back size initialized");
+	measure<doPushbackNUninitialized<aocommon::UVector<int>>, doPushbackNInitializedImpl<std::vector<int>>>(measurements[7], "push_back_uninitialized");
+	measure<doInsert<aocommon::UVector<int>>, doInsert<std::vector<int>>>(measurements[8], "insert");
+	measure<doInsertUninitialized<aocommon::UVector<int>>, doInsertInitialized<std::vector<int>>>(measurements[9], "insert_uninitialized");
+	measure<doErase<aocommon::UVector<int>>, doErase<std::vector<int>>>(measurements[10], "erase");
+	measure<doIterate<aocommon::UVector<int>>, doIterate<std::vector<int>>>(measurements[11], "iterate");
+	measure<doEquality<aocommon::UVector<int>>, doEquality<std::vector<int>>>(measurements[12], "equality");
+	measure<doSmallerThan<aocommon::UVector<int>>, doSmallerThan<std::vector<int>>>(measurements[13], "smaller than");
+	measure<doSmallerEqualThan<aocommon::UVector<int>>, doSmallerEqualThan<std::vector<int>>>(measurements[14], "smaller or equal than");
 	
-	for(ao::uvector<Measurement>::const_iterator m=measurements.begin(); m!=measurements.end(); ++m)
+	for(aocommon::UVector<Measurement>::const_iterator m=measurements.begin(); m!=measurements.end(); ++m)
 		reportMeasurement(*m);
 	
 	std::cout << "\n\nReverse:\n";
-	for(ao::uvector<Measurement>::const_reverse_iterator m=measurements.rbegin(); m!=measurements.rend(); ++m)
+	for(aocommon::UVector<Measurement>::const_reverse_iterator m=measurements.rbegin(); m!=measurements.rend(); ++m)
 		reportMeasurement(*m);
 }

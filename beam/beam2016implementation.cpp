@@ -755,8 +755,8 @@ void Beam2016Implementation::ReadDataSet(const std::string& dataset_name, vector
 	modes_dataspace.getSimpleExtentDims( dims_out, NULL);
 	modes_dataspace.selectAll();
 	
-	ao::uvector<float> data(dims_out[0]*dims_out[1]);
-	ao::uvector<float*> modes_data(dims_out[0]);
+	aocommon::UVector<float> data(dims_out[0]*dims_out[1]);
+	aocommon::UVector<float*> modes_data(dims_out[0]);
 	for(size_t i=0;i<dims_out[0];i++)
 		modes_data[i] = &data[i*dims_out[1]];
 	

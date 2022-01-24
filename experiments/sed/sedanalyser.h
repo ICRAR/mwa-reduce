@@ -92,7 +92,7 @@ private:
 	{
 		size_t index, componentCount;
 		long double plExponent, plFactor, pl2ndOrder;
-		ao::uvector<double> terms;
+		aocommon::UVector<float> terms;
 		long double modalFlux, rms, qrms, urms, vrms, rms2ndOrder, diffRMS, stokesVFrac, maxError, maxAbsError, minAbsError, maxErrorFrequency, maxStep, distance;
 		double rmPeakValue, rmPeakPos, rmZeroValue, subbandCorrelation;
 		
@@ -124,7 +124,7 @@ private:
 			str << ms.Name() << ", "
 				<< RaDecCoord::RAToString(ms.MeanRA()) << ' '
 				<< RaDecCoord::DecToString(ms.MeanDec()) << ", "
-				<< modalFlux << " Jy, SI=" << plExponent << ", RMS=" << rms << " (" << diffRMS << ", Q=" << qrms << ", U=" << urms << ", V=" << vrms << "), V%=" << round(10000.0*stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(Polarization::StokesV) << "/" << sed.AverageFlux(Polarization::StokesI) << "), max E=" << maxError << " (+" << maxAbsError << ", " << minAbsError << " Jy) @ " << (maxErrorFrequency*1e-6) << ", RMpeak=" << rmPeakValue << " @ " << rmPeakPos << " / " << rmZeroValue << " @0, SB=" << subbandCorrelation << ", 2nd=" << pl2ndOrder;
+				<< modalFlux << " Jy, SI=" << plExponent << ", RMS=" << rms << " (" << diffRMS << ", Q=" << qrms << ", U=" << urms << ", V=" << vrms << "), V%=" << round(10000.0*stokesVFrac)/100.0 << "%" << "(" << sed.AverageFlux(aocommon::Polarization::StokesV) << "/" << sed.AverageFlux(aocommon::Polarization::StokesI) << "), max E=" << maxError << " (+" << maxAbsError << ", " << minAbsError << " Jy) @ " << (maxErrorFrequency*1e-6) << ", RMpeak=" << rmPeakValue << " @ " << rmPeakPos << " / " << rmZeroValue << " @0, SB=" << subbandCorrelation << ", 2nd=" << pl2ndOrder;
 			return str.str();
 		}
 
@@ -158,13 +158,13 @@ private:
 	void outputGeneralSIStats();
 	void outputSIBrightnessStatistics(double binStart, double binEnd);
 	
-	static double sourceRMS(const MeasuredSED& sed, PolarizationEnum pol = Polarization::StokesI);
+	static double sourceRMS(const MeasuredSED& sed, aocommon::PolarizationEnum pol = aocommon::Polarization::StokesI);
 	
 	double sourceRMS(const MeasuredSED& sed, long double factor, long double exponent);
 	
 	double sourceRMS(const MeasuredSED& sed, long double a, long double b, long double c);
 	
-	double sourceRMS(const MeasuredSED& sed, const ao::uvector<double>& terms);
+	double sourceRMS(const MeasuredSED& sed, const aocommon::UVector<float>& terms);
 	
 	static double diffRMS(const MeasuredSED& sed);
 	
@@ -172,7 +172,7 @@ private:
 	
 	void measureSourceCountNoise();
 	
-	void getAveragedSED(ao::uvector<double>& averagedValues, const std::set<size_t>& sourceIndices, bool subtractModel, bool useSmoothSpectra);
+	void getAveragedSED(aocommon::UVector<double>& averagedValues, const std::set<size_t>& sourceIndices, bool subtractModel, bool useSmoothSpectra);
 	void getAveragedSED(MeasuredSED& averagedSED, const std::set<size_t>& sourceIndices, bool subtractModel, bool useSmoothSpectra);
 	double getSourceSetWeightSum(const std::set<size_t>& sourceIndices);
 	
@@ -232,7 +232,7 @@ private:
 				measurements.clear();
 				bandStart = meas.FrequencyHz();
 			}
-			measurements.push_back(meas.FluxDensity(Polarization::StokesI));
+			measurements.push_back(meas.FluxDensity(aocommon::Polarization::StokesI));
 		}
 		correlationSum += std::fabs(getSubbandShapeCorrelation(measurements, passband));
 		return correlationSum / correlationCount;
@@ -242,9 +242,9 @@ private:
 
 	void outputSIStats(const std::vector<SourceInfo>& sortedList, size_t n);
 
-	void getAveragedSEDData(ao::uvector<double>& averageResidualFlux, ao::uvector<double>& fluxSigma, size_t nTermsFitted, bool useSmoothSpectra);
-	void getAveragedPSData(ao::uvector<double>& power, ao::uvector<double>& powerSigma, size_t nTermsFitted, const class SpectrumFT& sft, bool useSmoothSpectra);
-	void runNoiseSimulation(ao::uvector<double>& simPower, size_t nTermsFitted, const MeasuredSED& templateSED, const class SpectrumFT& sft, bool makePsf, bool simulateWithMissingData) const;
+	void getAveragedSEDData(aocommon::UVector<double>& averageResidualFlux, aocommon::UVector<double>& fluxSigma, size_t nTermsFitted, bool useSmoothSpectra);
+	void getAveragedPSData(aocommon::UVector<double>& power, aocommon::UVector<double>& powerSigma, size_t nTermsFitted, const class SpectrumFT& sft, bool useSmoothSpectra);
+	void runNoiseSimulation(aocommon::UVector<double>& simPower, size_t nTermsFitted, const MeasuredSED& templateSED, const class SpectrumFT& sft, bool makePsf, bool simulateWithMissingData) const;
 	
 	void removeEdgeChannels();
 	void removeEndChannels();

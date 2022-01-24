@@ -1,9 +1,8 @@
 #ifndef JONES_LOOKUP_DIPOLE_H
 #define JONES_LOOKUP_DIPOLE_H
 
-#include "../fitsiochecker.h"
-
-#include "../uvector.h"
+#include <aocommon/fits/fitsbase.h>
+#include <aocommon/uvector.h>
 
 #include <complex>
 #include <map>
@@ -16,7 +15,7 @@
  * function getJonesLookup(self,az,za,freq,zenith_norm=True) in
  * mwapy/pb/mwa_tile.py, 2014-06-02.
  */
-class JonesLookupDipole : private FitsIOChecker
+class JonesLookupDipole : private aocommon::FitsBase
 {
 public:
 	static void Initialize() { if(_tables.empty()) loadLookupTable(); }

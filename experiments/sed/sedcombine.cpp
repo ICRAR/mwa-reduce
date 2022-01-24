@@ -196,12 +196,12 @@ double measureImagingNoise(const std::vector<SEDSet>& sets, const std::string& f
 	const std::string filename = "tmp-permutation.fits";
 	adder.Finish(filename);
 	
-	FitsReader reader(filename);
+	aocommon::FitsReader reader(filename);
 	size_t width = reader.ImageWidth(), height = reader.ImageHeight();
-	ao::uvector<double> image(width * height);
+	aocommon::UVector<double> image(width * height);
 	reader.Read(image.data());
 	size_t newWidth = std::min<size_t>(1024, width), newHeight = std::min<size_t>(1024, height);
-	ao::uvector<double> newImage(newWidth * newHeight);
+	aocommon::UVector<double> newImage(newWidth * newHeight);
 	for(size_t y=0; y!=newHeight; ++y)
 	{
 		for(size_t x=0; x!=newWidth; ++x)
@@ -209,13 +209,13 @@ double measureImagingNoise(const std::vector<SEDSet>& sets, const std::string& f
 			newImage[y*newWidth + x] = image[(y+(height-newHeight)/2)*width + x+(width-newWidth)/2];
 		}
 	}
-	FitsWriter writer(reader);
+	aocommon::FitsWriter writer(reader);
 	writer.SetImageDimensions(newWidth, newHeight);
 	writer.Write(filename, newImage.data());
 	
 	system(("./bane.sh " + filename).c_str());
 	
-	FitsReader baneReader("bane_out_rms.fits");
+	aocommon::FitsReader baneReader("bane_out_rms.fits");
 	baneReader.Read(newImage.data());
 	double sum = 0.0;
 	for(double i : newImage)

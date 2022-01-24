@@ -6,21 +6,22 @@
 
 #include "model/modelsource.h"
 
-class MRCCatalogue
-{
-	public:
-		MRCCatalogue(const std::string &filename);
-		
-		bool ReadNext(ModelSource &source);
-	private:
-		int digToVal(char dig)
-		{
-			if(dig == 32) return 0;
-			else return dig-'0';
-		}
-		
-		std::string _filename;
-		std::ifstream _file;
+class MRCCatalogue {
+ public:
+  MRCCatalogue(const std::string &filename);
+
+  bool ReadNext(ModelSource &source);
+
+ private:
+  int digToVal(char dig) {
+    if (dig == 32)
+      return 0;
+    else
+      return dig - '0';
+  }
+
+  std::string _filename;
+  std::ifstream _file;
 };
 
 #endif

@@ -18,7 +18,7 @@ void SEDAnalyser::Process()
 		ras.push_back(s.MeanRA());
 		meanDec += s.MeanDec();
 	}
-	long double meanRA = ImageCoordinates::MeanRA(ras);
+	long double meanRA = aocommon::ImageCoordinates::MeanRA(ras);
 	meanDec /= model.SourceCount();
 	std::cout << "Catalogue centre: " << RaDecCoord::RAToString(meanRA) << " " << RaDecCoord::DecToString(meanDec) << '\n';
 	
@@ -34,22 +34,22 @@ void SEDAnalyser::Process()
 		const ModelSource& source = model.Source(i);
 		SourceInfo newSource;
 		const MeasuredSED sed = source.GetIntegratedMSED();
-		sed.FitPowerlaw(newSource.plFactor, newSource.plExponent, Polarization::StokesI);
+		sed.FitPowerlaw(newSource.plFactor, newSource.plExponent, aocommon::Polarization::StokesI);
 		newSource.index = i;
 		newSource.modalFlux = newSource.plFactor * powl(centreFrequency, newSource.plExponent);
 		newSource.componentCount = source.ComponentCount();
 		newSource.rms = sourceRMS(sed, newSource.plFactor, newSource.plExponent);
-		newSource.qrms = sourceRMS(sed, Polarization::StokesQ);
-		newSource.urms = sourceRMS(sed, Polarization::StokesU);
-		newSource.vrms = sourceRMS(sed, Polarization::StokesV);
+		newSource.qrms = sourceRMS(sed, aocommon::Polarization::StokesQ);
+		newSource.urms = sourceRMS(sed, aocommon::Polarization::StokesU);
+		newSource.vrms = sourceRMS(sed, aocommon::Polarization::StokesV);
 		newSource.diffRMS = diffRMS(sed);
 		if(!std::isfinite(newSource.diffRMS))
 			newSource.diffRMS = newSource.rms;
 		newSource.maxStep = maxStep(sed);
-		newSource.stokesVFrac = std::abs(sed.AverageFlux(Polarization::StokesV) / sed.AverageFlux(Polarization::StokesI));
-		newSource.distance = ImageCoordinates::AngularDistance<long double>(meanRA, meanDec, source.MeanRA(), source.MeanDec());
+		newSource.stokesVFrac = std::abs(sed.AverageFlux(aocommon::Polarization::StokesV) / sed.AverageFlux(aocommon::Polarization::StokesI));
+		newSource.distance = aocommon::ImageCoordinates::AngularDistance<long double>(meanRA, meanDec, source.MeanRA(), source.MeanDec());
 		
-		sed.FitLogPolynomial(newSource.terms, _nTermsInPS, Polarization::StokesI, _referenceFrequency);
+		sed.FitLogPolynomial(newSource.terms, _nTermsInPS, aocommon::Polarization::StokesI, _referenceFrequency);
 		newSource.pl2ndOrder = newSource.terms[2];
 		newSource.rms2ndOrder = sourceRMS(sed, newSource.terms);
 		
@@ -63,7 +63,7 @@ void SEDAnalyser::Process()
 			// Ignore for now
 			if(m->first > 197.61*1e6)
 				break;
-			double flux = m->second.FluxDensity(Polarization::StokesI);
+			double flux = m->second.FluxDensity(aocommon::Polarization::StokesI);
 			double freq = m->first;
 			double model = NonLinearPowerLawFitter::Evaluate(freq, newSource.terms, _referenceFrequency);
 			double absErr = (flux - model);
@@ -397,7 +397,7 @@ double SEDAnalyser::sourceRMS(const MeasuredSED& sed, long double factor, long d
 	size_t count = 0;
 	for(MeasuredSED::const_iterator i=sed.begin(); i!=sed.end(); ++i)
 	{
-		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double flux = i->second.FluxDensity(aocommon::Polarization::StokesI);
 		long double powerLawValue = factor * powl(i->second.FrequencyHz(), exponent);
 		if(std::isfinite(flux))
 		{
@@ -409,7 +409,7 @@ double SEDAnalyser::sourceRMS(const MeasuredSED& sed, long double factor, long d
 	return sqrtl(RMSsum / (long double)(count));
 }
 
-double SEDAnalyser::sourceRMS(const MeasuredSED& sed, PolarizationEnum pol)
+double SEDAnalyser::sourceRMS(const MeasuredSED& sed, aocommon::PolarizationEnum pol)
 {
 	long double RMSsum = 0.0L;
 	size_t count = 0;
@@ -431,7 +431,7 @@ double SEDAnalyser::sourceRMS(const MeasuredSED& sed, long double a, long double
 	size_t count = 0;
 	for(MeasuredSED::const_iterator i=sed.begin(); i!=sed.end(); ++i)
 	{
-		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double flux = i->second.FluxDensity(aocommon::Polarization::StokesI);
 		long double x = i->second.FrequencyHz();
 		long double powerLawValue = powl(b*x + c*x*x, a);
 		if(std::isfinite(flux))
@@ -444,13 +444,13 @@ double SEDAnalyser::sourceRMS(const MeasuredSED& sed, long double a, long double
 	return sqrtl(RMSsum / (long double)(count));
 }
 
-double SEDAnalyser::sourceRMS(const MeasuredSED& sed, const ao::uvector<double>& terms)
+double SEDAnalyser::sourceRMS(const MeasuredSED& sed, const aocommon::UVector<float>& terms)
 {
 	long double RMSsum = 0.0L;
 	size_t count = 0;
 	for(MeasuredSED::const_iterator i=sed.begin(); i!=sed.end(); ++i)
 	{
-		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double flux = i->second.FluxDensity(aocommon::Polarization::StokesI);
 		long double x = i->second.FrequencyHz();
 		long double powerLawValue = NonLinearPowerLawFitter::Evaluate(x, terms, _referenceFrequency);
 		if(std::isfinite(flux))
@@ -470,7 +470,7 @@ double SEDAnalyser::diffRMS(const MeasuredSED& sed)
 	long double prevFlux=std::numeric_limits<long double>::quiet_NaN();
 	for(MeasuredSED::const_iterator i=sed.begin(); i!=sed.end(); ++i)
 	{
-		long double flux = i->second.FluxDensity(Polarization::StokesI);
+		long double flux = i->second.FluxDensity(aocommon::Polarization::StokesI);
 		if(std::isfinite(flux) && std::isfinite(prevFlux))
 		{
 			long double diff = flux - prevFlux;
@@ -587,7 +587,7 @@ void SEDAnalyser::MakePSPlot()
 {
 	const Model& model = *_model;
 	const MeasuredSED firstSED = model.Source(0).GetIntegratedMSED();
-	ao::uvector<double>
+	aocommon::UVector<double>
 		xValues(firstSED.MeasurementCount());
 	double maxX = SpectrumFT::GetMaxKParallell(firstSED);
 	MeasuredSED::const_iterator sedIter = firstSED.begin();
@@ -619,12 +619,12 @@ void SEDAnalyser::MakePSPlot()
 		
 		const ModelSource& source = model.Source(i);
 		const MeasuredSED sed = source.GetIntegratedMSED();
-		ao::uvector<double> ftValues;
+		aocommon::UVector<double> ftValues;
 		sft.GetFTPower(ftValues, sed, 3, _psInTemperature, _useLombPeriodogram);
 		ftStatNoNormPlot.AddYSet(ftValues);
 		binned.Add(xValues, ftValues);
 		
-		ao::uvector<double> binnedXVal, binnedYVal;
+		aocommon::UVector<double> binnedXVal, binnedYVal;
 		binned.GetData(binnedXVal, binnedYVal);
 		if(!ftStatBinnedPlot.HasXValues())
 			ftStatBinnedPlot.SetXValues(binnedXVal);
@@ -687,10 +687,10 @@ double SEDAnalyser::getSourceSetWeightSum(const std::set<size_t>& sourceIndices)
 	return weightSum;
 }
 
-void SEDAnalyser::getAveragedSED(ao::uvector<double>& averagedValues, const std::set<size_t>& sourceIndices, bool subtractModel, bool useSmoothSpectra)
+void SEDAnalyser::getAveragedSED(aocommon::UVector<double>& averagedValues, const std::set<size_t>& sourceIndices, bool subtractModel, bool useSmoothSpectra)
 {
 	const Model& model = *_model;
-	ao::uvector<double>
+	aocommon::UVector<double>
 		sum(_model->Source(0).GetIntegratedMSED().MeasurementCount(), 0.0),
 		weightSum(sum.size(), 0.0);
 	for(std::set<size_t>::const_iterator iter=sourceIndices.begin(); iter!=sourceIndices.end(); ++iter)
@@ -698,14 +698,14 @@ void SEDAnalyser::getAveragedSED(ao::uvector<double>& averagedValues, const std:
 		const SourceInfo& info = _sources[*iter];
 		const ModelSource& source = model.Source(info.index);
 		const MeasuredSED sed = source.GetIntegratedMSED();
-		ao::uvector<double> terms;
+		aocommon::UVector<float> terms;
 		if(subtractModel)
 			terms = info.terms;
 		if(terms.size() > _nTermsInPS)
 			terms.resize(_nTermsInPS);
 		else if(terms.size() < _nTermsInPS)
 		{
-			sed.FitLogPolynomial(terms, _nTermsInPS, Polarization::StokesI, _referenceFrequency);
+			sed.FitLogPolynomial(terms, _nTermsInPS, aocommon::Polarization::StokesI, _referenceFrequency);
 		}
 		size_t channel = 0;
 		double weight;
@@ -736,7 +736,7 @@ void SEDAnalyser::getAveragedSED(MeasuredSED& averagedSED, const std::set<size_t
 	// Initialize it so it has appropriate channels
 	averagedSED = _model->Source(0).GetIntegratedMSED();
 	
-	ao::uvector<double> averagedValues;
+	aocommon::UVector<double> averagedValues;
 	getAveragedSED(averagedValues, sourceIndices, subtractModel, useSmoothSpectra);
 	size_t ch = 0;
 	for(MeasuredSED::iterator m=averagedSED.begin(); m!=averagedSED.end(); ++m)
@@ -746,7 +746,7 @@ void SEDAnalyser::getAveragedSED(MeasuredSED& averagedSED, const std::set<size_t
 	}
 }
 
-void SEDAnalyser::getAveragedPSData(ao::uvector<double>& power, ao::uvector<double>& powerSigma, size_t nTermsFitted, const SpectrumFT& sft, bool useSmoothSpectra)
+void SEDAnalyser::getAveragedPSData(aocommon::UVector<double>& power, aocommon::UVector<double>& powerSigma, size_t nTermsFitted, const SpectrumFT& sft, bool useSmoothSpectra)
 {
 	std::set<size_t> sourceIndices;
 	for(size_t i=0; i!=_sources.size(); ++i)
@@ -760,7 +760,7 @@ void SEDAnalyser::getAveragedPSData(ao::uvector<double>& power, ao::uvector<doub
 	sft.GetFTPower(power, averagedSED, 0, _psInTemperature, _useLombPeriodogram);
 }
 
-void SEDAnalyser::getAveragedSEDData(ao::uvector<double>& averageResidualFlux, ao::uvector<double>& fluxSigma, size_t nTermsFitted, bool useSmoothSpectra)
+void SEDAnalyser::getAveragedSEDData(aocommon::UVector<double>& averageResidualFlux, aocommon::UVector<double>& fluxSigma, size_t nTermsFitted, bool useSmoothSpectra)
 {
 	std::set<size_t> sourceIndices;
 	for(size_t i=0; i!=_sources.size(); ++i)
@@ -776,7 +776,7 @@ void SEDAnalyser::getAveragedSEDData(ao::uvector<double>& averageResidualFlux, a
 		const SourceInfo& info = _sources[i];
 		const ModelSource& source = model.Source(info.index);
 		const MeasuredSED sed = source.GetIntegratedMSED();
-		ao::uvector<double> terms;
+		aocommon::UVector<float> terms;
 		if(nTermsFitted != 0)
 			terms = info.terms;
 		size_t channel = 0;
@@ -810,7 +810,7 @@ void SEDAnalyser::MakeAveragedPSPlot()
 		
 		const Model& model = *_model;
 		MeasuredSED firstSED = model.Source(0).GetIntegratedMSED();
-		ao::uvector<double>
+		aocommon::UVector<double>
 			xValues(firstSED.MeasurementCount()),
 			frequencies(firstSED.MeasurementCount());
 		double maxX = SpectrumFT::GetMaxKParallell(firstSED);
@@ -824,7 +824,7 @@ void SEDAnalyser::MakeAveragedPSPlot()
 		SpectrumFT sft(xValues.size());
 		sft.SetMetaData(frequencies, 2900.0, model.SourceCount());
 		//sft.SetOutputFit(true); //testing
-		ao::uvector<double> power, powerSigma;
+		aocommon::UVector<double> power, powerSigma;
 		getAveragedPSData(power, powerSigma, _nTermsInPS, sft, doImgSmooth);
 		GNUPlot plot(prefixName, "k\u2225 (h/Mpc)", psYAxisDesc(), true, true);
 		LogBinnedPlot bins;
@@ -841,7 +841,7 @@ void SEDAnalyser::MakeAveragedPSPlot()
 		GNUPlot::Line* binnedLine = plot.AddLine(prefixName + "-binned-power.txt", "power");
 		bins.Plot(*binnedLine);
 		
-		ao::uvector<double> avgSED;
+		aocommon::UVector<double> avgSED;
 		getAveragedSEDData(avgSED, powerSigma, _nTermsInPS, doImgSmooth);
 		GNUPlot plotAvgSED(sedPrefix, "Frequency (MHz)", "Averaged residual (mJy)", false, false);
 		plotAvgSED.SetXRange(firstSED.begin()->first*1e-6, firstSED.rbegin()->first*1e-6);
@@ -854,12 +854,12 @@ void SEDAnalyser::MakeAveragedPSPlot()
 	}
 }
 
-void SEDAnalyser::runNoiseSimulation(ao::uvector<double>& simPower, size_t nTermsFitted, const MeasuredSED& templateSED, const SpectrumFT& sft, bool makePsf, bool simulateWithMissingData) const
+void SEDAnalyser::runNoiseSimulation(aocommon::UVector<double>& simPower, size_t nTermsFitted, const MeasuredSED& templateSED, const SpectrumFT& sft, bool makePsf, bool simulateWithMissingData) const
 {
 	const Model& model = *_model;
 	std::normal_distribution<double> normalDist(0.0, 1.0);
 	
-	ao::uvector<double> simSum(templateSED.MeasurementCount(), 0.0);
+	aocommon::UVector<double> simSum(templateSED.MeasurementCount(), 0.0);
 	double weightSum = 0.0;
 	for(size_t i=0; i!=_sources.size(); ++i)
 	{
@@ -879,9 +879,9 @@ void SEDAnalyser::runNoiseSimulation(ao::uvector<double>& simPower, size_t nTerm
 		}
 		
 		// continue generating normal PS
-		ao::uvector<double> terms;
+		aocommon::UVector<float> terms;
 		if(nTermsFitted != 0)
-			simulatedSED.FitLogPolynomial(terms, nTermsFitted, Polarization::StokesI, _referenceFrequency);
+			simulatedSED.FitLogPolynomial(terms, nTermsFitted, aocommon::Polarization::StokesI, _referenceFrequency);
 		size_t channel = 0;
 		double weight = 1.0/(info.diffRMS * info.diffRMS);
 		for(MeasuredSED::const_iterator m=simulatedSED.begin(); m!=simulatedSED.end(); ++m)
@@ -921,7 +921,7 @@ void SEDAnalyser::MakeNoisePSPlot()
 {
 	const Model& model = *_model;
 	MeasuredSED firstSED = model.Source(0).GetIntegratedMSED();
-	ao::uvector<double>
+	aocommon::UVector<double>
 		xValues(firstSED.MeasurementCount()),
 		frequencies(firstSED.MeasurementCount());
 	double maxX = SpectrumFT::GetMaxKParallell(firstSED);
@@ -952,7 +952,7 @@ void SEDAnalyser::MakeNoisePSPlot()
 	std::cout << "( " << rmsSigmaNoDiff << " Jy without using differential RMS).\n";
 	MeasuredSED noiseSED = firstSED;
 	size_t channel = 0;
-	ao::uvector<double> noisePower(firstSED.MeasurementCount());
+	aocommon::UVector<double> noisePower(firstSED.MeasurementCount());
 	for(MeasuredSED::iterator m=noiseSED.begin(); m!=noiseSED.end(); ++m)
 	{
 		m->second.SetFluxDensityFromIndex(0, noiseSigma);
@@ -968,20 +968,20 @@ void SEDAnalyser::MakeNoisePSPlot()
 	if(_psInTemperature)
 		sft.ConvertPSToTemperature(noisePower);
 	
-	ao::uvector<double> measuredData, sigmas;
+	aocommon::UVector<double> measuredData, sigmas;
 	getAveragedPSData(measuredData, sigmas, _nTermsInPS, sft, false);
 		
-	ao::uvector<double> summedPower(firstSED.MeasurementCount(), 0.0);
-	ao::uvector<double> summedPowerSq(firstSED.MeasurementCount(), 0.0);
-	ao::uvector<double> summedPowerNoiseOnly(firstSED.MeasurementCount(), 0.0);
-	ao::uvector<double> summedPowerNoiseOnlySq(firstSED.MeasurementCount(), 0.0);
-	ao::uvector<double> summedPowerPSF(firstSED.MeasurementCount(), 0.0);
+	aocommon::UVector<double> summedPower(firstSED.MeasurementCount(), 0.0);
+	aocommon::UVector<double> summedPowerSq(firstSED.MeasurementCount(), 0.0);
+	aocommon::UVector<double> summedPowerNoiseOnly(firstSED.MeasurementCount(), 0.0);
+	aocommon::UVector<double> summedPowerNoiseOnlySq(firstSED.MeasurementCount(), 0.0);
+	aocommon::UVector<double> summedPowerPSF(firstSED.MeasurementCount(), 0.0);
 	
 	const size_t NumberOfSimulations = 50;
 	for(size_t simIter=0; simIter!=NumberOfSimulations; ++simIter)
 	{
 		std::cout << "==SIMULATION " << (simIter+1) << "==\n";
-		ao::uvector<double> simPower, simPowerNoiseOnly, simPowerPSF;
+		aocommon::UVector<double> simPower, simPowerNoiseOnly, simPowerPSF;
 		runNoiseSimulation(simPower, _nTermsInPS, firstSED, sft, false, true);
 		runNoiseSimulation(simPowerNoiseOnly, 0, firstSED, sft, false, true);
 		runNoiseSimulation(simPowerPSF, 0, firstSED, sft, true, true);
@@ -1102,7 +1102,7 @@ void SEDAnalyser::removeBadChannels()
 			for(MeasuredSED::iterator m=sed.begin(); m!=sed.end(); ++m)
 			{
 				Measurement& meas = m->second;
-				bool isBad = std::abs(meas.FluxDensity(Polarization::StokesI)) > 100.0;
+				bool isBad = std::abs(meas.FluxDensity(aocommon::Polarization::StokesI)) > 100.0;
 				if(isBad)
 				{
 					meas.SetFluxDensityFromIndex(0, std::numeric_limits<long double>::quiet_NaN());
@@ -1136,7 +1136,7 @@ void SEDAnalyser::write_cath_csv_file()
 		double phaseCentreRA = 0.0, phaseCentreDec = -27.0*M_PI/180.0;
 		double l,m;
 		size_t nTermsFitted = sInfo.terms.size();
-		ImageCoordinates::RaDecToLM<double>(raRad, decRad, phaseCentreRA, phaseCentreDec, l, m);
+		aocommon::ImageCoordinates::RaDecToLM<double>(raRad, decRad, phaseCentreRA, phaseCentreDec, l, m);
 		
 		csvFile
 			<< raRad*180.0/M_PI << ' '
@@ -1162,7 +1162,7 @@ void SEDAnalyser::write_cath_csv_file()
 		for(MeasuredSED::const_iterator mi=sed.begin(); mi!=sed.end(); ++mi)
 		{
 			double fitVal = nTermsFitted!=0 ? (NonLinearPowerLawFitter::Evaluate(mi->first, sInfo.terms, _referenceFrequency)) : 0.0;
-			ao::uvector<double> termsWithoutSI(sInfo.terms);
+			aocommon::UVector<float> termsWithoutSI(sInfo.terms);
 			if(termsWithoutSI.size()>2)
 				termsWithoutSI.resize(2);
 			double fitValSI = nTermsFitted!=0 ? (NonLinearPowerLawFitter::Evaluate(mi->first, termsWithoutSI, _referenceFrequency)) : 0.0;
@@ -1234,7 +1234,7 @@ void SEDAnalyser::measureSourceCountNoise()
 			double residualRMS = sourceRMS(averagedSED);
 			double differentialRMS = diffRMS(averagedSED);
 			
-			ao::uvector<double> values;
+			aocommon::UVector<double> values;
 			double stPower = sqrt(sft.GetAveragePowerInKRange(0.1, 0.2, averagedSED, 0, _psInTemperature, _useLombPeriodogram));
 			
 			diffRMSLine->AddPoint(effectiveSourceCount, differentialRMS);

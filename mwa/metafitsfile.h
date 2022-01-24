@@ -5,12 +5,12 @@
 
 #include <vector>
 
-#include "../fitsiochecker.h"
+#include <aocommon/fits/fitsbase.h>
 
 class MWAHeader;
 class MWAHeaderExt;
 
-class MetaFitsFile : private FitsIOChecker
+class MetaFitsFile : private aocommon::FitsBase
 {
 public:
 	MetaFitsFile(const char *filename);

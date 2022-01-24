@@ -44,11 +44,11 @@ void JonesLookupDipole::loadLookupTable()
 	size_t valueCount = rowCount * columnCount;
 
 	std::cout << "Loading ZA/PH values...\n";
-	ao::uvector<double> data(valueCount);
+	aocommon::UVector<double> data(valueCount);
 	long fpixel[3] = {1, 1};
 	fits_read_pix(fitsPtr, TDOUBLE, fpixel, valueCount, 0, data.data(), 0, &status);
 	checkStatus(status, filename);
-	ao::uvector<double> zaVector(rowCount), phVector(rowCount);
+	aocommon::UVector<double> zaVector(rowCount), phVector(rowCount);
 	for(size_t row=0; row!=rowCount; ++row)
 	{
 		zaVector[row] = data[row * columnCount];
@@ -79,7 +79,7 @@ void JonesLookupDipole::loadLookupTable()
 		
 		FrequencyTable& table = _tables.insert(std::make_pair(frequency, FrequencyTable())).first->second;
 		
-		ao::uvector<double> values(uniqueZAValues * uniquePHValues * 8);
+		aocommon::UVector<double> values(uniqueZAValues * uniquePHValues * 8);
 		for(size_t row=0; row!=uniqueZAValues * uniquePHValues; ++row)
 		{
 			for(size_t i=0; i!=8; ++i)
