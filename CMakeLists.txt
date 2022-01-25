@@ -7,12 +7,6 @@ if(CUDA_SUPPORT)
   enable_language(CUDA)
 endif(CUDA_SUPPORT)
 
-# Include aocommon
-include_directories("${CMAKE_SOURCE_DIR}/external/aocommon/include/")
-
-# Add CMake subdirectory to module search path
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
-
 if(PORTABLE)
   add_compile_options(-std=c++11 -O3 -ggdb -Wvla -Wall -DNDEBUG)
 else()
@@ -27,6 +21,33 @@ else()
     -march=native)
 endif(PORTABLE)
 
+# Find and include git submodules
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+  # Update submodules as needed
+  option(GIT_SUBMODULE "Check submodules during build" ON)
+  if(GIT_SUBMODULE)
+    message(STATUS "Submodule update")
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive --checkout
+              --depth 1
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      RESULT_VARIABLE GIT_SUBMOD_RESULT)
+    if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+      message(
+        FATAL_ERROR
+          "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules"
+      )
+    endif()
+  endif()
+endif()
+
+# Include aocommon
+include_directories("${CMAKE_SOURCE_DIR}/external/aocommon/include/")
+
+# Add CMake subdirectory to module search path
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
+
 find_package(
   HDF5
   COMPONENTS C CXX
@@ -39,25 +60,21 @@ find_package(
              ms
              tables
              measures
-             fits
-             scimath
-             scimath_f)
+             fits)
 set(CASA_LIBS ${CASACORE_LIBRARIES})
 
 find_package(CFITSIO REQUIRED)
 
 find_package(Threads REQUIRED)
 find_library(FFTW3_LIB fftw3 REQUIRED)
-find_library(FFTW3F_LIB fftw3f REQUIRED)
 find_library(FFTW3_THREADS_LIB fftw3_threads REQUIRED)
+find_library(FFTW3F_LIB fftw3f REQUIRED)
 find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
 find_package(
   Boost
   COMPONENTS date_time filesystem system thread
   REQUIRED)
-find_library(FITSIO_LIB cfitsio REQUIRED)
 find_library(DL_LIB dl REQUIRED)
-find_path(FITSIO_INCLUDE_DIR NAMES fitsio.h)
 find_library(GSL_LIB NAMES gsl)
 find_path(GSL_INCLUDE_DIR NAMES gsl/gsl_version.h)
 find_library(GSL_CBLAS_LIB NAMES gslcblas)
@@ -518,3 +535,5 @@ endif(
   GSL_LIB
   AND GSL_CBLAS_LIB
   AND GSL_INCLUDE_DIR)
+
+message(STATUS "Flags passed to C++ compiler: " ${CMAKE_CXX_FLAGS})
