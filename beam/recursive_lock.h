@@ -52,14 +52,15 @@ public:
 			_mutex->unlock();
 	}
 	
-	recursive_lock& operator=(const recursive_lock& other)
+	recursive_lock& operator=(recursive_lock&& other)
 	{
 		if(_nLocks != 0)
 			_mutex->unlock();
 		_mutex = other._mutex;
-		_nLocks = other.nLocks;
+		_nLocks = other._nLocks;
 		other._mutex = nullptr;
 		other._nLocks = 0;
+    return *this;
 	}
 	
 	void lock()

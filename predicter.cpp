@@ -380,7 +380,7 @@ void Predicter::ReportSources(Model& model) {
 
 void Predicter::predict4(CNumType* dest, const ModelComponent& component,
                          NumType u, NumType v, NumType w, size_t channelIndex,
-                         size_t a1, size_t a2) {
+                         size_t, size_t) {
   switch (component.Type()) {
     case ModelComponent::PointSource:
     case ModelComponent::GaussianSource: {

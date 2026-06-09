@@ -45,7 +45,7 @@ class Predicter {
   void Predict4(CNumType *dest, const class Model &model, NumType u, NumType v,
                 NumType w, size_t channelIndex, size_t a1, size_t a2);
 
-  NumType TotalFlux(size_t p) { return std::fabs(_totalFlux[p]); }
+  NumType TotalFlux(size_t p) { return std::abs(_totalFlux[p]); }
 
  private:
 #ifndef CUDA_SUPPORT

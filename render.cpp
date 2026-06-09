@@ -17,7 +17,7 @@
 #include "model/modelparser.h"
 
 #include <aocommon/banddata.h>
-#include <aocommon/parallelfor.h>
+#include <aocommon/dynamicfor.h>
 #include <aocommon/threadpool.h>
 #include <aocommon/lane.h>
 #include <aocommon/fits/fitsreader.h>
@@ -191,8 +191,8 @@ int main(int argc, char* argv[]) {
       image = Image(inputWidth, inputHeight, 0.0);
       ra = reader->PhaseCentreRA();
       dec = reader->PhaseCentreDec();
-      pdl = reader->PhaseCentreDL();
-      pdm = reader->PhaseCentreDM();
+      pdl = reader->LShift();
+      pdm = reader->MShift();
       if (!pixelSizeX) pixelSizeX = reader->PixelSizeX();
       if (!pixelSizeY) pixelSizeY = reader->PixelSizeY();
       bandwidth = reader->Bandwidth();

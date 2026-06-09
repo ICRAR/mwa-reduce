@@ -52,16 +52,15 @@ void correctStokesI(const std::string& imagePrefix,
     read(inputReader, beamFilename[i], beamData[i]);
 
   for (size_t i = 0; i != imgSize; ++i) {
-    aocommon::MC2x2 beamValues;
-    beamValues[0] = std::complex<double>(beamData[0][i], beamData[1][i]);
-    beamValues[1] = std::complex<double>(beamData[2][i], beamData[3][i]);
-    beamValues[2] = std::complex<double>(beamData[4][i], beamData[5][i]);
-    beamValues[3] = std::complex<double>(beamData[6][i], beamData[7][i]);
+    aocommon::MC2x2 beamValues{
+    std::complex<double>(beamData[0][i], beamData[1][i]),
+    std::complex<double>(beamData[2][i], beamData[3][i]),
+    std::complex<double>(beamData[4][i], beamData[5][i]),
+    std::complex<double>(beamData[6][i], beamData[7][i])};
 
-    aocommon::MC2x2 squared;
-    aocommon::MC2x2::ATimesHermB(squared, beamValues, beamValues);
+    aocommon::MC2x2 squared = beamValues.MultiplyHerm(beamValues);
     if (squared.Invert()) {
-      double factor = 0.5 * (squared[0].real() + squared[3].real());
+      double factor = 0.5 * (squared.Get(0).real() + squared.Get(3).real());
       inputData[i] = inputData[i] * factor;
       weightData[i] = 1.0 / (factor * factor);
     } else {

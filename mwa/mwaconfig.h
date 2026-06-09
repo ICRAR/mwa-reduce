@@ -60,8 +60,8 @@ struct MWAHeaderExt
 	double tilePointingRARad, tilePointingDecRad;
 	double dateRequestedMJD;
 private:
-	MWAHeaderExt(const MWAHeaderExt &source) { }
-	void operator=(const MWAHeaderExt &source) { }
+	MWAHeaderExt(const MWAHeaderExt &) = delete;
+	void operator=(const MWAHeaderExt &) = delete;
 };
 
 struct MWAAntenna

@@ -112,7 +112,7 @@ void processList(std::vector<SEDSet> sets, Model& fullModel, std::ofstream& logF
 	logFile << std::endl;
 }
 
-void makePermutation(size_t setPerBand, size_t maxSetsInBand, const std::vector<SEDSet>& sets, std::vector<SEDSet>& permutedSets)
+void makePermutation(size_t setPerBand, [[maybe_unused]] size_t maxSetsInBand, const std::vector<SEDSet>& sets, std::vector<SEDSet>& permutedSets)
 {
 	permutedSets.clear();
 	std::set<std::string> bandNames;

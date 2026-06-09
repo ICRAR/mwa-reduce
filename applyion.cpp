@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
       renderModel.AddSource(copy);
       ModelRenderer renderer(reader.PhaseCentreRA(), reader.PhaseCentreDec(),
                              reader.PixelSizeX(), reader.PixelSizeY(),
-                             reader.PhaseCentreDL(), reader.PhaseCentreDM());
+                             reader.LShift(), reader.MShift());
       renderer.Restore(outImage.data(), width, height, renderModel,
                        reader.BeamMajorAxisRad(),
                        reader.Frequency() - reader.Bandwidth() * 0.5,

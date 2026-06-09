@@ -153,7 +153,6 @@ void Peeler::Perform() {
     casacore::Array<float> weights(dataShape);
     casacore::Array<bool> flags(dataShape);
     time = timeColumn(startRow);
-    size_t selectedCount = 0, notSelected = 0;
     MSPredicter::RowData rowData;
 
     predicter->Start(false);
@@ -180,10 +179,6 @@ void Peeler::Perform() {
 
         bool selected = true;
         if (u * u + v * v + w * w < _minUVW * _minUVW) selected = false;
-        if (selected)
-          selectedCount++;
-        else
-          notSelected++;
 
         if (_model.Empty()) {
           std::complex<float> *modelDataPtr = modelData.cbegin();

@@ -408,14 +408,12 @@ class MeasuredSED : public SpectralEnergyDistribution {
   void FitPowerlaw2ndOrder(long double& a, long double& b, long double& c,
                            aocommon::PolarizationEnum polarization) const {
     NonLinearPowerLawFitter fitter;
-    size_t n = 0;
     for (FluxMap::const_iterator i = _measurements.begin();
          i != _measurements.end(); ++i) {
       const Measurement& m = i->second;
       long double flux = m.FluxDensity(polarization);
       if (std::isfinite(m.FrequencyHz()) && std::isfinite(flux)) {
         fitter.AddDataPoint(m.FrequencyHz(), flux);
-        ++n;
       }
     }
     float aTemp = 0.0, bTemp = 1.0, cTemp = 0.0;
@@ -429,14 +427,12 @@ class MeasuredSED : public SpectralEnergyDistribution {
                         aocommon::PolarizationEnum polarization,
                         double referenceFrequencyHz = 1.0) const {
     NonLinearPowerLawFitter fitter;
-    size_t n = 0;
     for (FluxMap::const_iterator i = _measurements.begin();
          i != _measurements.end(); ++i) {
       const Measurement& m = i->second;
       long double flux = m.FluxDensity(polarization);
       if (std::isfinite(m.FrequencyHz()) && std::isfinite(flux)) {
         fitter.AddDataPoint(m.FrequencyHz() / referenceFrequencyHz, flux);
-        ++n;
       }
     }
     terms.assign(nTerms, 0.0);

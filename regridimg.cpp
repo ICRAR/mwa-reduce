@@ -279,8 +279,8 @@ int main(int argc, char *argv[]) {
     } else {
       outImage.ra = templateReader.PhaseCentreRA();
       outImage.dec = templateReader.PhaseCentreDec();
-      outImage.dl = templateReader.PhaseCentreDL();
-      outImage.dm = templateReader.PhaseCentreDM();
+      outImage.dl = templateReader.LShift();
+      outImage.dm = templateReader.MShift();
     }
     outImage.pixelSizeX = templateReader.PixelSizeX();
     outImage.pixelSizeY = templateReader.PixelSizeY();
@@ -331,8 +331,8 @@ int main(int argc, char *argv[]) {
       inpImage.height = inpReader.ImageHeight();
       inpImage.ra = inpReader.PhaseCentreRA();
       inpImage.dec = inpReader.PhaseCentreDec();
-      inpImage.dl = inpReader.PhaseCentreDL();
-      inpImage.dm = inpReader.PhaseCentreDM();
+      inpImage.dl = inpReader.LShift();
+      inpImage.dm = inpReader.MShift();
       inpImage.pixelSizeX = inpReader.PixelSizeX();
       inpImage.pixelSizeY = inpReader.PixelSizeY();
       inpImage.frequency = inpReader.Frequency();

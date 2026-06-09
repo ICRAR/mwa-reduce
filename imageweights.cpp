@@ -237,7 +237,7 @@ void ImageWeights::FinishGridding() {
   }
 }
 
-void ImageWeights::Grid(const std::complex<float>* data, const bool* flags,
+void ImageWeights::Grid(const std::complex<float>*, const bool* flags,
                         double uTimesLambda, double vTimesLambda,
                         size_t channelCount, double lowestFrequency,
                         double frequencyStep) {

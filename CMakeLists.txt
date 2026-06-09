@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.5)
 
 project(mwa-reduce)
 
@@ -8,10 +8,10 @@ if(CUDA_SUPPORT)
 endif(CUDA_SUPPORT)
 
 if(PORTABLE)
-  add_compile_options(-std=c++11 -O3 -ggdb -Wvla -Wall -DNDEBUG)
+  add_compile_options(-std=c++20 -O3 -ggdb -Wvla -Wall -DNDEBUG)
 else()
   add_compile_options(
-    -std=c++11
+    -std=c++20
     -O3
     -ggdb
     -Wvla
@@ -72,7 +72,7 @@ find_library(FFTW3F_LIB fftw3f REQUIRED)
 find_path(FFTW3_INCLUDE_DIR NAMES fftw3.h)
 find_package(
   Boost
-  COMPONENTS date_time filesystem system thread
+  COMPONENTS date_time filesystem thread
   REQUIRED)
 find_library(DL_LIB dl REQUIRED)
 find_library(GSL_LIB NAMES gsl)
@@ -97,7 +97,7 @@ include_directories(${CFITSIO_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 include_directories(${HDF5_INCLUDE_DIRS})
 
-set(BEAM_LIBS mwareducebeam ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY}
+set(BEAM_LIBS mwareducebeam ${Boost_FILESYSTEM_LIBRARY}
               ${HDF5_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 
 if(GSL_LIB
@@ -350,7 +350,7 @@ else(LIBXML2_FOUND)
 endif(LIBXML2_FOUND)
 
 target_link_libraries(addimg ${CFITSIO_LIBRARY} ${CASA_LIBS}
-                      ${Boost_DATE_TIME_LIBRARY} ${Boost_SYSTEM_LIBRARY})
+                      ${Boost_DATE_TIME_LIBRARY})
 target_link_libraries(aegean2model ${CFITSIO_LIBRARY} ${CASA_LIBS} ${GSL_LIB}
                       ${GSL_CBLAS_LIB})
 target_link_libraries(applybeam ${CFITSIO_LIBRARY} ${CASA_LIBS})
@@ -365,8 +365,7 @@ target_link_libraries(
   ${FFTW3F_LIB}
   ${FFTW3_THREADS_LIB}
   ${GSL_LIB}
-  ${GSL_CBLAS_LIB}
-  ${Boost_SYSTEM_LIBRARY})
+  ${GSL_CBLAS_LIB})
 target_link_libraries(applysolutions ${CASA_LIBS})
 target_link_libraries(
   autoprocess
@@ -374,7 +373,6 @@ target_link_libraries(
   ${CASA_LIBS}
   ${CFITSIO_LIBRARY}
   ${CASA_MEASURES_LIB}
-  ${Boost_SYSTEM_LIBRARY}
   ${GSL_LIB}
   ${GSL_CBLAS_LIB})
 target_link_libraries(bbs2model ${GSL_LIB} ${GSL_CBLAS_LIB})
@@ -393,7 +391,6 @@ target_link_libraries(
   ${FFTW3_LIB}
   ${FFTW3_THREADS_LIB}
   ${CFITSIO_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${GSL_LIB}
   ${GSL_CBLAS_LIB})
 target_link_libraries(collectionsolutions ${BEAM_LIBS} ${CFITSIO_LIBRARY}
@@ -403,7 +400,6 @@ target_link_libraries(
   ${BEAM_LIBS}
   ${CASA_LIBS}
   ${CFITSIO_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${GSL_LIB}
   ${GSL_CBLAS_LIB})
 target_link_libraries(
@@ -421,20 +417,18 @@ target_link_libraries(
   ${GSL_LIB}
   ${GSL_CBLAS_LIB}
   ${Boost_DATE_TIME_LIBRARY}
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY})
+  ${Boost_FILESYSTEM_LIBRARY})
 target_link_libraries(flagantennae ${CASA_LIBS})
 target_link_libraries(flagbaselines ${CASA_LIBS})
 target_link_libraries(flagmwa ${CASA_LIBS})
 target_link_libraries(flagsubbands ${CASA_LIBS})
-target_link_libraries(flagsolutions ${Boost_SYSTEM_LIBRARY}
+target_link_libraries(flagsolutions
                       ${Boost_FILESYSTEM_LIBRARY})
 target_link_libraries(
   ionpeel
   ${BEAM_LIBS}
   ${CASA_LIBS}
   ${CFITSIO_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${GSL_LIB}
   ${GSL_CBLAS_LIB}
   ${Boost_DATE_TIME_LIBRARY})
@@ -443,20 +437,18 @@ target_link_libraries(
   ${BEAM_LIBS}
   ${CASA_LIBS}
   ${CFITSIO_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${GSL_LIB}
   ${GSL_CBLAS_LIB})
 target_link_libraries(mrc2model ${GSL_LIB} ${GSL_CBLAS_LIB})
 target_link_libraries(pbaddimg ${CFITSIO_LIBRARY} ${CASA_LIBS}
-                      ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
+                      ${Boost_FILESYSTEM_LIBRARY})
 target_link_libraries(pbcorrect ${CFITSIO_LIBRARY} ${CASA_LIBS}
-                      ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
+                      ${Boost_FILESYSTEM_LIBRARY})
 target_link_libraries(
   peel
   ${BEAM_LIBS}
   ${CASA_LIBS}
   ${CFITSIO_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${GSL_LIB}
   ${GSL_CBLAS_LIB})
 target_link_libraries(phasecal ${BEAM_LIBS} ${CASA_LIBS} ${CFITSIO_LIBRARY}
@@ -469,7 +461,6 @@ target_link_libraries(
   ${FFTW3_LIB}
   ${FFTW3F_LIB}
   ${FFTW3_THREADS_LIB}
-  ${Boost_SYSTEM_LIBRARY}
   ${Boost_DATE_TIME_LIBRARY})
 target_link_libraries(
   subtrmodel
@@ -478,14 +469,13 @@ target_link_libraries(
   ${FFTW3_LIB}
   ${FFTW3_THREADS_LIB}
   ${CFITSIO_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
   ${GSL_LIB}
   ${GSL_CBLAS_LIB})
 
 add_executable(
   beam2016test EXCLUDE_FROM_ALL beam/beam2016implementation.cpp
                                 beam/beam2016test.cpp beam/system.cpp)
-target_link_libraries(beam2016test ${Boost_SYSTEM_LIBRARY}
+target_link_libraries(beam2016test
                       ${Boost_FILESYSTEM_LIBRARY} ${HDF5_LIBRARIES})
 
 if(NOT GSL_CBLAS_LIB)
@@ -521,7 +511,6 @@ if(GSL_LIB
     ${FFTW3_LIB}
     ${GSL_LIB}
     ${GSL_CBLAS_LIB}
-    ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY})
 
 else(

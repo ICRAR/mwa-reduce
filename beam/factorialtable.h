@@ -10,7 +10,7 @@ class FactorialTable
 public:
 	FactorialTable(size_t nPrecalculated) : _table(nPrecalculated)
 	{
-		for(unsigned i=0;i<=nPrecalculated;i++)
+		for(unsigned i=0;i!=nPrecalculated;i++)
 			_table[i] = boost::math::factorial<double>(i);
 	}
 	

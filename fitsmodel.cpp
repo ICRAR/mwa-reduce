@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
     GetModelFromImage(model, &image[0], width, height,
                       fitsReader.PhaseCentreRA(), fitsReader.PhaseCentreDec(),
                       fitsReader.PixelSizeX(), fitsReader.PixelSizeY(),
-                      fitsReader.PhaseCentreDL(), fitsReader.PhaseCentreDM(),
+                      fitsReader.LShift(), fitsReader.MShift(),
                       spectralIndex, refFreq);
 
     model.Sort();

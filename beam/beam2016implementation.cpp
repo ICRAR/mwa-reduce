@@ -812,7 +812,7 @@ void Beam2016Implementation::Read()
 	
 	m_obj_list.clear();
 	m_freq_list.clear();
-	herr_t status =  H5Ovisit (file_id, H5_INDEX_NAME, H5_ITER_NATIVE, list_obj_iterate, this);
+	herr_t status =  H5Ovisit (file_id, H5_INDEX_NAME, H5_ITER_NATIVE, list_obj_iterate, this, 0);
 	if( status < 0 ) {
 		throw std::runtime_error("H5Ovisit returned with negative value which indicates a critical error");
 	}

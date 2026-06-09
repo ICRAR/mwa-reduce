@@ -55,7 +55,7 @@ void TileBeam2014::invert32x32(const std::complex<double>* input, std::complex<d
 	if(status != 0)
 		throw std::runtime_error("Couldn't invert matrix");
 	
-	memcpy(output, gsl_matrix_complex_ptr(gslOutput, 0, 0), sizeof(std::complex<double>)*32*32);
+	std::copy_n(reinterpret_cast<const std::complex<double>*>(gsl_matrix_complex_ptr(gslOutput, 0, 0)), 32*32, output);
 	
 	gsl_matrix_complex_free(gslInput);
 	gsl_matrix_complex_free(gslOutput);

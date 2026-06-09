@@ -37,7 +37,8 @@ void FFTConvolver::PrepareSmallKernel(float* dest, size_t imgWidth,
                                       size_t kernelSize, size_t threadCount) {
   if (kernelSize > imgWidth || kernelSize > imgHeight)
     throw std::runtime_error("Kernel size > image dimension");
-  aocommon::StaticFor<size_t> loop(threadCount);
+  aocommon::ThreadPool::GetInstance().SetNThreads(threadCount);
+  aocommon::StaticFor<size_t> loop;
   loop.Run(0, kernelSize / 2, [&](size_t yStart, size_t yEnd) {
     const float* kernelIter = &kernel[yStart * kernelSize];
     for (size_t y = yStart; y != yEnd; ++y) {
@@ -80,7 +81,8 @@ void FFTConvolver::PrepareSmallKernel(float* dest, size_t imgWidth,
 void FFTConvolver::PrepareKernel(float* dest, const float* source,
                                  size_t imgWidth, size_t imgHeight,
                                  size_t threadCount) {
-  aocommon::StaticFor<size_t> loop(threadCount);
+  aocommon::ThreadPool::GetInstance().SetNThreads(threadCount);
+  aocommon::StaticFor<size_t> loop;
   loop.Run(0, imgHeight / 2, [&](size_t yStart, size_t yEnd) {
     const float* sourceIter = &source[yStart * imgWidth];
     for (size_t y = yStart; y != yEnd; ++y) {
@@ -141,7 +143,8 @@ void FFTConvolver::ConvolveSameSize(FFTWManager& fftw, float* image,
       fftwf_plan_dft_c2r_1d(imgWidth, nullptr, nullptr, FFTW_ESTIMATE);
   lock.unlock();
 
-  aocommon::StaticFor<size_t> loop(threadCount);
+  aocommon::ThreadPool::GetInstance().SetNThreads(threadCount);
+  aocommon::StaticFor<size_t> loop;
 
   fft2f_r2c_composite(plan_r2c, plan_c2c_forward, imgHeight, imgWidth, image,
                       fftImageData, loop);
@@ -178,7 +181,8 @@ void FFTConvolver::ConvolveSameSize(FFTWManager& fftw, float* image,
 
 void FFTConvolver::Reverse(float* image, size_t imgWidth, size_t imgHeight,
                            size_t threadCount) {
-  aocommon::StaticFor<size_t> loop(threadCount);
+  aocommon::ThreadPool::GetInstance().SetNThreads(threadCount);
+  aocommon::StaticFor<size_t> loop;
   loop.Run(0, imgHeight / 2, [&](size_t yStart, size_t yEnd) {
     for (size_t y = yStart; y != yEnd; ++y) {
       size_t destY = imgHeight - 1 - y;

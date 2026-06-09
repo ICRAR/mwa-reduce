@@ -17,7 +17,7 @@ class TileBeam2014
 public:
 	TileBeam2014(const double *delays, bool frequencyInterpolation, const std::string& searchPath);
 	
-	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, double ha, double dec, double haAntennaZenith, double decAntennaZenith, std::complex<double> *gain)
+	void ArrayResponse(double zenithAngle, double azimuth, double frequencyHz, [[maybe_unused]] double ha, [[maybe_unused]] double dec, [[maybe_unused]] double haAntennaZenith, [[maybe_unused]] double decAntennaZenith, std::complex<double> *gain)
 	{
 		if(_frequencyInterpolation)
 			getInterpolatedResponse(azimuth, zenithAngle, frequencyHz, gain);

@@ -268,8 +268,8 @@ int main(int argc, char* argv[]) {
     pixelSizeY = reader.PixelSizeY();
     refRA = reader.PhaseCentreRA();
     refDec = reader.PhaseCentreDec();
-    phaseCentreDL = reader.PhaseCentreDL();
-    phaseCentreDM = reader.PhaseCentreDM();
+    phaseCentreDL = reader.LShift();
+    phaseCentreDM = reader.MShift();
     centralFrequency = reader.Frequency();
     std::cout << "Using frequency from fits file: "
               << round(centralFrequency * 1e-6 * 10.0) * 0.1 << " MHz.\n";
